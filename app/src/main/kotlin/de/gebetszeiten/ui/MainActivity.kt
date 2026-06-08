@@ -214,7 +214,6 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
             dayInfo?.let { info ->
                 TimesCard(
                     info = info,
-                    next = if (isToday) next else null,
                     now = ZonedDateTime.now(zone),
                     highlight = isToday,
                     showNafl = settings.showNafl,
@@ -401,7 +400,6 @@ private data class NaflBlock(
 @Composable
 private fun TimesCard(
     info: DayInfo,
-    next: NextPrayer?,
     now: ZonedDateTime,
     highlight: Boolean,
     showNafl: Boolean,
@@ -458,31 +456,46 @@ private fun TimesCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         ),
     ) {
-        // Index of the first block after "now"; the now-marker is drawn before it
-        // (or at the end). Only for today.
-        val nowIndex = if (highlight) blocks.indexOfFirst { it.sortAt.isAfter(now) } else -2
-        val primary = MaterialTheme.colorScheme.primary
+        // "Running" calendar: the currently active prayer (last one whose time
+        // has passed) is selected; earlier blocks are collapsed by default.
+        val active: Pair<Prayer, ZonedDateTime>? =
+            if (highlight) info.times.ordered().lastOrNull { !it.second.isAfter(now) } else null
+        val activeIndex =
+            if (active != null) blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first } else -1
+        var showPast by remember { mutableStateOf(false) }
+        val visible = if (activeIndex > 0 && !showPast) blocks.drop(activeIndex) else blocks
+
         Column(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            blocks.forEachIndexed { index, block ->
-                if (index == nowIndex) NowMarker(now, primary)
+            if (activeIndex > 0) {
+                Text(
+                    text = if (showPast) "Frühere ausblenden" else "Frühere Zeiten anzeigen",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPast = !showPast }
+                        .padding(horizontal = 16.dp, vertical = 2.dp),
+                )
+            }
+            visible.forEach { block ->
                 when (block) {
                     is PrayerBlock -> {
-                        val isNext = highlight && next != null && block.prayer == next.prayer && !block.time.isBefore(now)
-                        val passed = highlight && block.time.isBefore(now) && !isNext
+                        val isSelected = active != null && block.prayer == active.first
+                        val isPast = active != null && block.time.isBefore(active.second)
                         val foreground = when {
-                            isNext -> MaterialTheme.colorScheme.onPrimaryContainer
-                            passed -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
+                            isPast -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             else -> MaterialTheme.colorScheme.onSurface
                         }
-                        val background = if (isNext) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-                        val weight = if (isNext) FontWeight.Bold else FontWeight.Normal
+                        val background = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                        val weight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         val name = context.getString(block.prayer.labelRes())
                         val status = when {
-                            isNext -> ", nächstes Gebet"
-                            passed -> ", bereits vergangen"
+                            isSelected -> ", aktuelles Gebet"
+                            isPast -> ", vergangen"
                             else -> ""
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -498,7 +511,7 @@ private fun TimesCard(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(context.getString(block.prayer.labelRes()), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, modifier = Modifier.weight(1f))
+                                Text(name, style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, modifier = Modifier.weight(1f))
                                 Spacer(Modifier.width(8.dp))
                                 Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
                             }
@@ -535,30 +548,7 @@ private fun TimesCard(
                     }
                 }
             }
-            if (nowIndex == -1) NowMarker(now, primary)
         }
-    }
-}
-
-@Composable
-private fun NowMarker(now: ZonedDateTime, color: Color) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp)
-            .clearAndSetSemantics { contentDescription = "Jetzt, ${now.format(HM)}" },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("jetzt", style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.width(8.dp))
-        Box(
-            Modifier
-                .weight(1f)
-                .height(2.dp)
-                .background(color),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(now.format(HM), style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
 
