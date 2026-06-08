@@ -20,6 +20,9 @@ data class KarahaTimes(
 data class NaflTimes(
     val duhaStart: ZonedDateTime,
     val duhaEnd: ZonedDateTime,
+    /** Awwabin: between Maghrib and Isha. */
+    val awwabinStart: ZonedDateTime,
+    val awwabinEnd: ZonedDateTime,
     val tahajjudStart: ZonedDateTime,
     val tahajjudEnd: ZonedDateTime,
 )
@@ -56,6 +59,8 @@ object IslamicWindows {
         return NaflTimes(
             duhaStart = duhaStart,
             duhaEnd = duhaEnd,
+            awwabinStart = times.maghrib,
+            awwabinEnd = times.isha,
             tahajjudStart = tahajjudStart,
             tahajjudEnd = nextFajr,
         )

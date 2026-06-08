@@ -178,9 +178,9 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
                     next = if (isToday) next else null,
                     now = ZonedDateTime.now(zone),
                     highlight = isToday,
+                    showNafl = settings.showNafl,
                     onKaraha = { karahaInfo = it },
                 )
-                if (settings.showNafl) NaflCard(info.nafl)
             }
 
             Text(
@@ -313,27 +313,43 @@ private data class MakruhEntry(
     override val at: ZonedDateTime get() = start
 }
 
+private data class NaflEntry(
+    val label: String,
+    val start: ZonedDateTime,
+    val end: ZonedDateTime,
+) : TimelineEntry {
+    override val at: ZonedDateTime get() = start
+}
+
 @Composable
 private fun TimesCard(
     info: DayInfo,
     next: NextPrayer?,
     now: ZonedDateTime,
     highlight: Boolean,
+    showNafl: Boolean,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
     val dark = isSystemInDarkTheme()
     val amber = if (dark) Color(0xFFE6B055) else Color(0xFFB07514)
+    val green = if (dark) Color(0xFF8BD6BB) else Color(0xFF2E7D32)
 
-    // Prayers and makruh segments merged in chronological order (a prayer comes
-    // before a makruh segment that starts at the same instant).
-    val entries = remember(info) {
+    // Prayers, makruh and (optional) nafl windows merged chronologically; a
+    // prayer sorts before any segment that starts at the same instant.
+    val entries = remember(info, showNafl) {
         val k = info.karaha
+        val n = info.nafl
         buildList<TimelineEntry> {
             info.times.ordered().forEach { (p, t) -> add(PrayerEntry(p, t)) }
             add(MakruhEntry("Makruh · nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE))
             add(MakruhEntry("Makruh · Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL))
             add(MakruhEntry("Makruh · vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR))
+            if (showNafl) {
+                add(NaflEntry("Duha (Kuşluk)", n.duhaStart, n.duhaEnd))
+                add(NaflEntry("Awwabin", n.awwabinStart, n.awwabinEnd))
+                add(NaflEntry("Tahajjud", n.tahajjudStart, n.tahajjudEnd))
+            }
         }.sortedWith(compareBy({ it.at }, { if (it is PrayerEntry) 0 else 1 }))
     }
 
@@ -385,6 +401,20 @@ private fun TimesCard(
                             Text("${entry.start.format(HM)}–${entry.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = c)
                         }
                     }
+                    is NaflEntry -> {
+                        val faded = highlight && entry.end.isBefore(now)
+                        val c = green.copy(alpha = if (faded) 0.5f else 1f)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 5.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("✦ ${entry.label}", style = MaterialTheme.typography.labelMedium, color = c)
+                            Text("${entry.start.format(HM)}–${entry.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = c)
+                        }
+                    }
                 }
             }
         }
@@ -397,31 +427,6 @@ private val KARAHA_ZEVAL = "Zeval / İstiva (Zenit)" to
     "Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)"
 private val KARAHA_ISFIRAR = "İsfirar-ı şems (vor Sonnenuntergang)" to
     "Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)"
-
-@Composable
-private fun NaflCard(nafl: NaflTimes) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
-        ),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Freiwillige Gebete", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            NaflRow("Duha (Kuşluk)", nafl.duhaStart, nafl.duhaEnd)
-            NaflRow("Tahajjud", nafl.tahajjudStart, nafl.tahajjudEnd)
-        }
-    }
-}
-
-@Composable
-private fun NaflRow(name: String, start: ZonedDateTime, end: ZonedDateTime) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(name, style = MaterialTheme.typography.bodyLarge)
-        Text("${start.format(HM)}–${end.format(HM)}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
