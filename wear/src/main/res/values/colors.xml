@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="wear_bg">#FF000000</color>
+    <color name="wear_accent">#FF8BD6BB</color>
+    <color name="wear_text">#FFE6E8E4</color>
+    <color name="wear_dim">#FF8A938C</color>
+    <color name="wear_divider">#1FFFFFFF</color>
+</resources>
