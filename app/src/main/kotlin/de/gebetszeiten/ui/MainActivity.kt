@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -33,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,7 +60,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -77,15 +83,33 @@ import de.gebetszeiten.prayer.NextPrayer
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.ui.theme.GebetszeitenTheme
+import de.gebetszeiten.ui.theme.LocalHighContrast
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.chrono.HijrahDate
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoField
 import java.util.Locale
 
 private val HM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+// Diyanet / Turkish transliteration of the Hijri month names.
+private val HIJRI_MONTHS = arrayOf(
+    "Muharrem", "Safer", "Rebiülevvel", "Rebiülahir", "Cemaziyelevvel", "Cemaziyelahir",
+    "Recep", "Şaban", "Ramazan", "Şevval", "Zilkade", "Zilhicce",
+)
+
+private fun hijriText(date: LocalDate): String {
+    val h = HijrahDate.from(date)
+    val d = h.get(ChronoField.DAY_OF_MONTH)
+    val m = h.get(ChronoField.MONTH_OF_YEAR)
+    val y = h.get(ChronoField.YEAR)
+    return "$d. ${HIJRI_MONTHS[m - 1]} $y"
+}
 
 private data class DayInfo(
     val times: DailyPrayerTimes,
@@ -100,9 +124,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            GebetszeitenTheme {
-                NotificationPermissionRequester()
-                PrayerScreen(viewModel)
+            val settings by viewModel.settings.collectAsState()
+            GebetszeitenTheme(highContrast = settings.highContrast) {
+                val density = LocalDensity.current
+                CompositionLocalProvider(
+                    LocalDensity provides Density(density.density, density.fontScale * settings.fontScale),
+                ) {
+                    NotificationPermissionRequester()
+                    PrayerScreen(viewModel)
+                }
             }
         }
         viewModel.ensureScheduled()
@@ -188,6 +218,7 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
                     now = ZonedDateTime.now(zone),
                     highlight = isToday,
                     showNafl = settings.showNafl,
+                    showKaraha = settings.showKaraha,
                     onKaraha = { karahaInfo = it },
                 )
             }
@@ -252,6 +283,11 @@ private fun DateNavigator(
                 text = date.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = hijriText(date),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
             )
         }
         IconButton(
@@ -369,28 +405,38 @@ private fun TimesCard(
     now: ZonedDateTime,
     highlight: Boolean,
     showNafl: Boolean,
+    showKaraha: Boolean,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
     val dark = isSystemInDarkTheme()
+    val hc = LocalHighContrast.current
     // Darkened for WCAG AA contrast of small text on the light card.
-    val amber = if (dark) Color(0xFFE6B055) else Color(0xFF8A5300)
-    val green = if (dark) Color(0xFF8BD6BB) else Color(0xFF1B5E20)
+    val amber = when {
+        dark -> if (hc) Color(0xFFFFCF87) else Color(0xFFE6B055)
+        hc -> Color(0xFF5E3600)
+        else -> Color(0xFF8A5300)
+    }
+    val green = when {
+        dark -> if (hc) Color(0xFFB7F0D8) else Color(0xFF8BD6BB)
+        hc -> Color(0xFF0A3D12)
+        else -> Color(0xFF1B5E20)
+    }
 
     // Each prayer + its makruh segment form one block (zenith/İsfirar above the
     // prayer, sunrise below). Nafl windows are their own blocks. Blocks run
     // chronologically with a clear gap between them.
-    val blocks = remember(info, showNafl) {
+    val blocks = remember(info, showNafl, showKaraha) {
         val k = info.karaha
         val n = info.nafl
         buildList<DayBlock> {
             info.times.ordered().forEach { (p, t) ->
-                val before = when (p) {
+                val before = if (!showKaraha) null else when (p) {
                     Prayer.DHUHR -> Makruh("Makruh · Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL)
                     Prayer.MAGHRIB -> Makruh("Makruh · vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR)
                     else -> null
                 }
-                val after = if (p == Prayer.SUNRISE) {
+                val after = if (showKaraha && p == Prayer.SUNRISE) {
                     Makruh("Makruh · nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE)
                 } else {
                     null
@@ -412,11 +458,16 @@ private fun TimesCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         ),
     ) {
+        // Index of the first block after "now"; the now-marker is drawn before it
+        // (or at the end). Only for today.
+        val nowIndex = if (highlight) blocks.indexOfFirst { it.sortAt.isAfter(now) } else -2
+        val primary = MaterialTheme.colorScheme.primary
         Column(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            blocks.forEach { block ->
+            blocks.forEachIndexed { index, block ->
+                if (index == nowIndex) NowMarker(now, primary)
                 when (block) {
                     is PrayerBlock -> {
                         val isNext = highlight && next != null && block.prayer == next.prayer && !block.time.isBefore(now)
@@ -447,8 +498,9 @@ private fun TimesCard(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(context.getString(block.prayer.labelRes()), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
-                                Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
+                                Text(context.getString(block.prayer.labelRes()), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, modifier = Modifier.weight(1f))
+                                Spacer(Modifier.width(8.dp))
+                                Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
                             }
                             block.after?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
                         }
@@ -467,13 +519,46 @@ private fun TimesCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("✦ ${block.label}", style = MaterialTheme.typography.labelMedium, color = c)
-                            Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = c)
+                            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_nafl),
+                                    contentDescription = null,
+                                    tint = c,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(block.label, style = MaterialTheme.typography.labelMedium, color = c)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = c, softWrap = false)
                         }
                     }
                 }
             }
+            if (nowIndex == -1) NowMarker(now, primary)
         }
+    }
+}
+
+@Composable
+private fun NowMarker(now: ZonedDateTime, color: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp)
+            .clearAndSetSemantics { contentDescription = "Jetzt, ${now.format(HM)}" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("jetzt", style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(8.dp))
+        Box(
+            Modifier
+                .weight(1f)
+                .height(2.dp)
+                .background(color),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(now.format(HM), style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
 
@@ -492,8 +577,23 @@ private fun MakruhCaption(m: Makruh, amber: Color, faded: Boolean, onKaraha: (Pa
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("⚠ ${m.label}", style = MaterialTheme.typography.labelMedium, color = c)
-        Text("${m.start.format(HM)}–${m.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = c)
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painter = painterResource(R.drawable.ic_makruh),
+                contentDescription = null,
+                tint = c,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(m.label, style = MaterialTheme.typography.labelMedium, color = c)
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "${m.start.format(HM)}–${m.end.format(HM)}",
+            style = MaterialTheme.typography.labelMedium,
+            color = c,
+            softWrap = false,
+        )
     }
 }
 
@@ -513,6 +613,9 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
     var countdown by remember(settings.showCountdown) { mutableStateOf(settings.showCountdown) }
     var nafl by remember(settings.showNafl) { mutableStateOf(settings.showNafl) }
     var online by remember(settings.useOnline) { mutableStateOf(settings.useOnline) }
+    var karaha by remember(settings.showKaraha) { mutableStateOf(settings.showKaraha) }
+    var contrast by remember(settings.highContrast) { mutableStateOf(settings.highContrast) }
+    var fontScale by remember(settings.fontScale) { mutableStateOf(settings.fontScale) }
     var expanded by remember { mutableStateOf(false) }
     var matches by remember { mutableStateOf<List<City>>(emptyList()) }
     val context = LocalContext.current
@@ -522,7 +625,11 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Einstellungen", style = MaterialTheme.typography.titleLarge)
@@ -550,21 +657,53 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
             OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Länge") }, modifier = Modifier.weight(1f))
         }
 
-        ToggleRow("Restzeit im Widget", countdown) { countdown = it }
+        ToggleRow("Makruh-Zeiten anzeigen", karaha) { karaha = it }
         ToggleRow("Freiwillige Gebete anzeigen", nafl) { nafl = it }
+        ToggleRow("Restzeit im Widget", countdown) { countdown = it }
         if (OfficialTimesProvider.isOnline) {
             ToggleRow("Offizielle Diyanet-Zeiten (online)", online) { online = it }
         }
+
+        FontSizeSelector(fontScale) { fontScale = it }
+        ToggleRow("Hoher Kontrast", contrast) { contrast = it }
 
         Button(
             onClick = {
                 val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
                 val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
-                onSave(settings.copy(latitude = parsedLat, longitude = parsedLng, city = city.ifBlank { "—" }, showCountdown = countdown, showNafl = nafl, useOnline = online))
+                onSave(
+                    settings.copy(
+                        latitude = parsedLat,
+                        longitude = parsedLng,
+                        city = city.ifBlank { "—" },
+                        showCountdown = countdown,
+                        showNafl = nafl,
+                        useOnline = online,
+                        showKaraha = karaha,
+                        highContrast = contrast,
+                        fontScale = fontScale,
+                    ),
+                )
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Speichern")
+        }
+    }
+}
+
+@Composable
+private fun FontSizeSelector(value: Float, onChange: (Float) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Schriftgröße", style = MaterialTheme.typography.bodyLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Normal" to 1f, "Groß" to 1.2f, "Sehr groß" to 1.4f).forEach { (label, v) ->
+                FilterChip(
+                    selected = abs(value - v) < 0.01f,
+                    onClick = { onChange(v) },
+                    label = { Text(label) },
+                )
+            }
         }
     }
 }
