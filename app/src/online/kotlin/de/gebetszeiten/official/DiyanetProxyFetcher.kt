@@ -1,0 +1,74 @@
+package de.gebetszeiten.official
+
+import de.gebetszeiten.data.AppSettings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import java.time.LocalDate
+import java.time.LocalTime
+
+/**
+ * Fetches official Diyanet times from the community proxy
+ * (prayertimes.api.abdus.dev), a 1:1 scrape of namazvakitleri.diyanet.gov.tr.
+ *
+ * Two steps: resolve the Diyanet location id by city name, then fetch its
+ * rolling schedule. Any failure returns an empty map so callers fall back to
+ * the offline calculation.
+ */
+class DiyanetProxyFetcher : OfficialTimesFetcher {
+
+    private val base = "https://prayertimes.api.abdus.dev/api/diyanet"
+
+    override suspend fun fetch(settings: AppSettings): Map<LocalDate, SixTimes> =
+        withContext(Dispatchers.IO) {
+            try {
+                val locationId = resolveLocationId(settings.city) ?: return@withContext emptyMap()
+                parseSchedule(httpGet("$base/prayertimes?location_id=$locationId"))
+            } catch (e: Exception) {
+                emptyMap()
+            }
+        }
+
+    private fun resolveLocationId(city: String): Int? {
+        val q = URLEncoder.encode(city.trim(), "UTF-8")
+        val arr = JSONArray(httpGet("$base/search?q=$q"))
+        if (arr.length() == 0) return null
+        return arr.getJSONObject(0).optInt("id").takeIf { it != 0 }
+    }
+
+    private fun parseSchedule(body: String): Map<LocalDate, SixTimes> {
+        val arr = JSONArray(body)
+        val out = LinkedHashMap<LocalDate, SixTimes>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val date = LocalDate.parse(o.getString("date").substring(0, 10))
+            out[date] = SixTimes(
+                fajr = LocalTime.parse(o.getString("fajr")),
+                sunrise = LocalTime.parse(o.getString("sun")),
+                dhuhr = LocalTime.parse(o.getString("dhuhr")),
+                asr = LocalTime.parse(o.getString("asr")),
+                maghrib = LocalTime.parse(o.getString("maghrib")),
+                isha = LocalTime.parse(o.getString("isha")),
+            )
+        }
+        return out
+    }
+
+    private fun httpGet(urlString: String): String {
+        val conn = (URL(urlString).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 10_000
+            readTimeout = 10_000
+            setRequestProperty("Accept", "application/json")
+        }
+        try {
+            if (conn.responseCode !in 200..299) error("HTTP ${conn.responseCode}")
+            return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
+    }
+}

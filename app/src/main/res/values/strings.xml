@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gebetszeiten</string>
+
+    <string name="prayer_fajr">Fajr</string>
+    <string name="prayer_sunrise">Sonnenaufgang</string>
+    <string name="prayer_dhuhr">Dhuhr</string>
+    <string name="prayer_asr">Asr</string>
+    <string name="prayer_maghrib">Maghrib</string>
+    <string name="prayer_isha">Isha</string>
+
+    <string name="location_title">Ort</string>
+    <string name="city_label">Stadt</string>
+    <string name="latitude_label">Breitengrad</string>
+    <string name="longitude_label">Längengrad</string>
+    <string name="save">Speichern</string>
+    <string name="show_countdown">Restzeit im Widget anzeigen</string>
+    <string name="next_prayer">Nächstes Gebet</string>
+    <string name="notification_channel_name">Gebetszeiten</string>
+    <string name="notification_channel_desc">Stille Erinnerung zur Gebetszeit</string>
+    <string name="data_credit">Städtedaten: GeoNames (CC BY 4.0) · Berechnung: Diyanet-Methode (offline)</string>
+</resources>

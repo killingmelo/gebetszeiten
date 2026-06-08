@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A bare Chronometer embedded into the Glance widget via AndroidRemoteViews.
+  With countDown=true the Android framework renders the ticking countdown
+  itself — the app process is never woken to update it.
+-->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_chrono"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="?android:attr/textColorPrimary"
+    android:textSize="22sp"
+    android:textStyle="bold" />
