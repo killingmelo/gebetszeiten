@@ -11,16 +11,21 @@ import androidx.glance.GlanceTheme
 import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.provideContent
-import de.gebetszeiten.R
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
+import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.material3.ColorProviders
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import de.gebetszeiten.R
 import de.gebetszeiten.data.SettingsRepository
+import de.gebetszeiten.ui.theme.DarkColors
+import de.gebetszeiten.ui.theme.LightColors
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.prayer.labelRes
 import java.time.ZoneId
@@ -49,12 +54,12 @@ class NextPrayerWidget : GlanceAppWidget() {
             (next.time.toInstant().toEpochMilli() - System.currentTimeMillis())
 
         provideContent {
-            GlanceTheme {
+            GlanceTheme(colors = ColorProviders(light = LightColors, dark = DarkColors)) {
                 Column(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .background(GlanceTheme.colors.widgetBackground)
-                        .padding(12.dp),
+                        .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalAlignment = Alignment.Start,
                 ) {
@@ -63,8 +68,10 @@ class NextPrayerWidget : GlanceAppWidget() {
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
                             fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
                         ),
                     )
+                    Spacer(GlanceModifier.height(2.dp))
                     if (showCountdown) {
                         val rv = RemoteViews(context.packageName, R.layout.widget_chronometer).apply {
                             setChronometerCountDown(R.id.widget_chrono, true)
@@ -75,8 +82,8 @@ class NextPrayerWidget : GlanceAppWidget() {
                         Text(
                             text = time,
                             style = TextStyle(
-                                color = GlanceTheme.colors.onSurface,
-                                fontSize = 26.sp,
+                                color = GlanceTheme.colors.primary,
+                                fontSize = 30.sp,
                                 fontWeight = FontWeight.Bold,
                             ),
                         )
