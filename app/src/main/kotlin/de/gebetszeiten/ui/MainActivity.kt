@@ -9,8 +9,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,11 +19,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +39,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,9 +60,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.gebetszeiten.R
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
+import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.data.Cities
 import de.gebetszeiten.data.City
+import de.gebetszeiten.official.OfficialTimesProvider
+import de.gebetszeiten.prayer.IslamicWindows
+import de.gebetszeiten.prayer.KarahaTimes
+import de.gebetszeiten.prayer.NaflTimes
 import de.gebetszeiten.prayer.NextPrayer
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.prayer.labelRes
@@ -74,6 +79,14 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private val HM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+private data class DayInfo(
+    val times: DailyPrayerTimes,
+    val karaha: KarahaTimes,
+    val nafl: NaflTimes,
+)
 
 class MainActivity : ComponentActivity() {
 
@@ -107,18 +120,27 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
     val settings by viewModel.settings.collectAsState()
     val zone = ZoneId.systemDefault()
 
-    // Re-evaluate every minute so the hero countdown and highlight stay live.
     var tick by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { while (true) { delay(60_000); tick++ } }
 
-    val today by produceState<DailyPrayerTimes?>(null, settings, tick) {
-        value = PrayerProvider.daily(context, settings, LocalDate.now(zone), zone)
+    var selectedDate by remember { mutableStateOf(LocalDate.now(zone)) }
+    val isToday = selectedDate == LocalDate.now(zone)
+
+    val dayInfo by produceState<DayInfo?>(null, settings, tick, selectedDate) {
+        val times = PrayerProvider.daily(context, settings, selectedDate, zone)
+        val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone).fajr
+        value = DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr))
     }
-    val next by produceState<NextPrayer?>(null, settings, tick) {
-        value = PrayerProvider.next(context, settings, zone, ZonedDateTime.now(zone))
+    val next by produceState<NextPrayer?>(null, settings, tick, selectedDate) {
+        value = if (selectedDate == LocalDate.now(zone)) {
+            PrayerProvider.next(context, settings, zone, ZonedDateTime.now(zone))
+        } else {
+            null
+        }
     }
 
     var showSettings by remember { mutableStateOf(false) }
+    var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Scaffold(
         topBar = {
@@ -126,10 +148,7 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
                 title = { Text(text = settings.city) },
                 actions = {
                     IconButton(onClick = { showSettings = true }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_tune),
-                            contentDescription = "Einstellungen",
-                        )
+                        Icon(painterResource(R.drawable.ic_tune), contentDescription = "Einstellungen")
                     }
                 },
             )
@@ -143,17 +162,26 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            val dateText = LocalDate.now(zone)
-                .format(DateTimeFormatter.ofPattern("EEEE, d. MMMM", Locale.GERMAN))
-            Text(
-                text = dateText,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
+            DateNavigator(
+                date = selectedDate,
+                isToday = isToday,
+                onPrev = { selectedDate = selectedDate.minusDays(1) },
+                onNext = { selectedDate = selectedDate.plusDays(1) },
+                onToday = { selectedDate = LocalDate.now(zone) },
             )
 
-            next?.let { NextPrayerHero(it, zone) }
-            today?.let { TimesCard(it, next, ZonedDateTime.now(zone), context) }
+            if (isToday) next?.let { NextPrayerHero(it, zone) }
+
+            dayInfo?.let { info ->
+                TimesCard(
+                    info = info,
+                    next = if (isToday) next else null,
+                    now = ZonedDateTime.now(zone),
+                    highlight = isToday,
+                    onKaraha = { karahaInfo = it },
+                )
+                if (settings.showNafl) NaflCard(info.nafl)
+            }
 
             Text(
                 text = context.getString(R.string.data_credit),
@@ -168,11 +196,54 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
         ModalBottomSheet(onDismissRequest = { showSettings = false }) {
             LocationSettings(
                 settings = settings,
-                onSave = {
-                    viewModel.save(it)
-                    showSettings = false
-                },
+                onSave = { viewModel.save(it); showSettings = false },
             )
+        }
+    }
+
+    karahaInfo?.let { (title, text) ->
+        AlertDialog(
+            onDismissRequest = { karahaInfo = null },
+            confirmButton = { TextButton(onClick = { karahaInfo = null }) { Text("Verstanden") } },
+            title = { Text(title) },
+            text = { Text(text) },
+        )
+    }
+}
+
+@Composable
+private fun DateNavigator(
+    date: LocalDate,
+    isToday: Boolean,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onToday: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onPrev) {
+            Text("‹", style = MaterialTheme.typography.headlineMedium)
+        }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.clickable(onClick = onToday),
+        ) {
+            Text(
+                text = if (isToday) "Heute" else date.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = date.format(DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onNext) {
+            Text("›", style = MaterialTheme.typography.headlineMedium)
         }
     }
 }
@@ -181,8 +252,6 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
 private fun NextPrayerHero(next: NextPrayer, zone: ZoneId) {
     val context = LocalContext.current
     val remaining = Duration.between(ZonedDateTime.now(zone), next.time)
-    val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
@@ -203,15 +272,8 @@ private fun NextPrayerHero(next: NextPrayer, zone: ZoneId) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = context.getString(next.prayer.labelRes()),
-                    style = MaterialTheme.typography.headlineMedium,
-                )
-                Text(
-                    text = next.time.format(timeFormat),
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                )
+                Text(context.getString(next.prayer.labelRes()), style = MaterialTheme.typography.headlineMedium)
+                Text(next.time.format(HM), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(4.dp))
             Text(
@@ -236,12 +298,17 @@ private fun remainingText(d: Duration): String {
 
 @Composable
 private fun TimesCard(
-    today: DailyPrayerTimes,
+    info: DayInfo,
     next: NextPrayer?,
     now: ZonedDateTime,
-    context: android.content.Context,
+    highlight: Boolean,
+    onKaraha: (Pair<String, String>) -> Unit,
 ) {
-    val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
+    val context = LocalContext.current
+    val dark = isSystemInDarkTheme()
+    val amber = if (dark) Color(0xFFE6B055) else Color(0xFFB07514)
+    val k = info.karaha
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -250,9 +317,9 @@ private fun TimesCard(
         ),
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
-            today.ordered().forEach { (prayer, time) ->
-                val isNext = next != null && prayer == next.prayer && !time.isBefore(now)
-                val passed = time.isBefore(now) && !isNext
+            info.times.ordered().forEach { (prayer, time) ->
+                val isNext = highlight && next != null && prayer == next.prayer && !time.isBefore(now)
+                val passed = highlight && time.isBefore(now) && !isNext
                 val foreground = when {
                     isNext -> MaterialTheme.colorScheme.onPrimaryContainer
                     passed -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
@@ -261,30 +328,76 @@ private fun TimesCard(
                 val background =
                     if (isNext) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                 val weight = if (isNext) FontWeight.Bold else FontWeight.Normal
-                Row(
+
+                val karahaLabel: String? = when (prayer) {
+                    Prayer.SUNRISE -> "Makruh bis ${k.sunriseEnd.format(HM)}"
+                    Prayer.DHUHR -> "Makruh ${k.zevalStart.format(HM)}–${k.zevalEnd.format(HM)}"
+                    Prayer.MAGHRIB -> "Makruh ab ${k.isfirarStart.format(HM)}"
+                    else -> null
+                }
+                val karahaExplain: Pair<String, String>? = when (prayer) {
+                    Prayer.SUNRISE -> "İşrak (Sonnenaufgang)" to
+                        "Makruh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein freiwilliges Gebet; danach beginnen İşrak/Duha. (Hanafi)"
+                    Prayer.DHUHR -> "Zeval / İstiva (Zenit)" to
+                        "Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)"
+                    Prayer.MAGHRIB -> "İsfirar-ı şems (Sonnenuntergang)" to
+                        "Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)"
+                    else -> null
+                }
+
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 3.dp)
                         .background(background, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                 ) {
-                    Text(
-                        text = context.getString(prayer.labelRes()),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = foreground,
-                        fontWeight = weight,
-                    )
-                    Text(
-                        text = time.format(timeFormat),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = foreground,
-                        fontWeight = weight,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(context.getString(prayer.labelRes()), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
+                        Text(time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
+                    }
+                    if (karahaLabel != null && karahaExplain != null) {
+                        Text(
+                            text = "⚠ $karahaLabel",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = amber,
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .clickable { onKaraha(karahaExplain) },
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NaflCard(nafl: NaflTimes) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Freiwillige Gebete", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            NaflRow("Duha (Kuşluk)", nafl.duhaStart, nafl.duhaEnd)
+            NaflRow("Tahajjud", nafl.tahajjudStart, nafl.tahajjudEnd)
+        }
+    }
+}
+
+@Composable
+private fun NaflRow(name: String, start: ZonedDateTime, end: ZonedDateTime) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(name, style = MaterialTheme.typography.bodyLarge)
+        Text("${start.format(HM)}–${end.format(HM)}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -295,6 +408,8 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
     var lat by remember(settings.latitude) { mutableStateOf(settings.latitude.toString()) }
     var lng by remember(settings.longitude) { mutableStateOf(settings.longitude.toString()) }
     var countdown by remember(settings.showCountdown) { mutableStateOf(settings.showCountdown) }
+    var nafl by remember(settings.showNafl) { mutableStateOf(settings.showNafl) }
+    var online by remember(settings.useOnline) { mutableStateOf(settings.useOnline) }
     var expanded by remember { mutableStateOf(false) }
     var matches by remember { mutableStateOf<List<City>>(emptyList()) }
     val context = LocalContext.current
@@ -304,13 +419,10 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(text = "Ort", style = MaterialTheme.typography.titleLarge)
+        Text("Einstellungen", style = MaterialTheme.typography.titleLarge)
 
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
             OutlinedTextField(
@@ -318,58 +430,50 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
                 onValueChange = { city = it; expanded = true },
                 label = { Text("Stadt") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
-                    .fillMaxWidth(),
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth(),
             )
             ExposedDropdownMenu(expanded = expanded && matches.isNotEmpty(), onDismissRequest = { expanded = false }) {
                 matches.forEach { c ->
                     DropdownMenuItem(
                         text = { Text("${c.name} (${c.country})") },
-                        onClick = {
-                            city = c.name
-                            lat = c.latitude.toString()
-                            lng = c.longitude.toString()
-                            expanded = false
-                        },
+                        onClick = { city = c.name; lat = c.latitude.toString(); lng = c.longitude.toString(); expanded = false },
                     )
                 }
             }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value = lat,
-                onValueChange = { lat = it },
-                label = { Text("Breite") },
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedTextField(
-                value = lng,
-                onValueChange = { lng = it },
-                label = { Text("Länge") },
-                modifier = Modifier.weight(1f),
-            )
+            OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Breite") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Länge") }, modifier = Modifier.weight(1f))
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text = "Restzeit im Widget", style = MaterialTheme.typography.bodyLarge)
-            Switch(checked = countdown, onCheckedChange = { countdown = it })
+        ToggleRow("Restzeit im Widget", countdown) { countdown = it }
+        ToggleRow("Freiwillige Gebete anzeigen", nafl) { nafl = it }
+        if (OfficialTimesProvider.isOnline) {
+            ToggleRow("Offizielle Diyanet-Zeiten (online)", online) { online = it }
         }
 
         Button(
             onClick = {
                 val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
                 val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
-                onSave(AppSettings(parsedLat, parsedLng, city.ifBlank { "—" }, countdown))
+                onSave(settings.copy(latitude = parsedLat, longitude = parsedLng, city = city.ifBlank { "—" }, showCountdown = countdown, showNafl = nafl, useOnline = online))
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Speichern")
         }
+    }
+}
+
+@Composable
+private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }

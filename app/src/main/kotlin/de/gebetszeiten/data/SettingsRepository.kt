@@ -18,6 +18,10 @@ data class AppSettings(
     val longitude: Double,
     val city: String,
     val showCountdown: Boolean,
+    /** Online flavor: use official Diyanet times fetched online (else offline calc). */
+    val useOnline: Boolean = false,
+    /** Show optional voluntary (nafl) prayer windows. */
+    val showNafl: Boolean = false,
 ) {
     companion object {
         // Sensible default until the user picks a location.
@@ -26,6 +30,8 @@ data class AppSettings(
             longitude = 11.0767,
             city = "Nürnberg",
             showCountdown = false,
+            useOnline = false,
+            showNafl = false,
         )
     }
 }
@@ -39,6 +45,8 @@ class SettingsRepository(private val context: Context) {
         val LNG = doublePreferencesKey("longitude")
         val CITY = stringPreferencesKey("city")
         val COUNTDOWN = booleanPreferencesKey("show_countdown")
+        val USE_ONLINE = booleanPreferencesKey("use_online")
+        val SHOW_NAFL = booleanPreferencesKey("show_nafl")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -47,6 +55,8 @@ class SettingsRepository(private val context: Context) {
             longitude = prefs[Keys.LNG] ?: AppSettings.DEFAULT.longitude,
             city = prefs[Keys.CITY] ?: AppSettings.DEFAULT.city,
             showCountdown = prefs[Keys.COUNTDOWN] ?: AppSettings.DEFAULT.showCountdown,
+            useOnline = prefs[Keys.USE_ONLINE] ?: AppSettings.DEFAULT.useOnline,
+            showNafl = prefs[Keys.SHOW_NAFL] ?: AppSettings.DEFAULT.showNafl,
         )
     }
 
@@ -58,6 +68,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.LNG] = value.longitude
             prefs[Keys.CITY] = value.city
             prefs[Keys.COUNTDOWN] = value.showCountdown
+            prefs[Keys.USE_ONLINE] = value.useOnline
+            prefs[Keys.SHOW_NAFL] = value.showNafl
         }
     }
 }

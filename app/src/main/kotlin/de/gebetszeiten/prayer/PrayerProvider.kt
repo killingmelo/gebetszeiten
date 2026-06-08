@@ -18,7 +18,9 @@ import java.time.ZonedDateTime
 object PrayerProvider {
 
     suspend fun daily(context: Context, settings: AppSettings, date: LocalDate, zone: ZoneId): DailyPrayerTimes {
-        OfficialTimesCache(context).get(date)?.let { return it.toDaily(date, zone) }
+        if (settings.useOnline) {
+            OfficialTimesCache(context).get(date)?.let { return it.toDaily(date, zone) }
+        }
         return PrayerSchedule.forDate(settings, date, zone)
     }
 
@@ -39,8 +41,9 @@ object PrayerProvider {
             ?.let { NextPrayer(it.first, it.second) }
     }
 
-    /** Online flavor only: refresh the official-times cache for the location. */
+    /** Online flavor + user opted in: refresh the official-times cache. */
     suspend fun refreshOfficial(context: Context, settings: AppSettings) {
+        if (!settings.useOnline) return
         val fetcher = OfficialTimesProvider.fetcher(context) ?: return
         OfficialTimesCache(context).putAll(fetcher.fetch(settings))
     }
