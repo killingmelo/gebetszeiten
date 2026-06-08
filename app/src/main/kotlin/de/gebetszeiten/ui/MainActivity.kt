@@ -178,8 +178,8 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
                     next = if (isToday) next else null,
                     now = ZonedDateTime.now(zone),
                     highlight = isToday,
-                    onKaraha = { karahaInfo = it },
                 )
+                MakruhCard(info.karaha) { karahaInfo = it }
                 if (settings.showNafl) NaflCard(info.nafl)
             }
 
@@ -302,13 +302,8 @@ private fun TimesCard(
     next: NextPrayer?,
     now: ZonedDateTime,
     highlight: Boolean,
-    onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
-    val dark = isSystemInDarkTheme()
-    val amber = if (dark) Color(0xFFE6B055) else Color(0xFFB07514)
-    val k = info.karaha
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -328,51 +323,76 @@ private fun TimesCard(
                 val background =
                     if (isNext) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                 val weight = if (isNext) FontWeight.Bold else FontWeight.Normal
-
-                val karahaLabel: String? = when (prayer) {
-                    Prayer.SUNRISE -> "Makruh bis ${k.sunriseEnd.format(HM)}"
-                    Prayer.DHUHR -> "Makruh ${k.zevalStart.format(HM)}–${k.zevalEnd.format(HM)}"
-                    Prayer.MAGHRIB -> "Makruh ab ${k.isfirarStart.format(HM)}"
-                    else -> null
-                }
-                val karahaExplain: Pair<String, String>? = when (prayer) {
-                    Prayer.SUNRISE -> "İşrak (Sonnenaufgang)" to
-                        "Makruh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein freiwilliges Gebet; danach beginnen İşrak/Duha. (Hanafi)"
-                    Prayer.DHUHR -> "Zeval / İstiva (Zenit)" to
-                        "Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)"
-                    Prayer.MAGHRIB -> "İsfirar-ı şems (Sonnenuntergang)" to
-                        "Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)"
-                    else -> null
-                }
-
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 3.dp)
                         .background(background, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(context.getString(prayer.labelRes()), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
-                        Text(time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
-                    }
-                    if (karahaLabel != null && karahaExplain != null) {
-                        Text(
-                            text = "⚠ $karahaLabel",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = amber,
-                            modifier = Modifier
-                                .padding(top = 4.dp)
-                                .clickable { onKaraha(karahaExplain) },
-                        )
-                    }
+                    Text(context.getString(prayer.labelRes()), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
+                    Text(time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
                 }
             }
         }
+    }
+}
+
+private val KARAHA_SUNRISE = "İşrak (nach Sonnenaufgang)" to
+    "Makruh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein (freiwilliges) Gebet; danach beginnen İşrak/Duha. (Hanafi)"
+private val KARAHA_ZEVAL = "Zeval / İstiva (Zenit)" to
+    "Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)"
+private val KARAHA_ISFIRAR = "İsfirar-ı şems (vor Sonnenuntergang)" to
+    "Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)"
+
+@Composable
+private fun MakruhCard(k: KarahaTimes, onKaraha: (Pair<String, String>) -> Unit) {
+    val dark = isSystemInDarkTheme()
+    val amber = if (dark) Color(0xFFE6B055) else Color(0xFFB07514)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = amber.copy(alpha = if (dark) 0.16f else 0.12f),
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Makruh-Zeiten (Hanafi)", style = MaterialTheme.typography.titleSmall, color = amber)
+            MakruhRow("Nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, amber) { onKaraha(KARAHA_SUNRISE) }
+            MakruhRow("Mittag (Zenit)", k.zevalStart, k.zevalEnd, amber) { onKaraha(KARAHA_ZEVAL) }
+            MakruhRow("Vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, amber) { onKaraha(KARAHA_ISFIRAR) }
+        }
+    }
+}
+
+@Composable
+private fun MakruhRow(
+    label: String,
+    start: ZonedDateTime,
+    end: ZonedDateTime,
+    amber: Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("●", color = amber, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(0.dp))
+            Text(
+                "  $label",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+        Text(
+            "${start.format(HM)} – ${end.format(HM)}",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }
 
