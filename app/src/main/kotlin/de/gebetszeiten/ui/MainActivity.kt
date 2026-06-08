@@ -12,11 +12,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -384,8 +386,8 @@ private fun TimesCard(
         // has passed) is selected; earlier blocks are collapsed by default.
         val active: Pair<Prayer, ZonedDateTime>? =
             if (highlight) info.times.ordered().lastOrNull { !it.second.isAfter(now) } else null
-        val nextUpcoming: Prayer? =
-            if (highlight) info.times.ordered().firstOrNull { it.second.isAfter(now) }?.first else null
+        val nextEntry: Pair<Prayer, ZonedDateTime>? =
+            if (highlight) info.times.ordered().firstOrNull { it.second.isAfter(now) } else null
         val primary = MaterialTheme.colorScheme.primary
         val activeIndex =
             if (active != null) blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first } else -1
@@ -425,8 +427,11 @@ private fun TimesCard(
                             isPast -> ", vergangen"
                             else -> ""
                         }
+                        // Hide makruh segments that are already over (unless showing past).
+                        fun visibleMakruh(m: Makruh?) =
+                            m?.takeIf { !highlight || showPast || it.end.isAfter(now) }
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            block.before?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
+                            visibleMakruh(block.before)?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -442,7 +447,28 @@ private fun TimesCard(
                                 Spacer(Modifier.width(8.dp))
                                 Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
                             }
-                            if (nextUpcoming == block.prayer) {
+                            // Progress of the current period toward the next prayer.
+                            if (isSelected && nextEntry != null && nextEntry.second.isAfter(block.time)) {
+                                val total = Duration.between(block.time, nextEntry.second).seconds.coerceAtLeast(1)
+                                val elapsed = Duration.between(block.time, now).seconds.coerceIn(0, total)
+                                val fraction = elapsed.toFloat() / total
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 16.dp, end = 16.dp, top = 8.dp)
+                                        .height(6.dp)
+                                        .background(primary.copy(alpha = 0.18f), RoundedCornerShape(3.dp))
+                                        .clearAndSetSemantics {},
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(fraction)
+                                            .height(6.dp)
+                                            .background(primary, RoundedCornerShape(3.dp)),
+                                    )
+                                }
+                            }
+                            if (nextEntry?.first == block.prayer) {
                                 Text(
                                     text = remainingText(Duration.between(now, block.time)),
                                     style = MaterialTheme.typography.labelMedium,
@@ -450,7 +476,7 @@ private fun TimesCard(
                                     modifier = Modifier.padding(start = 16.dp, top = 2.dp),
                                 )
                             }
-                            block.after?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
+                            visibleMakruh(block.after)?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
                         }
                     }
                     is NaflBlock -> {
