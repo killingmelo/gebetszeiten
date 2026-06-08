@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.gebetszeiten.R
@@ -304,13 +305,25 @@ private data class PrayerEntry(val prayer: Prayer, val time: ZonedDateTime) : Ti
     override val at: ZonedDateTime get() = time
 }
 
+/** Whether a makruh segment hugs the prayer before it (after sunrise) or the
+ *  prayer after it (before Dhuhr / before Maghrib). */
+private enum class Anchor { AFTER_PREV, BEFORE_NEXT }
+
 private data class MakruhEntry(
     val label: String,
     val start: ZonedDateTime,
     val end: ZonedDateTime,
     val explain: Pair<String, String>,
+    val anchor: Anchor,
 ) : TimelineEntry {
     override val at: ZonedDateTime get() = start
+}
+
+/** Tight gap when a makruh segment hugs its prayer, normal gap otherwise. */
+private fun gapBefore(prev: TimelineEntry, cur: TimelineEntry): Dp {
+    val hug = (cur is MakruhEntry && cur.anchor == Anchor.AFTER_PREV && prev is PrayerEntry) ||
+        (cur is PrayerEntry && prev is MakruhEntry && prev.anchor == Anchor.BEFORE_NEXT)
+    return if (hug) 1.dp else 10.dp
 }
 
 private data class NaflEntry(
@@ -342,9 +355,9 @@ private fun TimesCard(
         val n = info.nafl
         buildList<TimelineEntry> {
             info.times.ordered().forEach { (p, t) -> add(PrayerEntry(p, t)) }
-            add(MakruhEntry("Makruh · nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE))
-            add(MakruhEntry("Makruh · Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL))
-            add(MakruhEntry("Makruh · vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR))
+            add(MakruhEntry("Makruh · nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE, Anchor.AFTER_PREV))
+            add(MakruhEntry("Makruh · Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL, Anchor.BEFORE_NEXT))
+            add(MakruhEntry("Makruh · vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR, Anchor.BEFORE_NEXT))
             if (showNafl) {
                 add(NaflEntry("Duha (Kuşluk)", n.duhaStart, n.duhaEnd))
                 add(NaflEntry("Awwabin", n.awwabinStart, n.awwabinEnd))
@@ -360,8 +373,9 @@ private fun TimesCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         ),
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            entries.forEach { entry ->
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)) {
+            entries.forEachIndexed { index, entry ->
+                val topGap = if (index == 0) 0.dp else gapBefore(entries[index - 1], entry)
                 when (entry) {
                     is PrayerEntry -> {
                         val isNext = highlight && next != null && entry.prayer == next.prayer && !entry.time.isBefore(now)
@@ -375,10 +389,10 @@ private fun TimesCard(
                         val weight = if (isNext) FontWeight.Bold else FontWeight.Normal
                         Row(
                             modifier = Modifier
+                                .padding(top = topGap)
                                 .fillMaxWidth()
-                                .padding(vertical = 3.dp)
                                 .background(background, RoundedCornerShape(16.dp))
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -391,9 +405,10 @@ private fun TimesCard(
                         val c = amber.copy(alpha = if (faded) 0.5f else 1f)
                         Row(
                             modifier = Modifier
+                                .padding(top = topGap)
                                 .fillMaxWidth()
                                 .clickable { onKaraha(entry.explain) }
-                                .padding(horizontal = 20.dp, vertical = 5.dp),
+                                .padding(horizontal = 24.dp, vertical = 3.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -406,8 +421,9 @@ private fun TimesCard(
                         val c = green.copy(alpha = if (faded) 0.5f else 1f)
                         Row(
                             modifier = Modifier
+                                .padding(top = topGap)
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 5.dp),
+                                .padding(horizontal = 24.dp, vertical = 3.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
