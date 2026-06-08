@@ -178,8 +178,8 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
                     next = if (isToday) next else null,
                     now = ZonedDateTime.now(zone),
                     highlight = isToday,
+                    onKaraha = { karahaInfo = it },
                 )
-                MakruhCard(info.karaha) { karahaInfo = it }
                 if (settings.showNafl) NaflCard(info.nafl)
             }
 
@@ -296,14 +296,47 @@ private fun remainingText(d: Duration): String {
     }
 }
 
+private sealed interface TimelineEntry {
+    val at: ZonedDateTime
+}
+
+private data class PrayerEntry(val prayer: Prayer, val time: ZonedDateTime) : TimelineEntry {
+    override val at: ZonedDateTime get() = time
+}
+
+private data class MakruhEntry(
+    val label: String,
+    val start: ZonedDateTime,
+    val end: ZonedDateTime,
+    val explain: Pair<String, String>,
+) : TimelineEntry {
+    override val at: ZonedDateTime get() = start
+}
+
 @Composable
 private fun TimesCard(
     info: DayInfo,
     next: NextPrayer?,
     now: ZonedDateTime,
     highlight: Boolean,
+    onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
+    val dark = isSystemInDarkTheme()
+    val amber = if (dark) Color(0xFFE6B055) else Color(0xFFB07514)
+
+    // Prayers and makruh segments merged in chronological order (a prayer comes
+    // before a makruh segment that starts at the same instant).
+    val entries = remember(info) {
+        val k = info.karaha
+        buildList<TimelineEntry> {
+            info.times.ordered().forEach { (p, t) -> add(PrayerEntry(p, t)) }
+            add(MakruhEntry("Makruh · nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE))
+            add(MakruhEntry("Makruh · Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL))
+            add(MakruhEntry("Makruh · vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR))
+        }.sortedWith(compareBy({ it.at }, { if (it is PrayerEntry) 0 else 1 }))
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -312,28 +345,46 @@ private fun TimesCard(
         ),
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
-            info.times.ordered().forEach { (prayer, time) ->
-                val isNext = highlight && next != null && prayer == next.prayer && !time.isBefore(now)
-                val passed = highlight && time.isBefore(now) && !isNext
-                val foreground = when {
-                    isNext -> MaterialTheme.colorScheme.onPrimaryContainer
-                    passed -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-                    else -> MaterialTheme.colorScheme.onSurface
-                }
-                val background =
-                    if (isNext) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-                val weight = if (isNext) FontWeight.Bold else FontWeight.Normal
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 3.dp)
-                        .background(background, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(context.getString(prayer.labelRes()), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
-                    Text(time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
+            entries.forEach { entry ->
+                when (entry) {
+                    is PrayerEntry -> {
+                        val isNext = highlight && next != null && entry.prayer == next.prayer && !entry.time.isBefore(now)
+                        val passed = highlight && entry.time.isBefore(now) && !isNext
+                        val foreground = when {
+                            isNext -> MaterialTheme.colorScheme.onPrimaryContainer
+                            passed -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
+                        val background = if (isNext) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                        val weight = if (isNext) FontWeight.Bold else FontWeight.Normal
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 3.dp)
+                                .background(background, RoundedCornerShape(16.dp))
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(context.getString(entry.prayer.labelRes()), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
+                            Text(entry.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight)
+                        }
+                    }
+                    is MakruhEntry -> {
+                        val faded = highlight && entry.end.isBefore(now)
+                        val c = amber.copy(alpha = if (faded) 0.5f else 1f)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onKaraha(entry.explain) }
+                                .padding(horizontal = 20.dp, vertical = 5.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("⚠ ${entry.label}", style = MaterialTheme.typography.labelMedium, color = c)
+                            Text("${entry.start.format(HM)}–${entry.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = c)
+                        }
+                    }
                 }
             }
         }
@@ -346,55 +397,6 @@ private val KARAHA_ZEVAL = "Zeval / İstiva (Zenit)" to
     "Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)"
 private val KARAHA_ISFIRAR = "İsfirar-ı şems (vor Sonnenuntergang)" to
     "Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)"
-
-@Composable
-private fun MakruhCard(k: KarahaTimes, onKaraha: (Pair<String, String>) -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val amber = if (dark) Color(0xFFE6B055) else Color(0xFFB07514)
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = amber.copy(alpha = if (dark) 0.16f else 0.12f),
-        ),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Makruh-Zeiten (Hanafi)", style = MaterialTheme.typography.titleSmall, color = amber)
-            MakruhRow("Nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, amber) { onKaraha(KARAHA_SUNRISE) }
-            MakruhRow("Mittag (Zenit)", k.zevalStart, k.zevalEnd, amber) { onKaraha(KARAHA_ZEVAL) }
-            MakruhRow("Vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, amber) { onKaraha(KARAHA_ISFIRAR) }
-        }
-    }
-}
-
-@Composable
-private fun MakruhRow(
-    label: String,
-    start: ZonedDateTime,
-    end: ZonedDateTime,
-    amber: Color,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("●", color = amber, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(0.dp))
-            Text(
-                "  $label",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
-        Text(
-            "${start.format(HM)} – ${end.format(HM)}",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-        )
-    }
-}
 
 @Composable
 private fun NaflCard(nafl: NaflTimes) {
