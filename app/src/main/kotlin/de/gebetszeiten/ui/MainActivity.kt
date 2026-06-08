@@ -12,13 +12,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -79,7 +77,6 @@ import de.gebetszeiten.official.OfficialTimesProvider
 import de.gebetszeiten.prayer.IslamicWindows
 import de.gebetszeiten.prayer.KarahaTimes
 import de.gebetszeiten.prayer.NaflTimes
-import de.gebetszeiten.prayer.NextPrayer
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.ui.theme.GebetszeitenTheme
@@ -166,14 +163,6 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
         val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone).fajr
         value = DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr))
     }
-    val next by produceState<NextPrayer?>(null, settings, tick, selectedDate) {
-        value = if (selectedDate == LocalDate.now(zone)) {
-            PrayerProvider.next(context, settings, zone, ZonedDateTime.now(zone))
-        } else {
-            null
-        }
-    }
-
     var showSettings by remember { mutableStateOf(false) }
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
 
@@ -204,12 +193,6 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
                 onNext = { selectedDate = selectedDate.plusDays(1) },
                 onToday = { selectedDate = LocalDate.now(zone) },
             )
-
-            if (isToday) next?.let { n ->
-                val periodStart = dayInfo?.times?.ordered()
-                    ?.lastOrNull { !it.second.isAfter(ZonedDateTime.now(zone)) }?.second
-                NextPrayerHero(n, periodStart, zone)
-            }
 
             dayInfo?.let { info ->
                 TimesCard(
@@ -294,65 +277,6 @@ private fun DateNavigator(
             modifier = Modifier.semantics { contentDescription = "Nächster Tag" },
         ) {
             Text("›", style = MaterialTheme.typography.headlineMedium)
-        }
-    }
-}
-
-@Composable
-private fun NextPrayerHero(next: NextPrayer, periodStart: ZonedDateTime?, zone: ZoneId) {
-    val context = LocalContext.current
-    val now = ZonedDateTime.now(zone)
-    val remaining = Duration.between(now, next.time)
-    val onContainer = MaterialTheme.colorScheme.onPrimaryContainer
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = onContainer,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Text(
-                text = "Nächstes Gebet",
-                style = MaterialTheme.typography.labelLarge,
-                color = onContainer.copy(alpha = 0.7f),
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(context.getString(next.prayer.labelRes()), style = MaterialTheme.typography.headlineMedium)
-                Text(next.time.format(HM), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = remainingText(remaining),
-                style = MaterialTheme.typography.bodyLarge,
-                color = onContainer.copy(alpha = 0.85f),
-            )
-            if (periodStart != null && next.time.isAfter(periodStart)) {
-                val total = Duration.between(periodStart, next.time).seconds.coerceAtLeast(1)
-                val elapsed = Duration.between(periodStart, now).seconds.coerceIn(0, total)
-                val fraction = elapsed.toFloat() / total
-                Spacer(Modifier.height(14.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .background(onContainer.copy(alpha = 0.18f), RoundedCornerShape(3.dp))
-                        .clearAndSetSemantics {},
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(fraction)
-                            .height(6.dp)
-                            .background(onContainer.copy(alpha = 0.6f), RoundedCornerShape(3.dp)),
-                    )
-                }
-            }
         }
     }
 }
@@ -460,6 +384,9 @@ private fun TimesCard(
         // has passed) is selected; earlier blocks are collapsed by default.
         val active: Pair<Prayer, ZonedDateTime>? =
             if (highlight) info.times.ordered().lastOrNull { !it.second.isAfter(now) } else null
+        val nextUpcoming: Prayer? =
+            if (highlight) info.times.ordered().firstOrNull { it.second.isAfter(now) }?.first else null
+        val primary = MaterialTheme.colorScheme.primary
         val activeIndex =
             if (active != null) blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first } else -1
         var showPast by remember { mutableStateOf(false) }
@@ -514,6 +441,14 @@ private fun TimesCard(
                                 Text(name, style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, modifier = Modifier.weight(1f))
                                 Spacer(Modifier.width(8.dp))
                                 Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
+                            }
+                            if (nextUpcoming == block.prayer) {
+                                Text(
+                                    text = remainingText(Duration.between(now, block.time)),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = primary,
+                                    modifier = Modifier.padding(start = 16.dp, top = 2.dp),
+                                )
                             }
                             block.after?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
                         }
