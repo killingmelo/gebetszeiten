@@ -69,6 +69,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -456,6 +457,14 @@ private fun TimesCard(
     val anyCurrent = (active != null && active.first != Prayer.SUNRISE) || inDuha
     // After Isha there is no further prayer today → the night runs to tomorrow's Fajr.
     val afterIsha = highlight && active?.first == Prayer.ISHA && nextEntry == null
+    // A makruh window that lies within the current prayer's interval is drawn as
+    // a band inside its pill (and its chip on the next prayer is suppressed).
+    val pillMakruh: MakruhBlock? = if (active != null && active.first != Prayer.SUNRISE && nextEntry != null) {
+        (blocks.firstOrNull { it is PrayerBlock && it.prayer == nextEntry.first } as? PrayerBlock)?.before
+            ?.takeIf { !it.start.isBefore(active.second) && !it.end.isAfter(nextEntry.second) }
+    } else {
+        null
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -482,6 +491,7 @@ private fun TimesCard(
                 green = green,
                 nextFajr = info.nextFajr,
                 showNextCountdown = !anyCurrent,
+                pillMakruh = pillMakruh,
                 onKaraha = onKaraha,
             )
             if (afterIsha) {
@@ -529,6 +539,7 @@ private fun Timeline(
     green: Color,
     nextFajr: ZonedDateTime,
     showNextCountdown: Boolean,
+    pillMakruh: MakruhBlock?,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
@@ -636,9 +647,10 @@ private fun Timeline(
                         val capture = Modifier.onGloballyPositioned {
                             nodeCenters["P:${block.prayer.name}"] = it.positionInWindow().y + it.size.height / 2f
                         }
-                        // The makruh chip sits immediately above the prayer pill.
+                        // The makruh chip sits immediately above the prayer pill —
+                        // unless it's drawn inside the current pill as a band.
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            mkVisible(block.before)?.let {
+                            mkVisible(block.before)?.takeIf { it !== pillMakruh }?.let {
                                 MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
                             }
                             if (isSelected) {
@@ -646,17 +658,29 @@ private fun Timeline(
                                 // progress of the running period; remaining inside.
                                 // For Isha (last prayer) the period runs to tomorrow's Fajr.
                                 val nextT = nextEntry?.second ?: nextFajr
+                                val total = Duration.between(block.time, nextT).seconds.coerceAtLeast(1).toFloat()
                                 val frac = if (nextT.isAfter(block.time)) {
-                                    Duration.between(block.time, now).seconds.toFloat() /
-                                        Duration.between(block.time, nextT).seconds.coerceAtLeast(1)
+                                    Duration.between(block.time, now).seconds / total
                                 } else {
                                     0f
                                 }
                                 val remMin = Duration.between(now, nextT).toMinutes().coerceAtLeast(0)
-                                ProgressPill(fraction = frac) {
+                                // A makruh window inside this prayer's interval → ridged band.
+                                val band = pillMakruh?.let { mk ->
+                                    val s = (Duration.between(block.time, mk.start).seconds / total).coerceIn(0f, 1f)
+                                    val e = (Duration.between(block.time, mk.end).seconds / total).coerceIn(0f, 1f)
+                                    if (e > s) s to e else null
+                                }
+                                ProgressPill(
+                                    fraction = frac,
+                                    makruhBand = band,
+                                    makruhColor = amber,
+                                    onClick = pillMakruh?.let { mk -> { onKaraha(mk.explain) } },
+                                ) {
                                     Column(
                                         modifier = capture.clearAndSetSemantics {
-                                            contentDescription = "$name, ${block.time.format(HM)}, aktuelles Gebet, noch ${durationLabel(remMin)}"
+                                            contentDescription = "$name, ${block.time.format(HM)}, aktuelles Gebet, noch ${durationLabel(remMin)}" +
+                                                (pillMakruh?.let { ", Makruh ${it.label} ${it.start.format(HM)} bis ${it.end.format(HM)}" } ?: "")
                                         },
                                     ) {
                                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -834,11 +858,16 @@ private fun MakruhChipRow(
 }
 
 /** A pill whose background fills left→right to [fraction], used for the current
- *  prayer so the pill itself visualises how far the running period has advanced. */
+ *  prayer so the pill itself visualises how far the running period has advanced.
+ *  [makruhBand] (start..end fraction within the pill) is drawn as a ridged amber
+ *  zone — a makruh window that falls inside this prayer's interval. */
 @Composable
 private fun ProgressPill(
     fraction: Float,
     fillColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    makruhBand: Pair<Float, Float>? = null,
+    makruhColor: Color = MaterialTheme.colorScheme.primary,
+    onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(16.dp)
@@ -848,7 +877,19 @@ private fun ProgressPill(
         animationSpec = tween(durationMillis = 650),
         label = "pillFill",
     )
-    Box(modifier = Modifier.fillMaxWidth().clip(shape).background(fillColor.copy(alpha = 0.26f))) {
+    // Ridged ("geriffelt") amber stripes via a repeating diagonal gradient.
+    val ridge = Brush.linearGradient(
+        0.0f to makruhColor.copy(alpha = 0.55f),
+        0.5f to makruhColor.copy(alpha = 0.55f),
+        0.5f to makruhColor.copy(alpha = 0.22f),
+        1.0f to makruhColor.copy(alpha = 0.22f),
+        start = Offset(0f, 0f),
+        end = Offset(9f, 9f),
+        tileMode = TileMode.Repeated,
+    )
+    var mod = Modifier.fillMaxWidth().clip(shape).background(fillColor.copy(alpha = 0.26f))
+    if (onClick != null) mod = mod.clickable(onClick = onClick)
+    Box(modifier = mod) {
         Box(modifier = Modifier.matchParentSize()) {
             if (animFrac > 0f) {
                 Box(
@@ -857,7 +898,6 @@ private fun ProgressPill(
                         .fillMaxHeight()
                         .background(Brush.horizontalGradient(listOf(fillColor.copy(alpha = 0.82f), fillColor))),
                 ) {
-                    // soft leading edge marking "now"
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
@@ -865,6 +905,17 @@ private fun ProgressPill(
                             .width(2.5.dp)
                             .background(edge.copy(alpha = 0.5f)),
                     )
+                }
+            }
+            // Makruh zone (drawn over the fill), positioned by fraction.
+            makruhBand?.let { (s, e) ->
+                val left = s.coerceIn(0f, 1f)
+                val mid = (e - s).coerceIn(0.0001f, 1f)
+                val right = (1f - e).coerceIn(0f, 1f)
+                Row(modifier = Modifier.matchParentSize()) {
+                    if (left > 0f) Spacer(Modifier.weight(left))
+                    Box(Modifier.weight(mid).fillMaxHeight().background(ridge))
+                    if (right > 0f) Spacer(Modifier.weight(right))
                 }
             }
         }
