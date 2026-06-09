@@ -464,12 +464,19 @@ private fun Timeline(
     fun isMakruhNow(b: MakruhBlock) = highlight && !now.isBefore(b.start) && now.isBefore(b.end)
     // Hide makruh windows that are already over (unless showing past).
     fun mkVisible(m: MakruhBlock?) = m?.takeIf { !highlight || showPast || it.end.isAfter(now) }
+    // Sunrise is just an astronomical moment, not a prayer time → never the
+    // "current" selection. A prayer is selected only if it isn't Sunrise.
+    fun isPrayerSelected(p: Prayer) = active != null && p == active.first && p != Prayer.SUNRISE
+    // In the Sunrise→Dhuhr gap (no obligatory prayer) the Duha (forenoon) nafl
+    // is the current voluntary prayer while we are inside its window.
+    fun isNaflNow(b: NaflBlock) =
+        highlight && active?.first == Prayer.SUNRISE && !now.isBefore(b.start) && now.isBefore(b.end)
 
     // (epochSecond, boxY, selected) for every measured prayer node.
     val nodes = visible.mapNotNull { b ->
         if (b is PrayerBlock) {
             val y = nodeCenters[b.prayer.name]
-            if (y != null) Triple(b.time.toEpochSecond(), y - boxTop, active != null && b.prayer == active.first) else null
+            if (y != null) Triple(b.time.toEpochSecond(), y - boxTop, isPrayerSelected(b.prayer)) else null
         } else {
             null
         }
@@ -547,7 +554,7 @@ private fun Timeline(
 
                 when (block) {
                     is PrayerBlock -> {
-                        val isSelected = active != null && block.prayer == active.first
+                        val isSelected = isPrayerSelected(block.prayer)
                         val isNext = nextEntry?.first == block.prayer
                         val isPast = active != null && block.time.isBefore(active.second)
                         val foreground = when {
@@ -609,16 +616,22 @@ private fun Timeline(
                         }
                     }
                     is NaflBlock -> {
+                        val selected = isNaflNow(block)
                         val faded = highlight && block.end.isBefore(now)
                         val c = green.copy(alpha = if (faded) 0.5f else 1f)
+                        val status = if (selected) ", freiwilliges Gebet jetzt möglich" else ", freiwilliges Gebet"
+                        // When selected (Duha in the Sunrise→Dhuhr gap) it gets a
+                        // green-tinted pill, mirroring the current-prayer pill.
+                        var mod = Modifier.fillMaxWidth()
+                        if (selected) mod = mod.background(green.copy(alpha = 0.16f), RoundedCornerShape(16.dp))
+                        mod = mod
+                            .heightIn(min = if (selected) 40.dp else 28.dp)
+                            .padding(horizontal = if (selected) 14.dp else 4.dp, vertical = if (selected) 9.dp else 2.dp)
+                            .clearAndSetSemantics {
+                                contentDescription = "${block.label}$status, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+                            }
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 28.dp)
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                                .clearAndSetSemantics {
-                                    contentDescription = "${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
-                                },
+                            modifier = mod,
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -627,13 +640,24 @@ private fun Timeline(
                                     painter = painterResource(R.drawable.ic_nafl),
                                     contentDescription = null,
                                     tint = c,
-                                    modifier = Modifier.size(14.dp),
+                                    modifier = Modifier.size(if (selected) 16.dp else 14.dp),
                                 )
                                 Spacer(Modifier.width(6.dp))
-                                Text(block.label, style = MaterialTheme.typography.labelMedium, color = c)
+                                Text(
+                                    block.label,
+                                    style = if (selected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
+                                    color = c,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                )
                             }
                             Spacer(Modifier.width(8.dp))
-                            Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = c, softWrap = false)
+                            Text(
+                                "${block.start.format(HM)}–${block.end.format(HM)}",
+                                style = if (selected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
+                                color = c,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                softWrap = false,
+                            )
                         }
                     }
                 }
