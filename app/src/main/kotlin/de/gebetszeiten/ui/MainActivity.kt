@@ -329,6 +329,8 @@ private data class NaflBlock(
     val label: String,
     val start: ZonedDateTime,
     val end: ZonedDateTime,
+    val forenoon: Boolean = false,   // Duha: a primary, anchorable forenoon entry
+    val before: MakruhBlock? = null, // İşrak — chip shown above the (Duha) pill
 ) : DayBlock {
     override val sortAt: ZonedDateTime get() = start
 }
@@ -338,6 +340,9 @@ private fun blockOrder(b: DayBlock): Int = when (b) {
     is PrayerBlock -> 0
     is NaflBlock -> 1
 }
+
+/** A "primary" (prayer-level) entry: an obligatory prayer or the Duha forenoon. */
+private fun isPrimary(b: DayBlock): Boolean = b is PrayerBlock || (b is NaflBlock && b.forenoon)
 
 @Composable
 private fun TimesCard(
@@ -363,7 +368,9 @@ private fun TimesCard(
         else -> Color(0xFF1B5E20)
     }
 
-    // Each prayer carries its makruh chip(s); nafl windows are their own blocks.
+    // Prayers carry their makruh chips. Sunrise is just a moment (no makruh).
+    // The forenoon period is represented by Duha, which also carries the İşrak
+    // makruh (so it sits right above the Duha pill, not on Sunrise).
     val blocks = remember(info, showNafl, showKaraha) {
         val k = info.karaha
         val n = info.nafl
@@ -374,42 +381,44 @@ private fun TimesCard(
                     Prayer.MAGHRIB -> MakruhBlock("vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR)
                     else -> null
                 }
-                val after = if (showKaraha && p == Prayer.SUNRISE) {
-                    MakruhBlock("nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE)
-                } else {
-                    null
-                }
-                add(PrayerBlock(p, t, before, after))
+                add(PrayerBlock(p, t, before, null))
             }
+            // Duha is always present (the forenoon entry that replaces Sunrise
+            // once it has passed); İşrak makruh attaches to it.
+            val israk = if (showKaraha) MakruhBlock("nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE) else null
+            add(NaflBlock("Duha (Kuşluk)", n.duhaStart, n.duhaEnd, forenoon = true, before = israk))
             if (showNafl) {
-                add(NaflBlock("Duha (Kuşluk)", n.duhaStart, n.duhaEnd))
                 add(NaflBlock("Awwabin", n.awwabinStart, n.awwabinEnd))
                 add(NaflBlock("Tahajjud", n.tahajjudStart, n.tahajjudEnd))
             }
         }.sortedWith(compareBy({ it.sortAt }, { blockOrder(it) }))
     }
 
-    // "Running" timeline: the currently active prayer (last one whose time has
-    // passed) is selected; earlier blocks are collapsed by default.
+    // "Running" timeline. The current obligatory prayer is the anchor — except
+    // Sunrise, which is only a moment, not a prayer: in the Sunrise→Dhuhr gap
+    // the anchor (and thus the top of the collapsed list) is Duha instead.
     val active: Pair<Prayer, ZonedDateTime>? =
         if (highlight) info.times.ordered().lastOrNull { !it.second.isAfter(now) } else null
     val nextEntry: Pair<Prayer, ZonedDateTime>? =
         if (highlight) info.times.ordered().firstOrNull { it.second.isAfter(now) } else null
-    val activeIndex =
-        if (active != null) blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first } else -1
+    val activeIndex = when {
+        active == null -> -1
+        active.first == Prayer.SUNRISE -> blocks.indexOfFirst { it is NaflBlock && it.forenoon }
+        else -> blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first }
+    }
     var showPast by remember { mutableStateOf(false) }
     var showFuture by remember { mutableStateOf(false) }
 
-    // Default window = 3 prayer times: current + next + next-next. Earlier and
-    // further prayers are collapsed behind expanders ("scroll mode").
-    val maxPrayers = 3
+    // Default window = 3 primary times: current + next + next-next. Earlier and
+    // further entries are collapsed behind expanders ("scroll mode").
+    val maxPrimary = 3
     val collapsedCap = run {
         if (activeIndex < 0) return@run blocks.lastIndex
         var seen = 0
         for (i in activeIndex..blocks.lastIndex) {
-            if (blocks[i] is PrayerBlock) {
+            if (i == activeIndex || isPrimary(blocks[i])) {
                 seen++
-                if (seen == maxPrayers) return@run i
+                if (seen == maxPrimary) return@run i
             }
         }
         blocks.lastIndex
@@ -468,8 +477,8 @@ private fun ExpanderRow(text: String, onClick: () -> Unit) {
     )
 }
 
-/** Proportional vertical timeline: prayers as nodes on a rail, makruh/nafl as
- *  coloured bands, with a live "now" dot and progress fill for today. */
+/** Vertical timeline: primary entries (prayers + Duha) sit on a rail as nodes;
+ *  makruh windows are compact chips attached above/below their entry. */
 @Composable
 private fun Timeline(
     visible: List<DayBlock>,
@@ -490,7 +499,7 @@ private fun Timeline(
     val railX = 18.dp
     val contentStart = 42.dp
 
-    // Captured layout: root-Y centre of each prayer's name row + the box top.
+    // Captured layout: root-Y centre of each primary row, keyed per block.
     val nodeCenters = remember { mutableStateMapOf<String, Float>() }
     var boxTop by remember { mutableStateOf(0f) }
 
@@ -501,68 +510,36 @@ private fun Timeline(
     // Sunrise is just an astronomical moment, not a prayer time → never the
     // "current" selection. A prayer is selected only if it isn't Sunrise.
     fun isPrayerSelected(p: Prayer) = active != null && p == active.first && p != Prayer.SUNRISE
-    // In the Sunrise→Dhuhr gap (no obligatory prayer) the Duha (forenoon) nafl
-    // is the current voluntary prayer while we are inside its window.
-    fun isNaflNow(b: NaflBlock) =
-        highlight && active?.first == Prayer.SUNRISE && !now.isBefore(b.start) && now.isBefore(b.end)
+    // The Duha (forenoon) entry is the "current" one while inside its window.
+    fun isDuhaNow(b: NaflBlock) = highlight && b.forenoon && !now.isBefore(b.start) && now.isBefore(b.end)
 
-    // (epochSecond, boxY, selected) for every measured prayer node.
+    fun nodeKey(b: DayBlock): String? = when {
+        b is PrayerBlock -> "P:${b.prayer.name}"
+        b is NaflBlock && b.forenoon -> "D"
+        else -> null
+    }
+
+    // (boxY, selected) for every measured primary node, in top-to-bottom order.
     val nodes = visible.mapNotNull { b ->
-        if (b is PrayerBlock) {
-            val y = nodeCenters[b.prayer.name]
-            if (y != null) Triple(b.time.toEpochSecond(), y - boxTop, isPrayerSelected(b.prayer)) else null
-        } else {
-            null
+        val key = nodeKey(b) ?: return@mapNotNull null
+        val y = nodeCenters[key] ?: return@mapNotNull null
+        val sel = when (b) {
+            is PrayerBlock -> isPrayerSelected(b.prayer)
+            is NaflBlock -> isDuhaNow(b)
         }
-    }
-    fun mapY(epoch: Long): Float {
-        if (nodes.isEmpty()) return 0f
-        if (epoch <= nodes.first().first) return nodes.first().second
-        if (epoch >= nodes.last().first) return nodes.last().second
-        for (i in 1 until nodes.size) {
-            val (t1, y1) = nodes[i - 1]
-            val (t2, y2) = nodes[i]
-            if (epoch <= t2) return y1 + (epoch - t1).toFloat() / (t2 - t1) * (y2 - y1)
-        }
-        return nodes.last().second
-    }
-
-    // Coloured bands for makruh (amber) and nafl (green) windows; an active
-    // makruh band is drawn at full strength.
-    data class Band(val start: Long, val end: Long, val color: Color, val strong: Boolean)
-    val bands = buildList {
-        visible.forEach { b ->
-            when (b) {
-                is PrayerBlock -> {
-                    mkVisible(b.before)?.let { add(Band(it.start.toEpochSecond(), it.end.toEpochSecond(), amber, isMakruhNow(it))) }
-                    mkVisible(b.after)?.let { add(Band(it.start.toEpochSecond(), it.end.toEpochSecond(), amber, isMakruhNow(it))) }
-                }
-                is NaflBlock -> add(Band(b.start.toEpochSecond(), b.end.toEpochSecond(), green, false))
-            }
-        }
+        (y - boxTop) to sel
     }
 
     Box(modifier = Modifier
         .fillMaxWidth()
         .onGloballyPositioned { boxTop = it.positionInWindow().y }) {
 
-        // Rail, bands, progress fill, nodes and the "now" dot.
+        // Rail line + node dots (current = filled, others hollow).
         Canvas(modifier = Modifier.matchParentSize()) {
             if (nodes.isEmpty()) return@Canvas
             val x = railX.toPx()
-            val top = nodes.first().second
-            val bottom = nodes.last().second
-            drawLine(track, Offset(x, top), Offset(x, bottom), 4.dp.toPx(), StrokeCap.Round)
-            bands.forEach { band ->
-                drawLine(
-                    band.color.copy(alpha = if (band.strong) 1f else 0.7f),
-                    Offset(x, mapY(band.start)),
-                    Offset(x, mapY(band.end)),
-                    (if (band.strong) 11.dp else 8.dp).toPx(),
-                    StrokeCap.Round,
-                )
-            }
-            nodes.forEach { (_, y, sel) ->
+            drawLine(track, Offset(x, nodes.first().first), Offset(x, nodes.last().first), 3.dp.toPx(), StrokeCap.Round)
+            nodes.forEach { (y, sel) ->
                 if (sel) {
                     drawCircle(primary, 7.dp.toPx(), Offset(x, y))
                 } else {
@@ -612,8 +589,7 @@ private fun Timeline(
                         if (isNext) lane = lane.border(1.5.dp, primary, laneShape)
                         lane = lane.padding(horizontal = 12.dp, vertical = 8.dp)
 
-                        // The makruh chip sits immediately above/below the prayer
-                        // pill (outside its background), attached to this prayer.
+                        // The makruh chip sits immediately above the prayer pill.
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             mkVisible(block.before)?.let {
                                 MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
@@ -623,7 +599,7 @@ private fun Timeline(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .onGloballyPositioned {
-                                            nodeCenters[block.prayer.name] = it.positionInWindow().y + it.size.height / 2f
+                                            nodeCenters["P:${block.prayer.name}"] = it.positionInWindow().y + it.size.height / 2f
                                         }
                                         .clearAndSetSemantics {
                                             contentDescription = "$name, ${block.time.format(HM)}$status"
@@ -644,54 +620,65 @@ private fun Timeline(
                                     )
                                 }
                             }
-                            mkVisible(block.after)?.let {
-                                MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
-                            }
                         }
                     }
                     is NaflBlock -> {
-                        val selected = isNaflNow(block)
                         val faded = highlight && block.end.isBefore(now)
                         val c = green.copy(alpha = if (faded) 0.5f else 1f)
-                        val status = if (selected) ", freiwilliges Gebet jetzt möglich" else ", freiwilliges Gebet"
-                        // When selected (Duha in the Sunrise→Dhuhr gap) it gets a
-                        // green-tinted pill, mirroring the current-prayer pill.
-                        var mod = Modifier.fillMaxWidth()
-                        if (selected) mod = mod.background(green.copy(alpha = 0.16f), RoundedCornerShape(16.dp))
-                        mod = mod
-                            .heightIn(min = if (selected) 40.dp else 28.dp)
-                            .padding(horizontal = if (selected) 14.dp else 4.dp, vertical = if (selected) 9.dp else 2.dp)
-                            .clearAndSetSemantics {
-                                contentDescription = "${block.label}$status, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+                        if (block.forenoon) {
+                            // Duha = forenoon entry (replaces Sunrise). İşrak makruh
+                            // chip sits above it; selected (green pill) when current.
+                            val selected = isDuhaNow(block)
+                            val status = if (selected) ", freiwilliges Gebet jetzt möglich" else ", freiwilliges Gebet"
+                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                mkVisible(block.before)?.let {
+                                    MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
+                                }
+                                var mod = Modifier.fillMaxWidth()
+                                if (selected) mod = mod.background(green.copy(alpha = 0.16f), RoundedCornerShape(16.dp))
+                                mod = mod
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .onGloballyPositioned {
+                                        nodeCenters["D"] = it.positionInWindow().y + it.size.height / 2f
+                                    }
+                                    .clearAndSetSemantics {
+                                        contentDescription = "${block.label}$status, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+                                    }
+                                Row(
+                                    modifier = mod,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(painterResource(R.drawable.ic_nafl), null, tint = c, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(block.label, style = MaterialTheme.typography.titleMedium, color = c, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.titleMedium, color = c, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, softWrap = false)
+                                }
                             }
-                        Row(
-                            modifier = mod,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_nafl),
-                                    contentDescription = null,
-                                    tint = c,
-                                    modifier = Modifier.size(if (selected) 16.dp else 14.dp),
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    block.label,
-                                    style = if (selected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
-                                    color = c,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                )
+                        } else {
+                            // Awwabin / Tahajjud — secondary informational rows.
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 28.dp)
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    .clearAndSetSemantics {
+                                        contentDescription = "${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+                                    },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(painterResource(R.drawable.ic_nafl), null, tint = c, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(block.label, style = MaterialTheme.typography.labelMedium, color = c)
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = c, softWrap = false)
                             }
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "${block.start.format(HM)}–${block.end.format(HM)}",
-                                style = if (selected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
-                                color = c,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                softWrap = false,
-                            )
                         }
                     }
                 }
