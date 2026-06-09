@@ -306,12 +306,13 @@ private sealed interface DayBlock {
     val sortAt: ZonedDateTime
 }
 
-/** A prayer with the optional makruh chips shown directly above/below it. */
+/** A prayer with optional makruh chip(s) and a nafl "tip" attached to it. */
 private data class PrayerBlock(
     val prayer: Prayer,
     val time: ZonedDateTime,
     val before: MakruhBlock? = null, // Zenit / İsfirar — chip above the prayer
-    val after: MakruhBlock? = null,  // İşrak — chip below the prayer
+    val after: MakruhBlock? = null,  // (reserved) chip below the prayer
+    val tip: NaflBlock? = null,      // voluntary-prayer hint (e.g. Awwabin)
 ) : DayBlock {
     override val sortAt: ZonedDateTime get() = time
 }
@@ -330,6 +331,7 @@ private data class NaflBlock(
     val end: ZonedDateTime,
     val forenoon: Boolean = false,   // Duha: a primary, anchorable forenoon entry
     val before: MakruhBlock? = null, // İşrak — chip shown above the (Duha) pill
+    val explain: Pair<String, String>? = null, // tap → explanation dialog
 ) : DayBlock {
     override val sortAt: ZonedDateTime get() = start
 }
@@ -379,7 +381,13 @@ private fun TimesCard(
                     Prayer.MAGHRIB -> MakruhBlock("vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR)
                     else -> null
                 }
-                add(PrayerBlock(p, t, before, null))
+                // Awwabin (voluntary, Maghrib→Isha) shown as a tip on Maghrib.
+                val tip = if (p == Prayer.MAGHRIB) {
+                    NaflBlock("Awwabin", n.awwabinStart, n.awwabinEnd, explain = NAFL_AWWABIN)
+                } else {
+                    null
+                }
+                add(PrayerBlock(p, t, before, null, tip))
             }
             // Duha is the forenoon entry that replaces Sunrise once it has
             // passed; İşrak makruh attaches to it.
@@ -614,6 +622,9 @@ private fun Timeline(
                                     )
                                 }
                             }
+                            block.tip?.let {
+                                NaflTipRow(it, green, highlight && it.end.isBefore(now), onKaraha)
+                            }
                         }
                     }
                     is NaflBlock -> {
@@ -724,12 +735,39 @@ private fun MakruhChipRow(
     }
 }
 
+/** Compact green nafl "tip" attached under a prayer (e.g. Awwabin on Maghrib). */
+@Composable
+private fun NaflTipRow(block: NaflBlock, green: Color, faded: Boolean, onInfo: (Pair<String, String>) -> Unit) {
+    val c = green.copy(alpha = if (faded) 0.55f else 1f)
+    val desc = "Tipp: ${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+    var mod = Modifier.padding(start = 12.dp)
+    block.explain?.let { ex -> mod = mod.clickable(onClickLabel = "Erklärung anzeigen") { onInfo(ex) } }
+    Row(
+        modifier = mod
+            .heightIn(min = 22.dp)
+            .padding(vertical = 1.dp)
+            .semantics(mergeDescendants = true) { contentDescription = desc },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(R.drawable.ic_nafl), null, tint = c, modifier = Modifier.size(12.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(
+            "${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = c,
+            softWrap = false,
+        )
+    }
+}
+
 private val KARAHA_SUNRISE = "İşrak (nach Sonnenaufgang)" to
     "Makruh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein (freiwilliges) Gebet; danach beginnen İşrak/Duha. (Hanafi)"
 private val KARAHA_ZEVAL = "Zeval / İstiva (Zenit)" to
     "Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)"
 private val KARAHA_ISFIRAR = "İsfirar-ı şems (vor Sonnenuntergang)" to
     "Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)"
+private val NAFL_AWWABIN = "Awwabin (Evvabin)" to
+    "Freiwilliges Gebet nach dem Maghrib- bis zum Isha-Gebet — empfohlen sind 6 Rekat. (Sunna/Mustahab)"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
