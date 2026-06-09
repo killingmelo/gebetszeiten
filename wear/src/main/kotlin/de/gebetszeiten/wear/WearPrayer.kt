@@ -22,13 +22,21 @@ object WearPrayer {
 
     /** Next prayer strictly after [now], rolling into tomorrow if needed.
      *  Sunrise is just the end of Fajr's window, not a prayer → skipped. */
-    fun next(location: GeoLocation, zone: ZoneId, now: ZonedDateTime): Pair<Prayer, ZonedDateTime> {
-        today(location, zone).ordered()
-            .firstOrNull { it.first != Prayer.SUNRISE && it.second.isAfter(now) }
-            ?.let { return it }
-        val tomorrow = DiyanetPrayerTimesCalculator.calculate(
-            location, now.toLocalDate().plusDays(1), zone,
-        )
-        return tomorrow.ordered().first { it.first != Prayer.SUNRISE }
+    fun next(location: GeoLocation, zone: ZoneId, now: ZonedDateTime): Pair<Prayer, ZonedDateTime> =
+        upcoming(location, zone, now, count = 1).first()
+
+    /** The next [count] prayers after [now], across the day boundary, skipping
+     *  sunrise. Used to build a self-switching tile timeline for the whole day. */
+    fun upcoming(
+        location: GeoLocation,
+        zone: ZoneId,
+        now: ZonedDateTime,
+        count: Int,
+    ): List<Pair<Prayer, ZonedDateTime>> {
+        val today = today(location, zone)
+        val tomorrow = DiyanetPrayerTimesCalculator.calculate(location, now.toLocalDate().plusDays(1), zone)
+        return (today.ordered() + tomorrow.ordered())
+            .filter { it.first != Prayer.SUNRISE && it.second.isAfter(now) }
+            .take(count)
     }
 }

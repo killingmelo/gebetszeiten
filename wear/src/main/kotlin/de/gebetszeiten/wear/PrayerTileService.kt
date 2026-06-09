@@ -20,7 +20,15 @@ import java.time.format.DateTimeFormatter
 
 private const val RESOURCES_VERSION = "1"
 
-/** Swipeable tile showing the next prayer name and time. */
+/**
+ * Swipeable tile showing the next prayer (name + time), static.
+ *
+ * Battery model: instead of one value that goes stale, we return a TIMELINE
+ * with one validity-bounded entry per upcoming prayer transition. The system
+ * switches to the right entry on its own as each prayer arrives — so a single
+ * computation covers the whole rest of the day with zero app wake-ups. A
+ * freshness interval lets the system re-request once the entries are used up.
+ */
 class PrayerTileService : TileService() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -29,13 +37,34 @@ class PrayerTileService : TileService() {
         requestParams: RequestBuilders.TileRequest,
     ): ListenableFuture<TileBuilders.Tile> {
         val zone = ZoneId.systemDefault()
+        val now = ZonedDateTime.now(zone)
         val location = runBlocking { WearSettings.location(applicationContext) }
-        val next = WearPrayer.next(location, zone, ZonedDateTime.now(zone))
-        val layout = layout(requestParams.deviceConfiguration, next.first.label(), next.second.format(timeFormat))
+        val upcoming = WearPrayer.upcoming(location, zone, now, count = 6)
 
+        val timeline = TimelineBuilders.Timeline.Builder()
+        var start = now
+        for ((prayer, time) in upcoming) {
+            val layout = layout(requestParams.deviceConfiguration, prayer.label(), time.format(timeFormat))
+            timeline.addTimelineEntry(
+                TimelineBuilders.TimelineEntry.Builder()
+                    .setValidity(
+                        TimelineBuilders.TimeInterval.Builder()
+                            .setStartMillis(start.toInstant().toEpochMilli())
+                            .setEndMillis(time.toInstant().toEpochMilli())
+                            .build(),
+                    )
+                    .setLayout(LayoutElementBuilders.Layout.Builder().setRoot(layout).build())
+                    .build(),
+            )
+            start = time
+        }
+
+        // Re-request only once the provided entries are exhausted.
+        val freshness = (start.toInstant().toEpochMilli() - now.toInstant().toEpochMilli()).coerceAtLeast(0)
         val tile = TileBuilders.Tile.Builder()
             .setResourcesVersion(RESOURCES_VERSION)
-            .setTileTimeline(TimelineBuilders.Timeline.fromLayoutElement(layout))
+            .setTileTimeline(timeline.build())
+            .setFreshnessIntervalMillis(freshness)
             .build()
         return ResolvableFuture.create<TileBuilders.Tile>().apply { set(tile) }
     }
