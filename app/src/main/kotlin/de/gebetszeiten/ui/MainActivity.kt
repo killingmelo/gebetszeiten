@@ -398,7 +398,27 @@ private fun TimesCard(
     val activeIndex =
         if (active != null) blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first } else -1
     var showPast by remember { mutableStateOf(false) }
-    val visible = if (activeIndex > 0 && !showPast) blocks.drop(activeIndex) else blocks
+    var showFuture by remember { mutableStateOf(false) }
+
+    // Default window = 3 prayer times: current + next + next-next. Earlier and
+    // further prayers are collapsed behind expanders ("scroll mode").
+    val maxPrayers = 3
+    val collapsedCap = run {
+        if (activeIndex < 0) return@run blocks.lastIndex
+        var seen = 0
+        for (i in activeIndex..blocks.lastIndex) {
+            if (blocks[i] is PrayerBlock) {
+                seen++
+                if (seen == maxPrayers) return@run i
+            }
+        }
+        blocks.lastIndex
+    }
+    val lower = if (activeIndex > 0 && !showPast) activeIndex else 0
+    val upper = if (showFuture) blocks.lastIndex else maxOf(collapsedCap, lower)
+    val visible = if (blocks.isEmpty()) blocks else blocks.subList(lower, upper + 1)
+    val hasEarlier = activeIndex > 0
+    val hasLater = collapsedCap < blocks.lastIndex
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -408,15 +428,10 @@ private fun TimesCard(
         ),
     ) {
         Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) {
-            if (activeIndex > 0) {
-                Text(
+            if (hasEarlier) {
+                ExpanderRow(
                     text = if (showPast) "Frühere ausblenden" else "Frühere Zeiten anzeigen",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showPast = !showPast }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    onClick = { showPast = !showPast },
                 )
             }
             Timeline(
@@ -430,8 +445,27 @@ private fun TimesCard(
                 green = green,
                 onKaraha = onKaraha,
             )
+            if (hasLater) {
+                ExpanderRow(
+                    text = if (showFuture) "Weitere ausblenden" else "Weitere Zeiten anzeigen",
+                    onClick = { showFuture = !showFuture },
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun ExpanderRow(text: String, onClick: () -> Unit) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }
 
 /** Proportional vertical timeline: prayers as nodes on a rail, makruh/nafl as
