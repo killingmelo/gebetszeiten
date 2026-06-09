@@ -310,22 +310,23 @@ private sealed interface DayBlock {
     val sortAt: ZonedDateTime
 }
 
+/** A prayer with the optional makruh chips shown directly above/below it. */
 private data class PrayerBlock(
     val prayer: Prayer,
     val time: ZonedDateTime,
+    val before: MakruhBlock? = null, // Zenit / İsfirar — chip above the prayer
+    val after: MakruhBlock? = null,  // İşrak — chip below the prayer
 ) : DayBlock {
     override val sortAt: ZonedDateTime get() = time
 }
 
-/** A makruh (karaha) window — a standalone chip on the timeline. */
+/** A makruh (karaha) window — rendered as a compact chip attached to its prayer. */
 private data class MakruhBlock(
     val label: String,
     val start: ZonedDateTime,
     val end: ZonedDateTime,
     val explain: Pair<String, String>,
-) : DayBlock {
-    override val sortAt: ZonedDateTime get() = start
-}
+)
 
 private data class NaflBlock(
     val label: String,
@@ -335,11 +336,10 @@ private data class NaflBlock(
     override val sortAt: ZonedDateTime get() = start
 }
 
-/** Sort tie-break at equal instant: prayer, then makruh, then nafl. */
+/** Sort tie-break at equal instant: prayer before nafl. */
 private fun blockOrder(b: DayBlock): Int = when (b) {
     is PrayerBlock -> 0
-    is MakruhBlock -> 1
-    is NaflBlock -> 2
+    is NaflBlock -> 1
 }
 
 @Composable
@@ -366,17 +366,23 @@ private fun TimesCard(
         else -> Color(0xFF1B5E20)
     }
 
-    // Prayers, makruh windows and nafl windows are each their own block, laid
-    // out chronologically (makruh = standalone chip near its prayer).
+    // Each prayer carries its makruh chip(s); nafl windows are their own blocks.
     val blocks = remember(info, showNafl, showKaraha) {
         val k = info.karaha
         val n = info.nafl
         buildList<DayBlock> {
-            info.times.ordered().forEach { (p, t) -> add(PrayerBlock(p, t)) }
-            if (showKaraha) {
-                add(MakruhBlock("Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL))
-                add(MakruhBlock("vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR))
-                add(MakruhBlock("nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE))
+            info.times.ordered().forEach { (p, t) ->
+                val before = if (!showKaraha) null else when (p) {
+                    Prayer.DHUHR -> MakruhBlock("Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL)
+                    Prayer.MAGHRIB -> MakruhBlock("vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR)
+                    else -> null
+                }
+                val after = if (showKaraha && p == Prayer.SUNRISE) {
+                    MakruhBlock("nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE)
+                } else {
+                    null
+                }
+                add(PrayerBlock(p, t, before, after))
             }
             if (showNafl) {
                 add(NaflBlock("Duha (Kuşluk)", n.duhaStart, n.duhaEnd))
@@ -395,9 +401,7 @@ private fun TimesCard(
     val activeIndex =
         if (active != null) blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first } else -1
     var showPast by remember { mutableStateOf(false) }
-    val visible = (if (activeIndex > 0 && !showPast) blocks.drop(activeIndex) else blocks)
-        // Hide makruh windows that are already over (unless showing past).
-        .filterNot { it is MakruhBlock && highlight && !showPast && !it.end.isAfter(now) }
+    val visible = if (activeIndex > 0 && !showPast) blocks.drop(activeIndex) else blocks
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -463,6 +467,8 @@ private fun Timeline(
 
     // A makruh window is "now" (selected) when the current time is inside it.
     fun isMakruhNow(b: MakruhBlock) = highlight && !now.isBefore(b.start) && now.isBefore(b.end)
+    // Hide makruh windows that are already over (unless showing past).
+    fun mkVisible(m: MakruhBlock?) = m?.takeIf { !highlight || showPast || it.end.isAfter(now) }
 
     // (epochSecond, boxY, selected) for every measured prayer node.
     val nodes = visible.mapNotNull { b ->
@@ -491,9 +497,11 @@ private fun Timeline(
     val bands = buildList {
         visible.forEach { b ->
             when (b) {
-                is MakruhBlock -> add(Band(b.start.toEpochSecond(), b.end.toEpochSecond(), amber, isMakruhNow(b)))
+                is PrayerBlock -> {
+                    mkVisible(b.before)?.let { add(Band(it.start.toEpochSecond(), it.end.toEpochSecond(), amber, isMakruhNow(it))) }
+                    mkVisible(b.after)?.let { add(Band(it.start.toEpochSecond(), it.end.toEpochSecond(), amber, isMakruhNow(it))) }
+                }
                 is NaflBlock -> add(Band(b.start.toEpochSecond(), b.end.toEpochSecond(), green, false))
-                is PrayerBlock -> {}
             }
         }
     }
@@ -590,44 +598,41 @@ private fun Timeline(
                         if (isNext) lane = lane.border(1.5.dp, primary, laneShape)
                         lane = lane.padding(horizontal = 12.dp, vertical = 8.dp)
 
-                        Column(modifier = lane) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .onGloballyPositioned {
-                                        nodeCenters[block.prayer.name] = it.positionInWindow().y + it.size.height / 2f
-                                    }
-                                    .clearAndSetSemantics {
-                                        contentDescription = "$name, ${block.time.format(HM)}$status"
-                                    },
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(name, style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, modifier = Modifier.weight(1f))
-                                Spacer(Modifier.width(8.dp))
-                                Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
+                        // The makruh chip sits immediately above/below the prayer
+                        // pill (outside its background), attached to this prayer.
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            mkVisible(block.before)?.let {
+                                MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
                             }
-                            if (isNext) {
-                                Text(
-                                    text = remainingText(Duration.between(now, block.time)),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = primary,
-                                    modifier = Modifier.padding(top = 2.dp),
-                                )
+                            Column(modifier = lane) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onGloballyPositioned {
+                                            nodeCenters[block.prayer.name] = it.positionInWindow().y + it.size.height / 2f
+                                        }
+                                        .clearAndSetSemantics {
+                                            contentDescription = "$name, ${block.time.format(HM)}$status"
+                                        },
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(name, style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, modifier = Modifier.weight(1f))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
+                                }
+                                if (isNext) {
+                                    Text(
+                                        text = remainingText(Duration.between(now, block.time)),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = primary,
+                                        modifier = Modifier.padding(top = 2.dp),
+                                    )
+                                }
                             }
-                        }
-                    }
-                    is MakruhBlock -> {
-                        // Standalone, compact makruh chip — selected (amber-filled)
-                        // while the current time falls inside the window.
-                        Box(modifier = Modifier.padding(start = 12.dp)) {
-                            MakruhChip(
-                                block = block,
-                                amber = amber,
-                                selected = isMakruhNow(block),
-                                faded = highlight && !showPast && !block.end.isAfter(now),
-                                onKaraha = onKaraha,
-                            )
+                            mkVisible(block.after)?.let {
+                                MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
+                            }
                         }
                     }
                     is NaflBlock -> {
@@ -664,10 +669,11 @@ private fun Timeline(
     }
 }
 
-/** Standalone, compact makruh chip. When [selected] (the current time is inside
- *  the window) it is amber-filled, mirroring the prayer's selected pill. */
+/** Compact makruh chip, indented to align under the prayer name. When [selected]
+ *  (the current time is inside the window) it is amber-filled, mirroring the
+ *  prayer's selected pill. */
 @Composable
-private fun MakruhChip(
+private fun MakruhChipRow(
     block: MakruhBlock,
     amber: Color,
     selected: Boolean,
@@ -685,21 +691,24 @@ private fun MakruhChip(
         .padding(horizontal = if (selected) 10.dp else 2.dp, vertical = if (selected) 5.dp else 1.dp)
         .heightIn(min = 24.dp)
         .semantics(mergeDescendants = true) { contentDescription = desc }
-    Row(modifier = mod, verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            painter = painterResource(R.drawable.ic_makruh),
-            contentDescription = null,
-            tint = c,
-            modifier = Modifier.size(if (selected) 14.dp else 12.dp),
-        )
-        Spacer(Modifier.width(5.dp))
-        Text(
-            "Makruh · ${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}",
-            style = if (selected) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
-            color = c,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            softWrap = false,
-        )
+    // Indent so the chip lines up under the prayer name (lane has 12.dp padding).
+    Row(modifier = Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = mod, verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painter = painterResource(R.drawable.ic_makruh),
+                contentDescription = null,
+                tint = c,
+                modifier = Modifier.size(if (selected) 14.dp else 12.dp),
+            )
+            Spacer(Modifier.width(5.dp))
+            Text(
+                "Makruh · ${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}",
+                style = if (selected) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
+                color = c,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                softWrap = false,
+            )
+        }
     }
 }
 
