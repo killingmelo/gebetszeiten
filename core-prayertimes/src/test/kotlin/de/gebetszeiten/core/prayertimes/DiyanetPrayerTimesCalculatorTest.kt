@@ -101,14 +101,21 @@ class DiyanetPrayerTimesCalculatorTest {
         assertCloseTo("maghrib", LocalTime.of(16, 26), t.maghrib, 2)
     }
 
-    // ---- Isha takdir applies year-round above 45° (per Din İşleri Yüksek Kurulu) ----
-    // NOTE: winter Isha = Maghrib + 80 min is taken from the Kurul's "entire year"
-    // ruling; an official winter Isha value could not be fetched to triple-check.
+    // ---- Isha: true 17° angle (−7 ihtiyat) outside summer; takdir only in the
+    // white-nights window. Calibrated against the official Diyanet 2026 year
+    // table for Nürnberg (district 11024) — see YearCompareTest. ----
     @Test
-    fun `isha above 45 degrees is maghrib plus 80 minutes year round`() {
+    fun `winter isha uses the angle, summer isha uses takdir`() {
+        // Winter: the 17° angle is reachable → official Yatsı 21 Dec 2026 = 18:03,
+        // which is NOT Maghrib+80 (= 17:46). The old engine got this wrong.
         val winter = DiyanetPrayerTimesCalculator.calculate(nuremberg, LocalDate.of(2026, 12, 21), berlin)
-        assertEquals(winter.maghrib.plusMinutes(80), winter.isha)
+        assertCloseTo("winter isha", LocalTime.of(18, 3), winter.isha, 3)
+        assertTrue(
+            "winter isha must be the angle (later than Maghrib+80 takdir)",
+            winter.isha.isAfter(winter.maghrib.plusMinutes(80)),
+        )
 
+        // High summer: white nights → takdir Maghrib + 80; official 7 Jun ≈ 22:45.
         val summer = DiyanetPrayerTimesCalculator.calculate(nuremberg, LocalDate.of(2026, 6, 7), berlin)
         assertEquals(summer.maghrib.plusMinutes(80), summer.isha)
     }

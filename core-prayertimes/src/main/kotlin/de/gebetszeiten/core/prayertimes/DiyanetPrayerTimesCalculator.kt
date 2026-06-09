@@ -28,9 +28,16 @@ import java.util.Date
  *    raw astronomical times: sunrise −7, dhuhr +5, asr +4, maghrib +7. These
  *    bring the four solar prayers onto the published values within ±1 min.
  * 4. **High-latitude "takdir" rule** (Din İşleri Yüksek Kurulu) for places
- *    above 45°: Isha is fixed at Maghrib + 80 min year round; in the summer
- *    "white nights" period (when the sun never reaches 18° below the horizon)
- *    Fajr is fixed at Sunrise − 90 min. Below 45° the true angle times are used.
+ *    above 45°. Calibrated against the official Diyanet 2026 year table for
+ *    Nürnberg (see resources/diyanet_nurnberg_2026.csv + YearCompareTest):
+ *    - Normally Fajr/Isha use the true 18°/17° angle (Isha trimmed −7 min, which
+ *      matches the published Yatsı to ±1–2 min outside summer).
+ *    - In the summer "white nights" window — when the sun's deepest nightly
+ *      depression stays below ~24.75° (Fajr) / ~24.0° (Isha) — the angle is
+ *      unreliable, so takdir applies: Fajr = Sunrise − 90, Isha = Maghrib + 80.
+ *    Below 45° the true angle times are always used.
+ *    Result vs official 2026 (Nürnberg): mean error Fajr ~2.4 / Isha ~2.8 min;
+ *    residual is the late-April / early-August transition weeks (aqrab al-ayyâm).
  */
 object DiyanetPrayerTimesCalculator {
 
@@ -38,11 +45,17 @@ object DiyanetPrayerTimesCalculator {
     private const val ISHA_TAKDIR_MINUTES = 80L
     private const val FAJR_TAKDIR_MINUTES = 90L
 
+    // Sun must dip at least this far below the horizon at solar midnight for the
+    // angle to be used; below it (white nights) takdir applies. Calibrated.
+    private const val FAJR_TAKDIR_DEPRESSION = 24.75
+    private const val ISHA_TAKDIR_DEPRESSION = 24.0
+
     // Diyanet method (ihtiyat) adjustments, in minutes.
     private const val ADJ_SUNRISE = -7
     private const val ADJ_DHUHR = 5
     private const val ADJ_ASR = 4
     private const val ADJ_MAGHRIB = 7
+    private const val ADJ_ISHA = -7
 
     fun calculate(location: GeoLocation, date: LocalDate, zone: ZoneId): DailyPrayerTimes {
         val base = adhanTimes(location.latitude, location.longitude, date)
@@ -53,20 +66,18 @@ object DiyanetPrayerTimesCalculator {
         val maghrib = base.maghrib.toZdt(zone)
 
         val highLatitude = kotlin.math.abs(location.latitude) >= HIGH_LATITUDE_THRESHOLD
+        val depression = maxDepressionDegrees(location.latitude, date)
 
-        // Diyanet applies the Fajr (İmsak) takdir only in the local summer half
-        // year (equinox to equinox) — the Kurul's "March–September" for the
-        // northern hemisphere — when short nights make the 18° angle unreliable.
-        val fajr = if (highLatitude && isSummerHalf(location.latitude, date)) {
+        val fajr = if (highLatitude && depression < FAJR_TAKDIR_DEPRESSION) {
             sunrise.minusMinutes(FAJR_TAKDIR_MINUTES)
         } else {
             base.fajr.toZdt(zone)
         }
 
-        val isha = if (highLatitude) {
+        val isha = if (highLatitude && depression < ISHA_TAKDIR_DEPRESSION) {
             maghrib.plusMinutes(ISHA_TAKDIR_MINUTES)
         } else {
-            base.isha.toZdt(zone)
+            base.isha.toZdt(zone) // already trimmed −7 via ADJ_ISHA
         }
 
         return DailyPrayerTimes(date, zone, fajr, sunrise, dhuhr, asr, maghrib, isha)
@@ -77,20 +88,19 @@ object DiyanetPrayerTimesCalculator {
             madhab = Madhab.SHAFI
             highLatitudeRule = HighLatitudeRule.TWILIGHT_ANGLE
             // PrayerAdjustments(fajr, sunrise, dhuhr, asr, maghrib, isha)
-            methodAdjustments = PrayerAdjustments(0, ADJ_SUNRISE, ADJ_DHUHR, ADJ_ASR, ADJ_MAGHRIB, 0)
+            methodAdjustments = PrayerAdjustments(0, ADJ_SUNRISE, ADJ_DHUHR, ADJ_ASR, ADJ_MAGHRIB, ADJ_ISHA)
         }
         val coordinates = Coordinates(latitude, longitude)
         val components = DateComponents(date.year, date.monthValue, date.dayOfMonth)
         return PrayerTimes(coordinates, components, params)
     }
 
-    /** True in the location's summer half-year (sun on the same side as the
-     *  observer's hemisphere → short nights), i.e. between the spring and autumn
-     *  equinoxes. Hemisphere-general: latitude and declination share a sign. */
-    private fun isSummerHalf(latitude: Double, date: LocalDate): Boolean {
-        val declination = solarDeclinationDegrees(date)
-        return latitude * declination > 0.0
-    }
+    /** The sun's maximum depression below the horizon at solar midnight (deg):
+     *  (90 − |lat|) − declination. Small in the local high summer (short nights). */
+    private fun maxDepressionDegrees(latitude: Double, date: LocalDate): Double =
+        (90.0 - kotlin.math.abs(latitude)) - solarDeclinationDegrees(date) * sign(latitude)
+
+    private fun sign(x: Double): Double = if (x >= 0.0) 1.0 else -1.0
 
     /** Approximate solar declination in degrees for the given date. */
     private fun solarDeclinationDegrees(date: LocalDate): Double {
