@@ -64,20 +64,37 @@ class NextPrayerWidget : GlanceAppWidget() {
                     horizontalAlignment = Alignment.Start,
                 ) {
                     Text(
-                        text = if (showCountdown) "$name · $time" else name,
+                        text = "Nächstes Gebet",
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 13.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
                         ),
                     )
-                    Spacer(GlanceModifier.height(2.dp))
+                    Spacer(GlanceModifier.height(3.dp))
+                    Text(
+                        text = name,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                    Spacer(GlanceModifier.height(1.dp))
                     if (showCountdown) {
+                        // System-rendered live count-down (no app wake-ups).
                         val rv = RemoteViews(context.packageName, R.layout.widget_chronometer).apply {
                             setChronometerCountDown(R.id.widget_chrono, true)
                             setChronometer(R.id.widget_chrono, chronoBase, null, true)
                         }
                         AndroidRemoteViews(rv)
+                        Text(
+                            text = "um $time",
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurfaceVariant,
+                                fontSize = 12.sp,
+                            ),
+                        )
                     } else {
                         Text(
                             text = time,
