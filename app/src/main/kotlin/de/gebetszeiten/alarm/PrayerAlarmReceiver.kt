@@ -29,7 +29,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 val settings = SettingsRepository(context).current()
                 val zone = ZoneId.systemDefault()
                 val active = PrayerProvider.currentlyActive(context, settings, zone, ZonedDateTime.now(zone))
-                if (active != null && active.prayer != Prayer.SUNRISE) {
+                // Sunrise is no prayer; otherwise notify only if the user enabled
+                // a reminder for this prayer.
+                if (active != null && active.prayer != Prayer.SUNRISE &&
+                    active.prayer.name in settings.reminders
+                ) {
                     PrayerNotifier.notifyPrayer(context, active)
                 }
                 NextPrayerWidget().updateAll(context)

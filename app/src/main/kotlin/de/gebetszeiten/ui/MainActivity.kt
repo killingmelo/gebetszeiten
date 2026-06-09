@@ -918,6 +918,7 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
     var karaha by remember(settings.showKaraha) { mutableStateOf(settings.showKaraha) }
     var contrast by remember(settings.highContrast) { mutableStateOf(settings.highContrast) }
     var fontScale by remember(settings.fontScale) { mutableStateOf(settings.fontScale) }
+    var reminders by remember(settings.reminders) { mutableStateOf(settings.reminders) }
     var expanded by remember { mutableStateOf(false) }
     var matches by remember { mutableStateOf<List<City>>(emptyList()) }
     val context = LocalContext.current
@@ -968,6 +969,18 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
         FontSizeSelector(fontScale) { fontScale = it }
         ToggleRow("Hoher Kontrast", contrast) { contrast = it }
 
+        Text("Erinnerungen", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
+        Text(
+            "Stille Benachrichtigung zur jeweiligen Gebetszeit.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        listOf(Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA).forEach { p ->
+            ToggleRow(context.getString(p.labelRes()), p.name in reminders) { on ->
+                reminders = if (on) reminders + p.name else reminders - p.name
+            }
+        }
+
         Button(
             onClick = {
                 val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
@@ -982,6 +995,7 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
                         showKaraha = karaha,
                         highContrast = contrast,
                         fontScale = fontScale,
+                        reminders = reminders,
                     ),
                 )
             },

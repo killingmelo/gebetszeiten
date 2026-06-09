@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -28,8 +29,12 @@ data class AppSettings(
     val fontScale: Float = 1f,
     /** Stronger-contrast colour scheme. */
     val highContrast: Boolean = false,
+    /** Prayer names (Prayer.name) that fire a silent reminder notification. */
+    val reminders: Set<String> = DEFAULT_REMINDERS,
 ) {
     companion object {
+        val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")
+
         // Sensible default until the user picks a location.
         val DEFAULT = AppSettings(
             latitude = 49.4521,
@@ -41,6 +46,7 @@ data class AppSettings(
             showKaraha = true,
             fontScale = 1f,
             highContrast = false,
+            reminders = DEFAULT_REMINDERS,
         )
     }
 }
@@ -59,6 +65,7 @@ class SettingsRepository(private val context: Context) {
         val SHOW_KARAHA = booleanPreferencesKey("show_karaha")
         val FONT_SCALE = doublePreferencesKey("font_scale")
         val HIGH_CONTRAST = booleanPreferencesKey("high_contrast")
+        val REMINDERS = stringSetPreferencesKey("reminders")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -72,6 +79,7 @@ class SettingsRepository(private val context: Context) {
             showKaraha = prefs[Keys.SHOW_KARAHA] ?: AppSettings.DEFAULT.showKaraha,
             fontScale = (prefs[Keys.FONT_SCALE] ?: AppSettings.DEFAULT.fontScale.toDouble()).toFloat(),
             highContrast = prefs[Keys.HIGH_CONTRAST] ?: AppSettings.DEFAULT.highContrast,
+            reminders = prefs[Keys.REMINDERS] ?: AppSettings.DEFAULT.reminders,
         )
     }
 
@@ -88,6 +96,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.SHOW_KARAHA] = value.showKaraha
             prefs[Keys.FONT_SCALE] = value.fontScale.toDouble()
             prefs[Keys.HIGH_CONTRAST] = value.highContrast
+            prefs[Keys.REMINDERS] = value.reminders
         }
     }
 }
