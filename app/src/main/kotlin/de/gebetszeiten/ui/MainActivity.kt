@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -556,27 +557,41 @@ private fun Timeline(
                 when (block) {
                     is PrayerBlock -> {
                         val isSelected = active != null && block.prayer == active.first
+                        val isNext = nextEntry?.first == block.prayer
                         val isPast = active != null && block.time.isBefore(active.second)
+                        val mkBefore = visibleMakruh(block.before)
+                        val mkAfter = visibleMakruh(block.after)
+                        val hasMakruh = mkBefore != null || mkAfter != null
                         val foreground = when {
                             isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
+                            isNext -> primary
                             isPast -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             else -> MaterialTheme.colorScheme.onSurface
                         }
-                        val background = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-                        val weight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        val weight = if (isSelected || isNext) FontWeight.Bold else FontWeight.Normal
                         val name = context.getString(block.prayer.labelRes())
                         val status = when {
                             isSelected -> ", aktuelles Gebet"
+                            isNext -> ", nächstes Gebet"
                             isPast -> ", vergangen"
                             else -> ""
                         }
-                        Column {
-                            visibleMakruh(block.before)?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
+                        // Lane: current = filled green, next = outlined, a prayer
+                        // that carries a makruh window = faint group, else plain.
+                        val laneShape = RoundedCornerShape(16.dp)
+                        var lane = Modifier.fillMaxWidth()
+                        when {
+                            isSelected -> lane = lane.background(MaterialTheme.colorScheme.primaryContainer, laneShape)
+                            hasMakruh -> lane = lane.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), laneShape)
+                        }
+                        if (isNext) lane = lane.border(1.5.dp, primary, laneShape)
+                        lane = lane.padding(horizontal = 12.dp, vertical = 8.dp)
+
+                        Column(modifier = lane) {
+                            mkBefore?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(background, RoundedCornerShape(16.dp))
-                                    .padding(horizontal = 14.dp, vertical = 9.dp)
                                     .onGloballyPositioned {
                                         nodeCenters[block.prayer.name] = it.positionInWindow().y + it.size.height / 2f
                                     }
@@ -590,15 +605,15 @@ private fun Timeline(
                                 Spacer(Modifier.width(8.dp))
                                 Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
                             }
-                            if (nextEntry?.first == block.prayer) {
+                            if (isNext) {
                                 Text(
                                     text = remainingText(Duration.between(now, block.time)),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = primary,
-                                    modifier = Modifier.padding(start = 14.dp, top = 2.dp),
+                                    modifier = Modifier.padding(top = 2.dp),
                                 )
                             }
-                            visibleMakruh(block.after)?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
+                            mkAfter?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
                         }
                     }
                     is NaflBlock -> {
@@ -635,35 +650,30 @@ private fun Timeline(
     }
 }
 
+/** Compact, subordinate makruh chip shown inside a prayer's lane. */
 @Composable
 private fun MakruhCaption(m: Makruh, amber: Color, faded: Boolean, onKaraha: (Pair<String, String>) -> Unit) {
-    val c = amber.copy(alpha = if (faded) 0.5f else 1f)
+    val c = amber.copy(alpha = if (faded) 0.55f else 1f)
     val clean = m.label.removePrefix("Makruh · ")
     val desc = "Makruh-Zeit $clean, ${m.start.format(HM)} bis ${m.end.format(HM)}"
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 36.dp)
+            .heightIn(min = 22.dp)
             .clickable(onClickLabel = "Erklärung anzeigen") { onKaraha(m.explain) }
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(vertical = 1.dp)
             .semantics(mergeDescendants = true) { contentDescription = desc },
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(R.drawable.ic_makruh),
-                contentDescription = null,
-                tint = c,
-                modifier = Modifier.size(14.dp),
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(m.label, style = MaterialTheme.typography.labelMedium, color = c)
-        }
-        Spacer(Modifier.width(8.dp))
+        Icon(
+            painter = painterResource(R.drawable.ic_makruh),
+            contentDescription = null,
+            tint = c,
+            modifier = Modifier.size(12.dp),
+        )
+        Spacer(Modifier.width(5.dp))
         Text(
-            "${m.start.format(HM)}–${m.end.format(HM)}",
-            style = MaterialTheme.typography.labelMedium,
+            "Makruh · $clean · ${m.start.format(HM)}–${m.end.format(HM)}",
+            style = MaterialTheme.typography.labelSmall,
             color = c,
             softWrap = false,
         )
