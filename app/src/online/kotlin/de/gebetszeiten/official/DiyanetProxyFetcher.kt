@@ -36,8 +36,26 @@ class DiyanetProxyFetcher : OfficialTimesFetcher {
         val q = URLEncoder.encode(city.trim(), "UTF-8")
         val arr = JSONArray(httpGet("$base/search?q=$q"))
         if (arr.length() == 0) return null
-        return arr.getJSONObject(0).optInt("id").takeIf { it != 0 }
+        // The proxy may return nearby places first (e.g. "Altdorf b. Nürnberg"
+        // before "Nürnberg"). Prefer an exact accent/case-insensitive match on
+        // the town (region) or city field; otherwise fall back to the first.
+        val target = normalize(city)
+        var fallback: Int? = null
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val id = o.optInt("id").takeIf { it != 0 } ?: continue
+            if (fallback == null) fallback = id
+            if (normalize(o.optString("region")) == target || normalize(o.optString("city")) == target) {
+                return id
+            }
+        }
+        return fallback
     }
+
+    /** Lower-case and strip diacritics so "Nürnberg" matches "NURNBERG". */
+    private fun normalize(s: String): String =
+        java.text.Normalizer.normalize(s.trim().lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "")
 
     private fun parseSchedule(body: String): Map<LocalDate, SixTimes> {
         val arr = JSONArray(body)
