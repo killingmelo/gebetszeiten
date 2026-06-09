@@ -290,6 +290,17 @@ private fun DateNavigator(
     }
 }
 
+/** "3 Std 26 Min" / "55 Min" — interval length shown in the rail gap. */
+private fun durationLabel(min: Long): String {
+    val h = min / 60
+    val m = min % 60
+    return when {
+        h > 0 && m > 0 -> "$h Std $m Min"
+        h > 0 -> "$h Std"
+        else -> "$m Min"
+    }
+}
+
 private fun remainingText(d: Duration): String {
     if (d.isNegative || d.isZero) return "jetzt"
     val h = d.toHours()
@@ -555,15 +566,26 @@ private fun Timeline(
         // The rows themselves, spaced proportionally to the real time gaps.
         Column(modifier = Modifier.fillMaxWidth().padding(start = contentStart, end = 8.dp)) {
             var prev: ZonedDateTime? = null
-            visible.forEach { block ->
+            visible.forEachIndexed { index, block ->
                 // Gaps are proportional to the real time distance between
                 // entries (linear), with a min for legibility and a cap so the
-                // one long stretch (Duha→Dhuhr) doesn't blow up the layout.
-                val gapDp = prev?.let {
-                    val min = Duration.between(it, block.sortAt).toMinutes().coerceAtLeast(0)
-                    (min * 0.34).dp.coerceIn(22.dp, 132.dp)
-                } ?: 4.dp
-                Spacer(Modifier.height(gapDp))
+                // one long stretch (Duha→Dhuhr) doesn't blow up the layout. The
+                // interval length is written faintly into the gap — except the
+                // first gap, where the next prayer's countdown already shows it.
+                val gapMin = prev?.let { Duration.between(it, block.sortAt).toMinutes().coerceAtLeast(0) }
+                val gapDp = gapMin?.let { (it * 0.34).dp.coerceIn(22.dp, 132.dp) } ?: 4.dp
+                if (gapMin != null && gapMin >= 30 && index >= 2) {
+                    Box(modifier = Modifier.fillMaxWidth().height(gapDp)) {
+                        Text(
+                            text = durationLabel(gapMin),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.align(Alignment.CenterStart),
+                        )
+                    }
+                } else {
+                    Spacer(Modifier.height(gapDp))
+                }
                 prev = block.sortAt
 
                 when (block) {
