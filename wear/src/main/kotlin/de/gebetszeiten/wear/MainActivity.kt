@@ -4,9 +4,11 @@ import android.app.Activity
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
+import de.gebetszeiten.core.prayertimes.Prayer
 import kotlinx.coroutines.runBlocking
 import java.time.Duration
 import java.time.ZoneId
@@ -35,19 +37,17 @@ class MainActivity : Activity() {
             remainingText(Duration.between(now, next.second))
 
         val container = findViewById<LinearLayout>(R.id.timesContainer)
-        val accent = getColor(R.color.wear_accent)
         val text = getColor(R.color.wear_text)
-        val dim = getColor(R.color.wear_dim)
 
-        today.ordered().forEach { (prayer, time) ->
-            val isNext = prayer == next.first && !time.isBefore(now)
-            val passed = time.isBefore(now) && !isNext
-            val color = when {
-                isNext -> accent
-                passed -> dim
-                else -> text
-            }
-            container.addView(row(prayer.label(), time.format(timeFormat), color, isNext))
+        // Only what's still ahead today, after the next prayer (the hero already
+        // shows the next one). No past times, no sunrise, and not the next itself
+        // (excluded by prayer identity — robust to sub-minute calc differences).
+        val upcoming = today.ordered().filter {
+            it.first != Prayer.SUNRISE && it.first != next.first && it.second.isAfter(now)
+        }
+        findViewById<View>(R.id.divider).visibility = if (upcoming.isEmpty()) View.GONE else View.VISIBLE
+        upcoming.forEach { (prayer, time) ->
+            container.addView(row(prayer.label(), time.format(timeFormat), text, bold = false))
         }
     }
 

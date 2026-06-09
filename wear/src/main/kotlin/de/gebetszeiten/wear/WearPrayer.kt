@@ -20,12 +20,15 @@ object WearPrayer {
     fun today(location: GeoLocation, zone: ZoneId): DailyPrayerTimes =
         DiyanetPrayerTimesCalculator.calculate(location, ZonedDateTime.now(zone).toLocalDate(), zone)
 
-    /** Next prayer strictly after [now], rolling into tomorrow if needed. */
+    /** Next prayer strictly after [now], rolling into tomorrow if needed.
+     *  Sunrise is just the end of Fajr's window, not a prayer → skipped. */
     fun next(location: GeoLocation, zone: ZoneId, now: ZonedDateTime): Pair<Prayer, ZonedDateTime> {
-        today(location, zone).ordered().firstOrNull { it.second.isAfter(now) }?.let { return it }
+        today(location, zone).ordered()
+            .firstOrNull { it.first != Prayer.SUNRISE && it.second.isAfter(now) }
+            ?.let { return it }
         val tomorrow = DiyanetPrayerTimesCalculator.calculate(
             location, now.toLocalDate().plusDays(1), zone,
         )
-        return tomorrow.ordered().first()
+        return tomorrow.ordered().first { it.first != Prayer.SUNRISE }
     }
 }
