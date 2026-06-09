@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -76,7 +75,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.gebetszeiten.R
@@ -95,7 +93,6 @@ import de.gebetszeiten.ui.theme.GebetszeitenTheme
 import de.gebetszeiten.ui.theme.LocalHighContrast
 import kotlinx.coroutines.delay
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import java.time.Duration
 import java.time.LocalDate
@@ -452,14 +449,12 @@ private fun Timeline(
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current
     val primary = MaterialTheme.colorScheme.primary
     val track = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
     val nodeFill = MaterialTheme.colorScheme.surface
 
     val railX = 18.dp
     val contentStart = 42.dp
-    val contentStartPx = with(density) { contentStart.toPx() }
 
     // Captured layout: root-Y centre of each prayer's name row + the box top.
     val nodeCenters = remember { mutableStateMapOf<String, Float>() }
@@ -506,13 +501,6 @@ private fun Timeline(
         }
     }
 
-    val showNow = highlight && active != null && nodes.isNotEmpty()
-    val nowY = if (showNow) mapY(now.toEpochSecond()) else 0f
-    // Hide the floating "jetzt" text when it would collide with a node row;
-    // the dot on the rail still marks the current time.
-    val showNowLabel = showNow &&
-        nodes.none { abs(it.second - nowY) < with(density) { 22.dp.toPx() } }
-
     Box(modifier = Modifier
         .fillMaxWidth()
         .onGloballyPositioned { boxTop = it.positionInWindow().y }) {
@@ -533,9 +521,6 @@ private fun Timeline(
                     StrokeCap.Round,
                 )
             }
-            if (showNow) {
-                drawLine(primary, Offset(x, top), Offset(x, nowY), 4.dp.toPx(), StrokeCap.Round)
-            }
             nodes.forEach { (_, y, sel) ->
                 if (sel) {
                     drawCircle(primary, 7.dp.toPx(), Offset(x, y))
@@ -544,18 +529,6 @@ private fun Timeline(
                     drawCircle(primary, 5.dp.toPx(), Offset(x, y), style = Stroke(2.dp.toPx()))
                 }
             }
-            if (showNow) drawCircle(primary, 5.dp.toPx(), Offset(x, nowY))
-        }
-
-        // Floating "now" label, anchored to the live dot on the rail.
-        if (showNowLabel) {
-            Text(
-                text = "jetzt ${now.format(HM)}",
-                style = MaterialTheme.typography.labelMedium,
-                color = primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.offset { IntOffset(contentStartPx.roundToInt(), (nowY - with(density) { 9.dp.toPx() }).roundToInt()) },
-            )
         }
 
         // The rows themselves, spaced proportionally to the real time gaps.
