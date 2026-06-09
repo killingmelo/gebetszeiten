@@ -12,3 +12,8 @@
 *.aab
 *.keystore
 !debug.keystore
+
+# Signing secrets (keep private, never commit)
+keystore.properties
+keystore/
+*.jks
