@@ -46,7 +46,7 @@ object PrayerNotifier {
         val title = context.getString(prayer.prayer.labelRes())
         val text = prayer.time.format(timeFormat)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_LOW)

@@ -1,0 +1,23 @@
+Gebetszeiten ist eine bewusst minimalistische App für Android und Wear OS, die
+auf drei Dinge optimiert ist: Akkuverbrauch, Datenschutz und Übersichtlichkeit.
+
+Datenschutz „by Construction": Die Standardvariante besitzt weder die INTERNET-
+noch eine Standort-Berechtigung. Die App kann technisch nichts senden und nichts
+tracken. Den Ort wählst du manuell (Stadt aus einer Offline-Liste oder
+Koordinaten). Es gibt kein Tracking, keine Werbung, keine Analytics.
+
+Akkusparend: kein Polling, kein Hintergrunddienst, kein periodisches Refresh. Das
+Widget aktualisiert sich ereignisgetrieben zu den Gebetszeiten; auf der Uhr
+rendert das System die Anzeige, ohne die App aufzuwecken.
+
+Funktionen:
+* Offline-Berechnung nach Diyanet-Methode (Fajr 18°, Isha 17°), gegen die
+  offizielle Diyanet-Jahrestabelle kalibriert.
+* Mitlaufender Tagesüberblick mit Fortschritt des laufenden Gebets.
+* Hanafi-Makruh-Zeiten und freiwillige Gebete (Duha, Awwabin, Tahajjud) – optional.
+* Hijri-Datum, einstellbare Schriftgröße und hoher Kontrast.
+* Stille Erinnerungen pro Gebet (kein Ton/keine Vibration als Standard).
+* Homescreen-Widget und Wear-OS-Tile/Complication für das nächste Gebet.
+
+Eine optionale Variante kann auf Wunsch die exakten offiziellen Diyanet-Zeiten
+online abgleichen; nur diese Variante hat die INTERNET-Berechtigung.

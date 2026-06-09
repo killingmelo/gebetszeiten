@@ -1,0 +1,23 @@
+Prayer Times is a deliberately minimal app for Android and Wear OS, optimised for
+three things: battery life, privacy, and clarity.
+
+Privacy by construction: the default build has neither the INTERNET nor any
+location permission. The app technically cannot send anything or track you. You
+pick your location manually (a city from an offline list, or coordinates). No
+tracking, no ads, no analytics.
+
+Battery-friendly: no polling, no background service, no periodic refresh. The
+widget updates event-driven at prayer transitions; on the watch the system
+renders the display without waking the app.
+
+Features:
+* Offline calculation using the Diyanet method (Fajr 18°, Isha 17°), calibrated
+  against the official Diyanet yearly table.
+* A running day overview that shows the progress of the current prayer.
+* Hanafi makruh times and voluntary prayers (Duha, Awwabin, Tahajjud) – optional.
+* Hijri date, adjustable font size and high contrast.
+* Silent per-prayer reminders (no sound/vibration by default).
+* Home-screen widget and Wear OS tile/complication for the next prayer.
+
+An optional build can fetch the exact official Diyanet times online; only that
+build carries the INTERNET permission.
