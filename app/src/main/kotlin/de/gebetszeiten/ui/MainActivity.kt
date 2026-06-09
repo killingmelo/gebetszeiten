@@ -310,21 +310,21 @@ private sealed interface DayBlock {
     val sortAt: ZonedDateTime
 }
 
-private data class Makruh(
+private data class PrayerBlock(
+    val prayer: Prayer,
+    val time: ZonedDateTime,
+) : DayBlock {
+    override val sortAt: ZonedDateTime get() = time
+}
+
+/** A makruh (karaha) window — a standalone chip on the timeline. */
+private data class MakruhBlock(
     val label: String,
     val start: ZonedDateTime,
     val end: ZonedDateTime,
     val explain: Pair<String, String>,
-)
-
-/** A prayer together with the makruh segment that belongs to it. */
-private data class PrayerBlock(
-    val prayer: Prayer,
-    val time: ZonedDateTime,
-    val before: Makruh?,
-    val after: Makruh?,
 ) : DayBlock {
-    override val sortAt: ZonedDateTime get() = before?.start ?: time
+    override val sortAt: ZonedDateTime get() = start
 }
 
 private data class NaflBlock(
@@ -333,6 +333,13 @@ private data class NaflBlock(
     val end: ZonedDateTime,
 ) : DayBlock {
     override val sortAt: ZonedDateTime get() = start
+}
+
+/** Sort tie-break at equal instant: prayer, then makruh, then nafl. */
+private fun blockOrder(b: DayBlock): Int = when (b) {
+    is PrayerBlock -> 0
+    is MakruhBlock -> 1
+    is NaflBlock -> 2
 }
 
 @Composable
@@ -359,32 +366,24 @@ private fun TimesCard(
         else -> Color(0xFF1B5E20)
     }
 
-    // Each prayer + its makruh segment form one block (zenith/İsfirar above the
-    // prayer, sunrise below). Nafl windows are their own blocks. Blocks run
-    // chronologically with a clear gap between them.
+    // Prayers, makruh windows and nafl windows are each their own block, laid
+    // out chronologically (makruh = standalone chip near its prayer).
     val blocks = remember(info, showNafl, showKaraha) {
         val k = info.karaha
         val n = info.nafl
         buildList<DayBlock> {
-            info.times.ordered().forEach { (p, t) ->
-                val before = if (!showKaraha) null else when (p) {
-                    Prayer.DHUHR -> Makruh("Makruh · Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL)
-                    Prayer.MAGHRIB -> Makruh("Makruh · vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR)
-                    else -> null
-                }
-                val after = if (showKaraha && p == Prayer.SUNRISE) {
-                    Makruh("Makruh · nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE)
-                } else {
-                    null
-                }
-                add(PrayerBlock(p, t, before, after))
+            info.times.ordered().forEach { (p, t) -> add(PrayerBlock(p, t)) }
+            if (showKaraha) {
+                add(MakruhBlock("Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL))
+                add(MakruhBlock("vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR))
+                add(MakruhBlock("nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE))
             }
             if (showNafl) {
                 add(NaflBlock("Duha (Kuşluk)", n.duhaStart, n.duhaEnd))
                 add(NaflBlock("Awwabin", n.awwabinStart, n.awwabinEnd))
                 add(NaflBlock("Tahajjud", n.tahajjudStart, n.tahajjudEnd))
             }
-        }.sortedBy { it.sortAt }
+        }.sortedWith(compareBy({ it.sortAt }, { blockOrder(it) }))
     }
 
     // "Running" timeline: the currently active prayer (last one whose time has
@@ -396,7 +395,9 @@ private fun TimesCard(
     val activeIndex =
         if (active != null) blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first } else -1
     var showPast by remember { mutableStateOf(false) }
-    val visible = if (activeIndex > 0 && !showPast) blocks.drop(activeIndex) else blocks
+    val visible = (if (activeIndex > 0 && !showPast) blocks.drop(activeIndex) else blocks)
+        // Hide makruh windows that are already over (unless showing past).
+        .filterNot { it is MakruhBlock && highlight && !showPast && !it.end.isAfter(now) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -460,8 +461,8 @@ private fun Timeline(
     val nodeCenters = remember { mutableStateMapOf<String, Float>() }
     var boxTop by remember { mutableStateOf(0f) }
 
-    fun visibleMakruh(m: Makruh?) =
-        m?.takeIf { !highlight || showPast || it.end.isAfter(now) }
+    // A makruh window is "now" (selected) when the current time is inside it.
+    fun isMakruhNow(b: MakruhBlock) = highlight && !now.isBefore(b.start) && now.isBefore(b.end)
 
     // (epochSecond, boxY, selected) for every measured prayer node.
     val nodes = visible.mapNotNull { b ->
@@ -484,22 +485,25 @@ private fun Timeline(
         return nodes.last().second
     }
 
-    // Coloured bands for makruh (amber) and nafl (green) windows.
-    data class Band(val start: Long, val end: Long, val color: Color)
+    // Coloured bands for makruh (amber) and nafl (green) windows; an active
+    // makruh band is drawn at full strength.
+    data class Band(val start: Long, val end: Long, val color: Color, val strong: Boolean)
     val bands = buildList {
         visible.forEach { b ->
             when (b) {
-                is PrayerBlock -> {
-                    visibleMakruh(b.before)?.let { add(Band(it.start.toEpochSecond(), it.end.toEpochSecond(), amber)) }
-                    visibleMakruh(b.after)?.let { add(Band(it.start.toEpochSecond(), it.end.toEpochSecond(), amber)) }
-                }
-                is NaflBlock -> add(Band(b.start.toEpochSecond(), b.end.toEpochSecond(), green))
+                is MakruhBlock -> add(Band(b.start.toEpochSecond(), b.end.toEpochSecond(), amber, isMakruhNow(b)))
+                is NaflBlock -> add(Band(b.start.toEpochSecond(), b.end.toEpochSecond(), green, false))
+                is PrayerBlock -> {}
             }
         }
     }
 
     val showNow = highlight && active != null && nodes.isNotEmpty()
     val nowY = if (showNow) mapY(now.toEpochSecond()) else 0f
+    // Hide the floating "jetzt" text when it would collide with a node row;
+    // the dot on the rail still marks the current time.
+    val showNowLabel = showNow &&
+        nodes.none { abs(it.second - nowY) < with(density) { 22.dp.toPx() } }
 
     Box(modifier = Modifier
         .fillMaxWidth()
@@ -513,7 +517,13 @@ private fun Timeline(
             val bottom = nodes.last().second
             drawLine(track, Offset(x, top), Offset(x, bottom), 4.dp.toPx(), StrokeCap.Round)
             bands.forEach { band ->
-                drawLine(band.color.copy(alpha = 0.85f), Offset(x, mapY(band.start)), Offset(x, mapY(band.end)), 8.dp.toPx(), StrokeCap.Round)
+                drawLine(
+                    band.color.copy(alpha = if (band.strong) 1f else 0.7f),
+                    Offset(x, mapY(band.start)),
+                    Offset(x, mapY(band.end)),
+                    (if (band.strong) 11.dp else 8.dp).toPx(),
+                    StrokeCap.Round,
+                )
             }
             if (showNow) {
                 drawLine(primary, Offset(x, top), Offset(x, nowY), 4.dp.toPx(), StrokeCap.Round)
@@ -530,7 +540,7 @@ private fun Timeline(
         }
 
         // Floating "now" label, anchored to the live dot on the rail.
-        if (showNow) {
+        if (showNowLabel) {
             Text(
                 text = "jetzt ${now.format(HM)}",
                 style = MaterialTheme.typography.labelMedium,
@@ -559,9 +569,6 @@ private fun Timeline(
                         val isSelected = active != null && block.prayer == active.first
                         val isNext = nextEntry?.first == block.prayer
                         val isPast = active != null && block.time.isBefore(active.second)
-                        val mkBefore = visibleMakruh(block.before)
-                        val mkAfter = visibleMakruh(block.after)
-                        val hasMakruh = mkBefore != null || mkAfter != null
                         val foreground = when {
                             isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
                             isNext -> primary
@@ -576,19 +583,14 @@ private fun Timeline(
                             isPast -> ", vergangen"
                             else -> ""
                         }
-                        // Lane: current = filled green, next = outlined, a prayer
-                        // that carries a makruh window = faint group, else plain.
+                        // Lane: current = filled green, next = outlined, else plain.
                         val laneShape = RoundedCornerShape(16.dp)
                         var lane = Modifier.fillMaxWidth()
-                        when {
-                            isSelected -> lane = lane.background(MaterialTheme.colorScheme.primaryContainer, laneShape)
-                            hasMakruh -> lane = lane.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), laneShape)
-                        }
+                        if (isSelected) lane = lane.background(MaterialTheme.colorScheme.primaryContainer, laneShape)
                         if (isNext) lane = lane.border(1.5.dp, primary, laneShape)
                         lane = lane.padding(horizontal = 12.dp, vertical = 8.dp)
 
                         Column(modifier = lane) {
-                            mkBefore?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -613,7 +615,19 @@ private fun Timeline(
                                     modifier = Modifier.padding(top = 2.dp),
                                 )
                             }
-                            mkAfter?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
+                        }
+                    }
+                    is MakruhBlock -> {
+                        // Standalone, compact makruh chip — selected (amber-filled)
+                        // while the current time falls inside the window.
+                        Box(modifier = Modifier.padding(start = 12.dp)) {
+                            MakruhChip(
+                                block = block,
+                                amber = amber,
+                                selected = isMakruhNow(block),
+                                faded = highlight && !showPast && !block.end.isAfter(now),
+                                onKaraha = onKaraha,
+                            )
                         }
                     }
                     is NaflBlock -> {
@@ -650,31 +664,40 @@ private fun Timeline(
     }
 }
 
-/** Compact, subordinate makruh chip shown inside a prayer's lane. */
+/** Standalone, compact makruh chip. When [selected] (the current time is inside
+ *  the window) it is amber-filled, mirroring the prayer's selected pill. */
 @Composable
-private fun MakruhCaption(m: Makruh, amber: Color, faded: Boolean, onKaraha: (Pair<String, String>) -> Unit) {
+private fun MakruhChip(
+    block: MakruhBlock,
+    amber: Color,
+    selected: Boolean,
+    faded: Boolean,
+    onKaraha: (Pair<String, String>) -> Unit,
+) {
     val c = amber.copy(alpha = if (faded) 0.55f else 1f)
-    val clean = m.label.removePrefix("Makruh · ")
-    val desc = "Makruh-Zeit $clean, ${m.start.format(HM)} bis ${m.end.format(HM)}"
-    Row(
-        modifier = Modifier
-            .heightIn(min = 22.dp)
-            .clickable(onClickLabel = "Erklärung anzeigen") { onKaraha(m.explain) }
-            .padding(vertical = 1.dp)
-            .semantics(mergeDescendants = true) { contentDescription = desc },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val desc = "Makruh-Zeit ${block.label}, ${block.start.format(HM)} bis ${block.end.format(HM)}" +
+        if (selected) ", läuft gerade" else ""
+    val shape = RoundedCornerShape(12.dp)
+    var mod = Modifier
+        .clickable(onClickLabel = "Erklärung anzeigen") { onKaraha(block.explain) }
+    if (selected) mod = mod.background(amber.copy(alpha = 0.20f), shape)
+    mod = mod
+        .padding(horizontal = if (selected) 10.dp else 2.dp, vertical = if (selected) 5.dp else 1.dp)
+        .heightIn(min = 24.dp)
+        .semantics(mergeDescendants = true) { contentDescription = desc }
+    Row(modifier = mod, verticalAlignment = Alignment.CenterVertically) {
         Icon(
             painter = painterResource(R.drawable.ic_makruh),
             contentDescription = null,
             tint = c,
-            modifier = Modifier.size(12.dp),
+            modifier = Modifier.size(if (selected) 14.dp else 12.dp),
         )
         Spacer(Modifier.width(5.dp))
         Text(
-            "Makruh · $clean · ${m.start.format(HM)}–${m.end.format(HM)}",
-            style = MaterialTheme.typography.labelSmall,
+            "Makruh · ${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}",
+            style = if (selected) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
             color = c,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             softWrap = false,
         )
     }
