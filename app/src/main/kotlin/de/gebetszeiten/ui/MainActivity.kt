@@ -93,7 +93,6 @@ import de.gebetszeiten.ui.theme.GebetszeitenTheme
 import de.gebetszeiten.ui.theme.LocalHighContrast
 import kotlinx.coroutines.delay
 import kotlin.math.abs
-import kotlin.math.sqrt
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
@@ -557,12 +556,12 @@ private fun Timeline(
         Column(modifier = Modifier.fillMaxWidth().padding(start = contentStart, end = 8.dp)) {
             var prev: ZonedDateTime? = null
             visible.forEach { block ->
-                // Gaps grow with the real time distance, but with diminishing
-                // returns (sqrt) and a cap, so long stretches stay compact while
-                // the order "more time = more space" is preserved.
+                // Gaps are proportional to the real time distance between
+                // entries (linear), with a min for legibility and a cap so the
+                // one long stretch (Duha→Dhuhr) doesn't blow up the layout.
                 val gapDp = prev?.let {
                     val min = Duration.between(it, block.sortAt).toMinutes().coerceAtLeast(0)
-                    (12.0 + 3.2 * sqrt(min.toDouble())).dp.coerceIn(24.dp, 84.dp)
+                    (min * 0.34).dp.coerceIn(22.dp, 132.dp)
                 } ?: 4.dp
                 Spacer(Modifier.height(gapDp))
                 prev = block.sortAt
