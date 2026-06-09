@@ -1,0 +1,6 @@
+Initial release.
+
+- Fully offline Diyanet prayer times, calibrated against the official yearly table.
+- Privacy by construction: no internet, no location permission.
+- Running day overview with the current prayer's progress; makruh & voluntary prayers.
+- Silent per-prayer reminders, home-screen widget, Wear OS tile & complication.

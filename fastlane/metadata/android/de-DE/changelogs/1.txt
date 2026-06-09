@@ -1,0 +1,6 @@
+Erste Veröffentlichung.
+
+- Komplett offline berechnete Diyanet-Gebetszeiten, gegen die offizielle Jahrestabelle kalibriert.
+- Datenschutz by Construction: kein Internet, keine Standort-Berechtigung.
+- Mitlaufender Tagesüberblick mit Fortschritt des aktuellen Gebets; Makruh- und freiwillige Gebete.
+- Stille Erinnerungen pro Gebet, Homescreen-Widget, Wear-OS-Tile & -Complication.
