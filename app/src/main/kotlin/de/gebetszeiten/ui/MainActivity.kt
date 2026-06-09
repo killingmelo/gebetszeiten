@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -64,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -124,6 +127,7 @@ private data class DayInfo(
     val times: DailyPrayerTimes,
     val karaha: KarahaTimes,
     val nafl: NaflTimes,
+    val nextFajr: ZonedDateTime, // next day's Fajr (for the Isha→Fajr night phase)
 )
 
 class MainActivity : ComponentActivity() {
@@ -173,7 +177,7 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
     val dayInfo by produceState<DayInfo?>(null, settings, tick, selectedDate) {
         val times = PrayerProvider.daily(context, settings, selectedDate, zone)
         val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone).fajr
-        value = DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr))
+        value = DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr), nextFajr)
     }
     var showSettings by remember { mutableStateOf(false) }
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -445,6 +449,14 @@ private fun TimesCard(
     val hasEarlier = activeIndex > 0
     val hasLater = collapsedCap < blocks.lastIndex
 
+    // Is some entry currently "running" (→ a filling pill carries the remaining
+    // time)? A prayer (not Sunrise) is active, or we're inside the Duha window.
+    val inDuha = highlight && active?.first == Prayer.SUNRISE &&
+        !now.isBefore(info.nafl.duhaStart) && now.isBefore(info.nafl.duhaEnd)
+    val anyCurrent = (active != null && active.first != Prayer.SUNRISE) || inDuha
+    // After Isha there is no further prayer today → the night runs to tomorrow's Fajr.
+    val afterIsha = highlight && active?.first == Prayer.ISHA && nextEntry == null
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -468,8 +480,18 @@ private fun TimesCard(
                 showPast = showPast,
                 amber = amber,
                 green = green,
+                nextFajr = info.nextFajr,
+                showNextCountdown = !anyCurrent,
                 onKaraha = onKaraha,
             )
+            if (afterIsha) {
+                Text(
+                    text = "Morgen · Fajr ${info.nextFajr.format(HM)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 54.dp, top = 4.dp),
+                )
+            }
             if (hasLater) {
                 ExpanderRow(
                     text = if (showFuture) "Weitere ausblenden" else "Weitere Zeiten anzeigen",
@@ -505,6 +527,8 @@ private fun Timeline(
     showPast: Boolean,
     amber: Color,
     green: Color,
+    nextFajr: ZonedDateTime,
+    showNextCountdown: Boolean,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
@@ -620,19 +644,19 @@ private fun Timeline(
                             if (isSelected) {
                                 // Current prayer: the pill itself fills with the
                                 // progress of the running period; remaining inside.
-                                val nextT = nextEntry?.second
-                                val frac = if (nextT != null && nextT.isAfter(block.time)) {
+                                // For Isha (last prayer) the period runs to tomorrow's Fajr.
+                                val nextT = nextEntry?.second ?: nextFajr
+                                val frac = if (nextT.isAfter(block.time)) {
                                     Duration.between(block.time, now).seconds.toFloat() /
                                         Duration.between(block.time, nextT).seconds.coerceAtLeast(1)
                                 } else {
                                     0f
                                 }
-                                val remMin = nextT?.let { Duration.between(now, it).toMinutes().coerceAtLeast(0) }
+                                val remMin = Duration.between(now, nextT).toMinutes().coerceAtLeast(0)
                                 ProgressPill(fraction = frac) {
                                     Column(
                                         modifier = capture.clearAndSetSemantics {
-                                            contentDescription = "$name, ${block.time.format(HM)}, aktuelles Gebet" +
-                                                (remMin?.let { ", noch ${durationLabel(it)}" } ?: "")
+                                            contentDescription = "$name, ${block.time.format(HM)}, aktuelles Gebet, noch ${durationLabel(remMin)}"
                                         },
                                     ) {
                                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -640,25 +664,37 @@ private fun Timeline(
                                             Spacer(Modifier.width(8.dp))
                                             Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = FontWeight.Bold, softWrap = false)
                                         }
-                                        remMin?.let {
-                                            Text("läuft · noch ${durationLabel(it)}", style = MaterialTheme.typography.labelMedium, color = foreground.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
-                                        }
+                                        Text("läuft · noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = foreground.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
                                     }
                                 }
                             } else {
                                 var lane = Modifier.fillMaxWidth()
                                 if (isNext) lane = lane.border(1.5.dp, primary, RoundedCornerShape(16.dp))
                                 lane = lane.padding(horizontal = 12.dp, vertical = 9.dp)
-                                Row(
-                                    modifier = lane.then(capture).clearAndSetSemantics {
-                                        contentDescription = "$name, ${block.time.format(HM)}$status"
-                                    },
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(name, style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, modifier = Modifier.weight(1f))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
+                                Column(modifier = lane) {
+                                    Row(
+                                        modifier = capture
+                                            .fillMaxWidth()
+                                            .clearAndSetSemantics {
+                                                contentDescription = "$name, ${block.time.format(HM)}$status"
+                                            },
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(name, style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, modifier = Modifier.weight(1f))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
+                                    }
+                                    // No pill carries the remaining time (e.g. pre-Fajr,
+                                    // İşrak/Zeval gap) → show the countdown here.
+                                    if (isNext && showNextCountdown) {
+                                        Text(
+                                            text = remainingText(Duration.between(now, block.time)),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = primary,
+                                            modifier = Modifier.padding(top = 2.dp),
+                                        )
+                                    }
                                 }
                             }
                             block.tip?.takeIf { !it.whenCurrent || isSelected }?.let {
@@ -792,7 +828,6 @@ private fun MakruhChipRow(
                 style = if (selected) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
                 color = c,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                softWrap = false,
             )
         }
     }
@@ -807,14 +842,31 @@ private fun ProgressPill(
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(16.dp)
-    Box(modifier = Modifier.fillMaxWidth().clip(shape).background(fillColor.copy(alpha = 0.30f))) {
+    val edge = MaterialTheme.colorScheme.primary
+    val animFrac by animateFloatAsState(
+        targetValue = fraction.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 650),
+        label = "pillFill",
+    )
+    Box(modifier = Modifier.fillMaxWidth().clip(shape).background(fillColor.copy(alpha = 0.26f))) {
         Box(modifier = Modifier.matchParentSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                    .fillMaxHeight()
-                    .background(fillColor),
-            )
+            if (animFrac > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animFrac)
+                        .fillMaxHeight()
+                        .background(Brush.horizontalGradient(listOf(fillColor.copy(alpha = 0.82f), fillColor))),
+                ) {
+                    // soft leading edge marking "now"
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .fillMaxHeight()
+                            .width(2.5.dp)
+                            .background(edge.copy(alpha = 0.5f)),
+                    )
+                }
+            }
         }
         Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) { content() }
     }
@@ -840,7 +892,6 @@ private fun NaflTipRow(block: NaflBlock, green: Color, faded: Boolean, onInfo: (
             "${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}",
             style = MaterialTheme.typography.labelSmall,
             color = c,
-            softWrap = false,
         )
     }
 }
