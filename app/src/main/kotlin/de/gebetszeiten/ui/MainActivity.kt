@@ -210,7 +210,6 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
                     info = info,
                     now = ZonedDateTime.now(zone),
                     highlight = isToday,
-                    showNafl = settings.showNafl,
                     showKaraha = settings.showKaraha,
                     onKaraha = { karahaInfo = it },
                 )
@@ -349,7 +348,6 @@ private fun TimesCard(
     info: DayInfo,
     now: ZonedDateTime,
     highlight: Boolean,
-    showNafl: Boolean,
     showKaraha: Boolean,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
@@ -371,7 +369,7 @@ private fun TimesCard(
     // Prayers carry their makruh chips. Sunrise is just a moment (no makruh).
     // The forenoon period is represented by Duha, which also carries the İşrak
     // makruh (so it sits right above the Duha pill, not on Sunrise).
-    val blocks = remember(info, showNafl, showKaraha) {
+    val blocks = remember(info, showKaraha) {
         val k = info.karaha
         val n = info.nafl
         buildList<DayBlock> {
@@ -383,14 +381,10 @@ private fun TimesCard(
                 }
                 add(PrayerBlock(p, t, before, null))
             }
-            // Duha is always present (the forenoon entry that replaces Sunrise
-            // once it has passed); İşrak makruh attaches to it.
+            // Duha is the forenoon entry that replaces Sunrise once it has
+            // passed; İşrak makruh attaches to it.
             val israk = if (showKaraha) MakruhBlock("nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE) else null
             add(NaflBlock("Duha (Kuşluk)", n.duhaStart, n.duhaEnd, forenoon = true, before = israk))
-            if (showNafl) {
-                add(NaflBlock("Awwabin", n.awwabinStart, n.awwabinEnd))
-                add(NaflBlock("Tahajjud", n.tahajjudStart, n.tahajjudEnd))
-            }
         }.sortedWith(compareBy({ it.sortAt }, { blockOrder(it) }))
     }
 
@@ -744,7 +738,6 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
     var lat by remember(settings.latitude) { mutableStateOf(settings.latitude.toString()) }
     var lng by remember(settings.longitude) { mutableStateOf(settings.longitude.toString()) }
     var countdown by remember(settings.showCountdown) { mutableStateOf(settings.showCountdown) }
-    var nafl by remember(settings.showNafl) { mutableStateOf(settings.showNafl) }
     var online by remember(settings.useOnline) { mutableStateOf(settings.useOnline) }
     var karaha by remember(settings.showKaraha) { mutableStateOf(settings.showKaraha) }
     var contrast by remember(settings.highContrast) { mutableStateOf(settings.highContrast) }
@@ -791,7 +784,6 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
         }
 
         ToggleRow("Makruh-Zeiten anzeigen", karaha) { karaha = it }
-        ToggleRow("Freiwillige Gebete anzeigen", nafl) { nafl = it }
         ToggleRow("Restzeit im Widget", countdown) { countdown = it }
         if (OfficialTimesProvider.isOnline) {
             ToggleRow("Offizielle Diyanet-Zeiten (online)", online) { online = it }
@@ -810,7 +802,6 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
                         longitude = parsedLng,
                         city = city.ifBlank { "—" },
                         showCountdown = countdown,
-                        showNafl = nafl,
                         useOnline = online,
                         showKaraha = karaha,
                         highContrast = contrast,
