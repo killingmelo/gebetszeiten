@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,13 +54,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -67,6 +75,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.gebetszeiten.R
@@ -85,6 +94,8 @@ import de.gebetszeiten.ui.theme.GebetszeitenTheme
 import de.gebetszeiten.ui.theme.LocalHighContrast
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
@@ -375,6 +386,17 @@ private fun TimesCard(
         }.sortedBy { it.sortAt }
     }
 
+    // "Running" timeline: the currently active prayer (last one whose time has
+    // passed) is selected; earlier blocks are collapsed by default.
+    val active: Pair<Prayer, ZonedDateTime>? =
+        if (highlight) info.times.ordered().lastOrNull { !it.second.isAfter(now) } else null
+    val nextEntry: Pair<Prayer, ZonedDateTime>? =
+        if (highlight) info.times.ordered().firstOrNull { it.second.isAfter(now) } else null
+    val activeIndex =
+        if (active != null) blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first } else -1
+    var showPast by remember { mutableStateOf(false) }
+    val visible = if (activeIndex > 0 && !showPast) blocks.drop(activeIndex) else blocks
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -382,22 +404,7 @@ private fun TimesCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         ),
     ) {
-        // "Running" calendar: the currently active prayer (last one whose time
-        // has passed) is selected; earlier blocks are collapsed by default.
-        val active: Pair<Prayer, ZonedDateTime>? =
-            if (highlight) info.times.ordered().lastOrNull { !it.second.isAfter(now) } else null
-        val nextEntry: Pair<Prayer, ZonedDateTime>? =
-            if (highlight) info.times.ordered().firstOrNull { it.second.isAfter(now) } else null
-        val primary = MaterialTheme.colorScheme.primary
-        val activeIndex =
-            if (active != null) blocks.indexOfFirst { it is PrayerBlock && it.prayer == active.first } else -1
-        var showPast by remember { mutableStateOf(false) }
-        val visible = if (activeIndex > 0 && !showPast) blocks.drop(activeIndex) else blocks
-
-        Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) {
             if (activeIndex > 0) {
                 Text(
                     text = if (showPast) "Frühere ausblenden" else "Frühere Zeiten anzeigen",
@@ -406,10 +413,146 @@ private fun TimesCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showPast = !showPast }
-                        .padding(horizontal = 16.dp, vertical = 2.dp),
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
+            Timeline(
+                visible = visible,
+                active = active,
+                nextEntry = nextEntry,
+                now = now,
+                highlight = highlight,
+                showPast = showPast,
+                amber = amber,
+                green = green,
+                onKaraha = onKaraha,
+            )
+        }
+    }
+}
+
+/** Proportional vertical timeline: prayers as nodes on a rail, makruh/nafl as
+ *  coloured bands, with a live "now" dot and progress fill for today. */
+@Composable
+private fun Timeline(
+    visible: List<DayBlock>,
+    active: Pair<Prayer, ZonedDateTime>?,
+    nextEntry: Pair<Prayer, ZonedDateTime>?,
+    now: ZonedDateTime,
+    highlight: Boolean,
+    showPast: Boolean,
+    amber: Color,
+    green: Color,
+    onKaraha: (Pair<String, String>) -> Unit,
+) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val primary = MaterialTheme.colorScheme.primary
+    val track = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+    val nodeFill = MaterialTheme.colorScheme.surface
+
+    val railX = 18.dp
+    val contentStart = 42.dp
+    val contentStartPx = with(density) { contentStart.toPx() }
+
+    // Captured layout: root-Y centre of each prayer's name row + the box top.
+    val nodeCenters = remember { mutableStateMapOf<String, Float>() }
+    var boxTop by remember { mutableStateOf(0f) }
+
+    fun visibleMakruh(m: Makruh?) =
+        m?.takeIf { !highlight || showPast || it.end.isAfter(now) }
+
+    // (epochSecond, boxY, selected) for every measured prayer node.
+    val nodes = visible.mapNotNull { b ->
+        if (b is PrayerBlock) {
+            val y = nodeCenters[b.prayer.name]
+            if (y != null) Triple(b.time.toEpochSecond(), y - boxTop, active != null && b.prayer == active.first) else null
+        } else {
+            null
+        }
+    }
+    fun mapY(epoch: Long): Float {
+        if (nodes.isEmpty()) return 0f
+        if (epoch <= nodes.first().first) return nodes.first().second
+        if (epoch >= nodes.last().first) return nodes.last().second
+        for (i in 1 until nodes.size) {
+            val (t1, y1) = nodes[i - 1]
+            val (t2, y2) = nodes[i]
+            if (epoch <= t2) return y1 + (epoch - t1).toFloat() / (t2 - t1) * (y2 - y1)
+        }
+        return nodes.last().second
+    }
+
+    // Coloured bands for makruh (amber) and nafl (green) windows.
+    data class Band(val start: Long, val end: Long, val color: Color)
+    val bands = buildList {
+        visible.forEach { b ->
+            when (b) {
+                is PrayerBlock -> {
+                    visibleMakruh(b.before)?.let { add(Band(it.start.toEpochSecond(), it.end.toEpochSecond(), amber)) }
+                    visibleMakruh(b.after)?.let { add(Band(it.start.toEpochSecond(), it.end.toEpochSecond(), amber)) }
+                }
+                is NaflBlock -> add(Band(b.start.toEpochSecond(), b.end.toEpochSecond(), green))
+            }
+        }
+    }
+
+    val showNow = highlight && active != null && nodes.isNotEmpty()
+    val nowY = if (showNow) mapY(now.toEpochSecond()) else 0f
+
+    Box(modifier = Modifier
+        .fillMaxWidth()
+        .onGloballyPositioned { boxTop = it.positionInWindow().y }) {
+
+        // Rail, bands, progress fill, nodes and the "now" dot.
+        Canvas(modifier = Modifier.matchParentSize()) {
+            if (nodes.isEmpty()) return@Canvas
+            val x = railX.toPx()
+            val top = nodes.first().second
+            val bottom = nodes.last().second
+            drawLine(track, Offset(x, top), Offset(x, bottom), 4.dp.toPx(), StrokeCap.Round)
+            bands.forEach { band ->
+                drawLine(band.color.copy(alpha = 0.85f), Offset(x, mapY(band.start)), Offset(x, mapY(band.end)), 8.dp.toPx(), StrokeCap.Round)
+            }
+            if (showNow) {
+                drawLine(primary, Offset(x, top), Offset(x, nowY), 4.dp.toPx(), StrokeCap.Round)
+            }
+            nodes.forEach { (_, y, sel) ->
+                if (sel) {
+                    drawCircle(primary, 7.dp.toPx(), Offset(x, y))
+                } else {
+                    drawCircle(nodeFill, 5.dp.toPx(), Offset(x, y))
+                    drawCircle(primary, 5.dp.toPx(), Offset(x, y), style = Stroke(2.dp.toPx()))
+                }
+            }
+            if (showNow) drawCircle(primary, 5.dp.toPx(), Offset(x, nowY))
+        }
+
+        // Floating "now" label, anchored to the live dot on the rail.
+        if (showNow) {
+            Text(
+                text = "jetzt ${now.format(HM)}",
+                style = MaterialTheme.typography.labelMedium,
+                color = primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.offset { IntOffset(contentStartPx.roundToInt(), (nowY - with(density) { 9.dp.toPx() }).roundToInt()) },
+            )
+        }
+
+        // The rows themselves, spaced proportionally to the real time gaps.
+        Column(modifier = Modifier.fillMaxWidth().padding(start = contentStart, end = 8.dp)) {
+            var prev: ZonedDateTime? = null
             visible.forEach { block ->
+                // Gaps grow with the real time distance, but with diminishing
+                // returns (sqrt) and a cap, so long stretches stay compact while
+                // the order "more time = more space" is preserved.
+                val gapDp = prev?.let {
+                    val min = Duration.between(it, block.sortAt).toMinutes().coerceAtLeast(0)
+                    (12.0 + 3.2 * sqrt(min.toDouble())).dp.coerceIn(24.dp, 84.dp)
+                } ?: 4.dp
+                Spacer(Modifier.height(gapDp))
+                prev = block.sortAt
+
                 when (block) {
                     is PrayerBlock -> {
                         val isSelected = active != null && block.prayer == active.first
@@ -427,16 +570,16 @@ private fun TimesCard(
                             isPast -> ", vergangen"
                             else -> ""
                         }
-                        // Hide makruh segments that are already over (unless showing past).
-                        fun visibleMakruh(m: Makruh?) =
-                            m?.takeIf { !highlight || showPast || it.end.isAfter(now) }
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Column {
                             visibleMakruh(block.before)?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(background, RoundedCornerShape(16.dp))
-                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .padding(horizontal = 14.dp, vertical = 9.dp)
+                                    .onGloballyPositioned {
+                                        nodeCenters[block.prayer.name] = it.positionInWindow().y + it.size.height / 2f
+                                    }
                                     .clearAndSetSemantics {
                                         contentDescription = "$name, ${block.time.format(HM)}$status"
                                     },
@@ -447,33 +590,12 @@ private fun TimesCard(
                                 Spacer(Modifier.width(8.dp))
                                 Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
                             }
-                            // Progress of the current period toward the next prayer.
-                            if (isSelected && nextEntry != null && nextEntry.second.isAfter(block.time)) {
-                                val total = Duration.between(block.time, nextEntry.second).seconds.coerceAtLeast(1)
-                                val elapsed = Duration.between(block.time, now).seconds.coerceIn(0, total)
-                                val fraction = elapsed.toFloat() / total
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = 16.dp, end = 16.dp, top = 8.dp)
-                                        .height(6.dp)
-                                        .background(primary.copy(alpha = 0.18f), RoundedCornerShape(3.dp))
-                                        .clearAndSetSemantics {},
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(fraction)
-                                            .height(6.dp)
-                                            .background(primary, RoundedCornerShape(3.dp)),
-                                    )
-                                }
-                            }
                             if (nextEntry?.first == block.prayer) {
                                 Text(
                                     text = remainingText(Duration.between(now, block.time)),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = primary,
-                                    modifier = Modifier.padding(start = 16.dp, top = 2.dp),
+                                    modifier = Modifier.padding(start = 14.dp, top = 2.dp),
                                 )
                             }
                             visibleMakruh(block.after)?.let { MakruhCaption(it, amber, highlight && it.end.isBefore(now), onKaraha) }
@@ -485,8 +607,8 @@ private fun TimesCard(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 32.dp)
-                                .padding(horizontal = 28.dp, vertical = 2.dp)
+                                .heightIn(min = 28.dp)
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
                                 .clearAndSetSemantics {
                                     contentDescription = "${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
                                 },
@@ -523,7 +645,7 @@ private fun MakruhCaption(m: Makruh, amber: Color, faded: Boolean, onKaraha: (Pa
             .fillMaxWidth()
             .heightIn(min = 36.dp)
             .clickable(onClickLabel = "Erklärung anzeigen") { onKaraha(m.explain) }
-            .padding(horizontal = 28.dp, vertical = 4.dp)
+            .padding(horizontal = 4.dp, vertical = 4.dp)
             .semantics(mergeDescendants = true) { contentDescription = desc },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
