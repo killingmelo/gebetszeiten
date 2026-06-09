@@ -9,7 +9,6 @@ import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.notify.PrayerNotifier
 import de.gebetszeiten.prayer.PrayerProvider
-import de.gebetszeiten.sync.WatchSync
 import de.gebetszeiten.widget.NextPrayerWidget
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -47,7 +46,5 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         PrayerNotifier.ensureChannel(app)
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)
-        // Sync the location to a paired watch (local, no-op if none).
-        WatchSync.pushLocation(app, value)
     }
 }

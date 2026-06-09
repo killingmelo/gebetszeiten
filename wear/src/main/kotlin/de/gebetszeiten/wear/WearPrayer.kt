@@ -9,11 +9,11 @@ import java.time.ZonedDateTime
 
 /**
  * Shared prayer-time helpers for the watch. The watch computes locally with the
- * same offline engine as the phone — no per-day sync needed, works without the
- * phone nearby.
+ * same offline engine as the phone — fully standalone, works without the phone.
  *
- * The location is currently a sensible default; syncing it from the paired
- * phone via the Wearable Data Layer is the next step (Phase 2b).
+ * The location comes from [WearSettings] (a sensible default). Phone→watch sync
+ * was dropped to keep the app fully FOSS (no proprietary Play Services) and
+ * F-Droid-eligible; a watch-side location picker can be added later.
  */
 object WearPrayer {
 

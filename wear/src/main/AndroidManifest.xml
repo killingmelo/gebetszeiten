@@ -57,19 +57,6 @@
                 android:value="1800" />
         </service>
 
-        <!-- Receives the location synced from the phone (Data Layer). -->
-        <service
-            android:name=".LocationSyncService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <data
-                    android:scheme="wear"
-                    android:host="*"
-                    android:pathPrefix="/gebetszeiten" />
-            </intent-filter>
-        </service>
-
     </application>
 
 </manifest>

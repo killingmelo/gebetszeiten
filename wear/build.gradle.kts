@@ -55,7 +55,6 @@ dependencies {
     // ListenableFuture implementation for the TileService (avoids full Guava)
     implementation("androidx.concurrent:concurrent-futures:1.2.0")
 
-    // Local phone↔watch sync (Data Layer) + persisted synced location
-    implementation(libs.play.services.wearable)
+    // Persisted location (DataStore)
     implementation(libs.androidx.datastore.preferences)
 }

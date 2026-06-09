@@ -77,7 +77,4 @@ dependencies {
     implementation(libs.androidx.glance.material3)
 
     implementation(libs.androidx.datastore.preferences)
-
-    // Local phone↔watch sync (Data Layer; no internet)
-    implementation(libs.play.services.wearable)
 }
