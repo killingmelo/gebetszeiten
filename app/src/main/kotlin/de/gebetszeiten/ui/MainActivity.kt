@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -61,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -607,42 +609,56 @@ private fun Timeline(
                             isPast -> ", vergangen"
                             else -> ""
                         }
-                        // Lane: current = filled green, next = outlined, else plain.
-                        val laneShape = RoundedCornerShape(16.dp)
-                        var lane = Modifier.fillMaxWidth()
-                        if (isSelected) lane = lane.background(MaterialTheme.colorScheme.primaryContainer, laneShape)
-                        if (isNext) lane = lane.border(1.5.dp, primary, laneShape)
-                        lane = lane.padding(horizontal = 12.dp, vertical = 8.dp)
-
+                        val capture = Modifier.onGloballyPositioned {
+                            nodeCenters["P:${block.prayer.name}"] = it.positionInWindow().y + it.size.height / 2f
+                        }
                         // The makruh chip sits immediately above the prayer pill.
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             mkVisible(block.before)?.let {
                                 MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
                             }
-                            Column(modifier = lane) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .onGloballyPositioned {
-                                            nodeCenters["P:${block.prayer.name}"] = it.positionInWindow().y + it.size.height / 2f
-                                        }
-                                        .clearAndSetSemantics {
-                                            contentDescription = "$name, ${block.time.format(HM)}$status"
+                            if (isSelected) {
+                                // Current prayer: the pill itself fills with the
+                                // progress of the running period; remaining inside.
+                                val nextT = nextEntry?.second
+                                val frac = if (nextT != null && nextT.isAfter(block.time)) {
+                                    Duration.between(block.time, now).seconds.toFloat() /
+                                        Duration.between(block.time, nextT).seconds.coerceAtLeast(1)
+                                } else {
+                                    0f
+                                }
+                                val remMin = nextT?.let { Duration.between(now, it).toMinutes().coerceAtLeast(0) }
+                                ProgressPill(fraction = frac) {
+                                    Column(
+                                        modifier = capture.clearAndSetSemantics {
+                                            contentDescription = "$name, ${block.time.format(HM)}, aktuelles Gebet" +
+                                                (remMin?.let { ", noch ${durationLabel(it)}" } ?: "")
                                         },
+                                    ) {
+                                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                                            Text(name, style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = FontWeight.Bold, softWrap = false)
+                                        }
+                                        remMin?.let {
+                                            Text("läuft · noch ${durationLabel(it)}", style = MaterialTheme.typography.labelMedium, color = foreground.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                        }
+                                    }
+                                }
+                            } else {
+                                var lane = Modifier.fillMaxWidth()
+                                if (isNext) lane = lane.border(1.5.dp, primary, RoundedCornerShape(16.dp))
+                                lane = lane.padding(horizontal = 12.dp, vertical = 9.dp)
+                                Row(
+                                    modifier = lane.then(capture).clearAndSetSemantics {
+                                        contentDescription = "$name, ${block.time.format(HM)}$status"
+                                    },
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Text(name, style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, modifier = Modifier.weight(1f))
                                     Spacer(Modifier.width(8.dp))
                                     Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = weight, softWrap = false)
-                                }
-                                if (isNext) {
-                                    Text(
-                                        text = remainingText(Duration.between(now, block.time)),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = primary,
-                                        modifier = Modifier.padding(top = 2.dp),
-                                    )
                                 }
                             }
                             block.tip?.takeIf { !it.whenCurrent || isSelected }?.let {
@@ -655,35 +671,59 @@ private fun Timeline(
                         val c = green.copy(alpha = if (faded) 0.5f else 1f)
                         if (block.forenoon) {
                             // Duha = forenoon entry (replaces Sunrise). İşrak makruh
-                            // chip sits above it; selected (green pill) when current.
+                            // chip sits above it; when current the pill fills with
+                            // the Duha-window progress (like the prayer pill).
                             val selected = isDuhaNow(block)
-                            val status = if (selected) ", freiwilliges Gebet jetzt möglich" else ", freiwilliges Gebet"
+                            val cap = Modifier.onGloballyPositioned {
+                                nodeCenters["D"] = it.positionInWindow().y + it.size.height / 2f
+                            }
                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 mkVisible(block.before)?.let {
                                     MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
                                 }
-                                var mod = Modifier.fillMaxWidth()
-                                if (selected) mod = mod.background(green.copy(alpha = 0.16f), RoundedCornerShape(16.dp))
-                                mod = mod
-                                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                                    .onGloballyPositioned {
-                                        nodeCenters["D"] = it.positionInWindow().y + it.size.height / 2f
+                                if (selected) {
+                                    val onpc = MaterialTheme.colorScheme.onPrimaryContainer
+                                    val frac = Duration.between(block.start, now).seconds.toFloat() /
+                                        Duration.between(block.start, block.end).seconds.coerceAtLeast(1)
+                                    val remMin = Duration.between(now, block.end).toMinutes().coerceAtLeast(0)
+                                    ProgressPill(fraction = frac) {
+                                        Column(
+                                            modifier = cap.clearAndSetSemantics {
+                                                contentDescription = "${block.label}, freiwilliges Gebet, läuft, noch ${durationLabel(remMin)}"
+                                            },
+                                        ) {
+                                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                                                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(painterResource(R.drawable.ic_nafl), null, tint = onpc, modifier = Modifier.size(16.dp))
+                                                    Spacer(Modifier.width(6.dp))
+                                                    Text(block.label, style = MaterialTheme.typography.titleMedium, color = onpc, fontWeight = FontWeight.Bold)
+                                                }
+                                                Spacer(Modifier.width(8.dp))
+                                                Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = onpc, softWrap = false)
+                                            }
+                                            Text("läuft · noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = onpc.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                        }
                                     }
-                                    .clearAndSetSemantics {
-                                        contentDescription = "${block.label}$status, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+                                } else {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 9.dp)
+                                            .then(cap)
+                                            .clearAndSetSemantics {
+                                                contentDescription = "${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+                                            },
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(painterResource(R.drawable.ic_nafl), null, tint = c, modifier = Modifier.size(15.dp))
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(block.label, style = MaterialTheme.typography.titleMedium, color = c)
+                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.titleMedium, color = c, softWrap = false)
                                     }
-                                Row(
-                                    modifier = mod,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(painterResource(R.drawable.ic_nafl), null, tint = c, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(block.label, style = MaterialTheme.typography.titleMedium, color = c, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-                                    }
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.titleMedium, color = c, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, softWrap = false)
                                 }
                             }
                         } else {
@@ -755,6 +795,28 @@ private fun MakruhChipRow(
                 softWrap = false,
             )
         }
+    }
+}
+
+/** A pill whose background fills left→right to [fraction], used for the current
+ *  prayer so the pill itself visualises how far the running period has advanced. */
+@Composable
+private fun ProgressPill(
+    fraction: Float,
+    fillColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    content: @Composable () -> Unit,
+) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(modifier = Modifier.fillMaxWidth().clip(shape).background(fillColor.copy(alpha = 0.30f))) {
+        Box(modifier = Modifier.matchParentSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .background(fillColor),
+            )
+        }
+        Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) { content() }
     }
 }
 
