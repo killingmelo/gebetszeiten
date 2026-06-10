@@ -121,6 +121,8 @@ object PrayerNotifier {
         // End of the running prayer's window when it is NOT the next prayer's
         // start — only Fajr, which becomes invalid at sunrise.
         activeUntil: java.time.ZonedDateTime? = null,
+        // EXACT precision: live system-rendered chronometer instead of steps.
+        exact: Boolean = false,
     ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
@@ -149,10 +151,18 @@ object PrayerNotifier {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSilent(true)
-            .setShowWhen(false)
             .apply {
+                if (countdown && exact) {
+                    // Live countdown rendered by the system — no app wake-ups.
+                    setWhen(whenMillis)
+                    setUsesChronometer(true)
+                    setChronometerCountDown(true)
+                    setShowWhen(true)
+                } else {
+                    setShowWhen(false)
+                }
                 val lines = mutableListOf<String>()
-                if (countdown) {
+                if (countdown && !exact) {
                     lines += remainingStepLabel(
                         java.time.Duration.between(java.time.Instant.now(), java.time.Instant.ofEpochMilli(whenMillis)),
                     )

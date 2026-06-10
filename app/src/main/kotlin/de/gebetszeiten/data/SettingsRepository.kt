@@ -44,6 +44,9 @@ data class AppSettings(
     val hijriOffsetDays: Int = 0,
     /** Semi-transparent widget background. */
     val widgetTransparent: Boolean = false,
+    /** Remaining-time rendering: STEPS (static floor steps, most frugal) or
+     *  EXACT (system-rendered live countdown). */
+    val remainingPrecision: String = PRECISION_STEPS,
 ) {
     companion object {
         val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")
@@ -53,6 +56,8 @@ data class AppSettings(
         const val THEME_SYSTEM = "SYSTEM"
         const val THEME_LIGHT = "LIGHT"
         const val THEME_DARK = "DARK"
+        const val PRECISION_STEPS = "STEPS"
+        const val PRECISION_EXACT = "EXACT"
 
         // Sensible default until the user picks a location.
         val DEFAULT = AppSettings(
@@ -72,6 +77,7 @@ data class AppSettings(
             themeMode = THEME_SYSTEM,
             hijriOffsetDays = 0,
             widgetTransparent = false,
+            remainingPrecision = PRECISION_STEPS,
         )
     }
 }
@@ -97,6 +103,7 @@ class SettingsRepository(private val context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HIJRI_OFFSET = intPreferencesKey("hijri_offset_days")
         val WIDGET_TRANSPARENT = booleanPreferencesKey("widget_transparent")
+        val REMAINING_PRECISION = stringPreferencesKey("remaining_precision")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -118,6 +125,7 @@ class SettingsRepository(private val context: Context) {
             themeMode = prefs[Keys.THEME_MODE] ?: AppSettings.DEFAULT.themeMode,
             hijriOffsetDays = prefs[Keys.HIJRI_OFFSET] ?: AppSettings.DEFAULT.hijriOffsetDays,
             widgetTransparent = prefs[Keys.WIDGET_TRANSPARENT] ?: AppSettings.DEFAULT.widgetTransparent,
+            remainingPrecision = prefs[Keys.REMAINING_PRECISION] ?: AppSettings.DEFAULT.remainingPrecision,
         )
     }
 
@@ -141,6 +149,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.THEME_MODE] = value.themeMode
             prefs[Keys.HIJRI_OFFSET] = value.hijriOffsetDays
             prefs[Keys.WIDGET_TRANSPARENT] = value.widgetTransparent
+            prefs[Keys.REMAINING_PRECISION] = value.remainingPrecision
         }
     }
 }

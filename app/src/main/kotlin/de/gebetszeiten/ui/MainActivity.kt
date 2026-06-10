@@ -988,6 +988,7 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
     var themeMode by remember(settings.themeMode) { mutableStateOf(settings.themeMode) }
     var hijriOffset by remember(settings.hijriOffsetDays) { mutableStateOf(settings.hijriOffsetDays) }
     var widgetTransparent by remember(settings.widgetTransparent) { mutableStateOf(settings.widgetTransparent) }
+    var precision by remember(settings.remainingPrecision) { mutableStateOf(settings.remainingPrecision) }
     var expanded by remember { mutableStateOf(false) }
     var matches by remember { mutableStateOf<List<City>>(emptyList()) }
     val context = LocalContext.current
@@ -1032,10 +1033,33 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
         ToggleRow("Makruh-Zeiten anzeigen", karaha) { karaha = it }
         ToggleRow("Restzeit anzeigen", countdown) { countdown = it }
         Text(
-            "Zeigt in App, Widget und dauerhafter Benachrichtigung zusätzlich die verbleibende Zeit (abgerundet, z. B. noch 2+ Std). Aus = nur Uhrzeiten.",
+            "Zeigt in App, Widget und dauerhafter Benachrichtigung zusätzlich die verbleibende Zeit. Aus = nur Uhrzeiten.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (countdown) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "Stufen" to AppSettings.PRECISION_STEPS,
+                    "Genau" to AppSettings.PRECISION_EXACT,
+                ).forEach { (label, v) ->
+                    FilterChip(
+                        selected = precision == v,
+                        onClick = { precision = v },
+                        label = { Text(label) },
+                    )
+                }
+            }
+            Text(
+                if (precision == AppSettings.PRECISION_EXACT) {
+                    "Genau: Live-Countdown in Widget und Benachrichtigung, vom System gezeichnet — kostet nur bei sichtbarem Bildschirm minimal Energie."
+                } else {
+                    "Stufen: abgerundet (noch 2+ Std / 20+ Min), in den letzten 10 Minuten minutengenau — komplett ohne laufende Anzeige, am sparsamsten."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         if (OfficialTimesProvider.isOnline) {
             ToggleRow("Offizielle Diyanet-Zeiten (online)", online) { online = it }
         }
@@ -1155,6 +1179,7 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
                         themeMode = themeMode,
                         hijriOffsetDays = hijriOffset,
                         widgetTransparent = widgetTransparent,
+                        remainingPrecision = precision,
                     ),
                 )
             },

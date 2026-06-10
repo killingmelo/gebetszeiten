@@ -9,6 +9,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
+import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
@@ -26,6 +27,7 @@ import androidx.glance.material3.ColorProviders
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import de.gebetszeiten.R
 import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.ui.theme.DarkColors
 import de.gebetszeiten.ui.theme.LightColors
@@ -65,9 +67,15 @@ class NextPrayerWidget : GlanceAppWidget() {
         val name = context.getString(next.prayer.labelRes())
         val time = next.time.format(timeFormat)
         val showCountdown = settings.showCountdown
+        val exact = settings.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT
         // Floor-rounded remaining step ("noch 2+ Std") — static between the
-        // display-step alarms, unlike a chronometer that redraws every second.
-        val remainingLabel = remainingStepLabel(java.time.Duration.between(now, next.time))
+        // display-step alarms; EXACT mode uses the system chronometer instead.
+        val remaining = java.time.Duration.between(now, next.time)
+        val remainingLabel = remainingStepLabel(remaining)
+        val urgent = de.gebetszeiten.prayer.isUrgent(remaining)
+        // elapsedRealtime base for the system-rendered countdown (EXACT mode).
+        val chronoBase = android.os.SystemClock.elapsedRealtime() +
+            (next.time.toInstant().toEpochMilli() - System.currentTimeMillis())
         // Day plan for the large layout: label, time, is-it-the-next-prayer.
         val dayPlan = PrayerProvider.daily(context, settings, now.toLocalDate(), zone)
             .ordered()
@@ -89,7 +97,10 @@ class NextPrayerWidget : GlanceAppWidget() {
                 if (LocalSize.current.width >= FULL.width) {
                     DayPlanContent(dayPlan, header, transparent)
                 } else {
-                    NextPrayerContent(name, time, showCountdown, remainingLabel, transparent)
+                    NextPrayerContent(
+                        context, name, time, showCountdown, exact,
+                        remainingLabel, urgent, chronoBase, transparent,
+                    )
                 }
             }
         }
@@ -109,10 +120,14 @@ class NextPrayerWidget : GlanceAppWidget() {
 
     @Composable
     private fun NextPrayerContent(
+        context: Context,
         name: String,
         time: String,
         showCountdown: Boolean,
+        exact: Boolean,
         remainingLabel: String,
+        urgent: Boolean,
+        chronoBase: Long,
         transparent: Boolean,
     ) {
         Column(
@@ -135,14 +150,24 @@ class NextPrayerWidget : GlanceAppWidget() {
             )
             if (showCountdown) {
                 Spacer(GlanceModifier.height(2.dp))
-                Text(
-                    text = remainingLabel,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.primary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                )
+                if (exact) {
+                    // Live countdown, drawn by the system — no app wake-ups.
+                    val rv = android.widget.RemoteViews(context.packageName, R.layout.widget_chronometer).apply {
+                        setChronometerCountDown(R.id.widget_chrono, true)
+                        setChronometer(R.id.widget_chrono, chronoBase, null, true)
+                    }
+                    AndroidRemoteViews(rv)
+                } else {
+                    Text(
+                        text = remainingLabel,
+                        style = TextStyle(
+                            // Final minutes: urgency colour.
+                            color = if (urgent) GlanceTheme.colors.error else GlanceTheme.colors.primary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                }
             }
         }
     }

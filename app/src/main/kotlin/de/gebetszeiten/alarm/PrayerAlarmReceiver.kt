@@ -57,6 +57,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         stepActive,
                         replacesEntry = false, // step ticks never clear the entry alert
                         activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, stepActive),
+                        exact = settings.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
                     )
                     NextPrayerWidget().updateAll(context)
                     PrayerAlarmScheduler.scheduleNext(context, settings, zone)
@@ -99,6 +100,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     active,
                     replacesEntry = styleSilent,
                     activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, active),
+                    exact = settings.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)

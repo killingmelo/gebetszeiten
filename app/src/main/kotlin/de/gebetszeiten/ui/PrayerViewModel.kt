@@ -56,6 +56,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
             active,
             replacesEntry = value.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT,
             activeUntil = PrayerProvider.activeUntil(app, value, zone, now, active),
+            exact = value.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
         )
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)

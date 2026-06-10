@@ -19,6 +19,13 @@ fun remainingStepLabel(remaining: Duration): String {
         // Precision grows as the prayer approaches — coarse far out is fine,
         // misleading close up is not.
         safe.toMinutes() >= 10 -> "noch ${(safe.toMinutes() / 10) * 10}+ Min"
-        else -> "gleich"
+        // Final 10 minutes: the exact number IS the urgency signal.
+        safe.toMinutes() >= 1 -> "noch ${safe.toMinutes()} Min"
+        else -> "jetzt"
     }
 }
+
+/** True in the final minutes before the prayer — surfaces switch to their
+ *  urgency colour. */
+fun isUrgent(remaining: Duration): Boolean =
+    !remaining.isNegative && remaining.toMinutes() < 10

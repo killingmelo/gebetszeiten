@@ -48,7 +48,10 @@ object PrayerAlarmScheduler {
         now: ZonedDateTime,
     ) {
         val pending = pendingIntent(context, DISPLAY_REQUEST_CODE, ACTION_DISPLAY_STEP)
-        if (!settings.showCountdown) {
+        // EXACT mode renders via system chronometer — no step alarms needed.
+        if (!settings.showCountdown ||
+            settings.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT
+        ) {
             alarmManager.cancel(pending)
             return
         }
@@ -64,8 +67,12 @@ object PrayerAlarmScheduler {
         val nextBoundary = targets.flatMap { target ->
             val targetMs = target.toInstant().toEpochMilli()
             buildList {
-                // 10-minute steps through the final hour (50/40/30/20/10),
+                // Minute steps through the final 10 minutes (urgency: exact
+                // count), then 10-minute steps through the final hour —
                 // matching remainingStepLabel's resolution.
+                for (minute in 1..9) {
+                    add(targetMs - minute * 60_000L)
+                }
                 for (tenMin in 1..5) {
                     add(targetMs - tenMin * 10 * 60_000L)
                 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- System-rendered live countdown for the widget's EXACT mode: the system
+     draws every tick, the app never wakes up for it. -->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_chrono"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="?android:attr/textColorPrimary"
+    android:textSize="24sp"
+    android:textStyle="bold" />

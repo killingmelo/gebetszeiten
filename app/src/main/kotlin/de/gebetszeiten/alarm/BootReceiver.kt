@@ -36,6 +36,7 @@ class BootReceiver : BroadcastReceiver() {
                     active,
                     replacesEntry = settings.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT,
                     activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, active),
+                    exact = settings.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)
