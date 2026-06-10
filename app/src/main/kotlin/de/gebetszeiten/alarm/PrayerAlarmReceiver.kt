@@ -47,14 +47,16 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 if (intent.action == PrayerAlarmScheduler.ACTION_DISPLAY_STEP) {
                     // Remaining-time floor step changed: redraw widget +
                     // persistent line, chain the next step. No notifications.
+                    val stepActive = PrayerProvider.currentlyActive(context, settings, zone, now)
+                        ?.takeIf { it.prayer != Prayer.SUNRISE }
                     PrayerNotifier.updateOngoing(
                         context,
                         PrayerProvider.nextPrayer(context, settings, zone, now),
                         settings.persistentNotification,
                         settings.showCountdown,
-                        PrayerProvider.currentlyActive(context, settings, zone, now)
-                            ?.takeIf { it.prayer != Prayer.SUNRISE },
+                        stepActive,
                         replacesEntry = false, // step ticks never clear the entry alert
+                        activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, stepActive),
                     )
                     NextPrayerWidget().updateAll(context)
                     PrayerAlarmScheduler.scheduleNext(context, settings, zone)
@@ -96,6 +98,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     settings.showCountdown,
                     active,
                     replacesEntry = styleSilent,
+                    activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, active),
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)

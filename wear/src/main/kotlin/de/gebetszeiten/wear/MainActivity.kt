@@ -71,8 +71,10 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.heroName).text = next.first.label()
         val heroTime = findViewById<TextView>(R.id.heroTime)
         if (showRemaining) {
+            // Exact is free here: recomputed on every open. Unified "noch …"
+            // wording across all surfaces.
             val min = java.time.Duration.between(now, next.second).toMinutes().coerceAtLeast(0)
-            heroTime.text = if (min >= 60) "in ${min / 60} Std ${min % 60} Min" else "in $min Min"
+            heroTime.text = if (min >= 60) "noch ${min / 60} Std ${min % 60} Min" else "noch $min Min"
             heroTime.textSize = 24f
         } else {
             heroTime.text = next.second.format(timeFormat)
@@ -88,15 +90,24 @@ class MainActivity : Activity() {
         val list = findViewById<android.widget.LinearLayout>(R.id.upcomingList)
         list.removeAllViews()
         val density = resources.displayMetrics.density
-        upcoming.drop(1).forEach { (prayer, time) ->
-            val tomorrow = time.toLocalDate() != now.toLocalDate()
+        // Upcoming prayers, plus today's sunrise while still ahead — it ends
+        // the Fajr window (the only prayer whose end isn't the next prayer).
+        val rows = buildList {
+            upcoming.drop(1).forEach { (prayer, time) ->
+                val tomorrow = time.toLocalDate() != now.toLocalDate()
+                add((if (tomorrow) "${prayer.label()} · morgen" else prayer.label()) to time)
+            }
+            val sunrise = WearPrayer.today(location, zone).sunrise
+            if (sunrise.isAfter(now)) add("Sonnenaufgang" to sunrise)
+        }.sortedBy { it.second }
+        rows.forEach { (label, time) ->
             list.addView(
                 android.widget.LinearLayout(this).apply {
                     orientation = android.widget.LinearLayout.HORIZONTAL
                     setPadding(0, (5 * density).toInt(), 0, (5 * density).toInt())
                     addView(
                         TextView(context).apply {
-                            text = if (tomorrow) "${prayer.label()} · morgen" else prayer.label()
+                            text = label
                             setTextColor(getColor(R.color.wear_dim))
                             textSize = 14f
                             layoutParams = android.widget.LinearLayout.LayoutParams(

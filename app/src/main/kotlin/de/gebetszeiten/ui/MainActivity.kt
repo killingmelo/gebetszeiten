@@ -95,6 +95,7 @@ import de.gebetszeiten.prayer.IslamicWindows
 import de.gebetszeiten.prayer.KarahaTimes
 import de.gebetszeiten.prayer.NaflTimes
 import de.gebetszeiten.prayer.PrayerProvider
+import de.gebetszeiten.prayer.hijriText
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.ui.theme.GebetszeitenTheme
 import de.gebetszeiten.ui.theme.LocalHighContrast
@@ -104,27 +105,10 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.chrono.HijrahDate
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoField
 import java.util.Locale
 
 private val HM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-
-// Diyanet / Turkish transliteration of the Hijri month names.
-private val HIJRI_MONTHS = arrayOf(
-    "Muharrem", "Safer", "Rebiülevvel", "Rebiülahir", "Cemaziyelevvel", "Cemaziyelahir",
-    "Recep", "Şaban", "Ramazan", "Şevval", "Zilkade", "Zilhicce",
-)
-
-private fun hijriText(date: LocalDate, offsetDays: Int = 0): String {
-    // Moon-sighting correction: shift the civil date before converting.
-    val h = HijrahDate.from(date.plusDays(offsetDays.toLong()))
-    val d = h.get(ChronoField.DAY_OF_MONTH)
-    val m = h.get(ChronoField.MONTH_OF_YEAR)
-    val y = h.get(ChronoField.YEAR)
-    return "$d. ${HIJRI_MONTHS[m - 1]} $y"
-}
 
 private data class DayInfo(
     val times: DailyPrayerTimes,

@@ -21,8 +21,8 @@ android {
         applicationId = "de.gebetszeiten"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.1.7"
+        versionCode = 9
+        versionName = "0.1.8"
     }
 
     flavorDimensions += "connectivity"

@@ -118,6 +118,9 @@ object PrayerNotifier {
         countdown: Boolean,
         activeSince: NextPrayer? = null,
         replacesEntry: Boolean = true,
+        // End of the running prayer's window when it is NOT the next prayer's
+        // start — only Fajr, which becomes invalid at sunrise.
+        activeUntil: java.time.ZonedDateTime? = null,
     ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
@@ -160,6 +163,9 @@ object PrayerNotifier {
                         context.getString(it.prayer.labelRes()),
                         it.time.format(timeFormat),
                     )
+                }
+                activeUntil?.let {
+                    lines += context.getString(R.string.ongoing_until, it.format(timeFormat))
                 }
                 if (lines.isNotEmpty()) setContentText(lines.joinToString(" · "))
             }

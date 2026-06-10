@@ -46,14 +46,16 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         PrayerNotifier.ensureChannel(app)
         val zone = java.time.ZoneId.systemDefault()
         val now = java.time.ZonedDateTime.now(zone)
+        val active = PrayerProvider.currentlyActive(app, value, zone, now)
+            ?.takeIf { it.prayer != de.gebetszeiten.core.prayertimes.Prayer.SUNRISE }
         PrayerNotifier.updateOngoing(
             app,
             PrayerProvider.nextPrayer(app, value, zone, now),
             value.persistentNotification,
             value.showCountdown,
-            PrayerProvider.currentlyActive(app, value, zone, now)
-                ?.takeIf { it.prayer != de.gebetszeiten.core.prayertimes.Prayer.SUNRISE },
+            active,
             replacesEntry = value.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT,
+            activeUntil = PrayerProvider.activeUntil(app, value, zone, now, active),
         )
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)

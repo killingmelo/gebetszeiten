@@ -43,6 +43,21 @@ object PrayerProvider {
         return candidate
     }
 
+    /** End of the running prayer's window when it is NOT the next prayer's
+     *  start — only Fajr, whose window ends (invalidates) at sunrise. */
+    suspend fun activeUntil(
+        context: Context,
+        settings: AppSettings,
+        zone: ZoneId,
+        now: ZonedDateTime,
+        active: NextPrayer?,
+    ): ZonedDateTime? =
+        if (active?.prayer == de.gebetszeiten.core.prayertimes.Prayer.FAJR) {
+            daily(context, settings, now.toLocalDate(), zone).sunrise
+        } else {
+            null
+        }
+
     suspend fun currentlyActive(context: Context, settings: AppSettings, zone: ZoneId, now: ZonedDateTime): NextPrayer? {
         val today = daily(context, settings, now.toLocalDate(), zone)
         return today.ordered()

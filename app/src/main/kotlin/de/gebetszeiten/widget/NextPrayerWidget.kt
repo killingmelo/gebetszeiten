@@ -30,6 +30,7 @@ import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.ui.theme.DarkColors
 import de.gebetszeiten.ui.theme.LightColors
 import de.gebetszeiten.prayer.PrayerProvider
+import de.gebetszeiten.prayer.hijriTextShort
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.prayer.remainingStepLabel
 import java.time.ZoneId
@@ -79,11 +80,14 @@ class NextPrayerWidget : GlanceAppWidget() {
             }
 
         val transparent = settings.widgetTransparent
+        // Header for the large layout: makes a silently wrong city visible and
+        // doubles as the Hijri date line.
+        val header = "${settings.city} · ${hijriTextShort(now.toLocalDate(), settings.hijriOffsetDays)}"
 
         provideContent {
             GlanceTheme(colors = ColorProviders(light = LightColors, dark = DarkColors)) {
                 if (LocalSize.current.width >= FULL.width) {
-                    DayPlanContent(dayPlan, transparent)
+                    DayPlanContent(dayPlan, header, transparent)
                 } else {
                     NextPrayerContent(name, time, showCountdown, remainingLabel, transparent)
                 }
@@ -119,46 +123,23 @@ class NextPrayerWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.Start,
         ) {
+            // One line, no label: the user placed this widget knowingly, and
+            // "um/noch" carries the future semantics — gains font size instead.
             Text(
-                text = "Nächstes Gebet",
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-            )
-            Spacer(GlanceModifier.height(3.dp))
-            Text(
-                text = name,
+                text = "$name · $time",
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurface,
-                    fontSize = 17.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                 ),
             )
-            Spacer(GlanceModifier.height(1.dp))
             if (showCountdown) {
+                Spacer(GlanceModifier.height(2.dp))
                 Text(
                     text = remainingLabel,
                     style = TextStyle(
                         color = GlanceTheme.colors.primary,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                )
-                Text(
-                    text = "um $time",
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 12.sp,
-                    ),
-                )
-            } else {
-                Text(
-                    text = time,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.primary,
-                        fontSize = 30.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                     ),
                 )
@@ -168,7 +149,7 @@ class NextPrayerWidget : GlanceAppWidget() {
 
     /** All six times of today as a 3×2 grid; the next prayer is accented. */
     @Composable
-    private fun DayPlanContent(entries: List<DayEntry>, transparent: Boolean) {
+    private fun DayPlanContent(entries: List<DayEntry>, header: String, transparent: Boolean) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -176,6 +157,15 @@ class NextPrayerWidget : GlanceAppWidget() {
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Text(
+                text = header,
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+            Spacer(GlanceModifier.height(8.dp))
             entries.chunked(3).forEachIndexed { rowIndex, row ->
                 if (rowIndex > 0) Spacer(GlanceModifier.height(10.dp))
                 Row(modifier = GlanceModifier.fillMaxWidth()) {
