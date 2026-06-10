@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Gebetszeiten</string>
     <string name="tile_label">Nächstes Gebet</string>
+    <string name="pick_city">Ort wählen</string>
 </resources>

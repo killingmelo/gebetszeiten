@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -31,6 +32,10 @@ data class AppSettings(
     val highContrast: Boolean = false,
     /** Prayer names (Prayer.name) that fire a silent reminder notification. */
     val reminders: Set<String> = DEFAULT_REMINDERS,
+    /** Minutes before a prayer for an additional heads-up notification (0 = off). */
+    val reminderLeadMinutes: Int = 0,
+    /** Persistent silent "next prayer" notification (lock-screen visible). */
+    val persistentNotification: Boolean = false,
 ) {
     companion object {
         val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")
@@ -47,6 +52,8 @@ data class AppSettings(
             fontScale = 1f,
             highContrast = false,
             reminders = DEFAULT_REMINDERS,
+            reminderLeadMinutes = 0,
+            persistentNotification = false,
         )
     }
 }
@@ -66,6 +73,8 @@ class SettingsRepository(private val context: Context) {
         val FONT_SCALE = doublePreferencesKey("font_scale")
         val HIGH_CONTRAST = booleanPreferencesKey("high_contrast")
         val REMINDERS = stringSetPreferencesKey("reminders")
+        val REMINDER_LEAD = intPreferencesKey("reminder_lead_minutes")
+        val PERSISTENT_NOTIFICATION = booleanPreferencesKey("persistent_notification")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -80,6 +89,9 @@ class SettingsRepository(private val context: Context) {
             fontScale = (prefs[Keys.FONT_SCALE] ?: AppSettings.DEFAULT.fontScale.toDouble()).toFloat(),
             highContrast = prefs[Keys.HIGH_CONTRAST] ?: AppSettings.DEFAULT.highContrast,
             reminders = prefs[Keys.REMINDERS] ?: AppSettings.DEFAULT.reminders,
+            reminderLeadMinutes = prefs[Keys.REMINDER_LEAD] ?: AppSettings.DEFAULT.reminderLeadMinutes,
+            persistentNotification = prefs[Keys.PERSISTENT_NOTIFICATION]
+                ?: AppSettings.DEFAULT.persistentNotification,
         )
     }
 
@@ -97,6 +109,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.FONT_SCALE] = value.fontScale.toDouble()
             prefs[Keys.HIGH_CONTRAST] = value.highContrast
             prefs[Keys.REMINDERS] = value.reminders
+            prefs[Keys.REMINDER_LEAD] = value.reminderLeadMinutes
+            prefs[Keys.PERSISTENT_NOTIFICATION] = value.persistentNotification
         }
     }
 }

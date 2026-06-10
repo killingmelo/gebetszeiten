@@ -24,6 +24,11 @@
             </intent-filter>
         </activity>
 
+        <!-- On-watch city picker (opened from the main screen). -->
+        <activity
+            android:name=".CityPickerActivity"
+            android:exported="false" />
+
         <!-- Swipeable tile -->
         <service
             android:name=".PrayerTileService"

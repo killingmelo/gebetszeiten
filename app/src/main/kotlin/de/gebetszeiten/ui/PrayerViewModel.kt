@@ -44,6 +44,12 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         // Online flavor: refresh the official-times cache (no-op offline).
         PrayerProvider.refreshOfficial(app, value)
         PrayerNotifier.ensureChannel(app)
+        val zone = java.time.ZoneId.systemDefault()
+        PrayerNotifier.updateOngoing(
+            app,
+            PrayerProvider.nextPrayer(app, value, zone, java.time.ZonedDateTime.now(zone)),
+            value.persistentNotification,
+        )
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)
     }

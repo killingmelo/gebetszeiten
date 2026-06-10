@@ -28,14 +28,43 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
             try {
                 val settings = SettingsRepository(context).current()
                 val zone = ZoneId.systemDefault()
-                val active = PrayerProvider.currentlyActive(context, settings, zone, ZonedDateTime.now(zone))
+                val now = ZonedDateTime.now(zone)
+
+                if (intent.action == PrayerAlarmScheduler.ACTION_PRE_REMINDER) {
+                    // Heads-up before the prayer; the transition chain stays untouched.
+                    val upcoming = PrayerProvider.nextPrayer(context, settings, zone, now)
+                    if (upcoming.prayer.name in settings.reminders) {
+                        PrayerNotifier.notifyPre(context, upcoming, settings.reminderLeadMinutes)
+                    }
+                    return@launch
+                }
+
+                val active = PrayerProvider.currentlyActive(context, settings, zone, now)
                 // Sunrise is no prayer; otherwise notify only if the user enabled
                 // a reminder for this prayer.
                 if (active != null && active.prayer != Prayer.SUNRISE &&
                     active.prayer.name in settings.reminders
                 ) {
-                    PrayerNotifier.notifyPrayer(context, active)
+                    // Next transition (may be sunrise) ends this notification;
+                    // the text line always names a real prayer.
+                    val transition = PrayerProvider.next(context, settings, zone, now)
+                    val nextPrayer = if (transition.prayer == Prayer.SUNRISE) {
+                        PrayerProvider.next(context, settings, zone, transition.time)
+                    } else {
+                        transition
+                    }
+                    PrayerNotifier.notifyPrayer(
+                        context,
+                        active,
+                        nextPrayer,
+                        transition.time.toInstant().toEpochMilli(),
+                    )
                 }
+                PrayerNotifier.updateOngoing(
+                    context,
+                    PrayerProvider.nextPrayer(context, settings, zone, now),
+                    settings.persistentNotification,
+                )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)
             } finally {

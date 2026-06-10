@@ -24,6 +24,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // Tapping the city opens the picker; times refresh in onStart on return.
+        findViewById<TextView>(R.id.cityLabel).setOnClickListener {
+            startActivity(android.content.Intent(this, CityPickerActivity::class.java))
+        }
     }
 
     // Recompute on every show so the next prayer is always current without any
@@ -33,9 +37,11 @@ class MainActivity : Activity() {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
         val location = runBlocking { WearSettings.location(applicationContext) }
+        val city = runBlocking { WearSettings.city(applicationContext) }
         val next = WearPrayer.next(location, zone, now)
 
         findViewById<TextView>(R.id.heroName).text = next.first.label()
         findViewById<TextView>(R.id.heroTime).text = next.second.format(timeFormat)
+        findViewById<TextView>(R.id.cityLabel).text = city
     }
 }

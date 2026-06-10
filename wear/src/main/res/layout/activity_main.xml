@@ -38,5 +38,13 @@
             android:textColor="@color/wear_text"
             android:textSize="42sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/cityLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/wear_dim"
+            android:textSize="12sp" />
     </LinearLayout>
 </androidx.wear.widget.BoxInsetLayout>

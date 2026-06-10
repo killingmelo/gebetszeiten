@@ -970,6 +970,8 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
     var contrast by remember(settings.highContrast) { mutableStateOf(settings.highContrast) }
     var fontScale by remember(settings.fontScale) { mutableStateOf(settings.fontScale) }
     var reminders by remember(settings.reminders) { mutableStateOf(settings.reminders) }
+    var leadMinutes by remember(settings.reminderLeadMinutes) { mutableStateOf(settings.reminderLeadMinutes) }
+    var persistent by remember(settings.persistentNotification) { mutableStateOf(settings.persistentNotification) }
     var expanded by remember { mutableStateOf(false) }
     var matches by remember { mutableStateOf<List<City>>(emptyList()) }
     val context = LocalContext.current
@@ -1032,6 +1034,31 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
             }
         }
 
+        Text("Vorlauf", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            "Zusätzliche stille Erinnerung einige Minuten vor der Gebetszeit.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Aus" to 0, "5 Min" to 5, "10 Min" to 10, "15 Min" to 15, "30 Min" to 30).forEach { (label, v) ->
+                FilterChip(
+                    selected = leadMinutes == v,
+                    onClick = { leadMinutes = v },
+                    label = { Text(label) },
+                )
+            }
+        }
+
+        ToggleRow("Dauerhafte Anzeige (Sperrbildschirm)", persistent) { persistent = it }
+        Text(
+            "Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet und Restzeit — sichtbar auch auf dem Sperrbildschirm. Wird vom System gezeichnet, kostet keinen zusätzlichen Akku.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        BatteryOptimizationCard()
+
         Button(
             onClick = {
                 val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
@@ -1047,6 +1074,8 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
                         highContrast = contrast,
                         fontScale = fontScale,
                         reminders = reminders,
+                        reminderLeadMinutes = leadMinutes,
+                        persistentNotification = persistent,
                     ),
                 )
             },
@@ -1068,6 +1097,57 @@ private fun FontSizeSelector(value: Float, onChange: (Float) -> Unit) {
                     onClick = { onChange(v) },
                     label = { Text(label) },
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Shown only while the app is still subject to battery optimization. OEM power
+ * managers (especially OnePlus/ColorOS) may otherwise swallow the exact alarms
+ * that drive reminders and the widget.
+ */
+@Composable
+private fun BatteryOptimizationCard() {
+    val context = LocalContext.current
+    var exempt by remember {
+        mutableStateOf(
+            context.getSystemService(android.os.PowerManager::class.java)
+                .isIgnoringBatteryOptimizations(context.packageName),
+        )
+    }
+    LaunchedEffect(Unit) {
+        // Re-check while visible so the card disappears right after the user
+        // grants the exemption in the system dialog. Runs only while the
+        // settings sheet is open.
+        while (true) {
+            exempt = context.getSystemService(android.os.PowerManager::class.java)
+                .isIgnoringBatteryOptimizations(context.packageName)
+            delay(2000)
+        }
+    }
+    if (exempt) return
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Zuverlässige Erinnerungen", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "Damit Erinnerungen und Widget pünktlich bleiben, sollte die Akku-Optimierung für diese App deaktiviert werden. Die App wacht trotzdem nur zu den Gebetszeiten auf.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Button(onClick = {
+                context.startActivity(
+                    android.content.Intent(
+                        android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        android.net.Uri.parse("package:${context.packageName}"),
+                    ),
+                )
+            }) {
+                Text("Akku-Optimierung deaktivieren")
             }
         }
     }

@@ -34,6 +34,15 @@ object PrayerProvider {
         return NextPrayer(first.first, first.second)
     }
 
+    /** Next actual prayer — sunrise (not a prayer) is skipped. */
+    suspend fun nextPrayer(context: Context, settings: AppSettings, zone: ZoneId, now: ZonedDateTime): NextPrayer {
+        var candidate = next(context, settings, zone, now)
+        if (candidate.prayer == de.gebetszeiten.core.prayertimes.Prayer.SUNRISE) {
+            candidate = next(context, settings, zone, candidate.time)
+        }
+        return candidate
+    }
+
     suspend fun currentlyActive(context: Context, settings: AppSettings, zone: ZoneId, now: ZonedDateTime): NextPrayer? {
         val today = daily(context, settings, now.toLocalDate(), zone)
         return today.ordered()

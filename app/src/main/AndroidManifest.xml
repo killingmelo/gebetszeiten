@@ -11,6 +11,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Lets the user exempt the app from battery optimization via a single
+         dialog, so OEM power managers don't swallow the exact alarms. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- Pulled in transitively by Glance/WorkManager; we never touch the
          network, so remove it to keep the permission set minimal. -->
@@ -52,12 +55,14 @@
             android:name=".alarm.PrayerAlarmReceiver"
             android:exported="false" />
 
-        <!-- Reschedules alarms after reboot / time / timezone changes. -->
+        <!-- Reschedules alarms after reboot / app update / time / timezone
+             changes (Android clears all alarms in each of these cases). -->
         <receiver
             android:name=".alarm.BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.TIME_SET" />
             </intent-filter>
