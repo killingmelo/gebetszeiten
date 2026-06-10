@@ -24,12 +24,15 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val settings = SettingsRepository(context).current()
                 val zone = ZoneId.systemDefault()
+                val now = ZonedDateTime.now(zone)
                 PrayerNotifier.ensureChannel(context)
                 PrayerNotifier.updateOngoing(
                     context,
-                    PrayerProvider.nextPrayer(context, settings, zone, ZonedDateTime.now(zone)),
+                    PrayerProvider.nextPrayer(context, settings, zone, now),
                     settings.persistentNotification,
                     settings.showCountdown,
+                    PrayerProvider.currentlyActive(context, settings, zone, now)
+                        ?.takeIf { it.prayer != de.gebetszeiten.core.prayertimes.Prayer.SUNRISE },
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)

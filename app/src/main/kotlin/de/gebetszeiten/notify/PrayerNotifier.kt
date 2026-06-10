@@ -70,9 +70,17 @@ object PrayerNotifier {
      * Persistent silent "next prayer" line for shade + lock screen. With
      * [countdown] the remaining time is rendered by the system (chronometer);
      * either way the app posts this only once per prayer transition — no extra
-     * wake-ups.
+     * wake-ups. While enabled it REPLACES the per-prayer entry notification
+     * (one combined line instead of two redundant ones); [activeSince] carries
+     * the entry info ("Asr seit 17:37") as the second line.
      */
-    fun updateOngoing(context: Context, next: NextPrayer?, enabled: Boolean, countdown: Boolean) {
+    fun updateOngoing(
+        context: Context,
+        next: NextPrayer?,
+        enabled: Boolean,
+        countdown: Boolean,
+        activeSince: NextPrayer? = null,
+    ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
             manager.cancel(ONGOING_ID)
@@ -80,6 +88,9 @@ object PrayerNotifier {
         }
         if (!canPost(context)) return
         ensureChannel(context)
+        // One combined line: a lingering per-prayer entry notification would be
+        // redundant next to it, so clear it.
+        manager.cancel(NOTIFICATION_ID)
         val whenMillis = next.time.toInstant().toEpochMilli()
         val notification = NotificationCompat.Builder(context, ONGOING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -97,6 +108,15 @@ object PrayerNotifier {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSilent(true)
             .apply {
+                activeSince?.let {
+                    setContentText(
+                        context.getString(
+                            R.string.ongoing_since,
+                            context.getString(it.prayer.labelRes()),
+                            it.time.format(timeFormat),
+                        ),
+                    )
+                }
                 if (countdown) {
                     setWhen(whenMillis)
                     setUsesChronometer(true)

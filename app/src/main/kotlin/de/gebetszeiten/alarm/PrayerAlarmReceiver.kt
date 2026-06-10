@@ -40,10 +40,13 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 }
 
                 val active = PrayerProvider.currentlyActive(context, settings, zone, now)
+                    ?.takeIf { it.prayer != Prayer.SUNRISE }
                 // Sunrise is no prayer; otherwise notify only if the user enabled
-                // a reminder for this prayer.
-                if (active != null && active.prayer != Prayer.SUNRISE &&
-                    active.prayer.name in settings.reminders
+                // a reminder for this prayer. With the persistent notification on,
+                // that single line carries the entry info instead — a separate
+                // entry notification would be redundant.
+                if (active != null && active.prayer.name in settings.reminders &&
+                    !settings.persistentNotification
                 ) {
                     // Next transition (may be sunrise) ends this notification;
                     // the text line always names a real prayer.
@@ -65,6 +68,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     PrayerProvider.nextPrayer(context, settings, zone, now),
                     settings.persistentNotification,
                     settings.showCountdown,
+                    active,
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)
