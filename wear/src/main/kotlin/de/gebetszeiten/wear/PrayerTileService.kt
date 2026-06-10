@@ -41,12 +41,16 @@ class PrayerTileService : TileService() {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
         val location = runBlocking { WearSettings.location(applicationContext) }
-        val upcoming = WearPrayer.upcoming(location, zone, now, count = 6)
+        // One extra entry so every shown prayer knows its successor ("danach").
+        val upcoming = WearPrayer.upcoming(location, zone, now, count = 7)
 
         val timeline = TimelineBuilders.Timeline.Builder()
         var start = now
-        for ((prayer, time) in upcoming) {
-            val layout = layout(requestParams.deviceConfiguration, prayer.label(), time.format(timeFormat))
+        for ((index, entry) in upcoming.take(6).withIndex()) {
+            val (prayer, time) = entry
+            val after = upcoming.getOrNull(index + 1)
+                ?.let { "danach: ${it.first.label()} ${it.second.format(timeFormat)}" }
+            val layout = layout(requestParams.deviceConfiguration, prayer.label(), time.format(timeFormat), after)
             timeline.addTimelineEntry(
                 TimelineBuilders.TimelineEntry.Builder()
                     .setValidity(
@@ -82,6 +86,7 @@ class PrayerTileService : TileService() {
         device: DeviceParametersBuilders.DeviceParameters,
         name: String,
         time: String,
+        after: String?,
     ): LayoutElementBuilders.LayoutElement {
         // Tapping the tile opens the watch app.
         val openApp = ModifiersBuilders.Clickable.Builder()
@@ -115,6 +120,16 @@ class PrayerTileService : TileService() {
                     .setColor(ColorBuilders.argb(0xFFFFFFFF.toInt()))
                     .build(),
             )
+            .apply {
+                if (after != null) {
+                    addContent(
+                        Text.Builder(this@PrayerTileService, after)
+                            .setTypography(Typography.TYPOGRAPHY_CAPTION2)
+                            .setColor(ColorBuilders.argb(0xFF78909C.toInt()))
+                            .build(),
+                    )
+                }
+            }
             .build()
         return PrimaryLayout.Builder(device).setContent(column).build()
     }

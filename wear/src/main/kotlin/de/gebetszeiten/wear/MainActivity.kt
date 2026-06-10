@@ -55,7 +55,9 @@ class MainActivity : Activity() {
         val location = runBlocking { WearSettings.location(applicationContext) }
         val city = runBlocking { WearSettings.city(applicationContext) }
         val showRemaining = runBlocking { WearSettings.showRemaining(applicationContext) }
-        val next = WearPrayer.next(location, zone, now)
+        // Next prayer (hero) + the following ones (overview list below).
+        val upcoming = WearPrayer.upcoming(location, zone, now, count = 6)
+        val next = upcoming.first()
 
         findViewById<TextView>(R.id.heroName).text = next.first.label()
         val heroTime = findViewById<TextView>(R.id.heroTime)
@@ -70,5 +72,35 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.cityLabel).text = city
         findViewById<TextView>(R.id.modeLabel).text =
             if (showRemaining) "Anzeige: Restzeit" else "Anzeige: Uhrzeit"
+
+        val list = findViewById<android.widget.LinearLayout>(R.id.upcomingList)
+        list.removeAllViews()
+        val density = resources.displayMetrics.density
+        upcoming.drop(1).forEach { (prayer, time) ->
+            val tomorrow = time.toLocalDate() != now.toLocalDate()
+            list.addView(
+                android.widget.LinearLayout(this).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL
+                    setPadding(0, (5 * density).toInt(), 0, (5 * density).toInt())
+                    addView(
+                        TextView(context).apply {
+                            text = if (tomorrow) "${prayer.label()} · morgen" else prayer.label()
+                            setTextColor(getColor(R.color.wear_dim))
+                            textSize = 14f
+                            layoutParams = android.widget.LinearLayout.LayoutParams(
+                                0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
+                            )
+                        },
+                    )
+                    addView(
+                        TextView(context).apply {
+                            text = time.format(timeFormat)
+                            setTextColor(getColor(R.color.wear_text))
+                            textSize = 14f
+                        },
+                    )
+                },
+            )
+        }
     }
 }
