@@ -1,5 +1,7 @@
 package de.gebetszeiten.wear
 
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationText
 import androidx.wear.watchface.complications.data.ComplicationType
@@ -65,7 +67,18 @@ class PrayerComplicationService : SuspendingComplicationDataSourceService() {
         val builder = ShortTextComplicationData.Builder(
             text = text,
             contentDescription = PlainComplicationText.Builder("Nächstes Gebet $title $timeStr").build(),
-        ).setTitle(PlainComplicationText.Builder(title).build())
+        )
+            .setTitle(PlainComplicationText.Builder(title).build())
+            // Tapping the complication opens the watch app.
+            .setTapAction(
+                PendingIntent.getActivity(
+                    this,
+                    0,
+                    Intent(this, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
         if (validUntil != null) builder.setValidTimeRange(validUntil)
         return builder.build()
     }

@@ -1,8 +1,10 @@
 package de.gebetszeiten.wear
 
+import androidx.wear.protolayout.ActionBuilders
 import androidx.wear.protolayout.ColorBuilders
 import androidx.wear.protolayout.DeviceParametersBuilders
 import androidx.wear.protolayout.LayoutElementBuilders
+import androidx.wear.protolayout.ModifiersBuilders
 import androidx.wear.protolayout.ResourceBuilders
 import androidx.wear.protolayout.TimelineBuilders
 import androidx.wear.protolayout.material.Text
@@ -81,7 +83,26 @@ class PrayerTileService : TileService() {
         name: String,
         time: String,
     ): LayoutElementBuilders.LayoutElement {
+        // Tapping the tile opens the watch app.
+        val openApp = ModifiersBuilders.Clickable.Builder()
+            .setId("open_app")
+            .setOnClick(
+                ActionBuilders.LaunchAction.Builder()
+                    .setAndroidActivity(
+                        ActionBuilders.AndroidActivity.Builder()
+                            .setPackageName(packageName)
+                            .setClassName(MainActivity::class.java.name)
+                            .build(),
+                    )
+                    .build(),
+            )
+            .build()
         val column = LayoutElementBuilders.Column.Builder()
+            .setModifiers(
+                ModifiersBuilders.Modifiers.Builder()
+                    .setClickable(openApp)
+                    .build(),
+            )
             .addContent(
                 Text.Builder(this, name)
                     .setTypography(Typography.TYPOGRAPHY_CAPTION1)
