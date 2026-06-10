@@ -28,20 +28,47 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.cityLabel).setOnClickListener {
             startActivity(android.content.Intent(this, CityPickerActivity::class.java))
         }
+        // Tapping the mode line (or the big value) flips clock time ⇄ remaining.
+        val toggle = { _: android.view.View ->
+            val next = runBlocking { !WearSettings.showRemaining(applicationContext) }
+            runBlocking { WearSettings.saveShowRemaining(applicationContext, next) }
+            render()
+            // The complication mirrors the mode — refresh it once.
+            androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
+                .create(this, android.content.ComponentName(this, PrayerComplicationService::class.java))
+                .requestUpdateAll()
+        }
+        findViewById<TextView>(R.id.modeLabel).setOnClickListener(toggle)
+        findViewById<TextView>(R.id.heroTime).setOnClickListener(toggle)
     }
 
     // Recompute on every show so the next prayer is always current without any
     // background work or timers.
     override fun onStart() {
         super.onStart()
+        render()
+    }
+
+    private fun render() {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
         val location = runBlocking { WearSettings.location(applicationContext) }
         val city = runBlocking { WearSettings.city(applicationContext) }
+        val showRemaining = runBlocking { WearSettings.showRemaining(applicationContext) }
         val next = WearPrayer.next(location, zone, now)
 
         findViewById<TextView>(R.id.heroName).text = next.first.label()
-        findViewById<TextView>(R.id.heroTime).text = next.second.format(timeFormat)
+        val heroTime = findViewById<TextView>(R.id.heroTime)
+        if (showRemaining) {
+            val min = java.time.Duration.between(now, next.second).toMinutes().coerceAtLeast(0)
+            heroTime.text = if (min >= 60) "in ${min / 60} Std ${min % 60} Min" else "in $min Min"
+            heroTime.textSize = 24f
+        } else {
+            heroTime.text = next.second.format(timeFormat)
+            heroTime.textSize = 42f
+        }
         findViewById<TextView>(R.id.cityLabel).text = city
+        findViewById<TextView>(R.id.modeLabel).text =
+            if (showRemaining) "Anzeige: Restzeit" else "Anzeige: Uhrzeit"
     }
 }

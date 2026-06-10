@@ -29,6 +29,7 @@ class BootReceiver : BroadcastReceiver() {
                     context,
                     PrayerProvider.nextPrayer(context, settings, zone, ZonedDateTime.now(zone)),
                     settings.persistentNotification,
+                    settings.showCountdown,
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)

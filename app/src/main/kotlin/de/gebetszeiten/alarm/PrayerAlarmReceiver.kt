@@ -64,6 +64,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     context,
                     PrayerProvider.nextPrayer(context, settings, zone, now),
                     settings.persistentNotification,
+                    settings.showCountdown,
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)

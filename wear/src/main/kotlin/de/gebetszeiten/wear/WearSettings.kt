@@ -3,6 +3,7 @@ package de.gebetszeiten.wear
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -19,6 +20,7 @@ object WearSettings {
     private val LAT = doublePreferencesKey("lat")
     private val LNG = doublePreferencesKey("lng")
     private val CITY = stringPreferencesKey("city")
+    private val SHOW_REMAINING = booleanPreferencesKey("show_remaining")
     private val DEFAULT = GeoLocation(49.4521, 11.0767) // Nürnberg
     private const val DEFAULT_CITY = "Nürnberg"
 
@@ -31,6 +33,14 @@ object WearSettings {
 
     suspend fun city(context: Context): String =
         context.locationStore.data.first()[CITY] ?: DEFAULT_CITY
+
+    /** Show remaining time instead of the clock time (app + complication). */
+    suspend fun showRemaining(context: Context): Boolean =
+        context.locationStore.data.first()[SHOW_REMAINING] ?: false
+
+    suspend fun saveShowRemaining(context: Context, value: Boolean) {
+        context.locationStore.edit { it[SHOW_REMAINING] = value }
+    }
 
     suspend fun save(context: Context, city: String, latitude: Double, longitude: Double) {
         context.locationStore.edit {

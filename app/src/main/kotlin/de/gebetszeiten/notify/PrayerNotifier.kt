@@ -67,11 +67,12 @@ object PrayerNotifier {
     )
 
     /**
-     * Persistent silent "next prayer" line for shade + lock screen. The
-     * count-down is rendered by the system (chronometer), so the app posts
-     * this only once per prayer transition — no extra wake-ups.
+     * Persistent silent "next prayer" line for shade + lock screen. With
+     * [countdown] the remaining time is rendered by the system (chronometer);
+     * either way the app posts this only once per prayer transition — no extra
+     * wake-ups.
      */
-    fun updateOngoing(context: Context, next: NextPrayer?, enabled: Boolean) {
+    fun updateOngoing(context: Context, next: NextPrayer?, enabled: Boolean, countdown: Boolean) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
             manager.cancel(ONGOING_ID)
@@ -90,15 +91,21 @@ object PrayerNotifier {
                 ),
             )
             .setContentIntent(contentIntent(context))
-            .setWhen(whenMillis)
-            .setUsesChronometer(true)
-            .setChronometerCountDown(true)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSilent(true)
-            .setShowWhen(true)
+            .apply {
+                if (countdown) {
+                    setWhen(whenMillis)
+                    setUsesChronometer(true)
+                    setChronometerCountDown(true)
+                    setShowWhen(true)
+                } else {
+                    setShowWhen(false)
+                }
+            }
             .build()
         manager.notify(ONGOING_ID, notification)
     }

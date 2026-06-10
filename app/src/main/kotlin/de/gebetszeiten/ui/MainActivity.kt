@@ -217,6 +217,7 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
                     now = ZonedDateTime.now(zone),
                     highlight = isToday,
                     showKaraha = settings.showKaraha,
+                    showRemaining = settings.showCountdown,
                     onKaraha = { karahaInfo = it },
                 )
             }
@@ -369,6 +370,7 @@ private fun TimesCard(
     now: ZonedDateTime,
     highlight: Boolean,
     showKaraha: Boolean,
+    showRemaining: Boolean,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
@@ -490,7 +492,8 @@ private fun TimesCard(
                 amber = amber,
                 green = green,
                 nextFajr = info.nextFajr,
-                showNextCountdown = !anyCurrent,
+                showNextCountdown = !anyCurrent && showRemaining,
+                showRemaining = showRemaining,
                 pillMakruh = pillMakruh,
                 onKaraha = onKaraha,
             )
@@ -539,6 +542,7 @@ private fun Timeline(
     green: Color,
     nextFajr: ZonedDateTime,
     showNextCountdown: Boolean,
+    showRemaining: Boolean,
     pillMakruh: MakruhBlock?,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
@@ -688,7 +692,9 @@ private fun Timeline(
                                             Spacer(Modifier.width(8.dp))
                                             Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = FontWeight.Bold, softWrap = false)
                                         }
-                                        Text("läuft · noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = foreground.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                        if (showRemaining) {
+                                            Text("noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = foreground.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                        }
                                     }
                                 }
                             } else {
@@ -749,7 +755,7 @@ private fun Timeline(
                                     ProgressPill(fraction = frac) {
                                         Column(
                                             modifier = cap.clearAndSetSemantics {
-                                                contentDescription = "${block.label}, freiwilliges Gebet, läuft, noch ${durationLabel(remMin)}"
+                                                contentDescription = "${block.label}, freiwilliges Gebet, noch ${durationLabel(remMin)}"
                                             },
                                         ) {
                                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -761,7 +767,9 @@ private fun Timeline(
                                                 Spacer(Modifier.width(8.dp))
                                                 Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = onpc, softWrap = false)
                                             }
-                                            Text("läuft · noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = onpc.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                            if (showRemaining) {
+                                                Text("noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = onpc.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                            }
                                         }
                                     }
                                 } else {
@@ -828,7 +836,7 @@ private fun MakruhChipRow(
 ) {
     val c = amber.copy(alpha = if (faded) 0.55f else 1f)
     val desc = "Makruh-Zeit ${block.label}, ${block.start.format(HM)} bis ${block.end.format(HM)}" +
-        if (selected) ", läuft gerade" else ""
+        if (selected) ", aktuell" else ""
     val shape = RoundedCornerShape(12.dp)
     var mod = Modifier
         .clickable(onClickLabel = "Erklärung anzeigen") { onKaraha(block.explain) }
@@ -1014,7 +1022,12 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
         }
 
         ToggleRow("Makruh-Zeiten anzeigen", karaha) { karaha = it }
-        ToggleRow("Restzeit im Widget", countdown) { countdown = it }
+        ToggleRow("Restzeit anzeigen", countdown) { countdown = it }
+        Text(
+            "Zeigt in App, Widget und dauerhafter Benachrichtigung zusätzlich die verbleibende Zeit bis zum nächsten Gebet. Aus = nur Uhrzeiten.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         if (OfficialTimesProvider.isOnline) {
             ToggleRow("Offizielle Diyanet-Zeiten (online)", online) { online = it }
         }

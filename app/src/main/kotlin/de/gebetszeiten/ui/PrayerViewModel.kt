@@ -49,6 +49,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
             app,
             PrayerProvider.nextPrayer(app, value, zone, java.time.ZonedDateTime.now(zone)),
             value.persistentNotification,
+            value.showCountdown,
         )
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)
