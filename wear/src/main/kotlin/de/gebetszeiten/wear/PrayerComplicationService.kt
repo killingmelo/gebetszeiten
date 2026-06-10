@@ -11,8 +11,13 @@ import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
 import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import androidx.wear.watchface.complications.data.TimeRange
+import androidx.wear.watchface.complications.datasource.ComplicationDataTimeline
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
-import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
+import androidx.wear.watchface.complications.datasource.ComplicationDataSourceService
+import androidx.wear.watchface.complications.datasource.TimeInterval
+import androidx.wear.watchface.complications.datasource.TimelineEntry
+import kotlinx.coroutines.runBlocking
+import java.time.Duration
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -20,45 +25,78 @@ import java.time.format.DateTimeFormatter
 /**
  * Watch-face complication showing the next prayer. Two modes (toggled in the
  * watch app, [WearSettings.showRemaining]):
+ *
  *  - clock time (default): static "Asr · 17:37"; nothing ever ticks.
- *  - remaining: "Asr · 1h20m" counting down — rendered/ticked by the SYSTEM
- *    during the watch face's normal redraw, so still no app wake-ups.
- * Either way a [TimeRange] valid until the prayer makes the system re-request
- * on its own at the transition. No timers, ~5–6 recomputes/day.
+ *  - remaining: a pre-computed TIMELINE. The system renderer always rounds a
+ *    time difference UP ("4 Std" with 3:04 left — misleading) and falls back
+ *    to a single unit in small slots, so instead we hand the system one
+ *    floor-rounded static entry per hour ("3+ Std", "2+ Std", …) and only in
+ *    the final hour a minute-ticking system countdown ("42 Min"). The system
+ *    switches entries itself — still no timers and no app wake-ups.
+ *
+ * Either way a validity bound makes the system re-request on its own at the
+ * prayer transition (~5–6 recomputes/day).
  */
-class PrayerComplicationService : SuspendingComplicationDataSourceService() {
+class PrayerComplicationService : ComplicationDataSourceService() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT) return null
-        return build("Asr", PlainComplicationText.Builder("17:36").build(), "17:36", null)
+        return data("Asr", PlainComplicationText.Builder("17:36").build(), "17:36", null)
     }
 
-    override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
+    override fun onComplicationRequest(
+        request: ComplicationRequest,
+        listener: ComplicationRequestListener,
+    ) {
         val zone = ZoneId.systemDefault()
-        val location = WearSettings.location(applicationContext)
-        val next = WearPrayer.next(location, zone, ZonedDateTime.now(zone))
+        val now = ZonedDateTime.now(zone)
+        val location = runBlocking { WearSettings.location(applicationContext) }
+        val showRemaining = runBlocking { WearSettings.showRemaining(applicationContext) }
+        val next = WearPrayer.next(location, zone, now)
+        val title = next.first.label()
         val timeStr = next.second.format(timeFormat)
-        val text = if (WearSettings.showRemaining(applicationContext)) {
-            // System-rendered countdown — no app involvement while it ticks.
-            TimeDifferenceComplicationText.Builder(
-                TimeDifferenceStyle.SHORT_DUAL_UNIT,
-                CountDownTimeReference(next.second.toInstant()),
-            ).build()
-        } else {
-            PlainComplicationText.Builder(timeStr).build()
+        val prayerAt = next.second.toInstant()
+
+        if (!showRemaining) {
+            listener.onComplicationData(
+                data(title, PlainComplicationText.Builder(timeStr).build(), timeStr, TimeRange.before(prayerAt)),
+            )
+            return
         }
-        return build(
-            title = next.first.label(),
-            text = text,
-            timeStr = timeStr,
-            // Valid until the prayer arrives → the system re-requests then.
-            validUntil = TimeRange.before(next.second.toInstant()),
+
+        // Floor-rounded hour entries, then a minute countdown for the last hour.
+        val entries = mutableListOf<TimelineEntry>()
+        val wholeHours = Duration.between(now.toInstant(), prayerAt).toHours()
+        for (h in 1..wholeHours) {
+            entries += TimelineEntry(
+                TimeInterval(prayerAt.minus(Duration.ofHours(h + 1)), prayerAt.minus(Duration.ofHours(h))),
+                data(title, PlainComplicationText.Builder("${h}+ Std").build(), timeStr, TimeRange.before(prayerAt)),
+            )
+        }
+        entries += TimelineEntry(
+            TimeInterval(prayerAt.minus(Duration.ofHours(1)), prayerAt),
+            data(
+                title,
+                TimeDifferenceComplicationText.Builder(
+                    TimeDifferenceStyle.SHORT_SINGLE_UNIT,
+                    CountDownTimeReference(prayerAt),
+                ).build(),
+                timeStr,
+                TimeRange.before(prayerAt),
+            ),
+        )
+        listener.onComplicationDataTimeline(
+            ComplicationDataTimeline(
+                // Fallback outside all entries (shouldn't normally show): clock time.
+                data(title, PlainComplicationText.Builder(timeStr).build(), timeStr, TimeRange.before(prayerAt)),
+                entries,
+            ),
         )
     }
 
-    private fun build(
+    private fun data(
         title: String,
         text: ComplicationText,
         timeStr: String,
