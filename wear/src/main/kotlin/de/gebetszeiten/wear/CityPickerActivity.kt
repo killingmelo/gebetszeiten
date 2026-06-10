@@ -71,6 +71,8 @@ class CityPickerActivity : Activity() {
 
     private fun pick(city: WearCity) {
         runBlocking { WearSettings.save(applicationContext, city.name, city.latitude, city.longitude) }
+        // New location = new times: re-arm the vibration chain.
+        runBlocking { WearVibration.reschedule(applicationContext) }
         // One-off refresh so tile and complication show the new location
         // immediately instead of at their next natural validity boundary.
         TileService.getUpdater(this).requestUpdate(PrayerTileService::class.java)

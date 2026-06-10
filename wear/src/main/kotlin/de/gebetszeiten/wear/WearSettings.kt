@@ -21,6 +21,7 @@ object WearSettings {
     private val LNG = doublePreferencesKey("lng")
     private val CITY = stringPreferencesKey("city")
     private val SHOW_REMAINING = booleanPreferencesKey("show_remaining")
+    private val VIBRATE = booleanPreferencesKey("vibrate")
     private val DEFAULT = GeoLocation(49.4521, 11.0767) // Nürnberg
     private const val DEFAULT_CITY = "Nürnberg"
 
@@ -40,6 +41,14 @@ object WearSettings {
 
     suspend fun saveShowRemaining(context: Context, value: Boolean) {
         context.locationStore.edit { it[SHOW_REMAINING] = value }
+    }
+
+    /** Gentle wrist vibration at each prayer time (default off). */
+    suspend fun vibrate(context: Context): Boolean =
+        context.locationStore.data.first()[VIBRATE] ?: false
+
+    suspend fun saveVibrate(context: Context, value: Boolean) {
+        context.locationStore.edit { it[VIBRATE] = value }
     }
 
     suspend fun save(context: Context, city: String, latitude: Double, longitude: Double) {

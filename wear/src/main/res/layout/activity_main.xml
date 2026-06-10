@@ -58,6 +58,14 @@
             android:textSize="11sp" />
 
         <TextView
+            android:id="@+id/vibrateLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="4dp"
+            android:textColor="@color/wear_dim"
+            android:textSize="11sp" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"

@@ -40,6 +40,15 @@ class MainActivity : Activity() {
         }
         findViewById<TextView>(R.id.modeLabel).setOnClickListener(toggle)
         findViewById<TextView>(R.id.heroTime).setOnClickListener(toggle)
+        // Toggle the wrist vibration at prayer times; gives one sample buzz
+        // when enabling so the strength is immediately judgeable.
+        findViewById<TextView>(R.id.vibrateLabel).setOnClickListener {
+            val enabled = runBlocking { !WearSettings.vibrate(applicationContext) }
+            runBlocking { WearSettings.saveVibrate(applicationContext, enabled) }
+            runBlocking { WearVibration.reschedule(applicationContext) }
+            if (enabled) WearVibration.buzz(this)
+            render()
+        }
     }
 
     // Recompute on every show so the next prayer is always current without any
@@ -72,6 +81,9 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.cityLabel).text = city
         findViewById<TextView>(R.id.modeLabel).text =
             if (showRemaining) "Anzeige: Restzeit" else "Anzeige: Uhrzeit"
+        val vibrate = runBlocking { WearSettings.vibrate(applicationContext) }
+        findViewById<TextView>(R.id.vibrateLabel).text =
+            if (vibrate) "Vibration: An" else "Vibration: Aus"
 
         val list = findViewById<android.widget.LinearLayout>(R.id.upcomingList)
         list.removeAllViews()

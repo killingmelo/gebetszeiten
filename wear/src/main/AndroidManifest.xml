@@ -3,6 +3,12 @@
 
     <uses-feature android:name="android.hardware.type.watch" />
 
+    <!-- Optional wrist vibration at prayer times (exact, event-driven chain). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_prayer"
@@ -28,6 +34,19 @@
         <activity
             android:name=".CityPickerActivity"
             android:exported="false" />
+
+        <!-- Vibration chain: fires at prayer times, re-arms after reboot /
+             update / clock changes. -->
+        <receiver
+            android:name=".WearAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Swipeable tile -->
         <service
