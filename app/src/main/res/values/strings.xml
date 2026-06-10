@@ -25,7 +25,7 @@
     <string name="ongoing_channel_name">Nächstes Gebet (dauerhaft)</string>
     <string name="ongoing_channel_desc">Dauerhafte stille Anzeige der nächsten Gebetszeit</string>
     <string name="ongoing_title">%1$s um %2$s</string>
-    <string name="ongoing_since">%1$s seit %2$s</string>
+    <string name="ongoing_since">aktuell: %1$s</string>
     <string name="ongoing_until">bis %1$s</string>
     <string name="pre_reminder_title">%1$s in %2$d Min</string>
     <string name="pre_reminder_text">um %1$s</string>

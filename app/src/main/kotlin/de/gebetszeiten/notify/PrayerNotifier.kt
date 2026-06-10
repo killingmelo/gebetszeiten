@@ -167,13 +167,13 @@ object PrayerNotifier {
                         java.time.Duration.between(java.time.Instant.now(), java.time.Instant.ofEpochMilli(whenMillis)),
                     )
                 }
+                // Only ONE clock time on the lock screen (the next prayer in
+                // the title); the running prayer is named without its time.
                 activeSince?.let {
-                    lines += context.getString(
-                        R.string.ongoing_since,
-                        context.getString(it.prayer.labelRes()),
-                        it.time.format(timeFormat),
-                    )
+                    lines += context.getString(R.string.ongoing_since, context.getString(it.prayer.labelRes()))
                 }
+                // Exception: Fajr's window end is actionable (prayer becomes
+                // invalid at sunrise), so that one keeps its time.
                 activeUntil?.let {
                     lines += context.getString(R.string.ongoing_until, it.format(timeFormat))
                 }
