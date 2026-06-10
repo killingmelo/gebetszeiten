@@ -16,8 +16,10 @@
     <string name="save">Speichern</string>
     <string name="show_countdown">Restzeit im Widget anzeigen</string>
     <string name="next_prayer">Nächstes Gebet</string>
-    <string name="notification_channel_name">Gebetszeiten</string>
-    <string name="notification_channel_desc">Stille Erinnerung zur Gebetszeit</string>
+    <string name="notification_channel_name">Gebetszeiten (still)</string>
+    <string name="notification_channel_desc">Erinnerung zur Gebetszeit</string>
+    <string name="notification_channel_vibrate">Gebetszeiten (Vibration)</string>
+    <string name="notification_channel_sound">Gebetszeiten (Ton)</string>
     <string name="notification_entered">%1$s · %2$s</string>
     <string name="notification_next_line">Nächstes Gebet: %1$s um %2$s</string>
     <string name="ongoing_channel_name">Nächstes Gebet (dauerhaft)</string>

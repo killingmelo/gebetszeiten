@@ -33,6 +33,7 @@ class BootReceiver : BroadcastReceiver() {
                     settings.showCountdown,
                     PrayerProvider.currentlyActive(context, settings, zone, now)
                         ?.takeIf { it.prayer != de.gebetszeiten.core.prayertimes.Prayer.SUNRISE },
+                    replacesEntry = settings.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT,
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)

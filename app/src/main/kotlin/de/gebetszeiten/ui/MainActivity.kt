@@ -117,8 +117,9 @@ private val HIJRI_MONTHS = arrayOf(
     "Recep", "Şaban", "Ramazan", "Şevval", "Zilkade", "Zilhicce",
 )
 
-private fun hijriText(date: LocalDate): String {
-    val h = HijrahDate.from(date)
+private fun hijriText(date: LocalDate, offsetDays: Int = 0): String {
+    // Moon-sighting correction: shift the civil date before converting.
+    val h = HijrahDate.from(date.plusDays(offsetDays.toLong()))
     val d = h.get(ChronoField.DAY_OF_MONTH)
     val m = h.get(ChronoField.MONTH_OF_YEAR)
     val y = h.get(ChronoField.YEAR)
@@ -140,7 +141,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val settings by viewModel.settings.collectAsState()
-            GebetszeitenTheme(highContrast = settings.highContrast) {
+            val darkTheme = when (settings.themeMode) {
+                AppSettings.THEME_LIGHT -> false
+                AppSettings.THEME_DARK -> true
+                else -> isSystemInDarkTheme()
+            }
+            GebetszeitenTheme(darkTheme = darkTheme, highContrast = settings.highContrast) {
                 val density = LocalDensity.current
                 CompositionLocalProvider(
                     LocalDensity provides Density(density.density, density.fontScale * settings.fontScale),
@@ -218,6 +224,7 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
             DateNavigator(
                 date = selectedDate,
                 isToday = isToday,
+                hijriOffsetDays = settings.hijriOffsetDays,
                 onPrev = { selectedDate = selectedDate.minusDays(1) },
                 onNext = { selectedDate = selectedDate.plusDays(1) },
                 onToday = { selectedDate = LocalDate.now(zone) },
@@ -266,6 +273,7 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
 private fun DateNavigator(
     date: LocalDate,
     isToday: Boolean,
+    hijriOffsetDays: Int,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onToday: () -> Unit,
@@ -296,7 +304,7 @@ private fun DateNavigator(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = hijriText(date),
+                text = hijriText(date, hijriOffsetDays),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -992,6 +1000,10 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
     var reminders by remember(settings.reminders) { mutableStateOf(settings.reminders) }
     var leadMinutes by remember(settings.reminderLeadMinutes) { mutableStateOf(settings.reminderLeadMinutes) }
     var persistent by remember(settings.persistentNotification) { mutableStateOf(settings.persistentNotification) }
+    var style by remember(settings.reminderStyle) { mutableStateOf(settings.reminderStyle) }
+    var themeMode by remember(settings.themeMode) { mutableStateOf(settings.themeMode) }
+    var hijriOffset by remember(settings.hijriOffsetDays) { mutableStateOf(settings.hijriOffsetDays) }
+    var widgetTransparent by remember(settings.widgetTransparent) { mutableStateOf(settings.widgetTransparent) }
     var expanded by remember { mutableStateOf(false) }
     var matches by remember { mutableStateOf<List<City>>(emptyList()) }
     val context = LocalContext.current
@@ -1059,6 +1071,21 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
             }
         }
 
+        Text("Stil", style = MaterialTheme.typography.bodyLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(
+                "Still" to AppSettings.STYLE_SILENT,
+                "Vibration" to AppSettings.STYLE_VIBRATE,
+                "Ton" to AppSettings.STYLE_SOUND,
+            ).forEach { (label, v) ->
+                FilterChip(
+                    selected = style == v,
+                    onClick = { style = v },
+                    label = { Text(label) },
+                )
+            }
+        }
+
         Text("Vorlauf", style = MaterialTheme.typography.bodyLarge)
         Text(
             "Zusätzliche stille Erinnerung einige Minuten vor der Gebetszeit.",
@@ -1082,6 +1109,45 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        Text("Darstellung", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
+        Text("Design", style = MaterialTheme.typography.bodyLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(
+                "System" to AppSettings.THEME_SYSTEM,
+                "Hell" to AppSettings.THEME_LIGHT,
+                "Dunkel" to AppSettings.THEME_DARK,
+            ).forEach { (label, v) ->
+                FilterChip(
+                    selected = themeMode == v,
+                    onClick = { themeMode = v },
+                    label = { Text(label) },
+                )
+            }
+        }
+        Text(
+            "Dunkel = AMOLED-Schwarz (Pixel aus, maximal akkusparend).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Text("Hijri-Korrektur", style = MaterialTheme.typography.bodyLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(-2, -1, 0, 1, 2).forEach { v ->
+                FilterChip(
+                    selected = hijriOffset == v,
+                    onClick = { hijriOffset = v },
+                    label = { Text(if (v > 0) "+$v" else "$v") },
+                )
+            }
+        }
+        Text(
+            "Verschiebt das Hijri-Datum um ganze Tage (regionale Mondsichtung).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        ToggleRow("Widget-Hintergrund transparent", widgetTransparent) { widgetTransparent = it }
+
         BatteryOptimizationCard()
 
         Button(
@@ -1101,6 +1167,10 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
                         reminders = reminders,
                         reminderLeadMinutes = leadMinutes,
                         persistentNotification = persistent,
+                        reminderStyle = style,
+                        themeMode = themeMode,
+                        hijriOffsetDays = hijriOffset,
+                        widgetTransparent = widgetTransparent,
                     ),
                 )
             },

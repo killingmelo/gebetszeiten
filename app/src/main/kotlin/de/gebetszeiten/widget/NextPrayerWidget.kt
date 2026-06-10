@@ -78,15 +78,27 @@ class NextPrayerWidget : GlanceAppWidget() {
                 )
             }
 
+        val transparent = settings.widgetTransparent
+
         provideContent {
             GlanceTheme(colors = ColorProviders(light = LightColors, dark = DarkColors)) {
                 if (LocalSize.current.width >= FULL.width) {
-                    DayPlanContent(dayPlan)
+                    DayPlanContent(dayPlan, transparent)
                 } else {
-                    NextPrayerContent(name, time, showCountdown, remainingLabel)
+                    NextPrayerContent(name, time, showCountdown, remainingLabel, transparent)
                 }
             }
         }
+    }
+
+    @Composable
+    private fun widgetBackground(transparent: Boolean) = if (transparent) {
+        androidx.glance.color.ColorProvider(
+            day = LightColors.surface.copy(alpha = 0.45f),
+            night = DarkColors.surface.copy(alpha = 0.45f),
+        )
+    } else {
+        GlanceTheme.colors.widgetBackground
     }
 
     private data class DayEntry(val label: String, val time: String, val isNext: Boolean)
@@ -97,11 +109,12 @@ class NextPrayerWidget : GlanceAppWidget() {
         time: String,
         showCountdown: Boolean,
         remainingLabel: String,
+        transparent: Boolean,
     ) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(GlanceTheme.colors.widgetBackground)
+                .background(widgetBackground(transparent))
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.Start,
@@ -155,11 +168,11 @@ class NextPrayerWidget : GlanceAppWidget() {
 
     /** All six times of today as a 3×2 grid; the next prayer is accented. */
     @Composable
-    private fun DayPlanContent(entries: List<DayEntry>) {
+    private fun DayPlanContent(entries: List<DayEntry>, transparent: Boolean) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(GlanceTheme.colors.widgetBackground)
+                .background(widgetBackground(transparent))
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

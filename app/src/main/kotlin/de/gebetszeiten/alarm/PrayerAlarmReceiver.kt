@@ -34,7 +34,12 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     // Heads-up before the prayer; the transition chain stays untouched.
                     val upcoming = PrayerProvider.nextPrayer(context, settings, zone, now)
                     if (upcoming.prayer.name in settings.reminders) {
-                        PrayerNotifier.notifyPre(context, upcoming, settings.reminderLeadMinutes)
+                        PrayerNotifier.notifyPre(
+                            context,
+                            upcoming,
+                            settings.reminderLeadMinutes,
+                            settings.reminderStyle,
+                        )
                     }
                     return@launch
                 }
@@ -49,6 +54,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         settings.showCountdown,
                         PrayerProvider.currentlyActive(context, settings, zone, now)
                             ?.takeIf { it.prayer != Prayer.SUNRISE },
+                        replacesEntry = false, // step ticks never clear the entry alert
                     )
                     NextPrayerWidget().updateAll(context)
                     PrayerAlarmScheduler.scheduleNext(context, settings, zone)
@@ -58,11 +64,14 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 val active = PrayerProvider.currentlyActive(context, settings, zone, now)
                     ?.takeIf { it.prayer != Prayer.SUNRISE }
                 // Sunrise is no prayer; otherwise notify only if the user enabled
-                // a reminder for this prayer. With the persistent notification on,
-                // that single line carries the entry info instead — a separate
-                // entry notification would be redundant.
+                // a reminder for this prayer. With the persistent notification on
+                // AND a fully silent style, that single line carries the entry
+                // info instead — a separate entry notification would be
+                // redundant. An audible/vibrating style still needs the entry
+                // notification as the alert carrier (it auto-clears).
+                val styleSilent = settings.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT
                 if (active != null && active.prayer.name in settings.reminders &&
-                    !settings.persistentNotification
+                    (!settings.persistentNotification || !styleSilent)
                 ) {
                     // Next transition (may be sunrise) ends this notification;
                     // the text line always names a real prayer.
@@ -77,6 +86,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         active,
                         nextPrayer,
                         transition.time.toInstant().toEpochMilli(),
+                        settings.reminderStyle,
                     )
                 }
                 PrayerNotifier.updateOngoing(
@@ -85,6 +95,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     settings.persistentNotification,
                     settings.showCountdown,
                     active,
+                    replacesEntry = styleSilent,
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)

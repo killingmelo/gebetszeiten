@@ -21,6 +21,8 @@ import java.time.format.DateTimeFormatter
 object PrayerNotifier {
 
     private const val CHANNEL_ID = "prayer_times"
+    private const val CHANNEL_VIBRATE_ID = "prayer_times_vibrate"
+    private const val CHANNEL_SOUND_ID = "prayer_times_sound"
     private const val ONGOING_CHANNEL_ID = "next_prayer"
     private const val NOTIFICATION_ID = 1
     private const val ONGOING_ID = 2
@@ -29,6 +31,8 @@ object PrayerNotifier {
 
     fun ensureChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
+        // One channel per reminder style — channel settings are immutable after
+        // creation, so the style picks the channel instead of mutating one.
         val channel = NotificationChannel(
             CHANNEL_ID,
             context.getString(R.string.notification_channel_name),
@@ -40,6 +44,27 @@ object PrayerNotifier {
             enableVibration(false)
         }
         manager.createNotificationChannel(channel)
+        val vibrate = NotificationChannel(
+            CHANNEL_VIBRATE_ID,
+            context.getString(R.string.notification_channel_vibrate),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = context.getString(R.string.notification_channel_desc)
+            setSound(null, null)
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 250, 180, 250, 180, 450)
+        }
+        manager.createNotificationChannel(vibrate)
+        val sound = NotificationChannel(
+            CHANNEL_SOUND_ID,
+            context.getString(R.string.notification_channel_sound),
+            // DEFAULT importance with the system's default notification sound.
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = context.getString(R.string.notification_channel_desc)
+            enableVibration(true)
+        }
+        manager.createNotificationChannel(sound)
         val ongoing = NotificationChannel(
             ONGOING_CHANNEL_ID,
             context.getString(R.string.ongoing_channel_name),
@@ -53,6 +78,16 @@ object PrayerNotifier {
         }
         manager.createNotificationChannel(ongoing)
     }
+
+    private fun styleChannel(style: String): String = when (style) {
+        de.gebetszeiten.data.AppSettings.STYLE_VIBRATE -> CHANNEL_VIBRATE_ID
+        de.gebetszeiten.data.AppSettings.STYLE_SOUND -> CHANNEL_SOUND_ID
+        else -> CHANNEL_ID
+    }
+
+    private fun silentStyle(style: String): Boolean =
+        style != de.gebetszeiten.data.AppSettings.STYLE_VIBRATE &&
+            style != de.gebetszeiten.data.AppSettings.STYLE_SOUND
 
     private fun canPost(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -82,6 +117,7 @@ object PrayerNotifier {
         enabled: Boolean,
         countdown: Boolean,
         activeSince: NextPrayer? = null,
+        replacesEntry: Boolean = true,
     ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
@@ -90,9 +126,10 @@ object PrayerNotifier {
         }
         if (!canPost(context)) return
         ensureChannel(context)
-        // One combined line: a lingering per-prayer entry notification would be
-        // redundant next to it, so clear it.
-        manager.cancel(NOTIFICATION_ID)
+        // Silent style: one combined line — a lingering per-prayer entry
+        // notification would be redundant, so clear it. Audible styles keep
+        // their (auto-clearing) entry notification as the alert carrier.
+        if (replacesEntry) manager.cancel(NOTIFICATION_ID)
         val whenMillis = next.time.toInstant().toEpochMilli()
         val notification = NotificationCompat.Builder(context, ONGOING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -130,12 +167,18 @@ object PrayerNotifier {
         manager.notify(ONGOING_ID, notification)
     }
 
-    /** Heads-up "prayer X in N minutes" — silent, auto-clears at prayer entry. */
-    fun notifyPre(context: Context, next: NextPrayer, leadMinutes: Int) {
+    /** Heads-up "prayer X in N minutes" — styled like the entry reminder,
+     *  auto-clears at prayer entry. */
+    fun notifyPre(
+        context: Context,
+        next: NextPrayer,
+        leadMinutes: Int,
+        style: String = de.gebetszeiten.data.AppSettings.STYLE_SILENT,
+    ) {
         if (!canPost(context)) return
         ensureChannel(context)
         val untilPrayer = next.time.toInstant().toEpochMilli() - System.currentTimeMillis()
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, styleChannel(style))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(
                 context.getString(
@@ -146,8 +189,10 @@ object PrayerNotifier {
             )
             .setContentText(context.getString(R.string.pre_reminder_text, next.time.format(timeFormat)))
             .setContentIntent(contentIntent(context))
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setSilent(true)
+            .setPriority(
+                if (silentStyle(style)) NotificationCompat.PRIORITY_LOW else NotificationCompat.PRIORITY_DEFAULT,
+            )
+            .setSilent(silentStyle(style))
             .setAutoCancel(true)
             .apply { if (untilPrayer > 0) setTimeoutAfter(untilPrayer) }
             .build()
@@ -164,6 +209,7 @@ object PrayerNotifier {
         prayer: NextPrayer,
         next: NextPrayer? = null,
         clearAtMillis: Long? = null,
+        style: String = de.gebetszeiten.data.AppSettings.STYLE_SILENT,
     ) {
         if (!canPost(context)) return
         ensureChannel(context)
@@ -179,7 +225,7 @@ object PrayerNotifier {
                 it.time.format(timeFormat),
             )
         }
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, styleChannel(style))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
@@ -188,8 +234,10 @@ object PrayerNotifier {
             // clearly refers to that moment, not to "now".
             .setWhen(prayer.time.toInstant().toEpochMilli())
             .setShowWhen(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setSilent(true)
+            .setPriority(
+                if (silentStyle(style)) NotificationCompat.PRIORITY_LOW else NotificationCompat.PRIORITY_DEFAULT,
+            )
+            .setSilent(silentStyle(style))
             .setAutoCancel(true)
             .apply {
                 // Auto-dismiss at the next transition: the system clears it with

@@ -53,6 +53,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
             value.showCountdown,
             PrayerProvider.currentlyActive(app, value, zone, now)
                 ?.takeIf { it.prayer != de.gebetszeiten.core.prayertimes.Prayer.SUNRISE },
+            replacesEntry = value.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT,
         )
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)

@@ -36,9 +36,23 @@ data class AppSettings(
     val reminderLeadMinutes: Int = 0,
     /** Persistent silent "next prayer" notification (lock-screen visible). */
     val persistentNotification: Boolean = false,
+    /** Reminder style: SILENT (default), VIBRATE, or SOUND. */
+    val reminderStyle: String = STYLE_SILENT,
+    /** Forced theme: SYSTEM (default), LIGHT, or DARK. */
+    val themeMode: String = THEME_SYSTEM,
+    /** Hijri date correction in days (moon-sighting differences), −2..+2. */
+    val hijriOffsetDays: Int = 0,
+    /** Semi-transparent widget background. */
+    val widgetTransparent: Boolean = false,
 ) {
     companion object {
         val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")
+        const val STYLE_SILENT = "SILENT"
+        const val STYLE_VIBRATE = "VIBRATE"
+        const val STYLE_SOUND = "SOUND"
+        const val THEME_SYSTEM = "SYSTEM"
+        const val THEME_LIGHT = "LIGHT"
+        const val THEME_DARK = "DARK"
 
         // Sensible default until the user picks a location.
         val DEFAULT = AppSettings(
@@ -54,6 +68,10 @@ data class AppSettings(
             reminders = DEFAULT_REMINDERS,
             reminderLeadMinutes = 0,
             persistentNotification = false,
+            reminderStyle = STYLE_SILENT,
+            themeMode = THEME_SYSTEM,
+            hijriOffsetDays = 0,
+            widgetTransparent = false,
         )
     }
 }
@@ -75,6 +93,10 @@ class SettingsRepository(private val context: Context) {
         val REMINDERS = stringSetPreferencesKey("reminders")
         val REMINDER_LEAD = intPreferencesKey("reminder_lead_minutes")
         val PERSISTENT_NOTIFICATION = booleanPreferencesKey("persistent_notification")
+        val REMINDER_STYLE = stringPreferencesKey("reminder_style")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
+        val HIJRI_OFFSET = intPreferencesKey("hijri_offset_days")
+        val WIDGET_TRANSPARENT = booleanPreferencesKey("widget_transparent")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -92,6 +114,10 @@ class SettingsRepository(private val context: Context) {
             reminderLeadMinutes = prefs[Keys.REMINDER_LEAD] ?: AppSettings.DEFAULT.reminderLeadMinutes,
             persistentNotification = prefs[Keys.PERSISTENT_NOTIFICATION]
                 ?: AppSettings.DEFAULT.persistentNotification,
+            reminderStyle = prefs[Keys.REMINDER_STYLE] ?: AppSettings.DEFAULT.reminderStyle,
+            themeMode = prefs[Keys.THEME_MODE] ?: AppSettings.DEFAULT.themeMode,
+            hijriOffsetDays = prefs[Keys.HIJRI_OFFSET] ?: AppSettings.DEFAULT.hijriOffsetDays,
+            widgetTransparent = prefs[Keys.WIDGET_TRANSPARENT] ?: AppSettings.DEFAULT.widgetTransparent,
         )
     }
 
@@ -111,6 +137,10 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.REMINDERS] = value.reminders
             prefs[Keys.REMINDER_LEAD] = value.reminderLeadMinutes
             prefs[Keys.PERSISTENT_NOTIFICATION] = value.persistentNotification
+            prefs[Keys.REMINDER_STYLE] = value.reminderStyle
+            prefs[Keys.THEME_MODE] = value.themeMode
+            prefs[Keys.HIJRI_OFFSET] = value.hijriOffsetDays
+            prefs[Keys.WIDGET_TRANSPARENT] = value.widgetTransparent
         }
     }
 }
