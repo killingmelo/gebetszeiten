@@ -64,8 +64,11 @@ object PrayerAlarmScheduler {
         val nextBoundary = targets.flatMap { target ->
             val targetMs = target.toInstant().toEpochMilli()
             buildList {
-                add(targetMs - 30 * 60_000L)
-                add(targetMs - 10 * 60_000L)
+                // 10-minute steps through the final hour (50/40/30/20/10),
+                // matching remainingStepLabel's resolution.
+                for (tenMin in 1..5) {
+                    add(targetMs - tenMin * 10 * 60_000L)
+                }
                 var hour = 1L
                 while (true) {
                     val boundary = targetMs - hour * 3_600_000L

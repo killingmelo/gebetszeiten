@@ -15,8 +15,10 @@ fun remainingStepLabel(remaining: Duration): String {
     val safe = if (remaining.isNegative) Duration.ZERO else remaining
     return when {
         safe.toHours() >= 1 -> "noch ${safe.toHours()}+ Std"
-        safe.toMinutes() >= 30 -> "noch 30+ Min"
-        safe.toMinutes() >= 10 -> "noch 10+ Min"
+        // 10-minute floor steps below an hour: 27 min → "noch 20+ Min".
+        // Precision grows as the prayer approaches — coarse far out is fine,
+        // misleading close up is not.
+        safe.toMinutes() >= 10 -> "noch ${(safe.toMinutes() / 10) * 10}+ Min"
         else -> "gleich"
     }
 }
