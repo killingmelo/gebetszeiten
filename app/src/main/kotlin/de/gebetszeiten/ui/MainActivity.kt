@@ -82,6 +82,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.gebetszeiten.R
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
@@ -170,7 +171,18 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
     val zone = ZoneId.systemDefault()
 
     var tick by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) { while (true) { delay(60_000); tick++ } }
+    val tickLifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    LaunchedEffect(Unit) {
+        // Tick only while visible: without the lifecycle gate this loop kept
+        // running in the cached background process (needless background CPU).
+        tickLifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            tick++ // refresh immediately when returning to the foreground
+            while (true) {
+                delay(60_000)
+                tick++
+            }
+        }
+    }
 
     var selectedDate by remember { mutableStateOf(LocalDate.now(zone)) }
     val isToday = selectedDate == LocalDate.now(zone)
@@ -1024,7 +1036,7 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
         ToggleRow("Makruh-Zeiten anzeigen", karaha) { karaha = it }
         ToggleRow("Restzeit anzeigen", countdown) { countdown = it }
         Text(
-            "Zeigt in App, Widget und dauerhafter Benachrichtigung zusätzlich die verbleibende Zeit bis zum nächsten Gebet. Aus = nur Uhrzeiten.",
+            "Zeigt in App, Widget und dauerhafter Benachrichtigung zusätzlich die verbleibende Zeit (abgerundet, z. B. noch 2+ Std). Aus = nur Uhrzeiten.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -1129,14 +1141,13 @@ private fun BatteryOptimizationCard() {
                 .isIgnoringBatteryOptimizations(context.packageName),
         )
     }
+    val cardLifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
-        // Re-check while visible so the card disappears right after the user
-        // grants the exemption in the system dialog. Runs only while the
-        // settings sheet is open.
-        while (true) {
+        // Re-check once per resume (returning from the system dialog) instead
+        // of polling on a timer.
+        cardLifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
             exempt = context.getSystemService(android.os.PowerManager::class.java)
                 .isIgnoringBatteryOptimizations(context.packageName)
-            delay(2000)
         }
     }
     if (exempt) return

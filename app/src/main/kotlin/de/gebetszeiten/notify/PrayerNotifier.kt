@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import de.gebetszeiten.R
 import de.gebetszeiten.prayer.NextPrayer
 import de.gebetszeiten.prayer.labelRes
+import de.gebetszeiten.prayer.remainingStepLabel
 import de.gebetszeiten.ui.MainActivity
 import java.time.format.DateTimeFormatter
 
@@ -68,11 +69,12 @@ object PrayerNotifier {
 
     /**
      * Persistent silent "next prayer" line for shade + lock screen. With
-     * [countdown] the remaining time is rendered by the system (chronometer);
-     * either way the app posts this only once per prayer transition — no extra
-     * wake-ups. While enabled it REPLACES the per-prayer entry notification
-     * (one combined line instead of two redundant ones); [activeSince] carries
-     * the entry info ("Asr seit 17:37") as the second line.
+     * [countdown] a floor-rounded remaining step ("noch 2+ Std") is shown —
+     * deliberately NOT a chronometer, which would redraw every second while
+     * the lock screen is visible; the step text is static and refreshed by the
+     * display-step alarm chain. While enabled it REPLACES the per-prayer entry
+     * notification (one combined line instead of two redundant ones);
+     * [activeSince] carries the entry info ("Asr seit 17:37").
      */
     fun updateOngoing(
         context: Context,
@@ -107,24 +109,22 @@ object PrayerNotifier {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSilent(true)
+            .setShowWhen(false)
             .apply {
-                activeSince?.let {
-                    setContentText(
-                        context.getString(
-                            R.string.ongoing_since,
-                            context.getString(it.prayer.labelRes()),
-                            it.time.format(timeFormat),
-                        ),
+                val lines = mutableListOf<String>()
+                if (countdown) {
+                    lines += remainingStepLabel(
+                        java.time.Duration.between(java.time.Instant.now(), java.time.Instant.ofEpochMilli(whenMillis)),
                     )
                 }
-                if (countdown) {
-                    setWhen(whenMillis)
-                    setUsesChronometer(true)
-                    setChronometerCountDown(true)
-                    setShowWhen(true)
-                } else {
-                    setShowWhen(false)
+                activeSince?.let {
+                    lines += context.getString(
+                        R.string.ongoing_since,
+                        context.getString(it.prayer.labelRes()),
+                        it.time.format(timeFormat),
+                    )
                 }
+                if (lines.isNotEmpty()) setContentText(lines.joinToString(" · "))
             }
             .build()
         manager.notify(ONGOING_ID, notification)

@@ -18,8 +18,10 @@ object PrayerAlarmScheduler {
 
     private const val REQUEST_CODE = 100
     private const val PRE_REQUEST_CODE = 101
+    private const val DISPLAY_REQUEST_CODE = 102
     const val ACTION_PRAYER = "de.gebetszeiten.action.PRAYER_ALARM"
     const val ACTION_PRE_REMINDER = "de.gebetszeiten.action.PRE_REMINDER"
+    const val ACTION_DISPLAY_STEP = "de.gebetszeiten.action.DISPLAY_STEP"
 
     suspend fun scheduleNext(context: Context, settings: AppSettings, zone: ZoneId = ZoneId.systemDefault()) {
         val now = ZonedDateTime.now(zone)
@@ -28,6 +30,56 @@ object PrayerAlarmScheduler {
 
         setAlarm(alarmManager, next.time.toInstant().toEpochMilli(), pendingIntent(context, REQUEST_CODE, ACTION_PRAYER))
         schedulePreReminder(context, alarmManager, settings, zone, now)
+        scheduleDisplayStep(context, alarmManager, settings, zone, now)
+    }
+
+    /**
+     * Remaining-time mode only: one alarm at the next floor-step boundary
+     * (full hours before the prayer, plus the 30- and 10-minute marks) so the
+     * widget and the persistent notification can show a static "noch 2+ Std"
+     * instead of a per-second chronometer. ~10–20 extra ms-scale wake-ups per
+     * day, in exchange for zero continuous rendering.
+     */
+    private suspend fun scheduleDisplayStep(
+        context: Context,
+        alarmManager: AlarmManager,
+        settings: AppSettings,
+        zone: ZoneId,
+        now: ZonedDateTime,
+    ) {
+        val pending = pendingIntent(context, DISPLAY_REQUEST_CODE, ACTION_DISPLAY_STEP)
+        if (!settings.showCountdown) {
+            alarmManager.cancel(pending)
+            return
+        }
+        // Both surfaces' targets: widget = next transition, notification = next
+        // actual prayer (sunrise skipped). Boundaries of either count.
+        val targets = buildList {
+            add(PrayerProvider.next(context, settings, zone, now).time)
+            if (settings.persistentNotification) {
+                add(PrayerProvider.nextPrayer(context, settings, zone, now).time)
+            }
+        }
+        val nowMs = System.currentTimeMillis()
+        val nextBoundary = targets.flatMap { target ->
+            val targetMs = target.toInstant().toEpochMilli()
+            buildList {
+                add(targetMs - 30 * 60_000L)
+                add(targetMs - 10 * 60_000L)
+                var hour = 1L
+                while (true) {
+                    val boundary = targetMs - hour * 3_600_000L
+                    if (boundary <= nowMs) break
+                    add(boundary)
+                    hour++
+                }
+            }
+        }.filter { it > nowMs + 1_000 }.minOrNull()
+        if (nextBoundary != null) {
+            setAlarm(alarmManager, nextBoundary, pending)
+        } else {
+            alarmManager.cancel(pending)
+        }
     }
 
     /**

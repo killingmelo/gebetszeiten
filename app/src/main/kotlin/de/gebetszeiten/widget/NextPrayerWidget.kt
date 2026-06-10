@@ -1,8 +1,6 @@
 package de.gebetszeiten.widget
 
 import android.content.Context
-import android.os.SystemClock
-import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -11,7 +9,6 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
-import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
@@ -29,12 +26,12 @@ import androidx.glance.material3.ColorProviders
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import de.gebetszeiten.R
 import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.ui.theme.DarkColors
 import de.gebetszeiten.ui.theme.LightColors
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.prayer.labelRes
+import de.gebetszeiten.prayer.remainingStepLabel
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -67,9 +64,9 @@ class NextPrayerWidget : GlanceAppWidget() {
         val name = context.getString(next.prayer.labelRes())
         val time = next.time.format(timeFormat)
         val showCountdown = settings.showCountdown
-        // elapsedRealtime base for a system-rendered count-down (no app wakeups).
-        val chronoBase = SystemClock.elapsedRealtime() +
-            (next.time.toInstant().toEpochMilli() - System.currentTimeMillis())
+        // Floor-rounded remaining step ("noch 2+ Std") — static between the
+        // display-step alarms, unlike a chronometer that redraws every second.
+        val remainingLabel = remainingStepLabel(java.time.Duration.between(now, next.time))
         // Day plan for the large layout: label, time, is-it-the-next-prayer.
         val dayPlan = PrayerProvider.daily(context, settings, now.toLocalDate(), zone)
             .ordered()
@@ -86,7 +83,7 @@ class NextPrayerWidget : GlanceAppWidget() {
                 if (LocalSize.current.width >= FULL.width) {
                     DayPlanContent(dayPlan)
                 } else {
-                    NextPrayerContent(context, name, time, showCountdown, chronoBase)
+                    NextPrayerContent(name, time, showCountdown, remainingLabel)
                 }
             }
         }
@@ -96,11 +93,10 @@ class NextPrayerWidget : GlanceAppWidget() {
 
     @Composable
     private fun NextPrayerContent(
-        context: Context,
         name: String,
         time: String,
         showCountdown: Boolean,
-        chronoBase: Long,
+        remainingLabel: String,
     ) {
         Column(
             modifier = GlanceModifier
@@ -129,12 +125,14 @@ class NextPrayerWidget : GlanceAppWidget() {
             )
             Spacer(GlanceModifier.height(1.dp))
             if (showCountdown) {
-                // System-rendered live count-down (no app wake-ups).
-                val rv = RemoteViews(context.packageName, R.layout.widget_chronometer).apply {
-                    setChronometerCountDown(R.id.widget_chrono, true)
-                    setChronometer(R.id.widget_chrono, chronoBase, null, true)
-                }
-                AndroidRemoteViews(rv)
+                Text(
+                    text = remainingLabel,
+                    style = TextStyle(
+                        color = GlanceTheme.colors.primary,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                )
                 Text(
                     text = "um $time",
                     style = TextStyle(

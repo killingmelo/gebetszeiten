@@ -27,9 +27,11 @@ internal val md_secondary_dark = Color(0xFFB2CCBF)
 internal val md_onSecondary_dark = Color(0xFF1E352C)
 internal val md_secondaryContainer_dark = Color(0xFF344B41)
 internal val md_onSecondaryContainer_dark = Color(0xFFCEE9DA)
-internal val md_background_dark = Color(0xFF191C1A)
+// AMOLED true black: background pixels are fully off on OLED panels — the
+// app's only real battery cost is screen-on time, so this is the biggest lever.
+internal val md_background_dark = Color(0xFF000000)
 internal val md_onBackground_dark = Color(0xFFE1E3DF)
-internal val md_surface_dark = Color(0xFF111412)
+internal val md_surface_dark = Color(0xFF000000)
 internal val md_onSurface_dark = Color(0xFFE1E3DF)
 internal val md_surfaceVariant_dark = Color(0xFF404943)
 internal val md_onSurfaceVariant_dark = Color(0xFFBFC9C2)

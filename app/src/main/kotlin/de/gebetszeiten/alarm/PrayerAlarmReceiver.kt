@@ -39,6 +39,22 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     return@launch
                 }
 
+                if (intent.action == PrayerAlarmScheduler.ACTION_DISPLAY_STEP) {
+                    // Remaining-time floor step changed: redraw widget +
+                    // persistent line, chain the next step. No notifications.
+                    PrayerNotifier.updateOngoing(
+                        context,
+                        PrayerProvider.nextPrayer(context, settings, zone, now),
+                        settings.persistentNotification,
+                        settings.showCountdown,
+                        PrayerProvider.currentlyActive(context, settings, zone, now)
+                            ?.takeIf { it.prayer != Prayer.SUNRISE },
+                    )
+                    NextPrayerWidget().updateAll(context)
+                    PrayerAlarmScheduler.scheduleNext(context, settings, zone)
+                    return@launch
+                }
+
                 val active = PrayerProvider.currentlyActive(context, settings, zone, now)
                     ?.takeIf { it.prayer != Prayer.SUNRISE }
                 // Sunrise is no prayer; otherwise notify only if the user enabled
