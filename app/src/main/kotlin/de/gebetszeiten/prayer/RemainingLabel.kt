@@ -12,16 +12,22 @@ import java.time.Duration
  * in between.
  */
 fun remainingStepLabel(remaining: Duration): String {
+    val short = remainingStepShort(remaining)
+    return if (short.isEmpty()) "jetzt" else "noch $short"
+}
+
+/** Bare step ("2+ Std", "20+ Min", "7 Min"); empty in the final minute. */
+fun remainingStepShort(remaining: Duration): String {
     val safe = if (remaining.isNegative) Duration.ZERO else remaining
     return when {
-        safe.toHours() >= 1 -> "noch ${safe.toHours()}+ Std"
-        // 10-minute floor steps below an hour: 27 min → "noch 20+ Min".
+        safe.toHours() >= 1 -> "${safe.toHours()}+ Std"
+        // 10-minute floor steps below an hour: 27 min → "20+ Min".
         // Precision grows as the prayer approaches — coarse far out is fine,
         // misleading close up is not.
-        safe.toMinutes() >= 10 -> "noch ${(safe.toMinutes() / 10) * 10}+ Min"
+        safe.toMinutes() >= 10 -> "${(safe.toMinutes() / 10) * 10}+ Min"
         // Final 10 minutes: the exact number IS the urgency signal.
-        safe.toMinutes() >= 1 -> "noch ${safe.toMinutes()} Min"
-        else -> "jetzt"
+        safe.toMinutes() >= 1 -> "${safe.toMinutes()} Min"
+        else -> ""
     }
 }
 

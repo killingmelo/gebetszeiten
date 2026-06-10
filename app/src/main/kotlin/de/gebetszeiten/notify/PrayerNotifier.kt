@@ -13,7 +13,7 @@ import androidx.core.content.ContextCompat
 import de.gebetszeiten.R
 import de.gebetszeiten.prayer.NextPrayer
 import de.gebetszeiten.prayer.labelRes
-import de.gebetszeiten.prayer.remainingStepLabel
+import de.gebetszeiten.prayer.remainingStepShort
 import de.gebetszeiten.ui.MainActivity
 import java.time.format.DateTimeFormatter
 
@@ -136,15 +136,24 @@ object PrayerNotifier {
         // their (auto-clearing) entry notification as the alert carrier.
         if (replacesEntry) manager.cancel(NOTIFICATION_ID)
         val whenMillis = next.time.toInstant().toEpochMilli()
+        val name = context.getString(next.prayer.labelRes())
+        val timeStr = next.time.format(timeFormat)
+        // STEPS countdown: the remaining time IS the headline ("Noch 20+ Min
+        // bis Isha"); clock time moves to the detail line. Otherwise the
+        // classic "Isha um 22:48" title (EXACT mode ticks via chronometer).
+        val stepShort = if (countdown && !exact) {
+            remainingStepShort(java.time.Duration.between(java.time.Instant.now(), java.time.Instant.ofEpochMilli(whenMillis)))
+        } else {
+            ""
+        }
+        val title = if (stepShort.isNotEmpty()) {
+            context.getString(R.string.ongoing_title_remaining, stepShort, name)
+        } else {
+            context.getString(R.string.ongoing_title, name, timeStr)
+        }
         val notification = NotificationCompat.Builder(context, ONGOING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(
-                context.getString(
-                    R.string.ongoing_title,
-                    context.getString(next.prayer.labelRes()),
-                    next.time.format(timeFormat),
-                ),
-            )
+            .setContentTitle(title)
             .setContentIntent(contentIntent(context))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -162,10 +171,9 @@ object PrayerNotifier {
                     setShowWhen(false)
                 }
                 val lines = mutableListOf<String>()
-                if (countdown && !exact) {
-                    lines += remainingStepLabel(
-                        java.time.Duration.between(java.time.Instant.now(), java.time.Instant.ofEpochMilli(whenMillis)),
-                    )
+                if (stepShort.isNotEmpty()) {
+                    // Remaining is in the title → the clock time becomes detail.
+                    lines += context.getString(R.string.ongoing_at, timeStr)
                 }
                 // Only ONE clock time on the lock screen (the next prayer in
                 // the title); the running prayer is named without its time.
