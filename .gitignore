@@ -17,3 +17,6 @@
 keystore.properties
 keystore/
 *.jks
+
+# Claude Code session data
+.claude/
