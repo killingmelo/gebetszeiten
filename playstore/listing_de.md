@@ -2,9 +2,9 @@
 
 ## App-Name (max. 30 Zeichen)
 ```
-Gebetszeiten – lautlos präzise
+Lightweight Gebetszeiten
 ```
-*(30 Zeichen exakt. Alternativen: „Gebetszeiten: privat, offline" / „Gebetszeiten ohne Internet")*
+*(24 Zeichen. Alternativen: „Gebetszeiten – lautlos präzise" / „Gebetszeiten: privat, offline")*
 
 ## Kurzbeschreibung (max. 80 Zeichen)
 ```
