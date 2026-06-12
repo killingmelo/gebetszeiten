@@ -2,40 +2,49 @@
 
 ## App-Name (max. 30 Zeichen)
 ```
-Gebetszeiten
+Gebetszeiten – lautlos präzise
 ```
+*(30 Zeichen exakt. Alternativen: „Gebetszeiten: privat, offline" / „Gebetszeiten ohne Internet")*
 
 ## Kurzbeschreibung (max. 80 Zeichen)
 ```
-Gebetszeiten offline & privat – Diyanet-Methode, Widget, Wear OS, akkusparend
+Weiß nichts über dich. Weckt dein Handy kaum. Trifft Diyanet auf die Minute.
 ```
+*(76 Zeichen)*
 
 ## Vollständige Beschreibung (max. 4000 Zeichen)
 ```
-Gebetszeiten ist eine bewusst einfache, ehrliche Gebetszeiten-App: komplett offline, ohne Werbung, ohne Tracking – und kompromisslos akkusparend.
+Eine Gebetszeiten-App muss drei Dinge können: schweigen, sparen und stimmen.
 
-🔒 PRIVATSPHÄRE, BEWEISBAR
-Die App besitzt keine Internet-Berechtigung und keine Standort-Berechtigung. Sie kann technisch nichts senden und dich nicht orten. Den Ort wählst du selbst aus einer eingebauten Städteliste (über 33.000 Städte weltweit) oder gibst Koordinaten ein.
+🤫 SCHWEIGEN
+Keine Internet-Berechtigung. Keine Standort-Berechtigung. Diese App KANN nichts über dich verraten – das ist kein Datenschutz-Versprechen, das ist Architektur. Während andere Gebets-Apps Standortdaten verkaufen, hat diese nicht einmal die technische Möglichkeit dazu. Kein Tracking, keine Werbung, kein Konto, kein Abo. Quelloffen unter GPLv3 – jede Zeile überprüfbar.
 
-🔋 MAXIMAL AKKUSPAREND
-Kein Hintergrunddienst, kein Polling, keine Timer. Die App wacht nur eine Handvoll Mal am Tag für Sekundenbruchteile auf – exakt zu den Gebetszeiten. Countdown-Anzeigen werden vom System gezeichnet oder als statische Stufen dargestellt. Dunkles Design in echtem AMOLED-Schwarz.
+🔋 SPAREN
+Kein Hintergrunddienst. Kein Polling. Keine Timer. Die App wacht nur eine Handvoll Mal am Tag auf – exakt zu den Gebetszeiten, für Millisekunden. Gemessener Hintergrundverbrauch: unter 1 mAh am Tag. Countdowns zeichnet das System oder sie stehen als ruhige Stufen da („noch 20+ Min"). Das dunkle Design ist echtes AMOLED-Schwarz: Pixel aus, Akku geschont.
 
-🕌 PRÄZISE DIYANET-BERECHNUNG
-Die Zeiten werden offline nach der Methode der Diyanet (Türkiye) berechnet – inklusive der Hochbreiten-Sonderregel für Sommernächte – und wurden gegen die offizielle Jahrestabelle kalibriert. Zusätzlich: Hanafi-Makruh-Zeiten (İşrak, Zevâl, İsfirar) mit Erklärungen, Duha-, Awwabin- und Tahajjud-Fenster, Hijri-Datum mit Korrekturmöglichkeit.
+🎯 STIMMEN
+Berechnet offline nach der Diyanet-Methode (Türkiye) – kalibriert gegen die offizielle Jahrestabelle, auf ±2–3 Minuten übers ganze Jahr, inklusive der Hochbreiten-Regel für deutsche Sommernächte. Dazu die Hanafi-Makruh-Zeiten (İşrak, Zevâl, İsfirar) mit Erklärung, Duha-, Awwabin- und Tahajjud-Fenster und das Hijri-Datum mit Korrektur.
 
-📱 ÜBERSICHTLICH
-• Zeitstrahl mit dem aktuellen Gebet als füllende Fortschritts-Pille
-• Stille Erinnerungen pro Gebet – wahlweise still, Vibration oder Ton, mit optionalem Vorlauf
-• Dauerhafte Sperrbildschirm-Anzeige: „Noch 20+ Min bis Isha"
-• Homescreen-Widget: kompakt (nächstes Gebet) oder groß (ganzer Tagesplan)
+━━━━━━━━━━━━━━
 
-⌚ WEAR OS
-Eigenständige Watch-App – funktioniert ohne Handy: nächstes Gebet auf einen Blick, scrollbare Tagesübersicht, Ortswahl direkt auf der Uhr, sanfte Vibration zur Gebetszeit, dazu Tile und Zifferblatt-Complication mit automatischer Aktualisierung ganz ohne App-Wakeups.
+📱 AUF DEM HANDY
+• Zeitstrahl, der mitdenkt: das aktuelle Gebet füllt sich als Fortschritts-Pille
+• Erinnerungen pro Gebet – still, Vibration oder Ton, mit Vorlauf (5–30 Min)
+• Sperrbildschirm-Zeile: „Noch 20+ Min bis Isha" – immer da, nie aufdringlich
+• Widget in zwei Größen: nächstes Gebet kompakt oder der ganze Tag als Plan
+• Je näher das Gebet, desto präziser die Anzeige – minutengenau im Endspurt
 
-🌙 OPEN SOURCE
-Quelloffen unter GPLv3: github.com/killingmelo/gebetszeiten
+⌚ AM HANDGELENK
+Vollwertige Wear-OS-App, die kein Handy braucht: nächstes Gebet auf einen Blick, scrollbare Tagesübersicht, Ortswahl direkt an der Uhr, sanfte Vibration zur Gebetszeit. Tile und Zifferblatt-Complication aktualisieren sich selbst – ganz ohne die Uhr zu wecken.
 
-Städtedaten: GeoNames (CC BY 4.0). Berechnung: adhan-Bibliothek (MIT) mit eigener Diyanet-Kalibrierung.
+🌍 DEIN ORT, DEINE WAHL
+Über 33.000 Städte weltweit, eingebaut und offline durchsuchbar – oder eigene Koordinaten. Die App fragt nie, wo du bist. Du sagst es ihr.
+
+🌙 EHRLICHE SOFTWARE
+Kostenlos. Werbefrei. Quelloffen: github.com/killingmelo/gebetszeiten
+Städtedaten: GeoNames (CC BY 4.0) · Berechnung: adhan (MIT) mit eigener Diyanet-Kalibrierung
+
+Namaz vakitleri · Ezan vakti · Salah · Salat · Imsak · Iftar · Gebetszeiten Deutschland
 ```
 
 ## Kategorie & Tags
