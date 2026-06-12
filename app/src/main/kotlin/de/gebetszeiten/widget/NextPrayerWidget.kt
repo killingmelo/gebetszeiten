@@ -9,6 +9,8 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalSize
+import androidx.glance.action.actionStartActivity
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
@@ -66,8 +68,10 @@ class NextPrayerWidget : GlanceAppWidget() {
         val next = PrayerProvider.next(context, settings, zone, now)
         val name = context.getString(next.prayer.labelRes())
         val time = next.time.format(timeFormat)
-        val showCountdown = settings.showCountdown
-        val exact = settings.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT
+        // Per-surface remaining-time mode: the widget has its own OFF/STEPS/EXACT.
+        val showCountdown = settings.widgetCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF
+        val exact = settings.widgetCountdown == de.gebetszeiten.data.AppSettings.PRECISION_EXACT
+        val karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now)
         // Floor-rounded remaining step ("noch 2+ Std") — static between the
         // display-step alarms; EXACT mode uses the system chronometer instead.
         val remaining = java.time.Duration.between(now, next.time)
@@ -95,11 +99,11 @@ class NextPrayerWidget : GlanceAppWidget() {
         provideContent {
             GlanceTheme(colors = ColorProviders(light = LightColors, dark = DarkColors)) {
                 if (LocalSize.current.width >= FULL.width) {
-                    DayPlanContent(dayPlan, header, transparent)
+                    DayPlanContent(dayPlan, header, transparent, karahaLine)
                 } else {
                     NextPrayerContent(
                         context, name, time, showCountdown, exact,
-                        remainingLabel, urgent, chronoBase, transparent,
+                        remainingLabel, urgent, chronoBase, transparent, karahaLine,
                     )
                 }
             }
@@ -129,12 +133,15 @@ class NextPrayerWidget : GlanceAppWidget() {
         urgent: Boolean,
         chronoBase: Long,
         transparent: Boolean,
+        karahaLine: de.gebetszeiten.prayer.KarahaLine?,
     ) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(widgetBackground(transparent))
-                .padding(14.dp),
+                .padding(14.dp)
+                // The whole widget opens the app — expected tap behaviour.
+                .clickable(actionStartActivity<de.gebetszeiten.ui.MainActivity>()),
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.Start,
         ) {
@@ -169,17 +176,38 @@ class NextPrayerWidget : GlanceAppWidget() {
                     )
                 }
             }
+            karahaLine?.let { KarahaText(it, fontSize = 13) }
         }
+    }
+
+    /** "⚠️ Karaha bis/ab HH:MM" — error colour inside a window, dimmed before. */
+    @Composable
+    private fun KarahaText(line: de.gebetszeiten.prayer.KarahaLine, fontSize: Int) {
+        Spacer(GlanceModifier.height(2.dp))
+        Text(
+            text = line.text,
+            style = TextStyle(
+                color = if (line.active) GlanceTheme.colors.error else GlanceTheme.colors.onSurfaceVariant,
+                fontSize = fontSize.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
     }
 
     /** All six times of today as a 3×2 grid; the next prayer is accented. */
     @Composable
-    private fun DayPlanContent(entries: List<DayEntry>, header: String, transparent: Boolean) {
+    private fun DayPlanContent(
+        entries: List<DayEntry>,
+        header: String,
+        transparent: Boolean,
+        karahaLine: de.gebetszeiten.prayer.KarahaLine?,
+    ) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(widgetBackground(transparent))
-                .padding(14.dp),
+                .padding(14.dp)
+                .clickable(actionStartActivity<de.gebetszeiten.ui.MainActivity>()),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -190,6 +218,7 @@ class NextPrayerWidget : GlanceAppWidget() {
                     fontWeight = FontWeight.Medium,
                 ),
             )
+            karahaLine?.let { KarahaText(it, fontSize = 11) }
             Spacer(GlanceModifier.height(8.dp))
             entries.chunked(3).forEachIndexed { rowIndex, row ->
                 if (rowIndex > 0) Spacer(GlanceModifier.height(10.dp))

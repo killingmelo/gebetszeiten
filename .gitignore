@@ -20,3 +20,6 @@ keystore/
 
 # Claude Code session data
 .claude/
+
+# Kotlin compiler session files
+.kotlin/

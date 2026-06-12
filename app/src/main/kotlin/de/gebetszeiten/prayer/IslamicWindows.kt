@@ -36,9 +36,10 @@ data class NaflTimes(
  */
 object IslamicWindows {
 
-    const val ISRAK_AFTER_SUNRISE_MIN = 45L
-    const val ZEVAL_BEFORE_DHUHR_MIN = 20L
-    const val ISFIRAR_BEFORE_MAGHRIB_MIN = 40L
+    // Single source of truth lives in core (shared with the watch).
+    const val ISRAK_AFTER_SUNRISE_MIN = de.gebetszeiten.core.prayertimes.Karaha.ISRAK_AFTER_SUNRISE_MIN
+    const val ZEVAL_BEFORE_DHUHR_MIN = de.gebetszeiten.core.prayertimes.Karaha.ZEVAL_BEFORE_DHUHR_MIN
+    const val ISFIRAR_BEFORE_MAGHRIB_MIN = de.gebetszeiten.core.prayertimes.Karaha.ISFIRAR_BEFORE_MAGHRIB_MIN
 
     fun karaha(times: DailyPrayerTimes): KarahaTimes = KarahaTimes(
         sunriseStart = times.sunrise,

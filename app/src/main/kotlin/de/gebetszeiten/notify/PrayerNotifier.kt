@@ -123,6 +123,8 @@ object PrayerNotifier {
         activeUntil: java.time.ZonedDateTime? = null,
         // EXACT precision: live system-rendered chronometer instead of steps.
         exact: Boolean = false,
+        // "⚠️ Karaha bis/ab HH:MM" — static, refreshed at window boundaries.
+        karahaLine: de.gebetszeiten.prayer.KarahaLine? = null,
     ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
@@ -185,6 +187,7 @@ object PrayerNotifier {
                 activeUntil?.let {
                     lines += context.getString(R.string.ongoing_until, it.format(timeFormat))
                 }
+                karahaLine?.let { lines += it.text }
                 if (lines.isNotEmpty()) setContentText(lines.joinToString(" · "))
             }
             .build()

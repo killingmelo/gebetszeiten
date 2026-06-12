@@ -5,4 +5,6 @@
     <color name="wear_text">#FFE6E8E4</color>
     <color name="wear_dim">#FF8A938C</color>
     <color name="wear_divider">#1FFFFFFF</color>
+    <!-- Karaha indicator: active window = warm warning tone. -->
+    <color name="wear_warn">#FFFFB74D</color>
 </resources>

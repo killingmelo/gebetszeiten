@@ -45,19 +45,20 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 }
 
                 if (intent.action == PrayerAlarmScheduler.ACTION_DISPLAY_STEP) {
-                    // Remaining-time floor step changed: redraw widget +
-                    // persistent line, chain the next step. No notifications.
+                    // Display boundary (remaining-time step or karaha window):
+                    // redraw widget + persistent line, chain the next one.
                     val stepActive = PrayerProvider.currentlyActive(context, settings, zone, now)
                         ?.takeIf { it.prayer != Prayer.SUNRISE }
                     PrayerNotifier.updateOngoing(
                         context,
                         PrayerProvider.nextPrayer(context, settings, zone, now),
                         settings.persistentNotification,
-                        settings.showCountdown,
+                        settings.notificationCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                         stepActive,
                         replacesEntry = false, // step ticks never clear the entry alert
                         activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, stepActive),
-                        exact = settings.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
+                        exact = settings.notificationCountdown == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
+                        karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
                     )
                     NextPrayerWidget().updateAll(context)
                     PrayerAlarmScheduler.scheduleNext(context, settings, zone)
@@ -96,11 +97,12 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     context,
                     PrayerProvider.nextPrayer(context, settings, zone, now),
                     settings.persistentNotification,
-                    settings.showCountdown,
+                    settings.notificationCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                     active,
                     replacesEntry = styleSilent,
                     activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, active),
-                    exact = settings.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
+                    exact = settings.notificationCountdown == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
+                    karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)

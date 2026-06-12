@@ -40,6 +40,16 @@
             android:textSize="42sp"
             android:textStyle="bold" />
 
+        <!-- "⚠️ Karaha bis/ab HH:MM" — only visible around a makruh window. -->
+        <TextView
+            android:id="@+id/karahaLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/wear_warn"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/cityLabel"
             android:layout_width="wrap_content"

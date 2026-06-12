@@ -45,9 +45,19 @@ data class AppSettings(
     /** Semi-transparent widget background. */
     val widgetTransparent: Boolean = false,
     /** Remaining-time rendering: STEPS (static floor steps, most frugal) or
-     *  EXACT (system-rendered live countdown). */
+     *  EXACT (system-rendered live countdown). Legacy global value — feeds the
+     *  per-surface defaults below on first read after the update. */
     val remainingPrecision: String = PRECISION_STEPS,
+    /** Widget remaining-time mode: OFF, STEPS or EXACT — per-surface. */
+    val widgetCountdown: String = COUNTDOWN_OFF,
+    /** Lock-screen (persistent notification) remaining-time mode. */
+    val notificationCountdown: String = COUNTDOWN_OFF,
 ) {
+    /** True if any surface still needs the STEPS display-alarm chain. */
+    fun anyStepsCountdown(): Boolean =
+        widgetCountdown == PRECISION_STEPS ||
+            (persistentNotification && notificationCountdown == PRECISION_STEPS)
+
     companion object {
         val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")
         const val STYLE_SILENT = "SILENT"
@@ -58,6 +68,7 @@ data class AppSettings(
         const val THEME_DARK = "DARK"
         const val PRECISION_STEPS = "STEPS"
         const val PRECISION_EXACT = "EXACT"
+        const val COUNTDOWN_OFF = "OFF"
 
         // Sensible default until the user picks a location.
         val DEFAULT = AppSettings(
@@ -78,6 +89,8 @@ data class AppSettings(
             hijriOffsetDays = 0,
             widgetTransparent = false,
             remainingPrecision = PRECISION_STEPS,
+            widgetCountdown = COUNTDOWN_OFF,
+            notificationCountdown = COUNTDOWN_OFF,
         )
     }
 }
@@ -104,9 +117,19 @@ class SettingsRepository(private val context: Context) {
         val HIJRI_OFFSET = intPreferencesKey("hijri_offset_days")
         val WIDGET_TRANSPARENT = booleanPreferencesKey("widget_transparent")
         val REMAINING_PRECISION = stringPreferencesKey("remaining_precision")
+        val WIDGET_COUNTDOWN = stringPreferencesKey("widget_countdown")
+        val NOTIFICATION_COUNTDOWN = stringPreferencesKey("notification_countdown")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
+        // Migration: surfaces that predate the per-surface split inherit the
+        // old global "Restzeit anzeigen" + precision combination.
+        val legacyCountdown = prefs[Keys.COUNTDOWN] ?: AppSettings.DEFAULT.showCountdown
+        val legacyMode = if (legacyCountdown) {
+            prefs[Keys.REMAINING_PRECISION] ?: AppSettings.DEFAULT.remainingPrecision
+        } else {
+            AppSettings.COUNTDOWN_OFF
+        }
         AppSettings(
             latitude = prefs[Keys.LAT] ?: AppSettings.DEFAULT.latitude,
             longitude = prefs[Keys.LNG] ?: AppSettings.DEFAULT.longitude,
@@ -126,6 +149,8 @@ class SettingsRepository(private val context: Context) {
             hijriOffsetDays = prefs[Keys.HIJRI_OFFSET] ?: AppSettings.DEFAULT.hijriOffsetDays,
             widgetTransparent = prefs[Keys.WIDGET_TRANSPARENT] ?: AppSettings.DEFAULT.widgetTransparent,
             remainingPrecision = prefs[Keys.REMAINING_PRECISION] ?: AppSettings.DEFAULT.remainingPrecision,
+            widgetCountdown = prefs[Keys.WIDGET_COUNTDOWN] ?: legacyMode,
+            notificationCountdown = prefs[Keys.NOTIFICATION_COUNTDOWN] ?: legacyMode,
         )
     }
 
@@ -150,6 +175,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.HIJRI_OFFSET] = value.hijriOffsetDays
             prefs[Keys.WIDGET_TRANSPARENT] = value.widgetTransparent
             prefs[Keys.REMAINING_PRECISION] = value.remainingPrecision
+            prefs[Keys.WIDGET_COUNTDOWN] = value.widgetCountdown
+            prefs[Keys.NOTIFICATION_COUNTDOWN] = value.notificationCountdown
         }
     }
 }

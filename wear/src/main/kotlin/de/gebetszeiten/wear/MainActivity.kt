@@ -81,6 +81,26 @@ class MainActivity : Activity() {
             heroTime.textSize = 42f
         }
         findViewById<TextView>(R.id.cityLabel).text = city
+
+        // Karaha indicator: shown during a makruh window ("bis") and in the
+        // 15 minutes before one ("ab"). Recomputed on every open — no alarms.
+        val karahaLabel = findViewById<TextView>(R.id.karahaLabel)
+        val karaha = de.gebetszeiten.core.prayertimes.Karaha
+        when (val status = karaha.status(karaha.windows(WearPrayer.today(location, zone)), now)) {
+            is de.gebetszeiten.core.prayertimes.Karaha.Status.Active -> {
+                karahaLabel.text = "⚠️ Karaha bis ${status.window.end.format(timeFormat)}"
+                karahaLabel.setTextColor(getColor(R.color.wear_warn))
+                karahaLabel.visibility = android.view.View.VISIBLE
+            }
+            is de.gebetszeiten.core.prayertimes.Karaha.Status.Soon -> {
+                karahaLabel.text = "⚠️ Karaha ab ${status.window.start.format(timeFormat)}"
+                karahaLabel.setTextColor(getColor(R.color.wear_dim))
+                karahaLabel.visibility = android.view.View.VISIBLE
+            }
+            de.gebetszeiten.core.prayertimes.Karaha.Status.None ->
+                karahaLabel.visibility = android.view.View.GONE
+        }
+
         findViewById<TextView>(R.id.modeLabel).text =
             if (showRemaining) "Anzeige: Restzeit" else "Anzeige: Uhrzeit"
         val vibrate = runBlocking { WearSettings.vibrate(applicationContext) }

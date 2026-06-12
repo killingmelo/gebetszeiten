@@ -236,9 +236,11 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
 
     if (showSettings) {
         ModalBottomSheet(onDismissRequest = { showSettings = false }) {
+            // Every change applies immediately — the sheet stays open and is
+            // dismissed by swipe/back, so nothing is ever lost unsaved.
             LocationSettings(
                 settings = settings,
-                onSave = { viewModel.save(it); showSettings = false },
+                onApply = { viewModel.save(it) },
             )
         }
     }
@@ -972,26 +974,20 @@ private val NAFL_TAHAJJUD = "Tahajjud" to
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Unit) {
+private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Unit) {
+    // Location is the only draft state (typing half a coordinate must not
+    // trigger a reschedule) — everything else applies instantly via commit().
     var city by remember(settings.city) { mutableStateOf(settings.city) }
     var lat by remember(settings.latitude) { mutableStateOf(settings.latitude.toString()) }
     var lng by remember(settings.longitude) { mutableStateOf(settings.longitude.toString()) }
-    var countdown by remember(settings.showCountdown) { mutableStateOf(settings.showCountdown) }
-    var online by remember(settings.useOnline) { mutableStateOf(settings.useOnline) }
-    var karaha by remember(settings.showKaraha) { mutableStateOf(settings.showKaraha) }
-    var contrast by remember(settings.highContrast) { mutableStateOf(settings.highContrast) }
-    var fontScale by remember(settings.fontScale) { mutableStateOf(settings.fontScale) }
-    var reminders by remember(settings.reminders) { mutableStateOf(settings.reminders) }
-    var leadMinutes by remember(settings.reminderLeadMinutes) { mutableStateOf(settings.reminderLeadMinutes) }
-    var persistent by remember(settings.persistentNotification) { mutableStateOf(settings.persistentNotification) }
-    var style by remember(settings.reminderStyle) { mutableStateOf(settings.reminderStyle) }
-    var themeMode by remember(settings.themeMode) { mutableStateOf(settings.themeMode) }
-    var hijriOffset by remember(settings.hijriOffsetDays) { mutableStateOf(settings.hijriOffsetDays) }
-    var widgetTransparent by remember(settings.widgetTransparent) { mutableStateOf(settings.widgetTransparent) }
-    var precision by remember(settings.remainingPrecision) { mutableStateOf(settings.remainingPrecision) }
     var expanded by remember { mutableStateOf(false) }
     var matches by remember { mutableStateOf<List<City>>(emptyList()) }
     val context = LocalContext.current
+
+    // Named "commit" (not "apply") to avoid clashing with Kotlin's stdlib apply.
+    val commit: (AppSettings.() -> AppSettings) -> Unit = { change -> onApply(settings.change()) }
+    val locationDirty = city != settings.city ||
+        lat.toDoubleOrNull() != settings.latitude || lng.toDoubleOrNull() != settings.longitude
 
     LaunchedEffect(city, expanded) {
         matches = if (expanded) Cities.search(context, city, limit = 12) else emptyList()
@@ -1006,6 +1002,11 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Einstellungen", style = MaterialTheme.typography.titleLarge)
+        Text(
+            "Änderungen werden sofort übernommen.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
             OutlinedTextField(
@@ -1019,7 +1020,11 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
                 matches.forEach { c ->
                     DropdownMenuItem(
                         text = { Text("${c.name} (${c.country})") },
-                        onClick = { city = c.name; lat = c.latitude.toString(); lng = c.longitude.toString(); expanded = false },
+                        onClick = {
+                            city = c.name; lat = c.latitude.toString(); lng = c.longitude.toString(); expanded = false
+                            // Picked from the list = complete data → applies directly.
+                            commit { copy(city = c.name, latitude = c.latitude, longitude = c.longitude) }
+                        },
                     )
                 }
             }
@@ -1029,43 +1034,57 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
             OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Breite") }, modifier = Modifier.weight(1f))
             OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Länge") }, modifier = Modifier.weight(1f))
         }
-
-        ToggleRow("Makruh-Zeiten anzeigen", karaha) { karaha = it }
-        ToggleRow("Restzeit anzeigen", countdown) { countdown = it }
-        Text(
-            "Zeigt in App, Widget und dauerhafter Benachrichtigung zusätzlich die verbleibende Zeit. Aus = nur Uhrzeiten.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (countdown) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    "Stufen" to AppSettings.PRECISION_STEPS,
-                    "Genau" to AppSettings.PRECISION_EXACT,
-                ).forEach { (label, v) ->
-                    FilterChip(
-                        selected = precision == v,
-                        onClick = { precision = v },
-                        label = { Text(label) },
-                    )
-                }
-            }
-            Text(
-                if (precision == AppSettings.PRECISION_EXACT) {
-                    "Genau: Live-Countdown in Widget und Benachrichtigung, vom System gezeichnet — kostet nur bei sichtbarem Bildschirm minimal Energie."
-                } else {
-                    "Stufen: abgerundet (noch 2+ Std / 20+ Min), in den letzten 10 Minuten minutengenau — komplett ohne laufende Anzeige, am sparsamsten."
+        if (locationDirty) {
+            Button(
+                onClick = {
+                    val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
+                    val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
+                    commit { copy(city = city.ifBlank { "—" }, latitude = parsedLat, longitude = parsedLng) }
                 },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Ort übernehmen")
+            }
+        }
+
+        ToggleRow("Makruh-Zeiten anzeigen", settings.showKaraha) { commit { copy(showKaraha = it) } }
+        if (settings.showKaraha) {
+            Text(
+                "Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        Text("Restzeit", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
+        Text(
+            "Darstellung der verbleibenden Zeit — je Fläche einzeln einstellbar. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher — am sparsamsten. Genau: Live-Countdown, vom System gezeichnet.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ToggleRow("In der App", settings.showCountdown) { commit { copy(showCountdown = it) } }
+        CountdownModeSelector("Widget", settings.widgetCountdown) { commit { copy(widgetCountdown = it) } }
+        CountdownModeSelector("Sperrbildschirm", settings.notificationCountdown) {
+            commit { copy(notificationCountdown = it) }
+        }
+        if (!settings.persistentNotification) {
+            Text(
+                "Sperrbildschirm-Restzeit erscheint, sobald unten die dauerhafte Anzeige aktiviert ist.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            "Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         if (OfficialTimesProvider.isOnline) {
-            ToggleRow("Offizielle Diyanet-Zeiten (online)", online) { online = it }
+            ToggleRow("Offizielle Diyanet-Zeiten (online)", settings.useOnline) { commit { copy(useOnline = it) } }
         }
 
-        FontSizeSelector(fontScale) { fontScale = it }
-        ToggleRow("Hoher Kontrast", contrast) { contrast = it }
+        FontSizeSelector(settings.fontScale) { commit { copy(fontScale = it) } }
+        ToggleRow("Hoher Kontrast", settings.highContrast) { commit { copy(highContrast = it) } }
 
         Text("Erinnerungen", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
         Text(
@@ -1074,8 +1093,8 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         listOf(Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA).forEach { p ->
-            ToggleRow(context.getString(p.labelRes()), p.name in reminders) { on ->
-                reminders = if (on) reminders + p.name else reminders - p.name
+            ToggleRow(context.getString(p.labelRes()), p.name in settings.reminders) { on ->
+                commit { copy(reminders = if (on) reminders + p.name else reminders - p.name) }
             }
         }
 
@@ -1087,8 +1106,8 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
                 "Ton" to AppSettings.STYLE_SOUND,
             ).forEach { (label, v) ->
                 FilterChip(
-                    selected = style == v,
-                    onClick = { style = v },
+                    selected = settings.reminderStyle == v,
+                    onClick = { commit { copy(reminderStyle = v) } },
                     label = { Text(label) },
                 )
             }
@@ -1103,14 +1122,16 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Aus" to 0, "5 Min" to 5, "10 Min" to 10, "15 Min" to 15, "30 Min" to 30).forEach { (label, v) ->
                 FilterChip(
-                    selected = leadMinutes == v,
-                    onClick = { leadMinutes = v },
+                    selected = settings.reminderLeadMinutes == v,
+                    onClick = { commit { copy(reminderLeadMinutes = v) } },
                     label = { Text(label) },
                 )
             }
         }
 
-        ToggleRow("Dauerhafte Anzeige (Sperrbildschirm)", persistent) { persistent = it }
+        ToggleRow("Dauerhafte Anzeige (Sperrbildschirm)", settings.persistentNotification) {
+            commit { copy(persistentNotification = it) }
+        }
         Text(
             "Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet und Restzeit — sichtbar auch auf dem Sperrbildschirm. Wird vom System gezeichnet, kostet keinen zusätzlichen Akku.",
             style = MaterialTheme.typography.bodySmall,
@@ -1126,8 +1147,8 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
                 "Dunkel" to AppSettings.THEME_DARK,
             ).forEach { (label, v) ->
                 FilterChip(
-                    selected = themeMode == v,
-                    onClick = { themeMode = v },
+                    selected = settings.themeMode == v,
+                    onClick = { commit { copy(themeMode = v) } },
                     label = { Text(label) },
                 )
             }
@@ -1142,8 +1163,8 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(-2, -1, 0, 1, 2).forEach { v ->
                 FilterChip(
-                    selected = hijriOffset == v,
-                    onClick = { hijriOffset = v },
+                    selected = settings.hijriOffsetDays == v,
+                    onClick = { commit { copy(hijriOffsetDays = v) } },
                     label = { Text(if (v > 0) "+$v" else "$v") },
                 )
             }
@@ -1154,38 +1175,31 @@ private fun LocationSettings(settings: AppSettings, onSave: (AppSettings) -> Uni
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        ToggleRow("Widget-Hintergrund transparent", widgetTransparent) { widgetTransparent = it }
+        ToggleRow("Widget-Hintergrund transparent", settings.widgetTransparent) {
+            commit { copy(widgetTransparent = it) }
+        }
 
         BatteryOptimizationCard()
+    }
+}
 
-        Button(
-            onClick = {
-                val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
-                val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
-                onSave(
-                    settings.copy(
-                        latitude = parsedLat,
-                        longitude = parsedLng,
-                        city = city.ifBlank { "—" },
-                        showCountdown = countdown,
-                        useOnline = online,
-                        showKaraha = karaha,
-                        highContrast = contrast,
-                        fontScale = fontScale,
-                        reminders = reminders,
-                        reminderLeadMinutes = leadMinutes,
-                        persistentNotification = persistent,
-                        reminderStyle = style,
-                        themeMode = themeMode,
-                        hijriOffsetDays = hijriOffset,
-                        widgetTransparent = widgetTransparent,
-                        remainingPrecision = precision,
-                    ),
+/** Aus / Stufen / Genau chips for one remaining-time surface. */
+@Composable
+private fun CountdownModeSelector(label: String, value: String, onChange: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(
+                "Aus" to AppSettings.COUNTDOWN_OFF,
+                "Stufen" to AppSettings.PRECISION_STEPS,
+                "Genau" to AppSettings.PRECISION_EXACT,
+            ).forEach { (chip, v) ->
+                FilterChip(
+                    selected = value == v,
+                    onClick = { onChange(v) },
+                    label = { Text(chip) },
                 )
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Speichern")
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import de.gebetszeiten.core.prayertimes.Karaha
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.prayer.PrayerProvider
 import java.time.ZoneId
@@ -34,11 +35,13 @@ object PrayerAlarmScheduler {
     }
 
     /**
-     * Remaining-time mode only: one alarm at the next floor-step boundary
-     * (full hours before the prayer, plus the 30- and 10-minute marks) so the
-     * widget and the persistent notification can show a static "noch 2+ Std"
-     * instead of a per-second chronometer. ~10–20 extra ms-scale wake-ups per
-     * day, in exchange for zero continuous rendering.
+     * One alarm at the next display boundary — the moment the widget's or the
+     * persistent notification's static text would change:
+     *  - STEPS countdown: floor-step boundaries (full hours, 10-minute marks,
+     *    minute marks in the final 10) of either surface's target. EXACT mode
+     *    renders via system chronometer and needs none of these.
+     *  - Karaha indicator: warning start, window start and window end of each
+     *    makruh window (+6 ms-scale wake-ups/day while enabled).
      */
     private suspend fun scheduleDisplayStep(
         context: Context,
@@ -48,43 +51,52 @@ object PrayerAlarmScheduler {
         now: ZonedDateTime,
     ) {
         val pending = pendingIntent(context, DISPLAY_REQUEST_CODE, ACTION_DISPLAY_STEP)
-        // EXACT mode renders via system chronometer — no step alarms needed.
-        if (!settings.showCountdown ||
-            settings.remainingPrecision == de.gebetszeiten.data.AppSettings.PRECISION_EXACT
-        ) {
-            alarmManager.cancel(pending)
-            return
-        }
-        // Both surfaces' targets: widget = next transition, notification = next
-        // actual prayer (sunrise skipped). Boundaries of either count.
-        val targets = buildList {
-            add(PrayerProvider.next(context, settings, zone, now).time)
-            if (settings.persistentNotification) {
-                add(PrayerProvider.nextPrayer(context, settings, zone, now).time)
-            }
-        }
         val nowMs = System.currentTimeMillis()
-        val nextBoundary = targets.flatMap { target ->
-            val targetMs = target.toInstant().toEpochMilli()
-            buildList {
+        val boundaries = mutableListOf<Long>()
+
+        if (settings.anyStepsCountdown()) {
+            // Surfaces' targets: widget = next transition, notification = next
+            // actual prayer (sunrise skipped). Boundaries of either count.
+            val targets = buildList {
+                if (settings.widgetCountdown == de.gebetszeiten.data.AppSettings.PRECISION_STEPS) {
+                    add(PrayerProvider.next(context, settings, zone, now).time)
+                }
+                if (settings.persistentNotification &&
+                    settings.notificationCountdown == de.gebetszeiten.data.AppSettings.PRECISION_STEPS
+                ) {
+                    add(PrayerProvider.nextPrayer(context, settings, zone, now).time)
+                }
+            }
+            targets.forEach { target ->
+                val targetMs = target.toInstant().toEpochMilli()
                 // Minute steps through the final 10 minutes (urgency: exact
                 // count), then 10-minute steps through the final hour —
                 // matching remainingStepLabel's resolution.
                 for (minute in 1..9) {
-                    add(targetMs - minute * 60_000L)
+                    boundaries += targetMs - minute * 60_000L
                 }
                 for (tenMin in 1..5) {
-                    add(targetMs - tenMin * 10 * 60_000L)
+                    boundaries += targetMs - tenMin * 10 * 60_000L
                 }
                 var hour = 1L
                 while (true) {
                     val boundary = targetMs - hour * 3_600_000L
                     if (boundary <= nowMs) break
-                    add(boundary)
+                    boundaries += boundary
                     hour++
                 }
             }
-        }.filter { it > nowMs + 1_000 }.minOrNull()
+        }
+
+        if (settings.showKaraha) {
+            // Karaha lines on widget + notification change at these moments.
+            val today = PrayerProvider.daily(context, settings, now.toLocalDate(), zone)
+            val tomorrow = PrayerProvider.daily(context, settings, now.toLocalDate().plusDays(1), zone)
+            (Karaha.boundaries(Karaha.windows(today)) + Karaha.boundaries(Karaha.windows(tomorrow)))
+                .forEach { boundaries += it.toInstant().toEpochMilli() }
+        }
+
+        val nextBoundary = boundaries.filter { it > nowMs + 1_000 }.minOrNull()
         if (nextBoundary != null) {
             setAlarm(alarmManager, nextBoundary, pending)
         } else {
