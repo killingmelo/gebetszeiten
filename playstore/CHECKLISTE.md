@@ -4,8 +4,8 @@ Alles Vorbereitete liegt in diesem Ordner (`playstore/`) bzw. in `~/Downloads`:
 
 | Artefakt | Pfad |
 |---|---|
-| Phone-Bundle (AAB, signiert) | `Downloads/Gebetszeiten-0.1.12-phone.aab` |
-| Wear-Bundle (AAB, signiert) | `Downloads/Gebetszeiten-0.1.9-wear.aab` |
+| Phone-Bundle (AAB, signiert) | `Downloads/Gebetszeiten-0.1.13-phone.aab` |
+| Wear-Bundle (AAB, signiert) | `Downloads/Gebetszeiten-0.1.10-wear.aab` |
 | App-Icon 512×512 | `playstore/icon_512.png` |
 | Feature-Graphic 1024×500 | `playstore/feature_1024x500.png` |
 | Phone-Screenshots (9:16) | `playstore/screenshots/phone/` |
