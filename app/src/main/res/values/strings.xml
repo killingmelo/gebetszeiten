@@ -32,4 +32,6 @@
     <string name="pre_reminder_title">%1$s in %2$d Min</string>
     <string name="pre_reminder_text">um %1$s</string>
     <string name="data_credit">Städtedaten: GeoNames (CC BY 4.0) · Berechnung: Diyanet-Methode (offline)</string>
+    <string name="data_credit_official">Amtliche Diyanet-Zeiten · Nürnberg</string>
+    <string name="data_credit_calculated">Berechnung: Diyanet-Methode (offline)</string>
 </resources>
