@@ -3,6 +3,7 @@ package de.gebetszeiten.prayer
 import android.content.Context
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
 import de.gebetszeiten.data.AppSettings
+import de.gebetszeiten.official.BundledOfficialSource
 import de.gebetszeiten.official.OfficialTimesCache
 import de.gebetszeiten.official.OfficialTimesProvider
 import java.time.LocalDate
@@ -18,9 +19,13 @@ import java.time.ZonedDateTime
 object PrayerProvider {
 
     suspend fun daily(context: Context, settings: AppSettings, date: LocalDate, zone: ZoneId): DailyPrayerTimes {
+        // 1) Online-Cache (frischste Quelle, nur wenn aktiviert).
         if (settings.useOnline) {
             OfficialTimesCache(context).get(date)?.let { return it.toDaily(date, zone) }
         }
+        // 2) Gebündelte amtliche Tabelle (offline, z. B. Nürnberg 2026).
+        BundledOfficialSource.get(context, settings.city, date)?.let { return it.toDaily(date, zone) }
+        // 3) Fallback: Berechnung.
         return PrayerSchedule.forDate(settings, date, zone)
     }
 
