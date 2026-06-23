@@ -58,15 +58,27 @@ object DiyanetPrayerTimesCalculator {
     private const val ADJ_ISHA = -7
 
     fun calculate(location: GeoLocation, date: LocalDate, zone: ZoneId): DailyPrayerTimes {
-        val base = adhanTimes(location.latitude, location.longitude, date)
+        val rawBase = adhanTimes(location.latitude, location.longitude, date)
+
+        // Polar day / night (above the Arctic/Antarctic circle around the
+        // solstices): the sun never crosses the horizon, so adhan returns NULL
+        // sunrise/sunset/twilight times. Rather than crash (NPE), fall back to
+        // the nearest usable latitude (≈45°, "aqrab al-bilad" — nearest
+        // locality) for the horizon-dependent times. Solar noon (dhuhr) is
+        // longitude-driven, so it stays effectively correct; fajr/asr/isha at
+        // these latitudes are an approximation by necessity.
+        val polar = rawBase.sunrise == null || rawBase.maghrib == null ||
+            rawBase.dhuhr == null || rawBase.asr == null
+        val effLat = if (polar) sign(location.latitude) * HIGH_LATITUDE_THRESHOLD else location.latitude
+        val base = if (polar) adhanTimes(effLat, location.longitude, date) else rawBase
 
         val sunrise = base.sunrise.toZdt(zone)
         val dhuhr = base.dhuhr.toZdt(zone)
         val asr = base.asr.toZdt(zone)
         val maghrib = base.maghrib.toZdt(zone)
 
-        val highLatitude = kotlin.math.abs(location.latitude) >= HIGH_LATITUDE_THRESHOLD
-        val depression = maxDepressionDegrees(location.latitude, date)
+        val highLatitude = kotlin.math.abs(effLat) >= HIGH_LATITUDE_THRESHOLD
+        val depression = maxDepressionDegrees(effLat, date)
 
         val fajr = if (highLatitude && depression < FAJR_TAKDIR_DEPRESSION) {
             sunrise.minusMinutes(FAJR_TAKDIR_MINUTES)
