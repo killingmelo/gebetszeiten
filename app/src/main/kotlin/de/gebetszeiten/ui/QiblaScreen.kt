@@ -31,9 +31,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.gebetszeiten.R
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.prayer.QiblaMath
 import java.util.Locale
@@ -66,6 +68,12 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
     val ring = MaterialTheme.colorScheme.onSurfaceVariant
     val accent = MaterialTheme.colorScheme.primary
     val north = MaterialTheme.colorScheme.error
+    val compassLabels = listOf(
+        stringResource(R.string.compass_n),
+        stringResource(R.string.compass_e),
+        stringResource(R.string.compass_s),
+        stringResource(R.string.compass_w),
+    )
 
     Column(
         modifier = Modifier.padding(inner).fillMaxSize().padding(24.dp),
@@ -74,7 +82,7 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
     ) {
         Canvas(modifier = Modifier.size(240.dp)) {
             rotate(animated) {
-                drawCompassRose(ring, north)
+                drawCompassRose(ring, north, compassLabels)
                 rotate(bearing.toFloat(), pivot = center) {
                     drawQiblaArrow(accent)
                 }
@@ -82,19 +90,19 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
         }
         Spacer(Modifier.height(24.dp))
         Text(
-            "${bearing.roundToInt()}° · $cardinal",
+            stringResource(R.string.qibla_bearing, bearing.roundToInt(), cardinal),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            "Kaaba · $km km",
+            stringResource(R.string.qibla_distance, km),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (!live) {
             Spacer(Modifier.height(12.dp))
             Text(
-                "Kompass nicht verfügbar — Qibla liegt bei ${bearing.roundToInt()}° $cardinal",
+                stringResource(R.string.qibla_no_compass, bearing.roundToInt(), cardinal),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -102,12 +110,12 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
     }
 }
 
-/** Ring + N/O/S/W-Ticks; N-Tick in [north] hervorgehoben. */
-private fun DrawScope.drawCompassRose(ring: Color, north: Color) {
+/** Ring + N/O/S/W-Ticks; N-Tick in [north] hervorgehoben. [labels] are the
+ *  localized cardinal letters (N/E/S/W order). */
+private fun DrawScope.drawCompassRose(ring: Color, north: Color, labels: List<String>) {
     val r = size.minDimension / 2f
     drawCircle(ring.copy(alpha = 0.5f), radius = r, style = Stroke(width = 3.dp.toPx()))
 
-    val labels = listOf("N", "O", "S", "W")
     val textOffsetFromCenter = r - 34.dp.toPx()
     val textSize = 16.sp.toPx()
     val ringArgb = ring.toArgb()

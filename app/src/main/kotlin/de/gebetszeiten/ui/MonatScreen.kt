@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -70,12 +71,12 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = { month = month.minusMonths(1) }) {
-                Icon(painterResource(R.drawable.ic_chevron_left), "Vorheriger Monat",
+                Icon(painterResource(R.drawable.ic_chevron_left), stringResource(R.string.month_prev),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(monthTitle(month), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             IconButton(onClick = { month = month.plusMonths(1) }) {
-                Icon(painterResource(R.drawable.ic_chevron_right), "Nächster Monat",
+                Icon(painterResource(R.drawable.ic_chevron_right), stringResource(R.string.month_next),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -83,7 +84,14 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
         // Tabellenkopf
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
             Text("", Modifier.weight(DATE_WEIGHT))
-            listOf("Fajr", "Dhuhr", "Asr", "Magh.", "Isha").forEach {
+            val headers = listOf(
+                stringResource(R.string.prayer_fajr),
+                stringResource(R.string.prayer_dhuhr),
+                stringResource(R.string.prayer_asr),
+                stringResource(R.string.month_maghrib_short),
+                stringResource(R.string.prayer_isha),
+            )
+            headers.forEach {
                 Text(
                     it, Modifier.weight(1f),
                     style = MaterialTheme.typography.labelSmall,
@@ -95,7 +103,7 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
 
         val list = rows
         if (list == null) {
-            Text("lädt…", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.month_loading), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(list) { row ->

@@ -1144,7 +1144,7 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
 
             Text("Restzeit", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
             Text(
-                "Darstellung der verbleibenden Zeit — je Fläche einzeln einstellbar. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher — am sparsamsten. Genau: Live-Countdown, vom System gezeichnet.",
+                "Darstellung der verbleibenden Zeit — je Fläche einzeln einstellbar. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet — am akkuschonendsten, da die App dafür nicht aufwacht.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
