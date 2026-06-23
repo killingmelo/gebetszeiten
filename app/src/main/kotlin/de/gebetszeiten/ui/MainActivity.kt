@@ -19,6 +19,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -1028,6 +1029,20 @@ private val NAFL_AWWABIN = "Awwabin (Evvabin)" to
 private val NAFL_TAHAJJUD = "Tahajjud" to
     "Freiwilliges Nachtgebet im letzten Drittel der Nacht (nach dem Schlaf, vor Fajr). Besonders verdienstvoll. (Sunna/Mustahab)"
 
+@Composable
+private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                content()
+            },
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Unit) {
@@ -1064,175 +1079,181 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-            OutlinedTextField(
-                value = city,
-                onValueChange = { city = it; expanded = true },
-                label = { Text("Stadt") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth(),
-            )
-            ExposedDropdownMenu(expanded = expanded && matches.isNotEmpty(), onDismissRequest = { expanded = false }) {
-                matches.forEach { c ->
-                    DropdownMenuItem(
-                        text = { Text("${c.name} (${c.country})") },
-                        onClick = {
-                            city = c.name; lat = c.latitude.toString(); lng = c.longitude.toString(); expanded = false
-                            // Picked from the list = complete data → applies directly.
-                            commit { copy(city = c.name, latitude = c.latitude, longitude = c.longitude) }
-                        },
-                    )
+        SettingsSection("Ort") {
+            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                OutlinedTextField(
+                    value = city,
+                    onValueChange = { city = it; expanded = true },
+                    label = { Text("Stadt") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth(),
+                )
+                ExposedDropdownMenu(expanded = expanded && matches.isNotEmpty(), onDismissRequest = { expanded = false }) {
+                    matches.forEach { c ->
+                        DropdownMenuItem(
+                            text = { Text("${c.name} (${c.country})") },
+                            onClick = {
+                                city = c.name; lat = c.latitude.toString(); lng = c.longitude.toString(); expanded = false
+                                // Picked from the list = complete data → applies directly.
+                                commit { copy(city = c.name, latitude = c.latitude, longitude = c.longitude) }
+                            },
+                        )
+                    }
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Breite") }, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Länge") }, modifier = Modifier.weight(1f))
+            }
+            if (locationDirty) {
+                Button(
+                    onClick = {
+                        val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
+                        val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
+                        commit { copy(city = city.ifBlank { "—" }, latitude = parsedLat, longitude = parsedLng) }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Ort übernehmen")
                 }
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Breite") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Länge") }, modifier = Modifier.weight(1f))
-        }
-        if (locationDirty) {
-            Button(
-                onClick = {
-                    val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
-                    val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
-                    commit { copy(city = city.ifBlank { "—" }, latitude = parsedLat, longitude = parsedLng) }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Ort übernehmen")
+        SettingsSection("Anzeige") {
+            ToggleRow("Makruh-Zeiten anzeigen", settings.showKaraha) { commit { copy(showKaraha = it) } }
+            if (settings.showKaraha) {
+                Text(
+                    "Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+
+            Text("Restzeit", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
+            Text(
+                "Darstellung der verbleibenden Zeit — je Fläche einzeln einstellbar. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher — am sparsamsten. Genau: Live-Countdown, vom System gezeichnet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ToggleRow("In der App", settings.showCountdown) { commit { copy(showCountdown = it) } }
+            CountdownModeSelector("Widget", settings.widgetCountdown) { commit { copy(widgetCountdown = it) } }
+            CountdownModeSelector("Sperrbildschirm", settings.notificationCountdown) {
+                commit { copy(notificationCountdown = it) }
+            }
+            if (!settings.persistentNotification) {
+                Text(
+                    "Sperrbildschirm-Restzeit erscheint, sobald unten die dauerhafte Anzeige aktiviert ist.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                "Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (OfficialTimesProvider.isOnline) {
+                ToggleRow("Offizielle Diyanet-Zeiten (online)", settings.useOnline) { commit { copy(useOnline = it) } }
+            }
+
+            FontSizeSelector(settings.fontScale) { commit { copy(fontScale = it) } }
+            ToggleRow("Hoher Kontrast", settings.highContrast) { commit { copy(highContrast = it) } }
         }
 
-        ToggleRow("Makruh-Zeiten anzeigen", settings.showKaraha) { commit { copy(showKaraha = it) } }
-        if (settings.showKaraha) {
+        SettingsSection("Erinnerungen") {
             Text(
-                "Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.",
+                "Stille Benachrichtigung zur jeweiligen Gebetszeit.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            listOf(Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA).forEach { p ->
+                ToggleRow(context.getString(p.labelRes()), p.name in settings.reminders) { on ->
+                    commit { copy(reminders = if (on) reminders + p.name else reminders - p.name) }
+                }
+            }
+
+            Text("Stil", style = MaterialTheme.typography.bodyLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "Still" to AppSettings.STYLE_SILENT,
+                    "Vibration" to AppSettings.STYLE_VIBRATE,
+                    "Ton" to AppSettings.STYLE_SOUND,
+                ).forEach { (label, v) ->
+                    FilterChip(
+                        selected = settings.reminderStyle == v,
+                        onClick = { commit { copy(reminderStyle = v) } },
+                        label = { Text(label) },
+                    )
+                }
+            }
+
+            Text("Vorlauf", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "Zusätzliche stille Erinnerung einige Minuten vor der Gebetszeit.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Aus" to 0, "5 Min" to 5, "10 Min" to 10, "15 Min" to 15, "30 Min" to 30).forEach { (label, v) ->
+                    FilterChip(
+                        selected = settings.reminderLeadMinutes == v,
+                        onClick = { commit { copy(reminderLeadMinutes = v) } },
+                        label = { Text(label) },
+                    )
+                }
+            }
+
+            ToggleRow("Dauerhafte Anzeige (Sperrbildschirm)", settings.persistentNotification) {
+                commit { copy(persistentNotification = it) }
+            }
+            Text(
+                "Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet und Restzeit — sichtbar auch auf dem Sperrbildschirm. Wird vom System gezeichnet, kostet keinen zusätzlichen Akku.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        Text("Restzeit", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
-        Text(
-            "Darstellung der verbleibenden Zeit — je Fläche einzeln einstellbar. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher — am sparsamsten. Genau: Live-Countdown, vom System gezeichnet.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        ToggleRow("In der App", settings.showCountdown) { commit { copy(showCountdown = it) } }
-        CountdownModeSelector("Widget", settings.widgetCountdown) { commit { copy(widgetCountdown = it) } }
-        CountdownModeSelector("Sperrbildschirm", settings.notificationCountdown) {
-            commit { copy(notificationCountdown = it) }
-        }
-        if (!settings.persistentNotification) {
+        SettingsSection("Darstellung") {
+            Text("Design", style = MaterialTheme.typography.bodyLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "System" to AppSettings.THEME_SYSTEM,
+                    "Hell" to AppSettings.THEME_LIGHT,
+                    "Dunkel" to AppSettings.THEME_DARK,
+                ).forEach { (label, v) ->
+                    FilterChip(
+                        selected = settings.themeMode == v,
+                        onClick = { commit { copy(themeMode = v) } },
+                        label = { Text(label) },
+                    )
+                }
+            }
             Text(
-                "Sperrbildschirm-Restzeit erscheint, sobald unten die dauerhafte Anzeige aktiviert ist.",
+                "Dunkel = AMOLED-Schwarz (Pixel aus, maximal akkusparend).",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        Text(
-            "Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (OfficialTimesProvider.isOnline) {
-            ToggleRow("Offizielle Diyanet-Zeiten (online)", settings.useOnline) { commit { copy(useOnline = it) } }
-        }
 
-        FontSizeSelector(settings.fontScale) { commit { copy(fontScale = it) } }
-        ToggleRow("Hoher Kontrast", settings.highContrast) { commit { copy(highContrast = it) } }
-
-        Text("Erinnerungen", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
-        Text(
-            "Stille Benachrichtigung zur jeweiligen Gebetszeit.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        listOf(Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA).forEach { p ->
-            ToggleRow(context.getString(p.labelRes()), p.name in settings.reminders) { on ->
-                commit { copy(reminders = if (on) reminders + p.name else reminders - p.name) }
+            Text("Hijri-Korrektur", style = MaterialTheme.typography.bodyLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(-2, -1, 0, 1, 2).forEach { v ->
+                    FilterChip(
+                        selected = settings.hijriOffsetDays == v,
+                        onClick = { commit { copy(hijriOffsetDays = v) } },
+                        label = { Text(if (v > 0) "+$v" else "$v") },
+                    )
+                }
             }
-        }
+            Text(
+                "Verschiebt das Hijri-Datum um ganze Tage (regionale Mondsichtung).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
-        Text("Stil", style = MaterialTheme.typography.bodyLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
-                "Still" to AppSettings.STYLE_SILENT,
-                "Vibration" to AppSettings.STYLE_VIBRATE,
-                "Ton" to AppSettings.STYLE_SOUND,
-            ).forEach { (label, v) ->
-                FilterChip(
-                    selected = settings.reminderStyle == v,
-                    onClick = { commit { copy(reminderStyle = v) } },
-                    label = { Text(label) },
-                )
+            ToggleRow("Widget-Hintergrund transparent", settings.widgetTransparent) {
+                commit { copy(widgetTransparent = it) }
             }
-        }
-
-        Text("Vorlauf", style = MaterialTheme.typography.bodyLarge)
-        Text(
-            "Zusätzliche stille Erinnerung einige Minuten vor der Gebetszeit.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Aus" to 0, "5 Min" to 5, "10 Min" to 10, "15 Min" to 15, "30 Min" to 30).forEach { (label, v) ->
-                FilterChip(
-                    selected = settings.reminderLeadMinutes == v,
-                    onClick = { commit { copy(reminderLeadMinutes = v) } },
-                    label = { Text(label) },
-                )
-            }
-        }
-
-        ToggleRow("Dauerhafte Anzeige (Sperrbildschirm)", settings.persistentNotification) {
-            commit { copy(persistentNotification = it) }
-        }
-        Text(
-            "Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet und Restzeit — sichtbar auch auf dem Sperrbildschirm. Wird vom System gezeichnet, kostet keinen zusätzlichen Akku.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Text("Darstellung", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
-        Text("Design", style = MaterialTheme.typography.bodyLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
-                "System" to AppSettings.THEME_SYSTEM,
-                "Hell" to AppSettings.THEME_LIGHT,
-                "Dunkel" to AppSettings.THEME_DARK,
-            ).forEach { (label, v) ->
-                FilterChip(
-                    selected = settings.themeMode == v,
-                    onClick = { commit { copy(themeMode = v) } },
-                    label = { Text(label) },
-                )
-            }
-        }
-        Text(
-            "Dunkel = AMOLED-Schwarz (Pixel aus, maximal akkusparend).",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Text("Hijri-Korrektur", style = MaterialTheme.typography.bodyLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(-2, -1, 0, 1, 2).forEach { v ->
-                FilterChip(
-                    selected = settings.hijriOffsetDays == v,
-                    onClick = { commit { copy(hijriOffsetDays = v) } },
-                    label = { Text(if (v > 0) "+$v" else "$v") },
-                )
-            }
-        }
-        Text(
-            "Verschiebt das Hijri-Datum um ganze Tage (regionale Mondsichtung).",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        ToggleRow("Widget-Hintergrund transparent", settings.widgetTransparent) {
-            commit { copy(widgetTransparent = it) }
         }
 
         BatteryOptimizationCard()
