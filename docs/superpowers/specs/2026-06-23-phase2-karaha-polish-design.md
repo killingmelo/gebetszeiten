@@ -111,10 +111,8 @@ Tappbare Elemente, die heute < 48dp hoch sind und einen Dialog öffnen
 (`MakruhChipRow`, `NaflTipRow`), bekommen via Compose-Material3
 `Modifier.minimumInteractiveComponentSize()` ein 48dp-Mindest-Touch-Target —
 das visuelle Layout bleibt kompakt (Inhalt wird im 48dp-Slot zentriert), nur
-die Trefferfläche wächst.
-**⚠ Bitte bestätigen:** Das erhöht die vertikale Höhe dieser Zeilen leicht;
-falls die dichte Optik Vorrang hat, alternativ nur den Klick-Bereich ohne
-reservierte Höhe vergrößern. Default: `minimumInteractiveComponentSize()`.
+die Trefferfläche wächst. **Entschieden:** 48dp-Trefferfläche (Accessibility vor
+Dichte).
 
 ### 3c. prefers-reduced-motion
 `ProgressPill` animiert die Füllung mit `tween(650)`. Bei aktivierter System-
@@ -126,7 +124,7 @@ Scale liest; `animationSpec` = `snap()` wenn deaktiviert, sonst `tween(650)`.
 ### 3d. Hijri-Monatsnamen (Transliteration)
 `HijriText.HIJRI_MONTHS` von türkisch auf eine deutsch/internationale
 Transliteration umstellen (betrifft Hauptscreen **und** Widget-Header über
-`hijriTextShort`). Vorgeschlagener Satz (**bitte in Review bestätigen**):
+`hijriTextShort`). **Entschieden** (internationale Transliteration):
 
 ```
 Muharram, Safar, Rabi al-awwal, Rabi al-thani, Jumada al-awwal,
@@ -134,8 +132,7 @@ Jumada al-thani, Rajab, Schaban, Ramadan, Schawwal, Dhul-Qada, Dhul-Hijja
 ```
 
 (Konsistent mit dem vom Nutzer genannten „Dhul-Hijja"; „Ramadan" statt
-türk. „Ramazan". Falls eine andere Konvention gewünscht ist — z. B.
-durchgängig „Sch"/„Dsch" oder englisch „Sha'ban" — hier festlegen.)
+türk. „Ramazan".)
 
 ---
 
