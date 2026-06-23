@@ -16,6 +16,12 @@ Diese App erhebt, speichert, verarbeitet und teilt **keinerlei personenbezogene 
 
 Da keine Daten erhoben werden, werden auch keine Daten an Dritte weitergegeben.
 
+**Optionale Online-Variante:** Eine separat aus dem Quellcode baubare Variante kann
+auf Wunsch die offiziellen Diyanet-Zeiten online abgleichen. Nur sie besitzt die
+Internet-Berechtigung und übermittelt dabei ausschließlich den gewählten
+**Städtenamen** (keine Koordinaten, keine Kennungen) an den Diyanet-Proxy. Die im
+Play Store veröffentlichte Version enthält diese Variante nicht.
+
 ## English
 
 This app does **not collect, store, process, or share any personal data**.
@@ -28,6 +34,11 @@ This app does **not collect, store, process, or share any personal data**.
   device. The same applies to the Wear OS app.
 
 Since no data is collected, no data is shared with third parties.
+
+**Optional online variant:** A separately source-built variant can optionally sync
+the official Diyanet times online. Only it holds the Internet permission, and it
+transmits only the selected **city name** (no coordinates, no identifiers) to the
+Diyanet proxy. The version published on the Play Store does not include this variant.
 
 ---
 
