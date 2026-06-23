@@ -860,7 +860,8 @@ private fun MakruhChipRow(
 ) {
     val c = amber.copy(alpha = if (faded) 0.55f else 1f)
     val desc = "Makruh-Zeit ${block.label}, ${block.start.format(HM)} bis ${block.end.format(HM)}" +
-        if (selected) ", aktuell" else ""
+        (if (selected) ", aktuell" else "") +
+        (countdown?.let { ", ${it.text}" } ?: "")
     val shape = RoundedCornerShape(12.dp)
     var mod = Modifier
         .minimumInteractiveComponentSize()

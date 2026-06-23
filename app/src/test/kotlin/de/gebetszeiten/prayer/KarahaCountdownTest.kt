@@ -31,4 +31,10 @@ class KarahaCountdownTest {
     @Test fun afterEndIsNull() {
         assertNull(KarahaCountdown.state(t(21, 27), start, end))
     }
+
+    @Test fun atStartIsActive() {
+        val s = KarahaCountdown.state(start, start, end)!!
+        assertEquals(true, s.active)
+        assertEquals("noch 40 Min", s.text)
+    }
 }
