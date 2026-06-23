@@ -15,6 +15,14 @@ class EntryClearTest {
         )
     }
 
+    @Test fun defaultShortMatchesConstant() {
+        // Ohne explizites shortMillis greift ENTRY_ALERT_SHORT_MILLIS — schützt den Default.
+        assertEquals(
+            now + ENTRY_ALERT_SHORT_MILLIS,
+            entryClearAtMillis(now, transition, persistent = true, audible = true),
+        )
+    }
+
     @Test fun persistentButSilentKeepsTransition() {
         // Still+dauerhaft postet ohnehin kein Eintritts-Banner; der reine Helfer
         // gibt dennoch die lange Frist zurück.

@@ -7,6 +7,7 @@ import androidx.glance.appwidget.updateAll
 import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.notify.PrayerNotifier
+import de.gebetszeiten.notify.entryClearAtMillis
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.widget.NextPrayerWidget
 import kotlinx.coroutines.CoroutineScope
@@ -93,7 +94,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         context,
                         active,
                         nextPrayer,
-                        de.gebetszeiten.notify.entryClearAtMillis(
+                        entryClearAtMillis(
                             nowMillis = now.toInstant().toEpochMilli(),
                             transitionMillis = transition.time.toInstant().toEpochMilli(),
                             persistent = settings.persistentNotification,
