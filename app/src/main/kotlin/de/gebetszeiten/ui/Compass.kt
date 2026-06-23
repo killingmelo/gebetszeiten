@@ -31,15 +31,16 @@ fun rememberDeviceAzimuth(): Float? {
             val matrix = FloatArray(9)
             val remapped = FloatArray(9)
             val orientation = FloatArray(3)
+            // Fix 2: read display rotation ONCE per effect cycle instead of every sensor event.
+            val (axisX, axisY) = when (displayRotation(context)) {
+                Surface.ROTATION_90 -> SensorManager.AXIS_Y to SensorManager.AXIS_MINUS_X
+                Surface.ROTATION_180 -> SensorManager.AXIS_MINUS_X to SensorManager.AXIS_MINUS_Y
+                Surface.ROTATION_270 -> SensorManager.AXIS_MINUS_Y to SensorManager.AXIS_X
+                else -> SensorManager.AXIS_X to SensorManager.AXIS_Y
+            }
             val listener = object : SensorEventListener {
                 override fun onSensorChanged(event: SensorEvent) {
                     SensorManager.getRotationMatrixFromVector(matrix, event.values)
-                    val (axisX, axisY) = when (displayRotation(context)) {
-                        Surface.ROTATION_90 -> SensorManager.AXIS_Y to SensorManager.AXIS_MINUS_X
-                        Surface.ROTATION_180 -> SensorManager.AXIS_MINUS_X to SensorManager.AXIS_MINUS_Y
-                        Surface.ROTATION_270 -> SensorManager.AXIS_MINUS_Y to SensorManager.AXIS_X
-                        else -> SensorManager.AXIS_X to SensorManager.AXIS_Y
-                    }
                     SensorManager.remapCoordinateSystem(matrix, axisX, axisY, remapped)
                     SensorManager.getOrientation(remapped, orientation)
                     val deg = QiblaMath.normalizeDegrees(Math.toDegrees(orientation[0].toDouble()).toFloat())

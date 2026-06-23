@@ -1,5 +1,6 @@
 package de.gebetszeiten.ui
 
+import android.graphics.Paint
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -16,6 +17,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -24,8 +28,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.prayer.QiblaMath
 import java.util.Locale
@@ -40,9 +47,16 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
 
     val azimuth = rememberDeviceAzimuth()
     val live = azimuth != null
-    val target = -(azimuth ?: 0f)
+
+    // Fix 3: keep a continuous angle to avoid long-arc spin on 0↔360 wrap.
+    var continuousTarget by remember { mutableFloatStateOf(-(azimuth ?: 0f)) }
+    val rawTarget = -(azimuth ?: 0f)
     val animated by animateFloatAsState(
-        targetValue = target,
+        targetValue = run {
+            val delta = ((rawTarget - continuousTarget + 540f) % 360f) - 180f
+            continuousTarget = continuousTarget + delta
+            continuousTarget
+        },
         animationSpec = if (rememberAnimationsEnabled()) tween(250) else snap(),
         label = "compass",
     )
@@ -90,6 +104,13 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
 private fun DrawScope.drawCompassRose(ring: Color, north: Color) {
     val r = size.minDimension / 2f
     drawCircle(ring.copy(alpha = 0.5f), radius = r, style = Stroke(width = 3.dp.toPx()))
+
+    val labels = listOf("N", "O", "S", "W")
+    val textOffsetFromCenter = r - 34.dp.toPx()
+    val textSize = 16.sp.toPx()
+    val ringArgb = ring.toArgb()
+    val northArgb = north.toArgb()
+
     for (i in 0 until 4) {
         val isNorth = i == 0
         rotate(i * 90f, pivot = center) {
@@ -98,6 +119,21 @@ private fun DrawScope.drawCompassRose(ring: Color, north: Color) {
                 start = Offset(center.x, center.y - r),
                 end = Offset(center.x, center.y - r + (if (isNorth) 22.dp.toPx() else 14.dp.toPx())),
                 strokeWidth = if (isNorth) 5.dp.toPx() else 3.dp.toPx(),
+            )
+            // Draw cardinal letter just inside the tick, centered on the axis.
+            val paint = Paint().apply {
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+                this.textSize = textSize
+                color = if (isNorth) northArgb else ringArgb
+                isFakeBoldText = isNorth
+            }
+            // In the rotated frame, "north" is always at (center.x, center.y - textOffsetFromCenter).
+            drawContext.canvas.nativeCanvas.drawText(
+                labels[i],
+                center.x,
+                center.y - textOffsetFromCenter + textSize / 3f, // +textSize/3 for optical centering
+                paint,
             )
         }
     }
