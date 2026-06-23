@@ -85,11 +85,20 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     } else {
                         transition
                     }
+                    // With the persistent line on AND an audible style, the entry
+                    // banner is only the alert carrier — let it auto-clear after a
+                    // few minutes instead of lingering until the next transition,
+                    // so it doesn't duplicate the persistent line all interval long.
                     PrayerNotifier.notifyPrayer(
                         context,
                         active,
                         nextPrayer,
-                        transition.time.toInstant().toEpochMilli(),
+                        de.gebetszeiten.notify.entryClearAtMillis(
+                            nowMillis = now.toInstant().toEpochMilli(),
+                            transitionMillis = transition.time.toInstant().toEpochMilli(),
+                            persistent = settings.persistentNotification,
+                            audible = !styleSilent,
+                        ),
                         settings.reminderStyle,
                     )
                 }
