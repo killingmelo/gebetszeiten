@@ -34,4 +34,19 @@
     <string name="data_credit">Städtedaten: GeoNames (CC BY 4.0) · Berechnung: Diyanet-Methode (offline)</string>
     <string name="data_credit_official">Amtliche Diyanet-Zeiten · %1$s</string>
     <string name="data_credit_calculated">Berechnung: Diyanet-Methode (offline)</string>
+
+    <!-- Qibla -->
+    <string name="qibla_bearing">%1$d° · %2$s</string>
+    <string name="qibla_distance">Kaaba · %1$s km</string>
+    <string name="qibla_no_compass">Kompass nicht verfügbar — Qibla liegt bei %1$d° %2$s</string>
+    <string name="compass_n">N</string>
+    <string name="compass_e">O</string>
+    <string name="compass_s">S</string>
+    <string name="compass_w">W</string>
+
+    <!-- Monat -->
+    <string name="month_prev">Vorheriger Monat</string>
+    <string name="month_next">Nächster Monat</string>
+    <string name="month_loading">lädt…</string>
+    <string name="month_maghrib_short">Magh.</string>
 </resources>
