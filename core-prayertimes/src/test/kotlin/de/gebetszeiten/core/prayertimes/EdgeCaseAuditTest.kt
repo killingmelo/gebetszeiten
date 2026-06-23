@@ -28,6 +28,7 @@ class EdgeCaseAuditTest {
         Place("Reykjavik", 64.1466, -21.9426),
         Place("Tromso", 69.6492, 18.9560),
         Place("Svalbard", 78.2232, 15.6267),
+        Place("Antarctica(S)", -75.0, 0.0), // südlicher Polar-Fallback (-45°)
     )
 
     private val dates = listOf(
