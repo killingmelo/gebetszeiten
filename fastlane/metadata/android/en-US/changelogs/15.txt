@@ -1,0 +1,8 @@
+New in this version:
+• Qibla compass and month overview
+• Official Diyanet times for Nuremberg (offline)
+• Karaha countdown right in the timeline
+• Clearer, sectioned settings
+• Correctness and stability fixes (incl. high latitudes)
+• Improved accessibility and battery behavior
+• Privacy: your location is no longer included in backups

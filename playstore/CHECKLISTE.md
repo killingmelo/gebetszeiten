@@ -1,11 +1,16 @@
 # Play-Store-Veröffentlichung — Checkliste
 
-Alles Vorbereitete liegt in diesem Ordner (`playstore/`) bzw. in `~/Downloads`:
+Die signierten Release-Bundles sind frisch gebaut (offline-Flavor, R8/Minify,
+lintVital + voller Lint grün, signiert mit `keystore/gebetszeiten.jks`,
+Zertifikat gültig bis 2053). Neu bauen jederzeit mit:
+`.\gradlew.bat :app:bundleOfflineRelease :wear:bundleRelease`.
+
+Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
 
 | Artefakt | Pfad |
 |---|---|
-| Phone-Bundle (AAB, signiert) | `Downloads/Gebetszeiten-0.1.13-phone.aab` |
-| Wear-Bundle (AAB, signiert) | `Downloads/Gebetszeiten-0.1.10-wear.aab` |
+| Phone-Bundle (AAB, signiert, v0.1.14 / versionCode 15) | `app/build/outputs/bundle/offlineRelease/app-offline-release.aab` |
+| Wear-Bundle (AAB, signiert, v0.1.11 / versionCode 11) | `wear/build/outputs/bundle/release/wear-release.aab` |
 | App-Icon 512×512 | `playstore/icon_512.png` |
 | Feature-Graphic 1024×500 | `playstore/feature_1024x500.png` |
 | Phone-Screenshots (9:16) | `playstore/screenshots/phone/` |
@@ -49,10 +54,11 @@ haben Zusatzauflagen). Werbung: **keine**.
 **Staatliche App / Finanz-App / Gesundheits-App:** jeweils Nein.
 
 ### 5. Releases hochladen
-- **Produktion (bzw. zuerst geschlossener Test)** → `Gebetszeiten-0.1.12-phone.aab`.
+- **Produktion (bzw. zuerst geschlossener Test)** →
+  `app/build/outputs/bundle/offlineRelease/app-offline-release.aab` (v0.1.14).
 - **Wear OS Form-Faktor:** unter „Releases" den Wear-Track aktivieren
   (Erweiterte Einstellungen → Formfaktoren → Wear OS) und
-  `Gebetszeiten-0.1.9-wear.aab` hochladen; Wear-Screenshots (1:1) im
+  `wear/build/outputs/bundle/release/wear-release.aab` (v0.1.11) hochladen; Wear-Screenshots (1:1) im
   Store-Eintrag unter Wear OS ergänzen. Wear-Apps durchlaufen eine eigene
   kurze Google-Prüfung.
 - Beim ersten Upload fragt Play nach **Play App Signing** → zustimmen;

@@ -282,7 +282,7 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
         Text(
             // Amtlich nennt die Stadt ("… · Nürnberg"); der berechnete String hat
             // keinen Platzhalter, das Extra-Argument wird dort gefahrlos ignoriert.
-            text = context.getString(de.gebetszeiten.prayer.dataCreditRes(officialSource), settings.city),
+            text = stringResource(de.gebetszeiten.prayer.dataCreditRes(officialSource), settings.city),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
@@ -700,7 +700,7 @@ private fun Timeline(
                             else -> MaterialTheme.colorScheme.onSurface
                         }
                         val weight = if (isSelected || isNext) FontWeight.Bold else FontWeight.Normal
-                        val name = context.getString(block.prayer.labelRes())
+                        val name = stringResource(block.prayer.labelRes())
                         val status = when {
                             isSelected -> stringResource(R.string.status_current)
                             isNext -> stringResource(R.string.status_next)
@@ -1202,7 +1202,7 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             listOf(Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA).forEach { p ->
-                ToggleRow(context.getString(p.labelRes()), p.name in settings.reminders) { on ->
+                ToggleRow(stringResource(p.labelRes()), p.name in settings.reminders) { on ->
                     commit { copy(reminders = if (on) reminders + p.name else reminders - p.name) }
                 }
             }

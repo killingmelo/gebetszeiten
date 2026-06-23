@@ -1,0 +1,8 @@
+Neu in dieser Version:
+• Qibla-Kompass und Monatsübersicht
+• Amtliche Diyanet-Zeiten für Nürnberg (offline)
+• Karaha-Countdown direkt in der Zeitleiste
+• Übersichtlichere Einstellungen (Sektionen)
+• Korrektheits- und Stabilitätsfixes (auch hohe Breitengrade)
+• Bessere Barrierefreiheit und Akkuverhalten
+• Datenschutz: Standort wird nicht mehr ins Backup übernommen
