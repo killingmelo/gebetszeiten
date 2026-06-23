@@ -161,7 +161,7 @@ private fun NotificationPermissionRequester() {
     LaunchedEffect(Unit) { launcher.launch(Manifest.permission.POST_NOTIFICATIONS) }
 }
 
-private enum class Tab { HEUTE, QIBLA }
+private enum class Tab { HEUTE, MONAT, QIBLA }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -173,7 +173,7 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (tab == Tab.HEUTE) settings.city else "Qibla") },
+                title = { Text(when (tab) { Tab.HEUTE -> settings.city; Tab.MONAT -> "Monat"; Tab.QIBLA -> "Qibla" }) },
                 actions = {
                     IconButton(onClick = { showSettings = true }) {
                         Icon(painterResource(R.drawable.ic_tune), contentDescription = "Einstellungen")
@@ -190,6 +190,12 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
                     label = { Text("Heute") },
                 )
                 NavigationBarItem(
+                    selected = tab == Tab.MONAT,
+                    onClick = { tab = Tab.MONAT },
+                    icon = { Icon(painterResource(R.drawable.ic_month), contentDescription = null) },
+                    label = { Text("Monat") },
+                )
+                NavigationBarItem(
                     selected = tab == Tab.QIBLA,
                     onClick = { tab = Tab.QIBLA },
                     icon = { Icon(painterResource(R.drawable.ic_qibla), contentDescription = null) },
@@ -200,6 +206,7 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
     ) { inner ->
         when (tab) {
             Tab.HEUTE -> HeuteContent(inner, settings)
+            Tab.MONAT -> MonatScreen(inner, settings)
             Tab.QIBLA -> QiblaScreen(inner, settings)
         }
     }
