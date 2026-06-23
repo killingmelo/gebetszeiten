@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -44,6 +45,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -92,9 +94,11 @@ import de.gebetszeiten.data.Cities
 import de.gebetszeiten.data.City
 import de.gebetszeiten.official.OfficialTimesProvider
 import de.gebetszeiten.prayer.IslamicWindows
+import de.gebetszeiten.prayer.KarahaCountdown
 import de.gebetszeiten.prayer.KarahaTimes
 import de.gebetszeiten.prayer.NaflTimes
 import de.gebetszeiten.prayer.PrayerProvider
+import de.gebetszeiten.prayer.durationLabel
 import de.gebetszeiten.prayer.hijriText
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.ui.theme.GebetszeitenTheme
@@ -273,11 +277,12 @@ private fun DateNavigator(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(
-            onClick = onPrev,
-            modifier = Modifier.semantics { contentDescription = "Vorheriger Tag" },
-        ) {
-            Text("‹", style = MaterialTheme.typography.headlineMedium)
+        IconButton(onClick = onPrev) {
+            Icon(
+                painterResource(R.drawable.ic_chevron_left),
+                contentDescription = "Vorheriger Tag",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -299,23 +304,13 @@ private fun DateNavigator(
                 color = MaterialTheme.colorScheme.primary,
             )
         }
-        IconButton(
-            onClick = onNext,
-            modifier = Modifier.semantics { contentDescription = "Nächster Tag" },
-        ) {
-            Text("›", style = MaterialTheme.typography.headlineMedium)
+        IconButton(onClick = onNext) {
+            Icon(
+                painterResource(R.drawable.ic_chevron_right),
+                contentDescription = "Nächster Tag",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-    }
-}
-
-/** "3 Std 26 Min" / "55 Min" — interval length shown in the rail gap. */
-private fun durationLabel(min: Long): String {
-    val h = min / 60
-    val m = min % 60
-    return when {
-        h > 0 && m > 0 -> "$h Std $m Min"
-        h > 0 -> "$h Std"
-        else -> "$m Min"
     }
 }
 
@@ -384,7 +379,7 @@ private fun TimesCard(
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
-    val dark = isSystemInDarkTheme()
+    val dark = de.gebetszeiten.ui.theme.LocalIsDark.current
     val hc = LocalHighContrast.current
     // Darkened for WCAG AA contrast of small text on the light card.
     val amber = when {
@@ -665,7 +660,11 @@ private fun Timeline(
                         // unless it's drawn inside the current pill as a band.
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             mkVisible(block.before)?.takeIf { it !== pillMakruh }?.let {
-                                MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
+                                MakruhChipRow(
+                                    it, amber, isMakruhNow(it), highlight && it.end.isBefore(now),
+                                    countdown = if (highlight) KarahaCountdown.state(now, it.start, it.end) else null,
+                                    onKaraha = onKaraha,
+                                )
                             }
                             if (isSelected) {
                                 // Current prayer: the pill itself fills with the
@@ -685,10 +684,12 @@ private fun Timeline(
                                     val e = (Duration.between(block.time, mk.end).seconds / total).coerceIn(0f, 1f)
                                     if (e > s) s to e else null
                                 }
+                                val karaha = pillMakruh?.let { KarahaCountdown.state(now, it.start, it.end) }
                                 ProgressPill(
                                     fraction = frac,
                                     makruhBand = band,
                                     makruhColor = amber,
+                                    accentAmber = karaha?.active == true,
                                     onClick = pillMakruh?.let { mk -> { onKaraha(mk.explain) } },
                                 ) {
                                     Column(
@@ -704,6 +705,14 @@ private fun Timeline(
                                         }
                                         if (showRemaining) {
                                             Text("noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = foreground.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                        }
+                                        karaha?.let { k ->
+                                            Text(
+                                                text = (if (k.active) "⛔ Karaha · " else "⚠ Karaha · ") + k.text,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = amber,
+                                                modifier = Modifier.padding(top = 1.dp),
+                                            )
                                         }
                                     }
                                 }
@@ -755,7 +764,11 @@ private fun Timeline(
                             }
                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 mkVisible(block.before)?.let {
-                                    MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
+                                    MakruhChipRow(
+                                        it, amber, isMakruhNow(it), highlight && it.end.isBefore(now),
+                                        countdown = if (highlight) KarahaCountdown.state(now, it.start, it.end) else null,
+                                        onKaraha = onKaraha,
+                                    )
                                 }
                                 if (selected) {
                                     val onpc = MaterialTheme.colorScheme.onPrimaryContainer
@@ -842,13 +855,16 @@ private fun MakruhChipRow(
     amber: Color,
     selected: Boolean,
     faded: Boolean,
+    countdown: KarahaCountdown.State?,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val c = amber.copy(alpha = if (faded) 0.55f else 1f)
     val desc = "Makruh-Zeit ${block.label}, ${block.start.format(HM)} bis ${block.end.format(HM)}" +
-        if (selected) ", aktuell" else ""
+        (if (selected) ", aktuell" else "") +
+        (countdown?.let { ", ${it.text}" } ?: "")
     val shape = RoundedCornerShape(12.dp)
     var mod = Modifier
+        .minimumInteractiveComponentSize()
         .clickable(onClickLabel = "Erklärung anzeigen") { onKaraha(block.explain) }
     if (selected) mod = mod.background(amber.copy(alpha = 0.20f), shape)
     mod = mod
@@ -866,7 +882,8 @@ private fun MakruhChipRow(
             )
             Spacer(Modifier.width(5.dp))
             Text(
-                "Makruh · ${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}",
+                "Makruh · ${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}" +
+                    (countdown?.let { " · ${it.text}" } ?: ""),
                 style = if (selected) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
                 color = c,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
@@ -885,14 +902,15 @@ private fun ProgressPill(
     fillColor: Color = MaterialTheme.colorScheme.primaryContainer,
     makruhBand: Pair<Float, Float>? = null,
     makruhColor: Color = MaterialTheme.colorScheme.primary,
+    accentAmber: Boolean = false,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(16.dp)
-    val edge = MaterialTheme.colorScheme.primary
+    val edge = if (accentAmber) makruhColor else MaterialTheme.colorScheme.primary
     val animFrac by animateFloatAsState(
         targetValue = fraction.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 650),
+        animationSpec = if (rememberAnimationsEnabled()) tween(durationMillis = 650) else snap(),
         label = "pillFill",
     )
     // Ridged ("geriffelt") amber stripes via a repeating diagonal gradient.
@@ -947,7 +965,9 @@ private fun NaflTipRow(block: NaflBlock, green: Color, faded: Boolean, onInfo: (
     val c = green.copy(alpha = if (faded) 0.55f else 1f)
     val desc = "Tipp: ${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
     var mod = Modifier.padding(start = 12.dp)
-    block.explain?.let { ex -> mod = mod.clickable(onClickLabel = "Erklärung anzeigen") { onInfo(ex) } }
+    block.explain?.let { ex ->
+        mod = mod.minimumInteractiveComponentSize().clickable(onClickLabel = "Erklärung anzeigen") { onInfo(ex) }
+    }
     Row(
         modifier = mod
             .heightIn(min = 22.dp)
