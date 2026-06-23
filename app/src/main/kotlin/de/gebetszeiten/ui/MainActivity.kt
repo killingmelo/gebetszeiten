@@ -45,6 +45,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -862,6 +863,7 @@ private fun MakruhChipRow(
         if (selected) ", aktuell" else ""
     val shape = RoundedCornerShape(12.dp)
     var mod = Modifier
+        .minimumInteractiveComponentSize()
         .clickable(onClickLabel = "Erklärung anzeigen") { onKaraha(block.explain) }
     if (selected) mod = mod.background(amber.copy(alpha = 0.20f), shape)
     mod = mod
@@ -962,7 +964,9 @@ private fun NaflTipRow(block: NaflBlock, green: Color, faded: Boolean, onInfo: (
     val c = green.copy(alpha = if (faded) 0.55f else 1f)
     val desc = "Tipp: ${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
     var mod = Modifier.padding(start = 12.dp)
-    block.explain?.let { ex -> mod = mod.clickable(onClickLabel = "Erklärung anzeigen") { onInfo(ex) } }
+    block.explain?.let { ex ->
+        mod = mod.minimumInteractiveComponentSize().clickable(onClickLabel = "Erklärung anzeigen") { onInfo(ex) }
+    }
     Row(
         modifier = mod
             .heightIn(min = 22.dp)
