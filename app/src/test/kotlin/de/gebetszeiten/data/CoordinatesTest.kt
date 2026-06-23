@@ -22,6 +22,12 @@ class CoordinatesTest {
         assertTrue(Coordinates.latError("-"))
     }
 
+    @Test fun whitespaceIsTrimmedBeforeParsing() {
+        assertFalse(Coordinates.latError(" 90 "))
+        assertFalse(Coordinates.lngError("  11.0767 "))
+        assertTrue(Coordinates.latError(" abc "))
+    }
+
     @Test fun validLongitudes() {
         assertFalse(Coordinates.lngError("11.0767"))
         assertFalse(Coordinates.lngError("-180"))
@@ -30,6 +36,7 @@ class CoordinatesTest {
 
     @Test fun invalidLongitudes() {
         assertTrue(Coordinates.lngError("180.1"))
+        assertTrue(Coordinates.lngError("-180.1"))
         assertTrue(Coordinates.lngError("-200"))
         assertTrue(Coordinates.lngError("xyz"))
         assertTrue(Coordinates.lngError(""))
