@@ -1102,9 +1102,18 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                 }
             }
 
+            val latErr = de.gebetszeiten.data.Coordinates.latError(lat)
+            val lngErr = de.gebetszeiten.data.Coordinates.lngError(lng)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Breite") }, modifier = Modifier.weight(1f))
-                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Länge") }, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Breite") }, isError = latErr, singleLine = true, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Länge") }, isError = lngErr, singleLine = true, modifier = Modifier.weight(1f))
+            }
+            if (latErr || lngErr) {
+                Text(
+                    "Gültige Werte: Breite -90 bis 90, Länge -180 bis 180.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
             if (locationDirty) {
                 Button(
@@ -1113,6 +1122,7 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                         val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
                         commit { copy(city = city.ifBlank { "—" }, latitude = parsedLat, longitude = parsedLng) }
                     },
+                    enabled = !latErr && !lngErr,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Ort übernehmen")
