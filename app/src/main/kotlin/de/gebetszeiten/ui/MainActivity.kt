@@ -182,6 +182,10 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
         val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone).fajr
         value = DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr), nextFajr)
     }
+    val officialSource by produceState(false, settings, selectedDate) {
+        value = de.gebetszeiten.official.BundledOfficialSource.covers(context, settings.city, selectedDate) ||
+            (settings.useOnline && de.gebetszeiten.official.OfficialTimesCache(context).get(selectedDate) != null)
+    }
     var showSettings by remember { mutableStateOf(false) }
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
 
@@ -226,7 +230,7 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
             }
 
             Text(
-                text = context.getString(R.string.data_credit),
+                text = context.getString(de.gebetszeiten.prayer.dataCreditRes(officialSource)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp),

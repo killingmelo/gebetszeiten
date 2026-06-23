@@ -100,4 +100,6 @@ dependencies {
     implementation(libs.androidx.glance.material3)
 
     implementation(libs.androidx.datastore.preferences)
+
+    testImplementation(libs.junit)
 }

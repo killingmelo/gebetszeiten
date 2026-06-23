@@ -3,7 +3,6 @@ package de.gebetszeiten.data
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.text.Normalizer
 
 /** A city resolved from the bundled offline database. */
 data class City(
@@ -33,20 +32,6 @@ object Cities {
     @Volatile
     private var cache: List<CityEntry>? = null
 
-    private fun normalize(s: String): String {
-        val lower = s.trim().lowercase()
-        val stripped = Normalizer.normalize(lower, Normalizer.Form.NFD)
-            .replace(Regex("\\p{Mn}+"), "")
-        return stripped
-            .replace('ı', 'i')
-            .replace('ş', 's')
-            .replace('ğ', 'g')
-            .replace('ç', 'c')
-            .replace('ö', 'o')
-            .replace('ü', 'u')
-            .replace('ß', 's')
-    }
-
     private suspend fun entries(context: Context): List<CityEntry> {
         cache?.let { return it }
         return withContext(Dispatchers.IO) {
@@ -67,8 +52,8 @@ object Cities {
                         country = c[2],
                         latitude = lat,
                         longitude = lng,
-                        normName = normalize(c[0]),
-                        normAscii = normalize(c[1]),
+                        normName = TextNormalize.normalize(c[0]),
+                        normAscii = TextNormalize.normalize(c[1]),
                     )
                 }.toList()
             }
@@ -80,7 +65,7 @@ object Cities {
      *  preferred; substring matches are used only when there is no prefix hit. */
     suspend fun search(context: Context, query: String, limit: Int = 20): List<City> {
         val all = entries(context)
-        val q = normalize(query)
+        val q = TextNormalize.normalize(query)
         val chosen = when {
             q.isEmpty() -> all.take(limit)
             else -> {
