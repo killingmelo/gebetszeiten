@@ -126,25 +126,25 @@ class MainActivity : Activity() {
         } else {
             heroTimeText = next.second.format(timeFormat)
             heroTimeSize = 42f
-            heroTimeDesc = "um $heroTimeText Uhr"
+            heroTimeDesc = getString(R.string.desc_hero_time_clock, heroTimeText)
         }
 
         val karaha = de.gebetszeiten.core.prayertimes.Karaha
         val karahaUi = when (val status = karaha.status(karaha.windows(WearPrayer.today(s.location, zone)), now)) {
             is de.gebetszeiten.core.prayertimes.Karaha.Status.Active ->
-                KarahaUi("⚠️ Karaha bis ${status.window.end.format(timeFormat)}", warn = true)
+                KarahaUi(getString(R.string.karaha_active, status.window.end.format(timeFormat)), warn = true)
             is de.gebetszeiten.core.prayertimes.Karaha.Status.Soon ->
-                KarahaUi("⚠️ Karaha ab ${status.window.start.format(timeFormat)}", warn = false)
+                KarahaUi(getString(R.string.karaha_soon, status.window.start.format(timeFormat)), warn = false)
             de.gebetszeiten.core.prayertimes.Karaha.Status.None -> null
         }
 
         val rows = buildList {
             upcoming.drop(1).forEach { (prayer, time) ->
                 val tomorrow = time.toLocalDate() != now.toLocalDate()
-                add((if (tomorrow) "${prayer.label()} · morgen" else prayer.label()) to time)
+                add((if (tomorrow) getString(R.string.label_morgen_suffix, prayer.label()) else prayer.label()) to time)
             }
             val sunrise = WearPrayer.today(s.location, zone).sunrise
-            if (sunrise.isAfter(now)) add("Sonnenaufgang" to sunrise)
+            if (sunrise.isAfter(now)) add(getString(R.string.label_sonnenaufgang) to sunrise)
         }.sortedBy { it.second }.map { it.first to it.second.format(timeFormat) }
 
         return ViewState(
@@ -154,8 +154,8 @@ class MainActivity : Activity() {
             heroTimeDesc = heroTimeDesc,
             city = s.city,
             karaha = karahaUi,
-            modeText = if (s.showRemaining) "Anzeige: Restzeit" else "Anzeige: Uhrzeit",
-            vibrateText = if (s.vibrate) "Vibration: An" else "Vibration: Aus",
+            modeText = if (s.showRemaining) getString(R.string.mode_remaining) else getString(R.string.mode_clock),
+            vibrateText = if (s.vibrate) getString(R.string.vibrate_on) else getString(R.string.vibrate_off),
             rows = rows,
         )
     }
@@ -163,16 +163,16 @@ class MainActivity : Activity() {
     private fun applyState(state: ViewState) {
         findViewById<TextView>(R.id.heroName).apply {
             text = state.heroName
-            contentDescription = "Nächstes Gebet: ${state.heroName}"
+            contentDescription = getString(R.string.desc_naechstes_gebet, state.heroName)
         }
         findViewById<TextView>(R.id.heroTime).apply {
             text = state.heroTimeText
             textSize = state.heroTimeSize
-            contentDescription = "${state.heroName}, ${state.heroTimeDesc}. Zum Umschalten tippen."
+            contentDescription = getString(R.string.desc_hero_time, state.heroName, state.heroTimeDesc)
         }
         findViewById<TextView>(R.id.cityLabel).apply {
             text = state.city
-            contentDescription = "Ort: ${state.city}. Zum Ändern tippen."
+            contentDescription = getString(R.string.desc_city, state.city)
         }
 
         val karahaLabel = findViewById<TextView>(R.id.karahaLabel)
@@ -186,11 +186,11 @@ class MainActivity : Activity() {
 
         findViewById<TextView>(R.id.modeLabel).apply {
             text = state.modeText
-            contentDescription = "${state.modeText}. Zum Umschalten tippen."
+            contentDescription = getString(R.string.desc_toggle, state.modeText)
         }
         findViewById<TextView>(R.id.vibrateLabel).apply {
             text = state.vibrateText
-            contentDescription = "${state.vibrateText}. Zum Umschalten tippen."
+            contentDescription = getString(R.string.desc_toggle, state.vibrateText)
         }
 
         val list = findViewById<android.widget.LinearLayout>(R.id.upcomingList)
@@ -203,7 +203,7 @@ class MainActivity : Activity() {
                     setPadding(0, (5 * density).toInt(), 0, (5 * density).toInt())
                     // Read as one TalkBack item ("Asr 17:37"), not two.
                     isFocusable = true
-                    contentDescription = "$label $time"
+                    contentDescription = getString(R.string.desc_row, label, time)
                     addView(
                         TextView(context).apply {
                             text = label

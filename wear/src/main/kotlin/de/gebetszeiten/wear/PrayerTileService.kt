@@ -49,7 +49,7 @@ class PrayerTileService : TileService() {
         for ((index, entry) in upcoming.take(6).withIndex()) {
             val (prayer, time) = entry
             val after = upcoming.getOrNull(index + 1)
-                ?.let { "danach: ${it.first.label()} ${it.second.format(timeFormat)}" }
+                ?.let { getString(R.string.tile_danach, it.first.label(), it.second.format(timeFormat)) }
             val layout = layout(requestParams.deviceConfiguration, prayer.label(), time.format(timeFormat), after)
             timeline.addTimelineEntry(
                 TimelineBuilders.TimelineEntry.Builder()

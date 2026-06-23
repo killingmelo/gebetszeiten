@@ -104,7 +104,7 @@ class PrayerComplicationService : ComplicationDataSourceService() {
     ): ComplicationData {
         val builder = ShortTextComplicationData.Builder(
             text = text,
-            contentDescription = PlainComplicationText.Builder("Nächstes Gebet $title $timeStr").build(),
+            contentDescription = PlainComplicationText.Builder(getString(R.string.complication_desc, title, timeStr)).build(),
         )
             .setTitle(PlainComplicationText.Builder(title).build())
             // Tapping the complication opens the watch app.
