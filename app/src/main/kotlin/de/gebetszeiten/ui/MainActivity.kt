@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -884,7 +885,7 @@ private fun ProgressPill(
     val edge = MaterialTheme.colorScheme.primary
     val animFrac by animateFloatAsState(
         targetValue = fraction.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 650),
+        animationSpec = if (rememberAnimationsEnabled()) tween(durationMillis = 650) else snap(),
         label = "pillFill",
     )
     // Ridged ("geriffelt") amber stripes via a repeating diagonal gradient.
