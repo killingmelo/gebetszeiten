@@ -1,4 +1,4 @@
-﻿package de.gebetszeiten.ui
+package de.gebetszeiten.ui
 
 import android.Manifest
 import android.os.Build
@@ -1124,7 +1124,7 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
             ToggleRow("Makruh-Zeiten anzeigen", settings.showKaraha) { commit { copy(showKaraha = it) } }
             if (settings.showKaraha) {
                 Text(
-                    "Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …” und 15 Minuten vorher eine Vorwarnung.",
+                    "Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
