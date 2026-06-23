@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -49,14 +50,15 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
     val live = azimuth != null
 
     // Fix 3: keep a continuous angle to avoid long-arc spin on 0↔360 wrap.
-    var continuousTarget by remember { mutableFloatStateOf(-(azimuth ?: 0f)) }
+    // State write is in LaunchedEffect (effects phase), NOT during composition.
     val rawTarget = -(azimuth ?: 0f)
+    var continuousTarget by remember { mutableFloatStateOf(rawTarget) }
+    LaunchedEffect(rawTarget) {
+        val delta = ((rawTarget - continuousTarget + 540f) % 360f) - 180f
+        continuousTarget += delta
+    }
     val animated by animateFloatAsState(
-        targetValue = run {
-            val delta = ((rawTarget - continuousTarget + 540f) % 360f) - 180f
-            continuousTarget = continuousTarget + delta
-            continuousTarget
-        },
+        targetValue = continuousTarget,
         animationSpec = if (rememberAnimationsEnabled()) tween(250) else snap(),
         label = "compass",
     )
@@ -111,6 +113,14 @@ private fun DrawScope.drawCompassRose(ring: Color, north: Color) {
     val ringArgb = ring.toArgb()
     val northArgb = north.toArgb()
 
+    // Allocate a single Paint once and mutate per-letter properties inside the loop
+    // to avoid creating a new Paint object on every frame (4× per redraw previously).
+    val cardinalPaint = Paint().apply {
+        isAntiAlias = true
+        textAlign = Paint.Align.CENTER
+        this.textSize = textSize
+    }
+
     for (i in 0 until 4) {
         val isNorth = i == 0
         rotate(i * 90f, pivot = center) {
@@ -120,20 +130,15 @@ private fun DrawScope.drawCompassRose(ring: Color, north: Color) {
                 end = Offset(center.x, center.y - r + (if (isNorth) 22.dp.toPx() else 14.dp.toPx())),
                 strokeWidth = if (isNorth) 5.dp.toPx() else 3.dp.toPx(),
             )
-            // Draw cardinal letter just inside the tick, centered on the axis.
-            val paint = Paint().apply {
-                isAntiAlias = true
-                textAlign = Paint.Align.CENTER
-                this.textSize = textSize
-                color = if (isNorth) northArgb else ringArgb
-                isFakeBoldText = isNorth
-            }
+            // Reuse the single Paint; only mutate per-letter properties.
+            cardinalPaint.color = if (isNorth) northArgb else ringArgb
+            cardinalPaint.isFakeBoldText = isNorth
             // In the rotated frame, "north" is always at (center.x, center.y - textOffsetFromCenter).
             drawContext.canvas.nativeCanvas.drawText(
                 labels[i],
                 center.x,
                 center.y - textOffsetFromCenter + textSize / 3f, // +textSize/3 for optical centering
-                paint,
+                cardinalPaint,
             )
         }
     }
