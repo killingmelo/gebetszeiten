@@ -57,7 +57,7 @@ class QiblaMathTest {
         assertEquals(0.0, QiblaMath.distanceKm(21.4225, 39.8262), 1.0)
     }
     @Test fun distanceFromNurembergIsPlausible() {
-        assertTrue(QiblaMath.distanceKm(49.4521, 11.0767) in 2700.0..3300.0)
+        assertTrue(QiblaMath.distanceKm(49.4521, 11.0767) in 3800.0..4200.0)
     }
     @Test fun cardinalMapping() {
         assertEquals("Nord", QiblaMath.cardinal(0.0))

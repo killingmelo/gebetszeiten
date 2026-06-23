@@ -97,7 +97,7 @@ object QiblaMath {
   Meridian → genau Süd).
 - Plausibilität Nürnberg `bearing(49.4521, 11.0767)` im Bereich 125°–140°;
   `cardinal(...)` = „Südost".
-- `distanceKm(21.4225, 39.8262)` ≈ 0; Nürnberg im Bereich 2700–3300 km.
+- `distanceKm(21.4225, 39.8262)` ≈ 0; Nürnberg im Bereich 3800–4200 km (≈4013).
 - `cardinal(0.0)`=„Nord", `cardinal(180.0)`=„Süd", `cardinal(135.0)`=„Südost".
 - `normalizeDegrees(-10f)`=350f, `normalizeDegrees(370f)`=10f.
 
