@@ -84,6 +84,10 @@ private val DarkHighContrast = darkColorScheme(
 /** True when the high-contrast scheme is active (read by accent colours). */
 val LocalHighContrast = staticCompositionLocalOf { false }
 
+/** True when the effective (possibly user-forced) theme is dark. Read by accent
+ *  colours so they don't depend on the raw system setting. */
+val LocalIsDark = staticCompositionLocalOf { false }
+
 /** Branded calm-green theme. Keeps a consistent identity (no dynamic color),
  *  follows the system light/dark setting, with an optional high-contrast mode. */
 @Composable
@@ -98,7 +102,10 @@ fun GebetszeitenTheme(
         highContrast -> LightHighContrast
         else -> LightColors
     }
-    CompositionLocalProvider(LocalHighContrast provides highContrast) {
+    CompositionLocalProvider(
+        LocalHighContrast provides highContrast,
+        LocalIsDark provides darkTheme,
+    ) {
         MaterialTheme(colorScheme = scheme, content = content)
     }
 }

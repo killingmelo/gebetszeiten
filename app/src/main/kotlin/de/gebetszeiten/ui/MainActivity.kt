@@ -384,7 +384,7 @@ private fun TimesCard(
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val context = LocalContext.current
-    val dark = isSystemInDarkTheme()
+    val dark = de.gebetszeiten.ui.theme.LocalIsDark.current
     val hc = LocalHighContrast.current
     // Darkened for WCAG AA contrast of small text on the light card.
     val amber = when {
