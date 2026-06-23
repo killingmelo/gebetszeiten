@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Privacy by construction: the only stored data is the user's manually entered
+     location (lat/lng/city) + display toggles in the Preferences DataStore under
+     files/datastore/. Exclude it from BOTH cloud backup and device-to-device
+     transfer so the coordinates never leave the device without the user's action. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/" />
+    </device-transfer>
+</data-extraction-rules>

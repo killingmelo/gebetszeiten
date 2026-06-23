@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy (API <= 30) counterpart to data_extraction_rules.xml: keep the stored
+     location/coordinates (Preferences DataStore under files/datastore/) out of
+     Auto Backup. -->
+<full-backup-content>
+    <exclude domain="file" path="datastore/" />
+</full-backup-content>
