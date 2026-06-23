@@ -279,7 +279,9 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
             )
         }
         Text(
-            text = context.getString(de.gebetszeiten.prayer.dataCreditRes(officialSource)),
+            // Amtlich nennt die Stadt ("… · Nürnberg"); der berechnete String hat
+            // keinen Platzhalter, das Extra-Argument wird dort gefahrlos ignoriert.
+            text = context.getString(de.gebetszeiten.prayer.dataCreditRes(officialSource), settings.city),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
