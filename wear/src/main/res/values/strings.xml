@@ -3,4 +3,40 @@
     <string name="app_name">Gebetszeiten</string>
     <string name="tile_label">Nächstes Gebet</string>
     <string name="pick_city">Ort wählen</string>
+
+    <!-- activity_main.xml static labels -->
+    <string name="label_naechstes_gebet">Nächstes Gebet</string>
+    <string name="label_danach">Danach</string>
+
+    <!-- MainActivity: mode / vibrate toggles -->
+    <string name="mode_remaining">Anzeige: Restzeit</string>
+    <string name="mode_clock">Anzeige: Uhrzeit</string>
+    <string name="vibrate_on">Vibration: An</string>
+    <string name="vibrate_off">Vibration: Aus</string>
+
+    <!-- MainActivity: sunrise row label -->
+    <string name="label_sonnenaufgang">Sonnenaufgang</string>
+
+    <!-- MainActivity: "· morgen" suffix template -->
+    <string name="label_morgen_suffix">%1$s · morgen</string>
+
+    <!-- MainActivity: hero time clock description template -->
+    <string name="desc_hero_time_clock">um %1$s Uhr</string>
+
+    <!-- MainActivity: Karaha warning templates -->
+    <string name="karaha_active">⚠️ Karaha bis %1$s</string>
+    <string name="karaha_soon">⚠️ Karaha ab %1$s</string>
+
+    <!-- MainActivity: content descriptions -->
+    <string name="desc_naechstes_gebet">Nächstes Gebet: %1$s</string>
+    <string name="desc_hero_time">%1$s, %2$s. Zum Umschalten tippen.</string>
+    <string name="desc_city">Ort: %1$s. Zum Ändern tippen.</string>
+    <string name="desc_toggle">%1$s. Zum Umschalten tippen.</string>
+    <string name="desc_row">%1$s %2$s</string>
+
+    <!-- PrayerTileService: "danach" prefix template -->
+    <string name="tile_danach">danach: %1$s %2$s</string>
+
+    <!-- PrayerComplicationService: content description template -->
+    <string name="complication_desc">Nächstes Gebet %1$s %2$s</string>
 </resources>
