@@ -83,6 +83,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -174,10 +175,10 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(when (tab) { Tab.HEUTE -> settings.city; Tab.MONAT -> "Monat"; Tab.QIBLA -> "Qibla" }) },
+                title = { Text(when (tab) { Tab.HEUTE -> settings.city; Tab.MONAT -> stringResource(R.string.tab_month); Tab.QIBLA -> stringResource(R.string.tab_qibla) }) },
                 actions = {
                     IconButton(onClick = { showSettings = true }) {
-                        Icon(painterResource(R.drawable.ic_tune), contentDescription = "Einstellungen")
+                        Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.settings_icon_desc))
                     }
                 },
             )
@@ -188,19 +189,19 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
                     selected = tab == Tab.HEUTE,
                     onClick = { tab = Tab.HEUTE },
                     icon = { Icon(painterResource(R.drawable.ic_today), contentDescription = null) },
-                    label = { Text("Heute") },
+                    label = { Text(stringResource(R.string.tab_today)) },
                 )
                 NavigationBarItem(
                     selected = tab == Tab.MONAT,
                     onClick = { tab = Tab.MONAT },
                     icon = { Icon(painterResource(R.drawable.ic_month), contentDescription = null) },
-                    label = { Text("Monat") },
+                    label = { Text(stringResource(R.string.tab_month)) },
                 )
                 NavigationBarItem(
                     selected = tab == Tab.QIBLA,
                     onClick = { tab = Tab.QIBLA },
                     icon = { Icon(painterResource(R.drawable.ic_qibla), contentDescription = null) },
-                    label = { Text("Qibla") },
+                    label = { Text(stringResource(R.string.tab_qibla)) },
                 )
             }
         },
@@ -291,7 +292,7 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
     karahaInfo?.let { (title, text) ->
         AlertDialog(
             onDismissRequest = { karahaInfo = null },
-            confirmButton = { TextButton(onClick = { karahaInfo = null }) { Text("Verstanden") } },
+            confirmButton = { TextButton(onClick = { karahaInfo = null }) { Text(stringResource(R.string.understood)) } },
             title = { Text(title) },
             text = { Text(text) },
         )
@@ -315,7 +316,7 @@ private fun DateNavigator(
         IconButton(onClick = onPrev) {
             Icon(
                 painterResource(R.drawable.ic_chevron_left),
-                contentDescription = "Vorheriger Tag",
+                contentDescription = stringResource(R.string.date_prev_day),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -324,7 +325,7 @@ private fun DateNavigator(
             modifier = Modifier.clickable(onClick = onToday),
         ) {
             Text(
-                text = if (isToday) "Heute" else date.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)),
+                text = if (isToday) stringResource(R.string.date_today) else date.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -342,7 +343,7 @@ private fun DateNavigator(
         IconButton(onClick = onNext) {
             Icon(
                 painterResource(R.drawable.ic_chevron_right),
-                contentDescription = "Nächster Tag",
+                contentDescription = stringResource(R.string.date_next_day),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -428,32 +429,50 @@ private fun TimesCard(
         else -> Color(0xFF1B5E20)
     }
 
+    // Explanation pairs + block labels resolved in composable scope, then passed
+    // as remember() keys so they can be used inside the non-composable buildList.
+    val karahaSunrise = stringResource(R.string.karaha_sunrise_title) to stringResource(R.string.karaha_sunrise_text)
+    val karahaZeval = stringResource(R.string.karaha_zeval_title) to stringResource(R.string.karaha_zeval_text)
+    val karahaIsfirar = stringResource(R.string.karaha_isfirar_title) to stringResource(R.string.karaha_isfirar_text)
+    val naflAwwabin = stringResource(R.string.nafl_awwabin_title) to stringResource(R.string.nafl_awwabin_text)
+    val naflTahajjud = stringResource(R.string.nafl_tahajjud_title) to stringResource(R.string.nafl_tahajjud_text)
+    val labelZenit = stringResource(R.string.makruh_zenit)
+    val labelBeforeSunset = stringResource(R.string.makruh_before_sunset)
+    val labelAfterSunrise = stringResource(R.string.makruh_after_sunrise)
+    val labelAwwabin = stringResource(R.string.nafl_awwabin)
+    val labelTahajjud = stringResource(R.string.nafl_tahajjud)
+    val labelDuha = stringResource(R.string.nafl_duha)
+
     // Prayers carry their makruh chips. Sunrise is just a moment (no makruh).
     // The forenoon period is represented by Duha, which also carries the İşrak
     // makruh (so it sits right above the Duha pill, not on Sunrise).
-    val blocks = remember(info, showKaraha) {
+    val blocks = remember(
+        info, showKaraha,
+        karahaSunrise, karahaZeval, karahaIsfirar, naflAwwabin, naflTahajjud,
+        labelZenit, labelBeforeSunset, labelAfterSunrise, labelAwwabin, labelTahajjud, labelDuha,
+    ) {
         val k = info.karaha
         val n = info.nafl
         buildList<DayBlock> {
             info.times.ordered().forEach { (p, t) ->
                 val before = if (!showKaraha) null else when (p) {
-                    Prayer.DHUHR -> MakruhBlock("Zenit", k.zevalStart, k.zevalEnd, KARAHA_ZEVAL)
-                    Prayer.MAGHRIB -> MakruhBlock("vor Sonnenuntergang", k.isfirarStart, k.isfirarEnd, KARAHA_ISFIRAR)
+                    Prayer.DHUHR -> MakruhBlock(labelZenit, k.zevalStart, k.zevalEnd, karahaZeval)
+                    Prayer.MAGHRIB -> MakruhBlock(labelBeforeSunset, k.isfirarStart, k.isfirarEnd, karahaIsfirar)
                     else -> null
                 }
                 // Voluntary-prayer tips: Awwabin on Maghrib (always), Tahajjud on
                 // Isha (only while Isha is the current prayer — i.e. at night).
                 val tip = when (p) {
-                    Prayer.MAGHRIB -> NaflBlock("Awwabin", n.awwabinStart, n.awwabinEnd, explain = NAFL_AWWABIN)
-                    Prayer.ISHA -> NaflBlock("Tahajjud", n.tahajjudStart, n.tahajjudEnd, explain = NAFL_TAHAJJUD, whenCurrent = true)
+                    Prayer.MAGHRIB -> NaflBlock(labelAwwabin, n.awwabinStart, n.awwabinEnd, explain = naflAwwabin)
+                    Prayer.ISHA -> NaflBlock(labelTahajjud, n.tahajjudStart, n.tahajjudEnd, explain = naflTahajjud, whenCurrent = true)
                     else -> null
                 }
                 add(PrayerBlock(p, t, before, null, tip))
             }
             // Duha is the forenoon entry that replaces Sunrise once it has
             // passed; İşrak makruh attaches to it.
-            val israk = if (showKaraha) MakruhBlock("nach Sonnenaufgang", k.sunriseStart, k.sunriseEnd, KARAHA_SUNRISE) else null
-            add(NaflBlock("Duha (Kuşluk)", n.duhaStart, n.duhaEnd, forenoon = true, before = israk))
+            val israk = if (showKaraha) MakruhBlock(labelAfterSunrise, k.sunriseStart, k.sunriseEnd, karahaSunrise) else null
+            add(NaflBlock(labelDuha, n.duhaStart, n.duhaEnd, forenoon = true, before = israk))
         }.sortedWith(compareBy({ it.sortAt }, { blockOrder(it) }))
     }
 
@@ -518,7 +537,7 @@ private fun TimesCard(
         Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) {
             if (hasEarlier) {
                 ExpanderRow(
-                    text = if (showPast) "Frühere ausblenden" else "Frühere Zeiten anzeigen",
+                    text = if (showPast) stringResource(R.string.times_hide_earlier) else stringResource(R.string.times_show_earlier),
                     onClick = { showPast = !showPast },
                 )
             }
@@ -539,7 +558,7 @@ private fun TimesCard(
             )
             if (afterIsha) {
                 Text(
-                    text = "Morgen · Fajr ${info.nextFajr.format(HM)}",
+                    text = stringResource(R.string.times_tomorrow_fajr, info.nextFajr.format(HM)),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 54.dp, top = 4.dp),
@@ -547,7 +566,7 @@ private fun TimesCard(
             }
             if (hasLater) {
                 ExpanderRow(
-                    text = if (showFuture) "Weitere ausblenden" else "Weitere Zeiten anzeigen",
+                    text = if (showFuture) stringResource(R.string.times_hide_later) else stringResource(R.string.times_show_later),
                     onClick = { showFuture = !showFuture },
                 )
             }
@@ -683,9 +702,9 @@ private fun Timeline(
                         val weight = if (isSelected || isNext) FontWeight.Bold else FontWeight.Normal
                         val name = context.getString(block.prayer.labelRes())
                         val status = when {
-                            isSelected -> ", aktuelles Gebet"
-                            isNext -> ", nächstes Gebet"
-                            isPast -> ", vergangen"
+                            isSelected -> stringResource(R.string.status_current)
+                            isNext -> stringResource(R.string.status_next)
+                            isPast -> stringResource(R.string.status_past)
                             else -> ""
                         }
                         val capture = Modifier.onGloballyPositioned {
@@ -720,6 +739,15 @@ private fun Timeline(
                                     if (e > s) s to e else null
                                 }
                                 val karaha = pillMakruh?.let { KarahaCountdown.state(now, it.start, it.end) }
+                                val pillDesc = stringResource(
+                                    R.string.desc_prayer_current,
+                                    name, block.time.format(HM), durationLabel(remMin),
+                                ) + (pillMakruh?.let {
+                                    stringResource(
+                                        R.string.desc_prayer_current_makruh,
+                                        it.label, it.start.format(HM), it.end.format(HM),
+                                    )
+                                } ?: "")
                                 ProgressPill(
                                     fraction = frac,
                                     makruhBand = band,
@@ -729,8 +757,7 @@ private fun Timeline(
                                 ) {
                                     Column(
                                         modifier = capture.clearAndSetSemantics {
-                                            contentDescription = "$name, ${block.time.format(HM)}, aktuelles Gebet, noch ${durationLabel(remMin)}" +
-                                                (pillMakruh?.let { ", Makruh ${it.label} ${it.start.format(HM)} bis ${it.end.format(HM)}" } ?: "")
+                                            contentDescription = pillDesc
                                         },
                                     ) {
                                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -739,11 +766,11 @@ private fun Timeline(
                                             Text(block.time.format(HM), style = MaterialTheme.typography.titleMedium, color = foreground, fontWeight = FontWeight.Bold, softWrap = false)
                                         }
                                         if (showRemaining) {
-                                            Text("noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = foreground.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                            Text(stringResource(R.string.remaining_inline, durationLabel(remMin)), style = MaterialTheme.typography.labelMedium, color = foreground.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
                                         }
                                         karaha?.let { k ->
                                             Text(
-                                                text = (if (k.active) "⛔ Karaha · " else "⚠ Karaha · ") + k.text,
+                                                text = (if (k.active) stringResource(R.string.karaha_active_prefix) else stringResource(R.string.karaha_warn_prefix)) + k.text,
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = amber,
                                                 modifier = Modifier.padding(top = 1.dp),
@@ -755,12 +782,13 @@ private fun Timeline(
                                 var lane = Modifier.fillMaxWidth()
                                 if (isNext) lane = lane.border(1.5.dp, primary, RoundedCornerShape(16.dp))
                                 lane = lane.padding(horizontal = 12.dp, vertical = 9.dp)
+                                val rowDesc = stringResource(R.string.desc_prayer, name, block.time.format(HM), status)
                                 Column(modifier = lane) {
                                     Row(
                                         modifier = capture
                                             .fillMaxWidth()
                                             .clearAndSetSemantics {
-                                                contentDescription = "$name, ${block.time.format(HM)}$status"
+                                                contentDescription = rowDesc
                                             },
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
@@ -810,10 +838,11 @@ private fun Timeline(
                                     val frac = Duration.between(block.start, now).seconds.toFloat() /
                                         Duration.between(block.start, block.end).seconds.coerceAtLeast(1)
                                     val remMin = Duration.between(now, block.end).toMinutes().coerceAtLeast(0)
+                                    val duhaDesc = stringResource(R.string.desc_nafl_remaining, block.label, durationLabel(remMin))
                                     ProgressPill(fraction = frac) {
                                         Column(
                                             modifier = cap.clearAndSetSemantics {
-                                                contentDescription = "${block.label}, freiwilliges Gebet, noch ${durationLabel(remMin)}"
+                                                contentDescription = duhaDesc
                                             },
                                         ) {
                                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -826,18 +855,19 @@ private fun Timeline(
                                                 Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = onpc, softWrap = false)
                                             }
                                             if (showRemaining) {
-                                                Text("noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = onpc.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                                Text(stringResource(R.string.remaining_inline, durationLabel(remMin)), style = MaterialTheme.typography.labelMedium, color = onpc.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
                                             }
                                         }
                                     }
                                 } else {
+                                    val duhaRangeDesc = stringResource(R.string.desc_nafl_range, block.label, block.start.format(HM), block.end.format(HM))
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(horizontal = 12.dp, vertical = 9.dp)
                                             .then(cap)
                                             .clearAndSetSemantics {
-                                                contentDescription = "${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+                                                contentDescription = duhaRangeDesc
                                             },
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
@@ -854,13 +884,14 @@ private fun Timeline(
                             }
                         } else {
                             // Awwabin / Tahajjud — secondary informational rows.
+                            val naflRowDesc = stringResource(R.string.desc_nafl_range, block.label, block.start.format(HM), block.end.format(HM))
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .heightIn(min = 28.dp)
                                     .padding(horizontal = 4.dp, vertical = 2.dp)
                                     .clearAndSetSemantics {
-                                        contentDescription = "${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+                                        contentDescription = naflRowDesc
                                     },
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
@@ -894,13 +925,14 @@ private fun MakruhChipRow(
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val c = amber.copy(alpha = if (faded) 0.75f else 1f)
-    val desc = "Makruh-Zeit ${block.label}, ${block.start.format(HM)} bis ${block.end.format(HM)}" +
-        (if (selected) ", aktuell" else "") +
-        (countdown?.let { ", ${it.text}" } ?: "")
+    val desc = stringResource(R.string.desc_makruh, block.label, block.start.format(HM), block.end.format(HM)) +
+        (if (selected) stringResource(R.string.desc_makruh_current) else "") +
+        (countdown?.let { stringResource(R.string.desc_makruh_countdown, it.text) } ?: "")
+    val explainLabel = stringResource(R.string.show_explanation)
     val shape = RoundedCornerShape(12.dp)
     var mod = Modifier
         .minimumInteractiveComponentSize()
-        .clickable(onClickLabel = "Erklärung anzeigen") { onKaraha(block.explain) }
+        .clickable(onClickLabel = explainLabel) { onKaraha(block.explain) }
     if (selected) mod = mod.background(amber.copy(alpha = 0.20f), shape)
     mod = mod
         .padding(horizontal = if (selected) 10.dp else 2.dp, vertical = if (selected) 5.dp else 1.dp)
@@ -917,8 +949,8 @@ private fun MakruhChipRow(
             )
             Spacer(Modifier.width(5.dp))
             Text(
-                "Makruh · ${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}" +
-                    (countdown?.let { " · ${it.text}" } ?: ""),
+                stringResource(R.string.makruh_chip, block.label, block.start.format(HM), block.end.format(HM)) +
+                    (countdown?.let { stringResource(R.string.makruh_chip_countdown, it.text) } ?: ""),
                 style = if (selected) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
                 color = c,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
@@ -998,10 +1030,11 @@ private fun ProgressPill(
 @Composable
 private fun NaflTipRow(block: NaflBlock, green: Color, faded: Boolean, onInfo: (Pair<String, String>) -> Unit) {
     val c = green.copy(alpha = if (faded) 0.75f else 1f)
-    val desc = "Tipp: ${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
+    val desc = stringResource(R.string.desc_nafl_tip, block.label, block.start.format(HM), block.end.format(HM))
+    val explainLabel = stringResource(R.string.show_explanation)
     var mod = Modifier.padding(start = 12.dp)
     block.explain?.let { ex ->
-        mod = mod.minimumInteractiveComponentSize().clickable(onClickLabel = "Erklärung anzeigen") { onInfo(ex) }
+        mod = mod.minimumInteractiveComponentSize().clickable(onClickLabel = explainLabel) { onInfo(ex) }
     }
     Row(
         modifier = mod
@@ -1013,23 +1046,12 @@ private fun NaflTipRow(block: NaflBlock, green: Color, faded: Boolean, onInfo: (
         Icon(painterResource(R.drawable.ic_nafl), null, tint = c, modifier = Modifier.size(12.dp))
         Spacer(Modifier.width(5.dp))
         Text(
-            "${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}",
+            stringResource(R.string.nafl_range_inline, block.label, block.start.format(HM), block.end.format(HM)),
             style = MaterialTheme.typography.labelSmall,
             color = c,
         )
     }
 }
-
-private val KARAHA_SUNRISE = "İşrak (nach Sonnenaufgang)" to
-    "Makruh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein (freiwilliges) Gebet; danach beginnen İşrak/Duha. (Hanafi)"
-private val KARAHA_ZEVAL = "Zeval / İstiva (Zenit)" to
-    "Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)"
-private val KARAHA_ISFIRAR = "İsfirar-ı şems (vor Sonnenuntergang)" to
-    "Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)"
-private val NAFL_AWWABIN = "Awwabin (Evvabin)" to
-    "Freiwilliges Gebet nach dem Maghrib- bis zum Isha-Gebet — empfohlen sind 6 Rekat. (Sunna/Mustahab)"
-private val NAFL_TAHAJJUD = "Tahajjud" to
-    "Freiwilliges Nachtgebet im letzten Drittel der Nacht (nach dem Schlaf, vor Fajr). Besonders verdienstvoll. (Sunna/Mustahab)"
 
 @Composable
 private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
@@ -1074,19 +1096,19 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Einstellungen", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
         Text(
-            "Änderungen werden sofort übernommen.",
+            stringResource(R.string.settings_instant_apply),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        SettingsSection("Ort") {
+        SettingsSection(stringResource(R.string.location_title)) {
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
                 OutlinedTextField(
                     value = city,
                     onValueChange = { city = it; expanded = true },
-                    label = { Text("Stadt") },
+                    label = { Text(stringResource(R.string.settings_city)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth(),
                 )
@@ -1107,12 +1129,12 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
             val latErr = de.gebetszeiten.data.Coordinates.latError(lat)
             val lngErr = de.gebetszeiten.data.Coordinates.lngError(lng)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Breite") }, isError = latErr, singleLine = true, modifier = Modifier.weight(1f))
-                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Länge") }, isError = lngErr, singleLine = true, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text(stringResource(R.string.settings_latitude)) }, isError = latErr, singleLine = true, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text(stringResource(R.string.settings_longitude)) }, isError = lngErr, singleLine = true, modifier = Modifier.weight(1f))
             }
             if (latErr || lngErr) {
                 Text(
-                    "Gültige Werte: Breite -90 bis 90, Länge -180 bis 180.",
+                    stringResource(R.string.settings_coordinate_error),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -1127,55 +1149,55 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                     enabled = !latErr && !lngErr,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Ort übernehmen")
+                    Text(stringResource(R.string.settings_apply_location))
                 }
             }
         }
 
-        SettingsSection("Anzeige") {
-            ToggleRow("Makruh-Zeiten anzeigen", settings.showKaraha) { commit { copy(showKaraha = it) } }
+        SettingsSection(stringResource(R.string.settings_section_display)) {
+            ToggleRow(stringResource(R.string.settings_show_makruh), settings.showKaraha) { commit { copy(showKaraha = it) } }
             if (settings.showKaraha) {
                 Text(
-                    "Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.",
+                    stringResource(R.string.settings_makruh_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            Text("Restzeit", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
+            Text(stringResource(R.string.settings_remaining), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
             Text(
-                "Darstellung der verbleibenden Zeit — je Fläche einzeln einstellbar. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet — am akkuschonendsten, da die App dafür nicht aufwacht.",
+                stringResource(R.string.settings_remaining_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            ToggleRow("In der App", settings.showCountdown) { commit { copy(showCountdown = it) } }
-            CountdownModeSelector("Widget", settings.widgetCountdown) { commit { copy(widgetCountdown = it) } }
-            CountdownModeSelector("Sperrbildschirm", settings.notificationCountdown) {
+            ToggleRow(stringResource(R.string.settings_in_app), settings.showCountdown) { commit { copy(showCountdown = it) } }
+            CountdownModeSelector(stringResource(R.string.settings_widget), settings.widgetCountdown) { commit { copy(widgetCountdown = it) } }
+            CountdownModeSelector(stringResource(R.string.settings_lockscreen), settings.notificationCountdown) {
                 commit { copy(notificationCountdown = it) }
             }
             if (!settings.persistentNotification) {
                 Text(
-                    "Sperrbildschirm-Restzeit erscheint, sobald unten die dauerhafte Anzeige aktiviert ist.",
+                    stringResource(R.string.settings_lockscreen_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
-                "Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).",
+                stringResource(R.string.settings_wear_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (OfficialTimesProvider.isOnline) {
-                ToggleRow("Offizielle Diyanet-Zeiten (online)", settings.useOnline) { commit { copy(useOnline = it) } }
+                ToggleRow(stringResource(R.string.settings_official_online), settings.useOnline) { commit { copy(useOnline = it) } }
             }
 
             FontSizeSelector(settings.fontScale) { commit { copy(fontScale = it) } }
-            ToggleRow("Hoher Kontrast", settings.highContrast) { commit { copy(highContrast = it) } }
+            ToggleRow(stringResource(R.string.settings_high_contrast), settings.highContrast) { commit { copy(highContrast = it) } }
         }
 
-        SettingsSection("Erinnerungen") {
+        SettingsSection(stringResource(R.string.settings_section_reminders)) {
             Text(
-                "Stille Benachrichtigung zur jeweiligen Gebetszeit.",
+                stringResource(R.string.settings_reminders_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1185,12 +1207,12 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                 }
             }
 
-            Text("Stil", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.settings_style), style = MaterialTheme.typography.bodyLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
-                    "Still" to AppSettings.STYLE_SILENT,
-                    "Vibration" to AppSettings.STYLE_VIBRATE,
-                    "Ton" to AppSettings.STYLE_SOUND,
+                    stringResource(R.string.reminder_style_silent) to AppSettings.STYLE_SILENT,
+                    stringResource(R.string.reminder_style_vibrate) to AppSettings.STYLE_VIBRATE,
+                    stringResource(R.string.reminder_style_sound) to AppSettings.STYLE_SOUND,
                 ).forEach { (label, v) ->
                     FilterChip(
                         selected = settings.reminderStyle == v,
@@ -1200,14 +1222,14 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                 }
             }
 
-            Text("Vorlauf", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.settings_lead), style = MaterialTheme.typography.bodyLarge)
             Text(
-                "Zusätzliche stille Erinnerung einige Minuten vor der Gebetszeit.",
+                stringResource(R.string.settings_lead_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Aus" to 0, "5 Min" to 5, "10 Min" to 10, "15 Min" to 15, "30 Min" to 30).forEach { (label, v) ->
+                listOf(stringResource(R.string.lead_off) to 0, stringResource(R.string.lead_5) to 5, stringResource(R.string.lead_10) to 10, stringResource(R.string.lead_15) to 15, stringResource(R.string.lead_30) to 30).forEach { (label, v) ->
                     FilterChip(
                         selected = settings.reminderLeadMinutes == v,
                         onClick = { commit { copy(reminderLeadMinutes = v) } },
@@ -1216,23 +1238,23 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                 }
             }
 
-            ToggleRow("Dauerhafte Anzeige (Sperrbildschirm)", settings.persistentNotification) {
+            ToggleRow(stringResource(R.string.settings_persistent), settings.persistentNotification) {
                 commit { copy(persistentNotification = it) }
             }
             Text(
-                "Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet und Restzeit — sichtbar auch auf dem Sperrbildschirm. Wird vom System gezeichnet, kostet keinen zusätzlichen Akku.",
+                stringResource(R.string.settings_persistent_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        SettingsSection("Darstellung") {
-            Text("Design", style = MaterialTheme.typography.bodyLarge)
+        SettingsSection(stringResource(R.string.settings_section_appearance)) {
+            Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.bodyLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
-                    "System" to AppSettings.THEME_SYSTEM,
-                    "Hell" to AppSettings.THEME_LIGHT,
-                    "Dunkel" to AppSettings.THEME_DARK,
+                    stringResource(R.string.theme_system) to AppSettings.THEME_SYSTEM,
+                    stringResource(R.string.theme_light) to AppSettings.THEME_LIGHT,
+                    stringResource(R.string.theme_dark) to AppSettings.THEME_DARK,
                 ).forEach { (label, v) ->
                     FilterChip(
                         selected = settings.themeMode == v,
@@ -1242,12 +1264,12 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                 }
             }
             Text(
-                "Dunkel = AMOLED-Schwarz (Pixel aus, maximal akkusparend).",
+                stringResource(R.string.settings_amoled_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Text("Hijri-Korrektur", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.settings_hijri), style = MaterialTheme.typography.bodyLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(-2, -1, 0, 1, 2).forEach { v ->
                     FilterChip(
@@ -1258,12 +1280,12 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                 }
             }
             Text(
-                "Verschiebt das Hijri-Datum um ganze Tage (regionale Mondsichtung).",
+                stringResource(R.string.settings_hijri_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            ToggleRow("Widget-Hintergrund transparent", settings.widgetTransparent) {
+            ToggleRow(stringResource(R.string.settings_widget_transparent), settings.widgetTransparent) {
                 commit { copy(widgetTransparent = it) }
             }
         }
@@ -1279,9 +1301,9 @@ private fun CountdownModeSelector(label: String, value: String, onChange: (Strin
         Text(label, style = MaterialTheme.typography.bodyLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
-                "Aus" to AppSettings.COUNTDOWN_OFF,
-                "Stufen" to AppSettings.PRECISION_STEPS,
-                "Genau" to AppSettings.PRECISION_EXACT,
+                stringResource(R.string.countdown_off) to AppSettings.COUNTDOWN_OFF,
+                stringResource(R.string.countdown_steps) to AppSettings.PRECISION_STEPS,
+                stringResource(R.string.countdown_exact) to AppSettings.PRECISION_EXACT,
             ).forEach { (chip, v) ->
                 FilterChip(
                     selected = value == v,
@@ -1296,9 +1318,9 @@ private fun CountdownModeSelector(label: String, value: String, onChange: (Strin
 @Composable
 private fun FontSizeSelector(value: Float, onChange: (Float) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Schriftgröße", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(R.string.font_size), style = MaterialTheme.typography.bodyLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Normal" to 1f, "Groß" to 1.2f, "Sehr groß" to 1.4f).forEach { (label, v) ->
+            listOf(stringResource(R.string.font_normal) to 1f, stringResource(R.string.font_large) to 1.2f, stringResource(R.string.font_xlarge) to 1.4f).forEach { (label, v) ->
                 FilterChip(
                     selected = abs(value - v) < 0.01f,
                     onClick = { onChange(v) },
@@ -1339,9 +1361,9 @@ private fun BatteryOptimizationCard() {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Zuverlässige Erinnerungen", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.battery_title), style = MaterialTheme.typography.titleSmall)
             Text(
-                "Damit Erinnerungen und Widget pünktlich bleiben, sollte die Akku-Optimierung für diese App deaktiviert werden. Die App wacht trotzdem nur zu den Gebetszeiten auf.",
+                stringResource(R.string.battery_body),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
@@ -1353,7 +1375,7 @@ private fun BatteryOptimizationCard() {
                     ),
                 )
             }) {
-                Text("Akku-Optimierung deaktivieren")
+                Text(stringResource(R.string.battery_disable))
             }
         }
     }

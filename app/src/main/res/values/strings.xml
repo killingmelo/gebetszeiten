@@ -49,4 +49,127 @@
     <string name="month_next">Nächster Monat</string>
     <string name="month_loading">lädt…</string>
     <string name="month_maghrib_short">Magh.</string>
+
+    <!-- Tabs / App-Bar -->
+    <string name="tab_today">Heute</string>
+    <string name="tab_month">Monat</string>
+    <string name="tab_qibla">Qibla</string>
+    <string name="settings_icon_desc">Einstellungen</string>
+
+    <!-- DateNavigator -->
+    <string name="date_today">Heute</string>
+    <string name="date_prev_day">Vorheriger Tag</string>
+    <string name="date_next_day">Nächster Tag</string>
+
+    <!-- Timeline expander / labels -->
+    <string name="times_hide_earlier">Frühere ausblenden</string>
+    <string name="times_show_earlier">Frühere Zeiten anzeigen</string>
+    <string name="times_hide_later">Weitere ausblenden</string>
+    <string name="times_show_later">Weitere Zeiten anzeigen</string>
+    <string name="times_tomorrow_fajr">Morgen · Fajr %1$s</string>
+
+    <!-- Prayer-status content descriptions -->
+    <string name="status_current">, aktuelles Gebet</string>
+    <string name="status_next">, nächstes Gebet</string>
+    <string name="status_past">, vergangen</string>
+    <string name="desc_prayer_current">%1$s, %2$s, aktuelles Gebet, noch %3$s</string>
+    <string name="desc_prayer_current_makruh">, Makruh %1$s %2$s bis %3$s</string>
+    <string name="desc_prayer">%1$s, %2$s%3$s</string>
+    <string name="desc_nafl_remaining">%1$s, freiwilliges Gebet, noch %2$s</string>
+    <string name="desc_nafl_range">%1$s, freiwilliges Gebet, %2$s bis %3$s</string>
+    <string name="desc_makruh">Makruh-Zeit %1$s, %2$s bis %3$s</string>
+    <string name="desc_makruh_current">, aktuell</string>
+    <string name="desc_makruh_countdown">, %1$s</string>
+    <string name="desc_nafl_tip">Tipp: %1$s, freiwilliges Gebet, %2$s bis %3$s</string>
+    <string name="show_explanation">Erklärung anzeigen</string>
+    <string name="remaining_inline">noch %1$s</string>
+
+    <!-- Inline labels -->
+    <string name="karaha_active_prefix">⛔ Karaha · </string>
+    <string name="karaha_warn_prefix">⚠ Karaha · </string>
+    <string name="makruh_chip">Makruh · %1$s · %2$s–%3$s</string>
+    <string name="makruh_chip_countdown"> · %1$s</string>
+    <string name="nafl_range_inline">%1$s · %2$s–%3$s</string>
+
+    <!-- Makruh / Nafl explanations -->
+    <string name="karaha_sunrise_title">İşrak (nach Sonnenaufgang)</string>
+    <string name="karaha_sunrise_text">Makruh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein (freiwilliges) Gebet; danach beginnen İşrak/Duha. (Hanafi)</string>
+    <string name="karaha_zeval_title">Zeval / İstiva (Zenit)</string>
+    <string name="karaha_zeval_text">Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)</string>
+    <string name="karaha_isfirar_title">İsfirar-ı şems (vor Sonnenuntergang)</string>
+    <string name="karaha_isfirar_text">Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)</string>
+    <string name="nafl_awwabin_title">Awwabin (Evvabin)</string>
+    <string name="nafl_awwabin_text">Freiwilliges Gebet nach dem Maghrib- bis zum Isha-Gebet — empfohlen sind 6 Rekat. (Sunna/Mustahab)</string>
+    <string name="nafl_tahajjud_title">Tahajjud</string>
+    <string name="nafl_tahajjud_text">Freiwilliges Nachtgebet im letzten Drittel der Nacht (nach dem Schlaf, vor Fajr). Besonders verdienstvoll. (Sunna/Mustahab)</string>
+
+    <!-- Block labels -->
+    <string name="makruh_zenit">Zenit</string>
+    <string name="makruh_before_sunset">vor Sonnenuntergang</string>
+    <string name="makruh_after_sunrise">nach Sonnenaufgang</string>
+    <string name="nafl_awwabin">Awwabin</string>
+    <string name="nafl_tahajjud">Tahajjud</string>
+    <string name="nafl_duha">Duha (Kuşluk)</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_instant_apply">Änderungen werden sofort übernommen.</string>
+    <string name="settings_city">Stadt</string>
+    <string name="settings_latitude">Breite</string>
+    <string name="settings_longitude">Länge</string>
+    <string name="settings_coordinate_error">Gültige Werte: Breite -90 bis 90, Länge -180 bis 180.</string>
+    <string name="settings_apply_location">Ort übernehmen</string>
+    <string name="settings_section_display">Anzeige</string>
+    <string name="settings_show_makruh">Makruh-Zeiten anzeigen</string>
+    <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>
+    <string name="settings_remaining">Restzeit</string>
+    <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit — je Fläche einzeln einstellbar. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet — am akkuschonendsten, da die App dafür nicht aufwacht.</string>
+    <string name="settings_in_app">In der App</string>
+    <string name="settings_widget">Widget</string>
+    <string name="settings_lockscreen">Sperrbildschirm</string>
+    <string name="settings_lockscreen_hint">Sperrbildschirm-Restzeit erscheint, sobald unten die dauerhafte Anzeige aktiviert ist.</string>
+    <string name="settings_wear_hint">Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).</string>
+    <string name="settings_official_online">Offizielle Diyanet-Zeiten (online)</string>
+    <string name="settings_high_contrast">Hoher Kontrast</string>
+    <string name="settings_section_reminders">Erinnerungen</string>
+    <string name="settings_reminders_hint">Stille Benachrichtigung zur jeweiligen Gebetszeit.</string>
+    <string name="settings_style">Stil</string>
+    <string name="reminder_style_silent">Still</string>
+    <string name="reminder_style_vibrate">Vibration</string>
+    <string name="reminder_style_sound">Ton</string>
+    <string name="settings_lead">Vorlauf</string>
+    <string name="settings_lead_hint">Zusätzliche stille Erinnerung einige Minuten vor der Gebetszeit.</string>
+    <string name="lead_off">Aus</string>
+    <string name="lead_5">5 Min</string>
+    <string name="lead_10">10 Min</string>
+    <string name="lead_15">15 Min</string>
+    <string name="lead_30">30 Min</string>
+    <string name="settings_persistent">Dauerhafte Anzeige (Sperrbildschirm)</string>
+    <string name="settings_persistent_hint">Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet und Restzeit — sichtbar auch auf dem Sperrbildschirm. Wird vom System gezeichnet, kostet keinen zusätzlichen Akku.</string>
+    <string name="settings_section_appearance">Darstellung</string>
+    <string name="settings_theme">Design</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="settings_amoled_hint">Dunkel = AMOLED-Schwarz (Pixel aus, maximal akkusparend).</string>
+    <string name="settings_hijri">Hijri-Korrektur</string>
+    <string name="settings_hijri_hint">Verschiebt das Hijri-Datum um ganze Tage (regionale Mondsichtung).</string>
+    <string name="settings_widget_transparent">Widget-Hintergrund transparent</string>
+
+    <!-- Countdown / Font selectors -->
+    <string name="countdown_off">Aus</string>
+    <string name="countdown_steps">Stufen</string>
+    <string name="countdown_exact">Genau</string>
+    <string name="font_size">Schriftgröße</string>
+    <string name="font_normal">Normal</string>
+    <string name="font_large">Groß</string>
+    <string name="font_xlarge">Sehr groß</string>
+
+    <!-- Battery optimization -->
+    <string name="battery_title">Zuverlässige Erinnerungen</string>
+    <string name="battery_body">Damit Erinnerungen und Widget pünktlich bleiben, sollte die Akku-Optimierung für diese App deaktiviert werden. Die App wacht trotzdem nur zu den Gebetszeiten auf.</string>
+    <string name="battery_disable">Akku-Optimierung deaktivieren</string>
+
+    <!-- Dialog -->
+    <string name="understood">Verstanden</string>
 </resources>
