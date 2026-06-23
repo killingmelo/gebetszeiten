@@ -1,5 +1,6 @@
 package de.gebetszeiten.notify
 
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -111,6 +112,9 @@ object PrayerNotifier {
      * notification (one combined line instead of two redundant ones);
      * [activeSince] carries the entry info ("Asr seit 17:37").
      */
+    // notify() requires POST_NOTIFICATIONS; every path here is guarded by
+    // canPost() above, which lint's data-flow doesn't track through the helper.
+    @SuppressLint("MissingPermission")
     fun updateOngoing(
         context: Context,
         next: NextPrayer?,
@@ -196,6 +200,7 @@ object PrayerNotifier {
 
     /** Heads-up "prayer X in N minutes" — styled like the entry reminder,
      *  auto-clears at prayer entry. */
+    @SuppressLint("MissingPermission") // guarded by canPost()
     fun notifyPre(
         context: Context,
         next: NextPrayer,
@@ -231,6 +236,7 @@ object PrayerNotifier {
      * @param clearAtMillis epoch millis of the next transition (sunrise included)
      *   at which the notification auto-dismisses.
      */
+    @SuppressLint("MissingPermission") // guarded by canPost()
     fun notifyPrayer(
         context: Context,
         prayer: NextPrayer,
