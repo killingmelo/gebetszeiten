@@ -78,9 +78,13 @@
             <meta-data
                 android:name="android.support.wearable.complications.SUPPORTED_TYPES"
                 android:value="SHORT_TEXT" />
+            <!-- 0 = no periodic polling: the service sets validity ranges + a
+                 timeline, so the system already re-requests at each prayer
+                 transition. The old 30-min period was ~48 redundant watch
+                 wake-ups/day at zero functional benefit. -->
             <meta-data
                 android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
-                android:value="1800" />
+                android:value="0" />
         </service>
 
     </application>

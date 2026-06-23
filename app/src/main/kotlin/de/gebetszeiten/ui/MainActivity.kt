@@ -788,7 +788,7 @@ private fun Timeline(
                     }
                     is NaflBlock -> {
                         val faded = highlight && block.end.isBefore(now)
-                        val c = green.copy(alpha = if (faded) 0.5f else 1f)
+                        val c = green.copy(alpha = if (faded) 0.75f else 1f)
                         if (block.forenoon) {
                             // Duha = forenoon entry (replaces Sunrise). İşrak makruh
                             // chip sits above it; when current the pill fills with
@@ -893,7 +893,7 @@ private fun MakruhChipRow(
     countdown: KarahaCountdown.State?,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
-    val c = amber.copy(alpha = if (faded) 0.55f else 1f)
+    val c = amber.copy(alpha = if (faded) 0.75f else 1f)
     val desc = "Makruh-Zeit ${block.label}, ${block.start.format(HM)} bis ${block.end.format(HM)}" +
         (if (selected) ", aktuell" else "") +
         (countdown?.let { ", ${it.text}" } ?: "")
@@ -997,7 +997,7 @@ private fun ProgressPill(
 /** Compact green nafl "tip" attached under a prayer (e.g. Awwabin on Maghrib). */
 @Composable
 private fun NaflTipRow(block: NaflBlock, green: Color, faded: Boolean, onInfo: (Pair<String, String>) -> Unit) {
-    val c = green.copy(alpha = if (faded) 0.55f else 1f)
+    val c = green.copy(alpha = if (faded) 0.75f else 1f)
     val desc = "Tipp: ${block.label}, freiwilliges Gebet, ${block.start.format(HM)} bis ${block.end.format(HM)}"
     var mod = Modifier.padding(start = 12.dp)
     block.explain?.let { ex ->
