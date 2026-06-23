@@ -19,6 +19,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -47,6 +48,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -63,6 +66,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -140,7 +144,7 @@ class MainActivity : ComponentActivity() {
                     LocalDensity provides Density(density.density, density.fontScale * settings.fontScale),
                 ) {
                     NotificationPermissionRequester()
-                    PrayerScreen(viewModel)
+                    MainScreen(viewModel)
                 }
             }
         }
@@ -157,11 +161,59 @@ private fun NotificationPermissionRequester() {
     LaunchedEffect(Unit) { launcher.launch(Manifest.permission.POST_NOTIFICATIONS) }
 }
 
+private enum class Tab { HEUTE, QIBLA }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
-    val context = LocalContext.current
+private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
     val settings by viewModel.settings.collectAsState()
+    var tab by rememberSaveable { mutableStateOf(Tab.HEUTE) }
+    var showSettings by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(if (tab == Tab.HEUTE) settings.city else "Qibla") },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(painterResource(R.drawable.ic_tune), contentDescription = "Einstellungen")
+                    }
+                },
+            )
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = tab == Tab.HEUTE,
+                    onClick = { tab = Tab.HEUTE },
+                    icon = { Icon(painterResource(R.drawable.ic_today), contentDescription = null) },
+                    label = { Text("Heute") },
+                )
+                NavigationBarItem(
+                    selected = tab == Tab.QIBLA,
+                    onClick = { tab = Tab.QIBLA },
+                    icon = { Icon(painterResource(R.drawable.ic_qibla), contentDescription = null) },
+                    label = { Text("Qibla") },
+                )
+            }
+        },
+    ) { inner ->
+        when (tab) {
+            Tab.HEUTE -> HeuteContent(inner, settings)
+            Tab.QIBLA -> QiblaScreen(inner, settings)
+        }
+    }
+
+    if (showSettings) {
+        ModalBottomSheet(onDismissRequest = { showSettings = false }) {
+            LocationSettings(settings = settings, onApply = { viewModel.save(it) })
+        }
+    }
+}
+
+@Composable
+private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
+    val context = LocalContext.current
     val zone = ZoneId.systemDefault()
 
     var tick by remember { mutableIntStateOf(0) }
@@ -190,67 +242,40 @@ private fun PrayerScreen(viewModel: PrayerViewModel = viewModel()) {
         value = de.gebetszeiten.official.BundledOfficialSource.covers(context, settings.city, selectedDate) ||
             (settings.useOnline && de.gebetszeiten.official.OfficialTimesCache(context).get(selectedDate) != null)
     }
-    var showSettings by remember { mutableStateOf(false) }
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = settings.city) },
-                actions = {
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(painterResource(R.drawable.ic_tune), contentDescription = "Einstellungen")
-                    }
-                },
-            )
-        },
-    ) { inner ->
-        Column(
-            modifier = Modifier
-                .padding(inner)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            DateNavigator(
-                date = selectedDate,
-                isToday = isToday,
-                hijriOffsetDays = settings.hijriOffsetDays,
-                onPrev = { selectedDate = selectedDate.minusDays(1) },
-                onNext = { selectedDate = selectedDate.plusDays(1) },
-                onToday = { selectedDate = LocalDate.now(zone) },
-            )
-
-            dayInfo?.let { info ->
-                TimesCard(
-                    info = info,
-                    now = ZonedDateTime.now(zone),
-                    highlight = isToday,
-                    showKaraha = settings.showKaraha,
-                    showRemaining = settings.showCountdown,
-                    onKaraha = { karahaInfo = it },
-                )
-            }
-
-            Text(
-                text = context.getString(de.gebetszeiten.prayer.dataCreditRes(officialSource)),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp),
+    Column(
+        modifier = Modifier
+            .padding(inner)
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        DateNavigator(
+            date = selectedDate,
+            isToday = isToday,
+            hijriOffsetDays = settings.hijriOffsetDays,
+            onPrev = { selectedDate = selectedDate.minusDays(1) },
+            onNext = { selectedDate = selectedDate.plusDays(1) },
+            onToday = { selectedDate = LocalDate.now(zone) },
+        )
+        dayInfo?.let { info ->
+            TimesCard(
+                info = info,
+                now = ZonedDateTime.now(zone),
+                highlight = isToday,
+                showKaraha = settings.showKaraha,
+                showRemaining = settings.showCountdown,
+                onKaraha = { karahaInfo = it },
             )
         }
-    }
-
-    if (showSettings) {
-        ModalBottomSheet(onDismissRequest = { showSettings = false }) {
-            // Every change applies immediately — the sheet stays open and is
-            // dismissed by swipe/back, so nothing is ever lost unsaved.
-            LocationSettings(
-                settings = settings,
-                onApply = { viewModel.save(it) },
-            )
-        }
+        Text(
+            text = context.getString(de.gebetszeiten.prayer.dataCreditRes(officialSource)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
     }
 
     karahaInfo?.let { (title, text) ->
