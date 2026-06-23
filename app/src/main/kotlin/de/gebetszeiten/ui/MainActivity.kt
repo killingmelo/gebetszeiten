@@ -273,11 +273,12 @@ private fun DateNavigator(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(
-            onClick = onPrev,
-            modifier = Modifier.semantics { contentDescription = "Vorheriger Tag" },
-        ) {
-            Text("‹", style = MaterialTheme.typography.headlineMedium)
+        IconButton(onClick = onPrev) {
+            Icon(
+                painterResource(R.drawable.ic_chevron_left),
+                contentDescription = "Vorheriger Tag",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -299,11 +300,12 @@ private fun DateNavigator(
                 color = MaterialTheme.colorScheme.primary,
             )
         }
-        IconButton(
-            onClick = onNext,
-            modifier = Modifier.semantics { contentDescription = "Nächster Tag" },
-        ) {
-            Text("›", style = MaterialTheme.typography.headlineMedium)
+        IconButton(onClick = onNext) {
+            Icon(
+                painterResource(R.drawable.ic_chevron_right),
+                contentDescription = "Nächster Tag",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
