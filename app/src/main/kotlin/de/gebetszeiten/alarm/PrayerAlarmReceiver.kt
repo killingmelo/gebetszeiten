@@ -7,6 +7,7 @@ import androidx.glance.appwidget.updateAll
 import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.notify.PrayerNotifier
+import de.gebetszeiten.notify.entryClearAtMillis
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.widget.NextPrayerWidget
 import kotlinx.coroutines.CoroutineScope
@@ -85,11 +86,20 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     } else {
                         transition
                     }
+                    // With the persistent line on AND an audible style, the entry
+                    // banner is only the alert carrier — let it auto-clear after a
+                    // few minutes instead of lingering until the next transition,
+                    // so it doesn't duplicate the persistent line all interval long.
                     PrayerNotifier.notifyPrayer(
                         context,
                         active,
                         nextPrayer,
-                        transition.time.toInstant().toEpochMilli(),
+                        entryClearAtMillis(
+                            nowMillis = now.toInstant().toEpochMilli(),
+                            transitionMillis = transition.time.toInstant().toEpochMilli(),
+                            persistent = settings.persistentNotification,
+                            audible = !styleSilent,
+                        ),
                         settings.reminderStyle,
                     )
                 }
