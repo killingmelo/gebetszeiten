@@ -93,6 +93,7 @@ import de.gebetszeiten.data.Cities
 import de.gebetszeiten.data.City
 import de.gebetszeiten.official.OfficialTimesProvider
 import de.gebetszeiten.prayer.IslamicWindows
+import de.gebetszeiten.prayer.KarahaCountdown
 import de.gebetszeiten.prayer.KarahaTimes
 import de.gebetszeiten.prayer.NaflTimes
 import de.gebetszeiten.prayer.PrayerProvider
@@ -658,7 +659,11 @@ private fun Timeline(
                         // unless it's drawn inside the current pill as a band.
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             mkVisible(block.before)?.takeIf { it !== pillMakruh }?.let {
-                                MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
+                                MakruhChipRow(
+                                    it, amber, isMakruhNow(it), highlight && it.end.isBefore(now),
+                                    countdown = if (highlight) KarahaCountdown.state(now, it.start, it.end) else null,
+                                    onKaraha = onKaraha,
+                                )
                             }
                             if (isSelected) {
                                 // Current prayer: the pill itself fills with the
@@ -678,10 +683,12 @@ private fun Timeline(
                                     val e = (Duration.between(block.time, mk.end).seconds / total).coerceIn(0f, 1f)
                                     if (e > s) s to e else null
                                 }
+                                val karaha = pillMakruh?.let { KarahaCountdown.state(now, it.start, it.end) }
                                 ProgressPill(
                                     fraction = frac,
                                     makruhBand = band,
                                     makruhColor = amber,
+                                    accentAmber = karaha?.active == true,
                                     onClick = pillMakruh?.let { mk -> { onKaraha(mk.explain) } },
                                 ) {
                                     Column(
@@ -697,6 +704,14 @@ private fun Timeline(
                                         }
                                         if (showRemaining) {
                                             Text("noch ${durationLabel(remMin)}", style = MaterialTheme.typography.labelMedium, color = foreground.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
+                                        }
+                                        karaha?.let { k ->
+                                            Text(
+                                                text = (if (k.active) "⛔ Karaha · " else "⚠ Karaha · ") + k.text,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = amber,
+                                                modifier = Modifier.padding(top = 1.dp),
+                                            )
                                         }
                                     }
                                 }
@@ -748,7 +763,11 @@ private fun Timeline(
                             }
                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 mkVisible(block.before)?.let {
-                                    MakruhChipRow(it, amber, isMakruhNow(it), highlight && it.end.isBefore(now), onKaraha)
+                                    MakruhChipRow(
+                                        it, amber, isMakruhNow(it), highlight && it.end.isBefore(now),
+                                        countdown = if (highlight) KarahaCountdown.state(now, it.start, it.end) else null,
+                                        onKaraha = onKaraha,
+                                    )
                                 }
                                 if (selected) {
                                     val onpc = MaterialTheme.colorScheme.onPrimaryContainer
@@ -835,6 +854,7 @@ private fun MakruhChipRow(
     amber: Color,
     selected: Boolean,
     faded: Boolean,
+    countdown: KarahaCountdown.State?,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
     val c = amber.copy(alpha = if (faded) 0.55f else 1f)
@@ -859,7 +879,8 @@ private fun MakruhChipRow(
             )
             Spacer(Modifier.width(5.dp))
             Text(
-                "Makruh · ${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}",
+                "Makruh · ${block.label} · ${block.start.format(HM)}–${block.end.format(HM)}" +
+                    (countdown?.let { " · ${it.text}" } ?: ""),
                 style = if (selected) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
                 color = c,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
@@ -878,11 +899,12 @@ private fun ProgressPill(
     fillColor: Color = MaterialTheme.colorScheme.primaryContainer,
     makruhBand: Pair<Float, Float>? = null,
     makruhColor: Color = MaterialTheme.colorScheme.primary,
+    accentAmber: Boolean = false,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(16.dp)
-    val edge = MaterialTheme.colorScheme.primary
+    val edge = if (accentAmber) makruhColor else MaterialTheme.colorScheme.primary
     val animFrac by animateFloatAsState(
         targetValue = fraction.coerceIn(0f, 1f),
         animationSpec = if (rememberAnimationsEnabled()) tween(durationMillis = 650) else snap(),
