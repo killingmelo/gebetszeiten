@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dringlichkeits-Rot für die letzten Minuten (Widget-EXACT-Chronometer),
+         lesbar auf hellem wie auf AMOLED-schwarzem Hintergrund. -->
+    <color name="widget_urgent">#E53935</color>
+</resources>
