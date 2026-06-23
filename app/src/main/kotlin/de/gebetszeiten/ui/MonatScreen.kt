@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,6 +42,8 @@ import java.util.Locale
 
 private val HM_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 private const val DATE_WEIGHT = 1.5f
+/** Prayer names for the accessibility (TalkBack) row description. */
+private val ROW_PRAYERS = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
 
 private data class MonatRow(val date: LocalDate, val times: List<String>)
 
@@ -97,8 +101,13 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
                 items(list) { row ->
                     val isToday = row.date == today
                     val bg = if (isToday) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent
+                    // TalkBack: read the whole day as one item ("Mo 1.: Fajr …, Dhuhr …")
+                    // instead of 6 disconnected, label-less cells.
+                    val rowDesc = dateLabel(row.date) + ": " +
+                        ROW_PRAYERS.zip(row.times).joinToString(", ") { "${it.first} ${it.second}" }
                     Row(
-                        modifier = Modifier.fillMaxWidth().background(bg).padding(horizontal = 12.dp, vertical = 7.dp),
+                        modifier = Modifier.fillMaxWidth().background(bg).padding(horizontal = 12.dp, vertical = 7.dp)
+                            .clearAndSetSemantics { contentDescription = rowDesc },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
