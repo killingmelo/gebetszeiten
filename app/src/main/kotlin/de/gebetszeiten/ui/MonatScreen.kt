@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,7 +47,7 @@ private data class MonatRow(val date: LocalDate, val times: List<String>)
 internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
     val context = LocalContext.current
     val zone = ZoneId.systemDefault()
-    var month by remember { mutableStateOf(YearMonth.now(zone)) }
+    var month by rememberSaveable { mutableStateOf(YearMonth.now(zone)) }
     val today = LocalDate.now(zone)
 
     val rows by produceState<List<MonatRow>?>(null, month, settings) {
