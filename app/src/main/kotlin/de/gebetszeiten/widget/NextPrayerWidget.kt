@@ -162,6 +162,9 @@ class NextPrayerWidget : GlanceAppWidget() {
                     val rv = android.widget.RemoteViews(context.packageName, R.layout.widget_chronometer).apply {
                         setChronometerCountDown(R.id.widget_chrono, true)
                         setChronometer(R.id.widget_chrono, chronoBase, null, true)
+                        // Final minutes: same urgency cue the STEPS countdown gets
+                        // (the EXACT chronometer otherwise stayed textColorPrimary).
+                        if (urgent) setTextColor(R.id.widget_chrono, context.getColor(R.color.widget_urgent))
                     }
                     AndroidRemoteViews(rv)
                 } else {

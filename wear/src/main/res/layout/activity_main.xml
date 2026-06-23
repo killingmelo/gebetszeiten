@@ -36,6 +36,7 @@
             android:id="@+id/heroTime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:focusable="true"
             android:textColor="@color/wear_text"
             android:textSize="42sp"
             android:textStyle="bold" />
@@ -54,6 +55,7 @@
             android:id="@+id/cityLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:focusable="true"
             android:layout_marginTop="6dp"
             android:textColor="@color/wear_dim"
             android:textSize="12sp" />
@@ -78,6 +80,7 @@
             android:id="@+id/modeLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:focusable="true"
             android:layout_marginTop="14dp"
             android:padding="4dp"
             android:textColor="@color/wear_dim"
@@ -87,6 +90,7 @@
             android:id="@+id/vibrateLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:focusable="true"
             android:padding="4dp"
             android:textColor="@color/wear_dim"
             android:textSize="11sp" />

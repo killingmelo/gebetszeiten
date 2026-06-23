@@ -25,6 +25,27 @@ object WearSettings {
     private val DEFAULT = GeoLocation(49.4521, 11.0767) // Nürnberg
     private const val DEFAULT_CITY = "Nürnberg"
 
+    /** Alle Anzeige-relevanten Werte in EINEM DataStore-Read (statt 4–7
+     *  einzelnen) — der Hauptscreen liest so nur einmal pro Aktualisierung. */
+    data class Snapshot(
+        val location: GeoLocation,
+        val city: String,
+        val showRemaining: Boolean,
+        val vibrate: Boolean,
+    )
+
+    suspend fun snapshot(context: Context): Snapshot {
+        val prefs = context.locationStore.data.first()
+        val lat = prefs[LAT]
+        val lng = prefs[LNG]
+        return Snapshot(
+            location = if (lat != null && lng != null) GeoLocation(lat, lng) else DEFAULT,
+            city = prefs[CITY] ?: DEFAULT_CITY,
+            showRemaining = prefs[SHOW_REMAINING] ?: false,
+            vibrate = prefs[VIBRATE] ?: false,
+        )
+    }
+
     suspend fun location(context: Context): GeoLocation {
         val prefs = context.locationStore.data.first()
         val lat = prefs[LAT]
