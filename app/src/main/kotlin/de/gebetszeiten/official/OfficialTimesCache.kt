@@ -34,18 +34,14 @@ class OfficialTimesCache(private val context: Context) {
             .lineSequence().mapNotNull { parseLine(it) }.toMap()[date]
     }
 
-    suspend fun stampOk(lat: Double, lng: Double): Boolean {
+    /** Stempel-Match + letztes abgedecktes Datum in EINEM DataStore-Read —
+     *  Eingabe für den Freshness-Check ([needsRefresh]). */
+    suspend fun freshness(lat: Double, lng: Double): Pair<Boolean, LocalDate?> {
         val prefs = context.officialStore.data.first()
-        return stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)
-    }
-
-    /** Letztes abgedecktes Datum — für den Freshness-Check; null wenn leer
-     *  oder Stempel nicht passt. */
-    suspend fun coveredUntil(lat: Double, lng: Double): LocalDate? {
-        val prefs = context.officialStore.data.first()
-        if (!stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)) return null
-        return (prefs[key] ?: return null)
-            .lineSequence().mapNotNull { parseLine(it) }.maxOfOrNull { it.first }
+        val ok = stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)
+        if (!ok) return false to null
+        val until = prefs[key]?.lineSequence()?.mapNotNull { parseLine(it) }?.maxOfOrNull { it.first }
+        return true to until
     }
 
     suspend fun putAll(schedule: Map<LocalDate, SixTimes>, lat: Double, lng: Double) {

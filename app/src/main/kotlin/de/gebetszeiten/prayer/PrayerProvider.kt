@@ -81,8 +81,7 @@ object PrayerProvider {
     suspend fun refreshOfficial(context: Context, settings: AppSettings) {
         if (!settings.useOnline || settings.useCalculated) return
         val cache = OfficialTimesCache(context)
-        val stampOk = cache.stampOk(settings.latitude, settings.longitude)
-        val coveredUntil = cache.coveredUntil(settings.latitude, settings.longitude)
+        val (stampOk, coveredUntil) = cache.freshness(settings.latitude, settings.longitude)
         if (!needsRefresh(coveredUntil, LocalDate.now(), stampOk)) return
         val fetcher = OfficialTimesProvider.fetcher(context) ?: return
         cache.putAll(fetcher.fetch(settings), settings.latitude, settings.longitude)
