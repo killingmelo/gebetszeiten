@@ -26,3 +26,5 @@ keystore/
 
 # Kotlin compiler session files
 .kotlin/
+
+tools/diyanet-fetch/cache/
