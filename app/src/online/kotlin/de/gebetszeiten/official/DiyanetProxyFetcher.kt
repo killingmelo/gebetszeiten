@@ -15,18 +15,26 @@ import java.time.LocalTime
  * Fetches official Diyanet times from the community proxy
  * (prayertimes.api.abdus.dev), a 1:1 scrape of namazvakitleri.diyanet.gov.tr.
  *
- * Two steps: resolve the Diyanet location id by city name, then fetch its
- * rolling schedule. Any failure returns an empty map so callers fall back to
- * the offline calculation.
+ * For Germany, the exact `diyanetId` of the bundled nearest location is used
+ * (id-accurate, consistent with the offline table and footer). Outside the
+ * bundled coverage, falls back to resolving the Diyanet location id by city
+ * name. Any failure returns an empty map so callers fall back to the offline
+ * calculation.
  */
-class DiyanetProxyFetcher : OfficialTimesFetcher {
+class DiyanetProxyFetcher(private val context: android.content.Context) : OfficialTimesFetcher {
 
     private val base = "https://prayertimes.api.abdus.dev/api/diyanet"
 
     override suspend fun fetch(settings: AppSettings): Map<LocalDate, SixTimes> =
         withContext(Dispatchers.IO) {
             try {
-                val locationId = resolveLocationId(settings.city) ?: return@withContext emptyMap()
+                // Deutschland: exakte diyanetId des gebündelten Nearest-Standorts
+                // (id-genau, konsistent zu Offline-Tabelle und Footer). Sonst
+                // wie bisher Namens-Suche über den Proxy.
+                val locationId = BundledOfficialSource
+                    .nearestLocation(context, settings.latitude, settings.longitude)?.diyanetId
+                    ?: resolveLocationId(settings.city)
+                    ?: return@withContext emptyMap()
                 parseSchedule(httpGet("$base/prayertimes?location_id=$locationId"))
             } catch (e: Exception) {
                 emptyMap()
