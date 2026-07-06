@@ -70,6 +70,18 @@ class MainActivity : Activity() {
                 refresh()
             }
         }
+        // Toggle local astronomical calculation vs. official Diyanet tables.
+        findViewById<TextView>(R.id.useCalculatedLabel).setOnClickListener {
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    WearSettings.saveUseCalculated(
+                        applicationContext,
+                        !WearSettings.useCalculated(applicationContext),
+                    )
+                }
+                refresh()
+            }
+        }
     }
 
     // Recompute on every show so the next prayer is always current without any
@@ -103,6 +115,7 @@ class MainActivity : Activity() {
         val karaha: KarahaUi?,
         val modeText: String,
         val vibrateText: String,
+        val useCalculatedText: String,
         val rows: List<Pair<String, String>>,
     )
 
@@ -157,6 +170,7 @@ class MainActivity : Activity() {
             karaha = karahaUi,
             modeText = if (s.showRemaining) getString(R.string.mode_remaining) else getString(R.string.mode_clock),
             vibrateText = if (s.vibrate) getString(R.string.vibrate_on) else getString(R.string.vibrate_off),
+            useCalculatedText = if (s.useCalculated) getString(R.string.settings_use_calculated) else getString(R.string.settings_use_calculated_off),
             rows = rows,
         )
     }
@@ -192,6 +206,10 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.vibrateLabel).apply {
             text = state.vibrateText
             contentDescription = getString(R.string.desc_toggle, state.vibrateText)
+        }
+        findViewById<TextView>(R.id.useCalculatedLabel).apply {
+            text = state.useCalculatedText
+            contentDescription = getString(R.string.desc_toggle, state.useCalculatedText)
         }
 
         val list = findViewById<android.widget.LinearLayout>(R.id.upcomingList)
