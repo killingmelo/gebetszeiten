@@ -6,6 +6,7 @@ import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.official.BundledOfficialSource
 import de.gebetszeiten.official.OfficialTimesCache
 import de.gebetszeiten.official.OfficialTimesProvider
+import de.gebetszeiten.official.needsRefresh
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -74,10 +75,16 @@ object PrayerProvider {
             ?.let { NextPrayer(it.first, it.second) }
     }
 
-    /** Online flavor + user opted in: refresh the official-times cache. */
+    /** Online flavor + user opted in: refresh the official-times cache —
+     *  aber nur bei Standortwechsel oder wenn weniger als 7 Tage Zukunft
+     *  abgedeckt sind (Proxy liefert ~31 Tage rollierend). */
     suspend fun refreshOfficial(context: Context, settings: AppSettings) {
-        if (!settings.useOnline) return
+        if (!settings.useOnline || settings.useCalculated) return
+        val cache = OfficialTimesCache(context)
+        val stampOk = cache.stampOk(settings.latitude, settings.longitude)
+        val coveredUntil = cache.coveredUntil(settings.latitude, settings.longitude)
+        if (!needsRefresh(coveredUntil, LocalDate.now(), stampOk)) return
         val fetcher = OfficialTimesProvider.fetcher(context) ?: return
-        OfficialTimesCache(context).putAll(fetcher.fetch(settings), settings.latitude, settings.longitude)
+        cache.putAll(fetcher.fetch(settings), settings.latitude, settings.longitude)
     }
 }
