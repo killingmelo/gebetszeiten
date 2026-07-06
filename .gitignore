@@ -28,3 +28,4 @@ keystore/
 .kotlin/
 
 tools/diyanet-fetch/cache/
+tools/diyanet-fetch/__pycache__/
