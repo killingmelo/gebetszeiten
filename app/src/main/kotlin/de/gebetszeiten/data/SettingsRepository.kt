@@ -22,6 +22,8 @@ data class AppSettings(
     val showCountdown: Boolean,
     /** Online flavor: use official Diyanet times fetched online (else offline calc). */
     val useOnline: Boolean = false,
+    /** Immer die lokale astronomische Berechnung nutzen (amtliche Quellen ignorieren). */
+    val useCalculated: Boolean = false,
     /** Show optional voluntary (nafl) prayer windows. */
     val showNafl: Boolean = false,
     /** Show the Hanafi makruh (karaha) segments. */
@@ -77,6 +79,7 @@ data class AppSettings(
             city = "Nürnberg",
             showCountdown = false,
             useOnline = false,
+            useCalculated = false,
             showNafl = false,
             showKaraha = true,
             fontScale = 1f,
@@ -105,6 +108,7 @@ class SettingsRepository(private val context: Context) {
         val CITY = stringPreferencesKey("city")
         val COUNTDOWN = booleanPreferencesKey("show_countdown")
         val USE_ONLINE = booleanPreferencesKey("use_online")
+        val USE_CALCULATED = booleanPreferencesKey("use_calculated")
         val SHOW_NAFL = booleanPreferencesKey("show_nafl")
         val SHOW_KARAHA = booleanPreferencesKey("show_karaha")
         val FONT_SCALE = doublePreferencesKey("font_scale")
@@ -136,6 +140,7 @@ class SettingsRepository(private val context: Context) {
             city = prefs[Keys.CITY] ?: AppSettings.DEFAULT.city,
             showCountdown = prefs[Keys.COUNTDOWN] ?: AppSettings.DEFAULT.showCountdown,
             useOnline = prefs[Keys.USE_ONLINE] ?: AppSettings.DEFAULT.useOnline,
+            useCalculated = prefs[Keys.USE_CALCULATED] ?: AppSettings.DEFAULT.useCalculated,
             showNafl = prefs[Keys.SHOW_NAFL] ?: AppSettings.DEFAULT.showNafl,
             showKaraha = prefs[Keys.SHOW_KARAHA] ?: AppSettings.DEFAULT.showKaraha,
             fontScale = (prefs[Keys.FONT_SCALE] ?: AppSettings.DEFAULT.fontScale.toDouble()).toFloat(),
@@ -163,6 +168,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.CITY] = value.city
             prefs[Keys.COUNTDOWN] = value.showCountdown
             prefs[Keys.USE_ONLINE] = value.useOnline
+            prefs[Keys.USE_CALCULATED] = value.useCalculated
             prefs[Keys.SHOW_NAFL] = value.showNafl
             prefs[Keys.SHOW_KARAHA] = value.showKaraha
             prefs[Keys.FONT_SCALE] = value.fontScale.toDouble()

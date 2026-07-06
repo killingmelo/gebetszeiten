@@ -1,51 +1,69 @@
 package de.gebetszeiten.official
 
 import android.content.Context
-import de.gebetszeiten.data.TextNormalize
+import de.gebetszeiten.core.prayertimes.officialtimes.OfficialLocation
+import de.gebetszeiten.core.prayertimes.officialtimes.OfficialLocations
+import de.gebetszeiten.core.prayertimes.officialtimes.parseOfficialLocations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.FileNotFoundException
 import java.time.LocalDate
 
 /**
  * Amtliche Diyanet-Zeiten aus gebündelten Offline-Tabellen (assets/official/).
- * Verfügbar in beiden Flavors, rein lokal — keine Netzwerknutzung.
- *
- * Aktuell abgedeckt: Nürnberg 2026. Für nicht abgedeckte Städte/Jahre liefert
- * [get] null, sodass der Aufrufer auf die Berechnung zurückfällt.
+ * Lookup per Koordinaten: nächstgelegener deutscher Diyanet-Standort ≤ 25 km.
+ * Nicht abgedeckt (Ausland, fehlendes Jahr) → null → Aufrufer rechnet selbst.
  */
 object BundledOfficialSource {
 
-    /** Normalisierter Stadtname → Asset-Pfade (eine Datei je Jahr). */
-    private val TABLES: Map<String, List<String>> = mapOf(
-        "nurnberg" to listOf("official/nuernberg-2026.tsv"),
-    )
+    private const val LOCATIONS_ASSET = "official/locations-de.tsv"
 
-    @Volatile
-    private var cache: Map<String, Map<LocalDate, SixTimes>> = emptyMap()
+    @Volatile private var locations: List<OfficialLocation>? = null
+    @Volatile private var tables: Map<String, Map<LocalDate, SixTimes>> = emptyMap()
 
-    /** Reine Registry-Auflösung (ohne Context, testbar). */
-    fun assetPathsFor(city: String): List<String> =
-        TABLES[TextNormalize.normalize(city)] ?: emptyList()
+    suspend fun get(context: Context, lat: Double, lng: Double, date: LocalDate): SixTimes? =
+        nearestCovering(context, lat, lng, date)?.second
 
-    suspend fun get(context: Context, city: String, date: LocalDate): SixTimes? {
-        for (path in assetPathsFor(city)) {
-            table(context, path)[date]?.let { return it }
-        }
-        return null
+    /** Anzeigename des Diyanet-Standorts, dessen amtliche Tabelle (Datum!) greift. */
+    suspend fun locationNameFor(context: Context, lat: Double, lng: Double, date: LocalDate): String? =
+        nearestCovering(context, lat, lng, date)?.first?.name
+
+    private suspend fun nearestCovering(
+        context: Context,
+        lat: Double,
+        lng: Double,
+        date: LocalDate,
+    ): Pair<OfficialLocation, SixTimes>? {
+        val loc = OfficialLocations.nearest(allLocations(context), lat, lng) ?: return null
+        val time = table(context, "official/tables/${loc.tableRef}-${date.year}.tsv")[date] ?: return null
+        return loc to time
     }
 
-    suspend fun covers(context: Context, city: String, date: LocalDate): Boolean =
-        get(context, city, date) != null
+    private suspend fun allLocations(context: Context): List<OfficialLocation> {
+        locations?.let { return it }
+        return withContext(Dispatchers.IO) {
+            locations ?: load(context).also { locations = it }
+        }
+    }
+
+    private fun load(context: Context): List<OfficialLocation> = try {
+        context.assets.open(LOCATIONS_ASSET).bufferedReader(Charsets.UTF_8).useLines {
+            parseOfficialLocations(it)
+        }
+    } catch (e: FileNotFoundException) {
+        emptyList()
+    }
 
     private suspend fun table(context: Context, path: String): Map<LocalDate, SixTimes> {
-        cache[path]?.let { return it }
+        tables[path]?.let { return it }
         return withContext(Dispatchers.IO) {
-            cache[path] ?: load(context, path).also { cache = cache + (path to it) }
+            tables[path] ?: loadTable(context, path).also { tables = tables + (path to it) }
         }
     }
 
-    private fun load(context: Context, path: String): Map<LocalDate, SixTimes> =
-        context.assets.open(path).bufferedReader(Charsets.UTF_8).useLines {
-            parseOfficialTimes(it)
-        }
+    private fun loadTable(context: Context, path: String): Map<LocalDate, SixTimes> = try {
+        context.assets.open(path).bufferedReader(Charsets.UTF_8).useLines { parseOfficialTimes(it) }
+    } catch (e: FileNotFoundException) {
+        emptyMap()
+    }
 }

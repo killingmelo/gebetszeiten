@@ -124,6 +124,8 @@
     <string name="settings_section_display">Anzeige</string>
     <string name="settings_show_makruh">Makruh-Zeiten anzeigen</string>
     <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>
+    <string name="settings_use_calculated">Eigene Berechnung verwenden</string>
+    <string name="settings_use_calculated_hint">Statt amtlicher Diyanet-Tabellen die lokale astronomische Berechnung nutzen. Amtliche Zeiten sind Standard, wo verfügbar.</string>
     <string name="settings_remaining">Restzeit</string>
     <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit — je Fläche einzeln einstellbar. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet — am akkuschonendsten, da die App dafür nicht aufwacht.</string>
     <string name="settings_in_app">In der App</string>
