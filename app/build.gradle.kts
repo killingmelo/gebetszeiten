@@ -79,6 +79,13 @@ android {
     buildFeatures {
         compose = true
     }
+
+    sourceSets {
+        getByName("main") {
+            // Amtliche Diyanet-Tabellen werden mit dem wear-Modul geteilt.
+            assets.srcDir(rootProject.file("shared-assets"))
+        }
+    }
 }
 
 dependencies {

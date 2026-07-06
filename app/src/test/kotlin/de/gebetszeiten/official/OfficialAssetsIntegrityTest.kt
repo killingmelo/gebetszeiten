@@ -13,7 +13,7 @@ import java.time.LocalTime
  *  und monoton, Nürnberg reproduziert die amtliche Phase-1-Referenz. */
 class OfficialAssetsIntegrityTest {
 
-    private val assets = File("src/main/assets/official")
+    private val assets = File("../shared-assets/official")
     private val locations by lazy {
         File(assets, "locations-de.tsv").useLines { parseOfficialLocations(it) }
     }

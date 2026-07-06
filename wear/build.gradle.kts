@@ -19,8 +19,8 @@ android {
         applicationId = "de.gebetszeiten"
         minSdk = 30
         targetSdk = 34
-        versionCode = 11
-        versionName = "0.1.11"
+        versionCode = 12
+        versionName = "0.1.12"
     }
 
     signingConfigs {
@@ -55,6 +55,13 @@ android {
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            // Amtliche Diyanet-Tabellen werden mit dem wear-Modul geteilt.
+            assets.srcDir(rootProject.file("shared-assets"))
         }
     }
 }
