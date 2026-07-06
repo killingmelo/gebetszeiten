@@ -22,6 +22,7 @@ object WearSettings {
     private val CITY = stringPreferencesKey("city")
     private val SHOW_REMAINING = booleanPreferencesKey("show_remaining")
     private val VIBRATE = booleanPreferencesKey("vibrate")
+    private val USE_CALCULATED = booleanPreferencesKey("use_calculated")
     private val DEFAULT = GeoLocation(49.4521, 11.0767) // Nürnberg
     private const val DEFAULT_CITY = "Nürnberg"
 
@@ -32,6 +33,7 @@ object WearSettings {
         val city: String,
         val showRemaining: Boolean,
         val vibrate: Boolean,
+        val useCalculated: Boolean,
     )
 
     suspend fun snapshot(context: Context): Snapshot {
@@ -43,6 +45,7 @@ object WearSettings {
             city = prefs[CITY] ?: DEFAULT_CITY,
             showRemaining = prefs[SHOW_REMAINING] ?: false,
             vibrate = prefs[VIBRATE] ?: false,
+            useCalculated = prefs[USE_CALCULATED] ?: false,
         )
     }
 
@@ -70,6 +73,14 @@ object WearSettings {
 
     suspend fun saveVibrate(context: Context, value: Boolean) {
         context.locationStore.edit { it[VIBRATE] = value }
+    }
+
+    /** Immer die lokale Berechnung nutzen statt amtlicher Diyanet-Tabellen. */
+    suspend fun useCalculated(context: Context): Boolean =
+        context.locationStore.data.first()[USE_CALCULATED] ?: false
+
+    suspend fun saveUseCalculated(context: Context, value: Boolean) {
+        context.locationStore.edit { it[USE_CALCULATED] = value }
     }
 
     suspend fun save(context: Context, city: String, latitude: Double, longitude: Double) {
