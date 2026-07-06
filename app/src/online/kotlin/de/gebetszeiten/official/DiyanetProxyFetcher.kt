@@ -37,6 +37,9 @@ class DiyanetProxyFetcher(private val context: android.content.Context) : Offici
                     ?: return@withContext emptyMap()
                 parseSchedule(httpGet("$base/prayertimes?location_id=$locationId"))
             } catch (e: Exception) {
+                // Bewusst schlucken (Aufrufer fällt auf Bundle/Berechnung zurück),
+                // aber loggen — sonst ist ein Abruf-Fehler nicht diagnostizierbar.
+                android.util.Log.w("DiyanetFetch", "Online-Abruf fehlgeschlagen", e)
                 emptyMap()
             }
         }
