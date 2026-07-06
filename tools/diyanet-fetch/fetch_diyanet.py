@@ -149,13 +149,18 @@ def main() -> None:
     content_to_ref: dict[str, str] = {}
     index_rows: list[tuple[int, str, float, float, str]] = []
     year_seen: set[int] = set()
+    skipped: list[str] = []
     for n, (loc, (name, lat, lng)) in enumerate(sorted(matched, key=lambda m: m[0]["id"]), 1):
         print(f"[{n}/{len(matched)}] {name} (id={loc['id']})")
-        rows = parse_year_table(year_page(loc["id"]))
-        year_seen.update(int(d[:4]) for d, _ in rows)
-        content = "".join(f"{d}\t" + "\t".join(t) + "\n" for d, t in rows)
-        ref = content_to_ref.setdefault(content, f"t{len(content_to_ref):03d}")
-        index_rows.append((loc["id"], name, lat, lng, ref))
+        try:
+            rows = parse_year_table(year_page(loc["id"]))
+            year_seen.update(int(d[:4]) for d, _ in rows)
+            content = "".join(f"{d}\t" + "\t".join(t) + "\n" for d, t in rows)
+            ref = content_to_ref.setdefault(content, f"t{len(content_to_ref):03d}")
+            index_rows.append((loc["id"], name, lat, lng, ref))
+        except Exception as e:
+            print(f"  SKIP {name} (id={loc['id']}): {e}", file=sys.stderr)
+            skipped.append(name)
 
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
     year = max(year_seen)
@@ -171,6 +176,10 @@ def main() -> None:
           f"von {len(index_rows)} Standorten")
     print(f"Groesse komprimiert (zlib-9-Schaetzung): {total / 1024 / 1024:.2f} MB "
           f"(Ziel < 4 MB) + Index {len(index_text) / 1024:.0f} KB")
+    if skipped:
+        print(f"Uebersprungen wegen Fehlern: {len(skipped)}")
+        for name in skipped[:20]:
+            print(f"  {name}")
 
 
 if __name__ == "__main__":
