@@ -52,9 +52,10 @@ class PrayerComplicationService : ComplicationDataSourceService() {
     ) {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
-        val location = runBlocking { WearSettings.location(applicationContext) }
-        val showRemaining = runBlocking { WearSettings.showRemaining(applicationContext) }
-        val next = WearPrayer.next(location, zone, now)
+        val (showRemaining, next) = runBlocking {
+            val location = WearSettings.location(applicationContext)
+            WearSettings.showRemaining(applicationContext) to WearPrayer.next(applicationContext, location, zone, now)
+        }
         val title = next.first.label()
         val timeStr = next.second.format(timeFormat)
         val prayerAt = next.second.toInstant()

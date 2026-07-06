@@ -41,7 +41,7 @@ object WearVibration {
         }
         val zone = ZoneId.systemDefault()
         val location = WearSettings.location(context)
-        val next = WearPrayer.next(location, zone, ZonedDateTime.now(zone))
+        val next = WearPrayer.next(context, location, zone, ZonedDateTime.now(zone))
         val triggerAt = next.second.toInstant().toEpochMilli()
         try {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending)
