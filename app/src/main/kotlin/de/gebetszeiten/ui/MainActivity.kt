@@ -267,7 +267,8 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
         value = DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr), nextFajr)
     }
     val officialSource by produceState(false, settings, selectedDate) {
-        value = de.gebetszeiten.official.BundledOfficialSource.covers(context, settings.city, selectedDate) ||
+        value = de.gebetszeiten.official.BundledOfficialSource
+            .locationNameFor(context, settings.latitude, settings.longitude, selectedDate) != null ||
             (settings.useOnline && de.gebetszeiten.official.OfficialTimesCache(context).get(selectedDate) != null)
     }
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
