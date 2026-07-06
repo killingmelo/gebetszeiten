@@ -266,10 +266,17 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
         val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone).fajr
         value = DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr), nextFajr)
     }
-    val officialSource by produceState(false, settings, selectedDate) {
-        value = de.gebetszeiten.official.BundledOfficialSource
-            .locationNameFor(context, settings.latitude, settings.longitude, selectedDate) != null ||
-            (settings.useOnline && de.gebetszeiten.official.OfficialTimesCache(context).get(selectedDate) != null)
+    val officialName by produceState<String?>(null, settings, selectedDate) {
+        value = if (settings.useCalculated) {
+            null
+        } else {
+            de.gebetszeiten.official.BundledOfficialSource
+                .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
+                ?: settings.city.takeIf {
+                    settings.useOnline &&
+                        de.gebetszeiten.official.OfficialTimesCache(context).get(selectedDate) != null
+                }
+        }
     }
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
 
@@ -302,7 +309,7 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
         Text(
             // Amtlich nennt die Stadt ("… · Nürnberg"); der berechnete String hat
             // keinen Platzhalter, das Extra-Argument wird dort gefahrlos ignoriert.
-            text = stringResource(de.gebetszeiten.prayer.dataCreditRes(officialSource), settings.city),
+            text = stringResource(de.gebetszeiten.prayer.dataCreditRes(officialName != null), officialName ?: settings.city),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
@@ -1268,6 +1275,15 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+
+            ToggleRow(stringResource(R.string.settings_use_calculated), settings.useCalculated) {
+                commit { copy(useCalculated = it) }
+            }
+            Text(
+                stringResource(R.string.settings_use_calculated_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             Text(stringResource(R.string.settings_remaining), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
             Text(
