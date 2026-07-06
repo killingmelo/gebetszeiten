@@ -274,7 +274,7 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
                 .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
                 ?: settings.city.takeIf {
                     settings.useOnline &&
-                        de.gebetszeiten.official.OfficialTimesCache(context).get(selectedDate) != null
+                        de.gebetszeiten.official.OfficialTimesCache(context).get(selectedDate, settings.latitude, settings.longitude) != null
                 }
         }
     }

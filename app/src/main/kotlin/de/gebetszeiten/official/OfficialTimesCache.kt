@@ -3,6 +3,7 @@ package de.gebetszeiten.official
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -21,22 +22,44 @@ private val Context.officialStore: DataStore<Preferences> by preferencesDataStor
 class OfficialTimesCache(private val context: Context) {
 
     private val key = stringPreferencesKey("schedule")
+    private val stampLat = doublePreferencesKey("stamp_lat")
+    private val stampLng = doublePreferencesKey("stamp_lng")
 
-    suspend fun get(date: LocalDate): SixTimes? = all()[date]
-
-    suspend fun all(): Map<LocalDate, SixTimes> {
-        val raw = context.officialStore.data.first()[key] ?: return emptyMap()
-        return raw.lineSequence().mapNotNull { parseLine(it) }.toMap()
+    /** Zeiten nur, wenn der Cache für (lat,lng) geladen wurde — sonst null,
+     *  damit nie amtliche Zeiten eines alten Standorts angezeigt werden. */
+    suspend fun get(date: LocalDate, lat: Double, lng: Double): SixTimes? {
+        val prefs = context.officialStore.data.first()
+        if (!stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)) return null
+        return (prefs[key] ?: return null)
+            .lineSequence().mapNotNull { parseLine(it) }.toMap()[date]
     }
 
-    suspend fun putAll(schedule: Map<LocalDate, SixTimes>) {
+    suspend fun stampOk(lat: Double, lng: Double): Boolean {
+        val prefs = context.officialStore.data.first()
+        return stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)
+    }
+
+    /** Letztes abgedecktes Datum — für den Freshness-Check; null wenn leer
+     *  oder Stempel nicht passt. */
+    suspend fun coveredUntil(lat: Double, lng: Double): LocalDate? {
+        val prefs = context.officialStore.data.first()
+        if (!stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)) return null
+        return (prefs[key] ?: return null)
+            .lineSequence().mapNotNull { parseLine(it) }.maxOfOrNull { it.first }
+    }
+
+    suspend fun putAll(schedule: Map<LocalDate, SixTimes>, lat: Double, lng: Double) {
         if (schedule.isEmpty()) return
         val text = schedule.entries
             .sortedBy { it.key }
             .joinToString("\n") { (d, t) ->
                 "$d ${t.fajr} ${t.sunrise} ${t.dhuhr} ${t.asr} ${t.maghrib} ${t.isha}"
             }
-        context.officialStore.edit { it[key] = text }
+        context.officialStore.edit {
+            it[key] = text
+            it[stampLat] = lat
+            it[stampLng] = lng
+        }
     }
 
     private fun parseLine(line: String): Pair<LocalDate, SixTimes>? {
