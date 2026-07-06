@@ -19,7 +19,30 @@ private class CityEntry(
     val longitude: Double,
     val normName: String,
     val normAscii: String,
+    val normAliases: List<String> = emptyList(),
 )
+
+internal class CityAliases(
+    val normAliases: List<String>,
+    /** Deutscher Anzeigename (überschreibt den englischen GeoNames-Namen),
+     *  gesetzt durch „1" in Spalte 4 der Alias-Zeile. */
+    val displayName: String?,
+)
+
+/** Parst `city-aliases.tsv` (alias, name, country[, display]) zu einer Map
+ *  "name|country" → Aliasse + optionaler Anzeigename. Pure Funktion, unit-testbar. */
+internal fun parseCityAliases(lines: Sequence<String>): Map<String, CityAliases> {
+    val aliases = HashMap<String, MutableList<String>>()
+    val display = HashMap<String, String>()
+    lines.forEach { line ->
+        val c = line.split('\t')
+        if (c.size < 3 || c[0].isBlank()) return@forEach
+        val key = "${c[1]}|${c[2]}"
+        aliases.getOrPut(key) { mutableListOf() } += TextNormalize.normalize(c[0])
+        if (c.size >= 4 && c[3].trim() == "1") display[key] = c[0]
+    }
+    return aliases.mapValues { (key, list) -> CityAliases(list, display[key]) }
+}
 
 /**
  * Offline worldwide city database (GeoNames cities ≥15k population, CC BY 4.0),
@@ -39,7 +62,16 @@ object Cities {
         }
     }
 
+    /** Lädt die Datenbank vorab (z. B. beim Öffnen der Settings), damit die
+     *  erste Suche nicht an der einmaligen TSV-Parse-Latenz hängt. */
+    suspend fun preload(context: Context) {
+        entries(context)
+    }
+
     private fun load(context: Context): List<CityEntry> {
+        val aliases = context.assets.open("city-aliases.tsv").use { raw ->
+            raw.bufferedReader(Charsets.UTF_8).useLines { parseCityAliases(it) }
+        }
         context.assets.open("cities.tsv").use { raw ->
             raw.bufferedReader(Charsets.UTF_8).useLines { lines ->
                 return lines.mapNotNull { line ->
@@ -47,13 +79,16 @@ object Cities {
                     if (c.size < 5) return@mapNotNull null
                     val lat = c[3].toDoubleOrNull() ?: return@mapNotNull null
                     val lng = c[4].toDoubleOrNull() ?: return@mapNotNull null
+                    val alias = aliases["${c[0]}|${c[2]}"]
                     CityEntry(
-                        name = c[0],
+                        // Deutscher Anzeigename, falls definiert („Nuremberg" → „Nürnberg").
+                        name = alias?.displayName ?: c[0],
                         country = c[2],
                         latitude = lat,
                         longitude = lng,
                         normName = TextNormalize.normalize(c[0]),
                         normAscii = TextNormalize.normalize(c[1]),
+                        normAliases = alias?.normAliases ?: emptyList(),
                     )
                 }.toList()
             }
@@ -69,9 +104,15 @@ object Cities {
         val chosen = when {
             q.isEmpty() -> all.take(limit)
             else -> {
-                val prefix = all.filter { it.normName.startsWith(q) || it.normAscii.startsWith(q) }.take(limit)
+                val prefix = all.filter {
+                    it.normName.startsWith(q) || it.normAscii.startsWith(q) ||
+                        it.normAliases.any { a -> a.startsWith(q) }
+                }.take(limit)
                 prefix.ifEmpty {
-                    all.filter { it.normName.contains(q) || it.normAscii.contains(q) }.take(limit)
+                    all.filter {
+                        it.normName.contains(q) || it.normAscii.contains(q) ||
+                            it.normAliases.any { a -> a.contains(q) }
+                    }.take(limit)
                 }
             }
         }

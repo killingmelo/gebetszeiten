@@ -115,6 +115,8 @@
     <string name="settings_title">Einstellungen</string>
     <string name="settings_instant_apply">Änderungen werden sofort übernommen.</string>
     <string name="settings_city">Stadt</string>
+    <string name="city_no_results">Keine Treffer – Schreibweise prüfen oder Koordinaten manuell eingeben.</string>
+    <string name="city_suggestions_toggle">Ortsvorschläge ein- oder ausblenden</string>
     <string name="settings_latitude">Breite</string>
     <string name="settings_longitude">Länge</string>
     <string name="settings_coordinate_error">Gültige Werte: Breite -90 bis 90, Länge -180 bis 180.</string>

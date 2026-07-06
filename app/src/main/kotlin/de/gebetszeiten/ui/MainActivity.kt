@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -45,13 +47,16 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -82,13 +87,22 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -214,7 +228,12 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
     }
 
     if (showSettings) {
-        ModalBottomSheet(onDismissRequest = { showSettings = false }) {
+        ModalBottomSheet(
+            onDismissRequest = { showSettings = false },
+            // Voll geöffnet: halb expandiert bleibt mit offener Tastatur
+            // kaum Platz für die Ortsvorschläge.
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
             LocationSettings(settings = settings, onApply = { viewModel.save(it) })
         }
     }
@@ -1067,25 +1086,61 @@ private fun SettingsSection(title: String, content: @Composable ColumnScope.() -
     }
 }
 
+/** Stadtname mit fett hervorgehobenem, übereinstimmendem Wortanfang. */
+private fun highlightPrefix(name: String, query: String): AnnotatedString = buildAnnotatedString {
+    val q = query.trim()
+    if (q.isNotEmpty() && name.startsWith(q, ignoreCase = true)) {
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(name.take(q.length)) }
+        append(name.substring(q.length))
+    } else {
+        append(name)
+    }
+}
+
+/** Lokalisierter Ländername statt kryptischem ISO-Code („DE" → „Deutschland"). */
+private fun countryDisplayName(code: String): String = runCatching {
+    Locale.Builder().setRegion(code).build().displayCountry
+}.getOrDefault("").ifBlank { code }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Unit) {
     // Location is the only draft state (typing half a coordinate must not
     // trigger a reschedule) — everything else applies instantly via commit().
-    var city by remember(settings.city) { mutableStateOf(settings.city) }
-    var lat by remember(settings.latitude) { mutableStateOf(settings.latitude.toString()) }
-    var lng by remember(settings.longitude) { mutableStateOf(settings.longitude.toString()) }
-    var expanded by remember { mutableStateOf(false) }
+    // Das Stadt-Feld ist ein reines Suchfeld: Entwurf startet leer, der
+    // aktuelle Ort steht als Placeholder. Den alten Namen beim Fokus zu
+    // leeren/markieren scheitert am Echo der startenden IME-Session —
+    // ein leeres Feld hat dieses Race gar nicht erst.
+    var city by rememberSaveable(settings.city, stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+    var lat by rememberSaveable(settings.latitude) { mutableStateOf(settings.latitude.toString()) }
+    var lng by rememberSaveable(settings.longitude) { mutableStateOf(settings.longitude.toString()) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     var matches by remember { mutableStateOf<List<City>>(emptyList()) }
+    var searching by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
 
     // Named "commit" (not "apply") to avoid clashing with Kotlin's stdlib apply.
     val commit: (AppSettings.() -> AppSettings) -> Unit = { change -> onApply(settings.change()) }
-    val locationDirty = city != settings.city ||
+    val locationDirty = (city.text.isNotBlank() && city.text != settings.city) ||
         lat.toDoubleOrNull() != settings.latitude || lng.toDoubleOrNull() != settings.longitude
 
-    LaunchedEffect(city, expanded) {
-        matches = if (expanded) Cities.search(context, city, limit = 12) else emptyList()
+    // Die Städteliste einmalig vorwärmen — sonst hängt die allererste
+    // Suche still an der TSV-Parse-Latenz (33k Zeilen).
+    LaunchedEffect(Unit) { Cities.preload(context) }
+
+    LaunchedEffect(city.text, expanded) {
+        if (expanded && city.text.isNotBlank()) {
+            searching = true
+            matches = Cities.search(context, city.text, limit = 12)
+            searching = false
+        } else {
+            matches = emptyList()
+            searching = false
+        }
     }
 
     Column(
@@ -1106,7 +1161,9 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        SettingsSection(stringResource(R.string.location_title)) {
+        // Sektions-Titel nennt den aktiven Ort — das Stadt-Feld selbst ist ein
+        // leeres Suchfeld und zeigt unfokussiert keinen Wert an.
+        SettingsSection("${stringResource(R.string.location_title)} · ${settings.city}") {
             // Inline-Vorschläge statt ExposedDropdownMenu: dessen Popup-Fenster
             // liegt unter dem IME-Fenster, die Tastatur verdeckt daher die
             // Liste. Der Sheet-Inhalt weicht der Tastatur aus — die Liste
@@ -1115,8 +1172,16 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                 value = city,
                 onValueChange = { city = it; expanded = true },
                 label = { Text(stringResource(R.string.settings_city)) },
+                placeholder = { Text(settings.city) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 trailingIcon = {
-                    IconButton(onClick = { expanded = !expanded }) {
+                    val toggleLabel = stringResource(R.string.city_suggestions_toggle)
+                    IconButton(
+                        onClick = { expanded = !expanded },
+                        modifier = Modifier.semantics { contentDescription = toggleLabel },
+                    ) {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     }
                 },
@@ -1124,24 +1189,51 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                     .fillMaxWidth()
                     .onFocusChanged { expanded = it.isFocused },
             )
-            if (expanded && matches.isNotEmpty()) {
-                matches.forEach { c ->
-                    DropdownMenuItem(
-                        text = { Text("${c.name} (${c.country})") },
-                        onClick = {
-                            city = c.name; lat = c.latitude.toString(); lng = c.longitude.toString(); expanded = false
-                            // Picked from the list = complete data → applies directly.
-                            commit { copy(city = c.name, latitude = c.latitude, longitude = c.longitude) }
-                        },
-                    )
+            if (expanded && searching) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+            if (expanded && !searching && matches.isNotEmpty()) {
+                Surface(tonalElevation = 2.dp, shape = MaterialTheme.shapes.medium) {
+                    Column {
+                        matches.forEach { c ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(highlightPrefix(c.name, city.text))
+                                        Text(
+                                            countryDisplayName(c.country),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    city = TextFieldValue(c.name)
+                                    lat = c.latitude.toString(); lng = c.longitude.toString()
+                                    expanded = false
+                                    keyboard?.hide()
+                                    focusManager.clearFocus()
+                                    // Picked from the list = complete data → applies directly.
+                                    commit { copy(city = c.name, latitude = c.latitude, longitude = c.longitude) }
+                                },
+                            )
+                        }
+                    }
                 }
+            }
+            if (expanded && !searching && matches.isEmpty() && city.text.isNotBlank()) {
+                Text(
+                    stringResource(R.string.city_no_results),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             val latErr = de.gebetszeiten.data.Coordinates.latError(lat)
             val lngErr = de.gebetszeiten.data.Coordinates.lngError(lng)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text(stringResource(R.string.settings_latitude)) }, isError = latErr, singleLine = true, modifier = Modifier.weight(1f))
-                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text(stringResource(R.string.settings_longitude)) }, isError = lngErr, singleLine = true, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text(stringResource(R.string.settings_latitude)) }, isError = latErr, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
+                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text(stringResource(R.string.settings_longitude)) }, isError = lngErr, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
             }
             if (latErr || lngErr) {
                 Text(
@@ -1155,7 +1247,8 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                     onClick = {
                         val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
                         val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
-                        commit { copy(city = city.ifBlank { "—" }, latitude = parsedLat, longitude = parsedLng) }
+                        // Leeres Suchfeld = Name unverändert (nur Koordinaten angepasst).
+                        commit { copy(city = city.text.ifBlank { settings.city }, latitude = parsedLat, longitude = parsedLng) }
                     },
                     enabled = !latErr && !lngErr,
                     modifier = Modifier.fillMaxWidth(),
