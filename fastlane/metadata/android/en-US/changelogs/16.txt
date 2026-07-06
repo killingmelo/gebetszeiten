@@ -1,0 +1,1 @@
+Official Diyanet times now cover all of Germany: 600+ locations bundled offline, the nearest one (within 25 km) is picked automatically. The Wear app now shows official times too. New "Use own calculation" switch. Reworked city picker: German city names (e.g. Nürnberg, München) are now found, and suggestions are no longer hidden behind the keyboard.

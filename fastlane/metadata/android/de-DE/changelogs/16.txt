@@ -1,0 +1,1 @@
+Amtliche Diyanet-Zeiten jetzt für ganz Deutschland: über 600 Standorte offline gebündelt, automatisch der nächstgelegene (bis 25 km). Auch die Wear-App zeigt jetzt amtliche Zeiten. Neuer Schalter „Eigene Berechnung verwenden". Ortsauswahl überarbeitet: deutsche Städtenamen (z. B. Nürnberg, München) werden gefunden, Vorschläge werden nicht mehr von der Tastatur verdeckt.

@@ -75,3 +75,14 @@ eigenen Schlüssel und bleibt mit der GitHub-APK kompatibel.
 - Prüfung dauert typischerweise 1–7 Tage (erste App eines neuen Kontos eher länger).
 - Updates später: einfach neues AAB mit höherem versionCode hochladen —
   ich baue die Bundles jederzeit (`gradlew :app:bundleOfflineRelease`).
+
+### 8. Jaehrliches Zeiten-Update (amtliche Diyanet-Tabellen)
+Die gebuendelten amtlichen Zeiten (shared-assets/official/) gelten je ein
+Kalenderjahr. Sobald Diyanet das Folgejahr publiziert (erfahrungsgemaess Ende
+Dezember, Jahresansicht auf namazvakitleri.diyanet.gov.tr pruefen):
+1. `tools/diyanet-fetch/cache/` loeschen (sonst wird das alte Jahr re-emittiert),
+2. `python tools/diyanet-fetch/fetch_diyanet.py` laufen lassen (~30-60 min),
+3. Report pruefen (>=500 Standorte, < 4 MB), `git add shared-assets/official`,
+4. Integritaetstest: `gradlew :app:testOfflineDebugUnitTest`,
+5. App- UND Wear-Update mit erhoehtem versionCode veroeffentlichen (beide
+   Module buendeln dieselben Assets).
