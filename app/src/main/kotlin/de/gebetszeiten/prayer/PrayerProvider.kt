@@ -19,6 +19,8 @@ import java.time.ZonedDateTime
 object PrayerProvider {
 
     suspend fun daily(context: Context, settings: AppSettings, date: LocalDate, zone: ZoneId): DailyPrayerTimes {
+        // 0) Nutzer hat explizit die eigene Berechnung gewählt.
+        if (settings.useCalculated) return PrayerSchedule.forDate(settings, date, zone)
         // 1) Online-Cache (frischste Quelle, nur wenn aktiviert).
         if (settings.useOnline) {
             OfficialTimesCache(context).get(date)?.let { return it.toDaily(date, zone) }
