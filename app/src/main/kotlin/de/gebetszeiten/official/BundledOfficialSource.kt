@@ -30,13 +30,18 @@ object BundledOfficialSource {
     suspend fun locationNameFor(context: Context, lat: Double, lng: Double, date: LocalDate): String? =
         nearestCovering(context, lat, lng, date)?.first?.name
 
+    /** Nächstgelegener gebündelter Diyanet-Standort ≤ 25 km, oder null.
+     *  Auch vom Online-Fetcher genutzt (liefert die exakte diyanetId). */
+    suspend fun nearestLocation(context: Context, lat: Double, lng: Double): OfficialLocation? =
+        OfficialLocations.nearest(allLocations(context), lat, lng)
+
     private suspend fun nearestCovering(
         context: Context,
         lat: Double,
         lng: Double,
         date: LocalDate,
     ): Pair<OfficialLocation, SixTimes>? {
-        val loc = OfficialLocations.nearest(allLocations(context), lat, lng) ?: return null
+        val loc = nearestLocation(context, lat, lng) ?: return null
         val time = table(context, "official/tables/${loc.tableRef}-${date.year}.tsv")[date] ?: return null
         return loc to time
     }
