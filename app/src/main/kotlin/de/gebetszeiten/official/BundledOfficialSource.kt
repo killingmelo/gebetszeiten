@@ -3,7 +3,9 @@ package de.gebetszeiten.official
 import android.content.Context
 import de.gebetszeiten.core.prayertimes.officialtimes.OfficialLocation
 import de.gebetszeiten.core.prayertimes.officialtimes.OfficialLocations
+import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.parseOfficialLocations
+import de.gebetszeiten.core.prayertimes.officialtimes.parseOfficialTimes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException

@@ -1,6 +1,7 @@
 package de.gebetszeiten.official
 
 import de.gebetszeiten.core.prayertimes.officialtimes.parseOfficialLocations
+import de.gebetszeiten.core.prayertimes.officialtimes.parseOfficialTimes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
