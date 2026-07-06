@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,8 +41,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -72,6 +71,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -1092,6 +1092,9 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
+            // Ohne imePadding reicht der Scroll-Viewport hinter die Tastatur —
+            // Inhalt unterhalb der Tastaturkante wäre unerreichbar.
+            .imePadding()
             .padding(horizontal = 20.dp)
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1104,25 +1107,33 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
         )
 
         SettingsSection(stringResource(R.string.location_title)) {
-            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-                OutlinedTextField(
-                    value = city,
-                    onValueChange = { city = it; expanded = true },
-                    label = { Text(stringResource(R.string.settings_city)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth(),
-                )
-                ExposedDropdownMenu(expanded = expanded && matches.isNotEmpty(), onDismissRequest = { expanded = false }) {
-                    matches.forEach { c ->
-                        DropdownMenuItem(
-                            text = { Text("${c.name} (${c.country})") },
-                            onClick = {
-                                city = c.name; lat = c.latitude.toString(); lng = c.longitude.toString(); expanded = false
-                                // Picked from the list = complete data → applies directly.
-                                commit { copy(city = c.name, latitude = c.latitude, longitude = c.longitude) }
-                            },
-                        )
+            // Inline-Vorschläge statt ExposedDropdownMenu: dessen Popup-Fenster
+            // liegt unter dem IME-Fenster, die Tastatur verdeckt daher die
+            // Liste. Der Sheet-Inhalt weicht der Tastatur aus — die Liste
+            // im Sheet bleibt damit immer sichtbar.
+            OutlinedTextField(
+                value = city,
+                onValueChange = { city = it; expanded = true },
+                label = { Text(stringResource(R.string.settings_city)) },
+                trailingIcon = {
+                    IconButton(onClick = { expanded = !expanded }) {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { expanded = it.isFocused },
+            )
+            if (expanded && matches.isNotEmpty()) {
+                matches.forEach { c ->
+                    DropdownMenuItem(
+                        text = { Text("${c.name} (${c.country})") },
+                        onClick = {
+                            city = c.name; lat = c.latitude.toString(); lng = c.longitude.toString(); expanded = false
+                            // Picked from the list = complete data → applies directly.
+                            commit { copy(city = c.name, latitude = c.latitude, longitude = c.longitude) }
+                        },
+                    )
                 }
             }
 
