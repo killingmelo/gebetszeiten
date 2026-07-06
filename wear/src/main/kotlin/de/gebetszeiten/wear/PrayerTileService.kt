@@ -40,9 +40,11 @@ class PrayerTileService : TileService() {
     ): ListenableFuture<TileBuilders.Tile> {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
-        val location = runBlocking { WearSettings.location(applicationContext) }
         // One extra entry so every shown prayer knows its successor ("danach").
-        val upcoming = WearPrayer.upcoming(location, zone, now, count = 7)
+        val upcoming = runBlocking {
+            val location = WearSettings.location(applicationContext)
+            WearPrayer.upcoming(applicationContext, location, zone, now, count = 7)
+        }
 
         val timeline = TimelineBuilders.Timeline.Builder()
         var start = now

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.LocalTime

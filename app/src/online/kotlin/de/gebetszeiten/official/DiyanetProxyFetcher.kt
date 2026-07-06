@@ -1,5 +1,6 @@
 package de.gebetszeiten.official
 
+import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.data.AppSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

@@ -19,7 +19,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 ASSETS = REPO / "app" / "src" / "main" / "assets"
-OUT_DIR = ASSETS / "official"
+OUT_DIR = REPO / "shared-assets" / "official"
 TABLES_DIR = OUT_DIR / "tables"
 CACHE = Path(__file__).resolve().parent / "cache"
 

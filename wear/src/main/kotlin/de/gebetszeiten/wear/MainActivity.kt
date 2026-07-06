@@ -70,6 +70,18 @@ class MainActivity : Activity() {
                 refresh()
             }
         }
+        // Toggle local astronomical calculation vs. official Diyanet tables.
+        findViewById<TextView>(R.id.useCalculatedLabel).setOnClickListener {
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    WearSettings.saveUseCalculated(
+                        applicationContext,
+                        !WearSettings.useCalculated(applicationContext),
+                    )
+                }
+                refresh()
+            }
+        }
     }
 
     // Recompute on every show so the next prayer is always current without any
@@ -103,6 +115,7 @@ class MainActivity : Activity() {
         val karaha: KarahaUi?,
         val modeText: String,
         val vibrateText: String,
+        val useCalculatedText: String,
         val rows: List<Pair<String, String>>,
     )
 
@@ -111,7 +124,7 @@ class MainActivity : Activity() {
         val now = ZonedDateTime.now(zone)
         val s = WearSettings.snapshot(applicationContext)
 
-        val upcoming = WearPrayer.upcoming(s.location, zone, now, count = 6)
+        val upcoming = WearPrayer.upcoming(applicationContext, s.location, zone, now, count = 6)
         val next = upcoming.first()
         val name = next.first.label()
 
@@ -129,8 +142,9 @@ class MainActivity : Activity() {
             heroTimeDesc = getString(R.string.desc_hero_time_clock, heroTimeText)
         }
 
+        val todayTimes = WearPrayer.today(applicationContext, s.location, zone)
         val karaha = de.gebetszeiten.core.prayertimes.Karaha
-        val karahaUi = when (val status = karaha.status(karaha.windows(WearPrayer.today(s.location, zone)), now)) {
+        val karahaUi = when (val status = karaha.status(karaha.windows(todayTimes), now)) {
             is de.gebetszeiten.core.prayertimes.Karaha.Status.Active ->
                 KarahaUi(getString(R.string.karaha_active, status.window.end.format(timeFormat)), warn = true)
             is de.gebetszeiten.core.prayertimes.Karaha.Status.Soon ->
@@ -143,7 +157,7 @@ class MainActivity : Activity() {
                 val tomorrow = time.toLocalDate() != now.toLocalDate()
                 add((if (tomorrow) getString(R.string.label_morgen_suffix, prayer.label()) else prayer.label()) to time)
             }
-            val sunrise = WearPrayer.today(s.location, zone).sunrise
+            val sunrise = todayTimes.sunrise
             if (sunrise.isAfter(now)) add(getString(R.string.label_sonnenaufgang) to sunrise)
         }.sortedBy { it.second }.map { it.first to it.second.format(timeFormat) }
 
@@ -156,6 +170,7 @@ class MainActivity : Activity() {
             karaha = karahaUi,
             modeText = if (s.showRemaining) getString(R.string.mode_remaining) else getString(R.string.mode_clock),
             vibrateText = if (s.vibrate) getString(R.string.vibrate_on) else getString(R.string.vibrate_off),
+            useCalculatedText = if (s.useCalculated) getString(R.string.settings_use_calculated) else getString(R.string.settings_use_calculated_off),
             rows = rows,
         )
     }
@@ -191,6 +206,10 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.vibrateLabel).apply {
             text = state.vibrateText
             contentDescription = getString(R.string.desc_toggle, state.vibrateText)
+        }
+        findViewById<TextView>(R.id.useCalculatedLabel).apply {
+            text = state.useCalculatedText
+            contentDescription = getString(R.string.desc_toggle, state.useCalculatedText)
         }
 
         val list = findViewById<android.widget.LinearLayout>(R.id.upcomingList)

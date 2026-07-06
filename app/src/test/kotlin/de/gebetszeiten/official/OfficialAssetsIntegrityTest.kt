@@ -1,6 +1,7 @@
 package de.gebetszeiten.official
 
 import de.gebetszeiten.core.prayertimes.officialtimes.parseOfficialLocations
+import de.gebetszeiten.core.prayertimes.officialtimes.parseOfficialTimes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,7 +13,7 @@ import java.time.LocalTime
  *  und monoton, Nürnberg reproduziert die amtliche Phase-1-Referenz. */
 class OfficialAssetsIntegrityTest {
 
-    private val assets = File("src/main/assets/official")
+    private val assets = File("../shared-assets/official")
     private val locations by lazy {
         File(assets, "locations-de.tsv").useLines { parseOfficialLocations(it) }
     }

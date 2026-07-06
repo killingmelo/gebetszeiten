@@ -1,4 +1,4 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.wear
 
 import android.content.Context
 import de.gebetszeiten.core.prayertimes.officialtimes.OfficialLocation
@@ -12,33 +12,20 @@ import java.io.FileNotFoundException
 import java.time.LocalDate
 
 /**
- * Amtliche Diyanet-Zeiten aus gebündelten Offline-Tabellen (assets/official/).
- * Lookup per Koordinaten: nächstgelegener deutscher Diyanet-Standort ≤ 25 km.
- * Nicht abgedeckt (Ausland, fehlendes Jahr) → null → Aufrufer rechnet selbst.
+ * Amtliche Diyanet-Zeiten aus den geteilten Offline-Tabellen (assets/official/),
+ * identisch zum Phone: nächstgelegener Diyanet-Standort ≤ 25 km, sonst null
+ * (→ Aufrufer rechnet selbst). Dünner Context-Adapter um die pure core-Logik.
  */
-object BundledOfficialSource {
+object WearOfficialSource {
 
     private const val LOCATIONS_ASSET = "official/locations-de.tsv"
 
     @Volatile private var locations: List<OfficialLocation>? = null
     @Volatile private var tables: Map<String, Map<LocalDate, SixTimes>> = emptyMap()
 
-    suspend fun get(context: Context, lat: Double, lng: Double, date: LocalDate): SixTimes? =
-        nearestCovering(context, lat, lng, date)?.second
-
-    /** Anzeigename des Diyanet-Standorts, dessen amtliche Tabelle (Datum!) greift. */
-    suspend fun locationNameFor(context: Context, lat: Double, lng: Double, date: LocalDate): String? =
-        nearestCovering(context, lat, lng, date)?.first?.name
-
-    private suspend fun nearestCovering(
-        context: Context,
-        lat: Double,
-        lng: Double,
-        date: LocalDate,
-    ): Pair<OfficialLocation, SixTimes>? {
+    suspend fun get(context: Context, lat: Double, lng: Double, date: LocalDate): SixTimes? {
         val loc = OfficialLocations.nearest(allLocations(context), lat, lng) ?: return null
-        val time = table(context, "official/tables/${loc.tableRef}-${date.year}.tsv")[date] ?: return null
-        return loc to time
+        return table(context, "official/tables/${loc.tableRef}-${date.year}.tsv")[date]
     }
 
     private suspend fun allLocations(context: Context): List<OfficialLocation> {

@@ -1,4 +1,4 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.core.prayertimes.officialtimes
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

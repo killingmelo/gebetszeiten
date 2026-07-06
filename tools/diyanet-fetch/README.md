@@ -1,6 +1,6 @@
 # Diyanet-Jahresdaten-Pipeline
 
-Erzeugt die gebündelten amtlichen Zeiten (`app/src/main/assets/official/`).
+Erzeugt die gebündelten amtlichen Zeiten (`shared-assets/official/`).
 Einmal pro Jahr ausführen, sobald Diyanet das neue Jahr publiziert
 (erfahrungsgemäß Ende Dezember — Jahresansicht der Website prüfen).
 
@@ -10,7 +10,7 @@ Einmal pro Jahr ausführen, sobald Diyanet das neue Jahr publiziert
 - Roh-HTML wird in `cache/` abgelegt → Abbruch/Neustart überspringt Geholtes.
   Für einen frischen Jahresabruf `cache/` löschen!
 - Report prüfen: unmatched-Liste (kleine Orte ohne cities.tsv-Eintrag sind ok),
-  Größe < 4 MB, danach `git add app/src/main/assets/official` + Integritätstest
+  Größe < 4 MB, danach `git add shared-assets/official` + Integritätstest
   (`.\gradlew.bat :app:testOfflineDebugUnitTest`).
 - Jahres-Release-Ablauf: Script laufen lassen → Assets-Diff committen →
   App-Update veröffentlichen (siehe playstore/CHECKLISTE.md).
