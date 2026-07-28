@@ -33,8 +33,8 @@ import java.util.Date
  *      Portugal: Yatsı = 17°-Winkel **+2** (Temkin).
  *    - Deutschland, Italien, Bosnien, Rumänien, CH/AT/FR/NL: Yatsı =
  *      17°-Winkel **−7** (kalibriert gegen den Nürnberger Jahreskalender).
- *    Wir verwenden +2 innerhalb der Türkei-Region (Bounding-Box; die
- *    angrenzenden Länder GR/BG gehören ohnehin zur +2-Gruppe), sonst −7.
+ *    Die +2-Länder sind als grobe Bounding-Boxen hinterlegt
+ *    (siehe [isPlusTwoRegion]); alles andere bekommt −7.
  * 4. **High-latitude "takdir" rule** (Din İşleri Yüksek Kurulu) for places
  *    above 45°. Calibrated against the official Diyanet 2026 year table for
  *    Nürnberg (see resources/diyanet_nurnberg_2026.csv + YearCompareTest):
@@ -64,18 +64,33 @@ object DiyanetPrayerTimesCalculator {
     private const val ADJ_ASR = 4
     private const val ADJ_MAGHRIB = 7
 
-    // Isha-Offset ist regional (siehe Klassen-Doc): Türkei +2, Europa-Kalender −7.
+    // Isha-Offset ist regional (siehe Klassen-Doc): +2-Gruppe vs. Europa-Kalender −7.
     private const val ADJ_ISHA_EUROPE = -7
-    private const val ADJ_ISHA_TURKEY = 2
+    private const val ADJ_ISHA_PLUS_TWO = 2
 
-    /** Türkei inkl. Randmeer (Edirne 41.7/26.6 … Iğdır 40.0/44.8, Hatay 36.2).
-     *  Überlappt GR/BG-Ränder — beide gehören ohnehin zur +2-Gruppe. */
-    private fun isTurkeyRegion(lat: Double, lng: Double): Boolean =
-        lat in 35.8..42.5 && lng in 25.5..45.0
+    /** +2-Gruppe (Yatsı = Winkel + 2 Temkin), amtlich verifiziert für TR, GR,
+     *  BG, AL, MK, ES, PT — als grobe Länder-Bounding-Boxen. Nachbarn der
+     *  −7-Gruppe (IT, BA, RO, FR) werden bewusst ausgespart; in echten
+     *  Grenzzonen fällt die Wahl auf +2 (später = gebetszeitlich sicher). */
+    private fun isPlusTwoRegion(lat: Double, lng: Double): Boolean {
+        // Türkei inkl. Randmeer (Edirne 41.7/26.6 … Iğdır 40.0/44.8, Hatay 36.2).
+        val turkey = lat in 35.8..42.5 && lng in 25.5..45.0
+        // Griechenland (inkl. Kreta/Korfu), Albanien, Nordmazedonien.
+        // Nordgrenze 42.4 hält Montenegro/Kosovo (unvermessen) draußen.
+        val southBalkans = lat in 34.8..42.4 && lng in 19.4..26.0
+        // Bulgarien: Westgrenze 22.4 spart Serbien aus, Nordgrenze 44.1 die
+        // rumänische Donauseite (Bukarest 44.43 bleibt −7).
+        val bulgaria = lat in 41.2..44.1 && lng in 22.4..28.7
+        // Iberische Halbinsel inkl. Balearen; die zwei französischen Ecken
+        // (Perpignan-Zone, Baskenküste um Bayonne) werden ausgenommen.
+        val iberia = lat in 35.9..43.8 && lng in -9.6..3.4 &&
+            !(lat > 42.4 && lng > 2.0) && !(lat > 43.35 && lng > -1.75)
+        return turkey || southBalkans || bulgaria || iberia
+    }
 
     fun calculate(location: GeoLocation, date: LocalDate, zone: ZoneId): DailyPrayerTimes {
-        val adjIsha = if (isTurkeyRegion(location.latitude, location.longitude)) {
-            ADJ_ISHA_TURKEY
+        val adjIsha = if (isPlusTwoRegion(location.latitude, location.longitude)) {
+            ADJ_ISHA_PLUS_TWO
         } else {
             ADJ_ISHA_EUROPE
         }

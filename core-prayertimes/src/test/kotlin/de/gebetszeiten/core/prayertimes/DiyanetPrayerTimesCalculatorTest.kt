@@ -154,6 +154,33 @@ class DiyanetPrayerTimesCalculatorTest {
         assertCloseTo("isha", LocalTime.of(21, 53), t.isha, 2)
     }
 
+    // ---- Regionale Isha-Gruppen: amtliche Yatsı-Werte 28.07.2026 (via Proxy) ----
+    // +2-Gruppe (Winkel + 2 Temkin): GR, BG, AL, MK, ES, PT — wie die Türkei.
+    // −7-Gruppe (Europa-Kalender): IT, BA, RO (wie DE/Nürnberg oben).
+
+    private fun ishaOn280726(lat: Double, lng: Double, zone: String): ZonedDateTime =
+        DiyanetPrayerTimesCalculator
+            .calculate(GeoLocation(lat, lng), LocalDate.of(2026, 7, 28), ZoneId.of(zone))
+            .isha
+
+    @Test
+    fun `plus-two group matches official isha within 2 minutes`() {
+        assertCloseTo("Athen", LocalTime.of(22, 17), ishaOn280726(37.9838, 23.7275, "Europe/Athens"), 2)
+        assertCloseTo("Lissabon", LocalTime.of(22, 32), ishaOn280726(38.7223, -9.1393, "Europe/Lisbon"), 2)
+        assertCloseTo("Madrid", LocalTime.of(23, 19), ishaOn280726(40.4168, -3.7038, "Europe/Madrid"), 2)
+        assertCloseTo("Sofia", LocalTime.of(22, 44), ishaOn280726(42.6977, 23.3219, "Europe/Sofia"), 2)
+        assertCloseTo("Tirana", LocalTime.of(21, 50), ishaOn280726(41.3275, 19.8187, "Europe/Tirane"), 2)
+        assertCloseTo("Skopje", LocalTime.of(21, 47), ishaOn280726(41.9973, 21.4280, "Europe/Skopje"), 2)
+    }
+
+    @Test
+    fun `minus-seven group matches official isha within 2 minutes`() {
+        assertCloseTo("Rom", LocalTime.of(22, 15), ishaOn280726(41.9028, 12.4964, "Europe/Rome"), 2)
+        assertCloseTo("Sarajevo", LocalTime.of(22, 2), ishaOn280726(43.8563, 18.4131, "Europe/Sarajevo"), 2)
+        assertCloseTo("Bukarest", LocalTime.of(22, 35), ishaOn280726(44.4268, 26.1025, "Europe/Bucharest"), 2)
+        assertCloseTo("Mailand", LocalTime.of(22, 50), ishaOn280726(45.4642, 9.19, "Europe/Rome"), 2)
+    }
+
     // ---- Ordering invariant ----
 
     @Test
