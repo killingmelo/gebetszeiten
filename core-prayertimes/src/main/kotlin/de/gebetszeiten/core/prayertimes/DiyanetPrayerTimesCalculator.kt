@@ -27,6 +27,14 @@ import java.util.Date
  * 3. **Method (ihtiyat) adjustments** — fixed minute offsets applied to the
  *    raw astronomical times: sunrise −7, dhuhr +5, asr +4, maghrib +7. These
  *    bring the four solar prayers onto the published values within ±1 min.
+ *    The Isha offset is REGIONAL: Diyanet's calendars fall into two groups
+ *    (verified against the official site via proxy, 31-day window 07/2026):
+ *    - Türkei, Griechenland, Bulgarien, Albanien, Mazedonien, Spanien,
+ *      Portugal: Yatsı = 17°-Winkel **+2** (Temkin).
+ *    - Deutschland, Italien, Bosnien, Rumänien, CH/AT/FR/NL: Yatsı =
+ *      17°-Winkel **−7** (kalibriert gegen den Nürnberger Jahreskalender).
+ *    Wir verwenden +2 innerhalb der Türkei-Region (Bounding-Box; die
+ *    angrenzenden Länder GR/BG gehören ohnehin zur +2-Gruppe), sonst −7.
  * 4. **High-latitude "takdir" rule** (Din İşleri Yüksek Kurulu) for places
  *    above 45°. Calibrated against the official Diyanet 2026 year table for
  *    Nürnberg (see resources/diyanet_nurnberg_2026.csv + YearCompareTest):
@@ -55,10 +63,23 @@ object DiyanetPrayerTimesCalculator {
     private const val ADJ_DHUHR = 5
     private const val ADJ_ASR = 4
     private const val ADJ_MAGHRIB = 7
-    private const val ADJ_ISHA = -7
+
+    // Isha-Offset ist regional (siehe Klassen-Doc): Türkei +2, Europa-Kalender −7.
+    private const val ADJ_ISHA_EUROPE = -7
+    private const val ADJ_ISHA_TURKEY = 2
+
+    /** Türkei inkl. Randmeer (Edirne 41.7/26.6 … Iğdır 40.0/44.8, Hatay 36.2).
+     *  Überlappt GR/BG-Ränder — beide gehören ohnehin zur +2-Gruppe. */
+    private fun isTurkeyRegion(lat: Double, lng: Double): Boolean =
+        lat in 35.8..42.5 && lng in 25.5..45.0
 
     fun calculate(location: GeoLocation, date: LocalDate, zone: ZoneId): DailyPrayerTimes {
-        val rawBase = adhanTimes(location.latitude, location.longitude, date)
+        val adjIsha = if (isTurkeyRegion(location.latitude, location.longitude)) {
+            ADJ_ISHA_TURKEY
+        } else {
+            ADJ_ISHA_EUROPE
+        }
+        val rawBase = adhanTimes(location.latitude, location.longitude, date, adjIsha)
 
         // Polar day / night (above the Arctic/Antarctic circle around the
         // solstices): the sun never crosses the horizon, so adhan returns NULL
@@ -70,7 +91,7 @@ object DiyanetPrayerTimesCalculator {
         val polar = rawBase.sunrise == null || rawBase.maghrib == null ||
             rawBase.dhuhr == null || rawBase.asr == null
         val effLat = if (polar) sign(location.latitude) * HIGH_LATITUDE_THRESHOLD else location.latitude
-        val base = if (polar) adhanTimes(effLat, location.longitude, date) else rawBase
+        val base = if (polar) adhanTimes(effLat, location.longitude, date, adjIsha) else rawBase
 
         val sunrise = base.sunrise.toZdt(zone)
         val dhuhr = base.dhuhr.toZdt(zone)
@@ -89,18 +110,18 @@ object DiyanetPrayerTimesCalculator {
         val isha = if (highLatitude && depression < ISHA_TAKDIR_DEPRESSION) {
             maghrib.plusMinutes(ISHA_TAKDIR_MINUTES)
         } else {
-            base.isha.toZdt(zone) // already trimmed −7 via ADJ_ISHA
+            base.isha.toZdt(zone) // regionaler Offset bereits via adjIsha angewandt
         }
 
         return DailyPrayerTimes(date, zone, fajr, sunrise, dhuhr, asr, maghrib, isha)
     }
 
-    private fun adhanTimes(latitude: Double, longitude: Double, date: LocalDate): PrayerTimes {
+    private fun adhanTimes(latitude: Double, longitude: Double, date: LocalDate, adjIsha: Int): PrayerTimes {
         val params: CalculationParameters = CalculationMethod.MUSLIM_WORLD_LEAGUE.parameters.apply {
             madhab = Madhab.SHAFI
             highLatitudeRule = HighLatitudeRule.TWILIGHT_ANGLE
             // PrayerAdjustments(fajr, sunrise, dhuhr, asr, maghrib, isha)
-            methodAdjustments = PrayerAdjustments(0, ADJ_SUNRISE, ADJ_DHUHR, ADJ_ASR, ADJ_MAGHRIB, ADJ_ISHA)
+            methodAdjustments = PrayerAdjustments(0, ADJ_SUNRISE, ADJ_DHUHR, ADJ_ASR, ADJ_MAGHRIB, adjIsha)
         }
         val coordinates = Coordinates(latitude, longitude)
         val components = DateComponents(date.year, date.monthValue, date.dayOfMonth)

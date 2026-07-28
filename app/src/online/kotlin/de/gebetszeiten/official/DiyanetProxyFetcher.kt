@@ -50,18 +50,21 @@ class DiyanetProxyFetcher(private val context: android.content.Context) : Offici
         if (arr.length() == 0) return null
         // The proxy may return nearby places first (e.g. "Altdorf b. Nürnberg"
         // before "Nürnberg"). Prefer an exact accent/case-insensitive match on
-        // the town (region) or city field; otherwise fall back to the first.
+        // the town (region), then on the city field, otherwise the first hit.
+        // Region VOR city: türkische Großstädte listen jeden Stadtbezirk mit
+        // city="İSTANBUL" — ein City-Match würde sonst den erstbesten Bezirk
+        // (Arnavutköy) statt des Zentrums (region="İSTANBUL") liefern.
         val target = normalize(city)
+        var cityMatch: Int? = null
         var fallback: Int? = null
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             val id = o.optInt("id").takeIf { it != 0 } ?: continue
             if (fallback == null) fallback = id
-            if (normalize(o.optString("region")) == target || normalize(o.optString("city")) == target) {
-                return id
-            }
+            if (normalize(o.optString("region")) == target) return id
+            if (cityMatch == null && normalize(o.optString("city")) == target) cityMatch = id
         }
-        return fallback
+        return cityMatch ?: fallback
     }
 
     /** Lower-case and strip diacritics so "Nürnberg" matches "NURNBERG". */

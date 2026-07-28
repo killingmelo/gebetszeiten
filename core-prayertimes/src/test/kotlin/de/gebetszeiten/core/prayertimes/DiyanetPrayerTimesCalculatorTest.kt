@@ -120,6 +120,40 @@ class DiyanetPrayerTimesCalculatorTest {
         assertEquals(summer.maghrib.plusMinutes(80), summer.isha)
     }
 
+    // ---- Türkei: Yatsı ist Winkel +2 (Temkin), nicht −7 wie im Europa-Kalender ----
+    // Referenz: amtliche Diyanet-Werte (namazvakitleri.diyanet.gov.tr) via Proxy,
+    // Standort İSTANBUL (id 9541) bzw. SİNOP (id 9847), abgerufen 28.07.2026.
+    // Vor dem Fix war Yatsı Istanbul konstant 8–9 min zu früh (22:03 statt 22:12).
+
+    private val istanbul = GeoLocation(latitude = 41.0082, longitude = 28.9784)
+    private val sinop = GeoLocation(latitude = 42.0231, longitude = 35.1531)
+    private val istanbulZone: ZoneId = ZoneId.of("Europe/Istanbul")
+
+    @Test
+    fun `istanbul matches official Diyanet within 2 minutes`() {
+        val t = DiyanetPrayerTimesCalculator.calculate(istanbul, LocalDate.of(2026, 7, 28), istanbulZone)
+        assertCloseTo("fajr", LocalTime.of(4, 2), t.fajr, 2)
+        assertCloseTo("sunrise", LocalTime.of(5, 49), t.sunrise, 2)
+        assertCloseTo("dhuhr", LocalTime.of(13, 16), t.dhuhr, 2)
+        assertCloseTo("asr", LocalTime.of(17, 11), t.asr, 2)
+        assertCloseTo("maghrib", LocalTime.of(20, 32), t.maghrib, 2)
+        assertCloseTo("isha", LocalTime.of(22, 12), t.isha, 2)
+    }
+
+    @Test
+    fun `istanbul isha stays correct across the verified window`() {
+        // 15.08.2026 amtlich: Yatsı 21:41 (id 9541).
+        val t = DiyanetPrayerTimesCalculator.calculate(istanbul, LocalDate.of(2026, 8, 15), istanbulZone)
+        assertCloseTo("isha", LocalTime.of(21, 41), t.isha, 2)
+    }
+
+    @Test
+    fun `sinop isha matches official Diyanet within 2 minutes`() {
+        // Nördlichste Großstadt der Türkei (42°) — amtlich 28.07.2026: Yatsı 21:53.
+        val t = DiyanetPrayerTimesCalculator.calculate(sinop, LocalDate.of(2026, 7, 28), istanbulZone)
+        assertCloseTo("isha", LocalTime.of(21, 53), t.isha, 2)
+    }
+
     // ---- Ordering invariant ----
 
     @Test
