@@ -101,7 +101,18 @@ eines anderen Standorts (Stempel).
   Stempel-Match).
 - Bestehende Suiten beider Flavors + core bleiben grün.
 
+## Feste Folgephase: Wear-Cache-Sync (eigene Spec nach diesem PR)
+
+Vom Nutzer verbindlich gewünscht (2026-07-29, „2 unbedingt"): Das Handy
+synct seinen amtlichen Zeiten-Cache per Wear-Data-Layer an die Uhr,
+damit Uhr und Handy außerhalb der DE-Bundle-Abdeckung identische
+amtliche Zeiten zeigen (statt Berechnung ±2 min auf der Uhr). Die Uhr
+scrapt bewusst NICHT selbst (Akku, Komplexität); sie bleibt netzfrei
+und liest nur den gesyncten Cache mit derselben Prioritätskette
+(Sync-Cache → Bundle → Berechnung). Details in eigener Spec, sobald der
+Online-First-Umbau gemerged ist.
+
 ## Bewusst nicht dabei (YAGNI)
 
-Bundle-Ausweitung auf weitere Länder, Wear-Online, eigener Server,
-Mehrquellen-Merge, Vorab-Downloads für Reiserouten.
+Bundle-Ausweitung auf weitere Länder, eigener Server, Wear scrapt
+selbst, Mehrquellen-Merge, Vorab-Downloads für Reiserouten.
