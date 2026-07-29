@@ -97,8 +97,12 @@ eines anderen Standorts (Stempel).
   (verstümmeltes HTML → Exception).
 - Composite-Test mit Fake-Fetchern: direct ok → Proxy nie gefragt;
   direct wirft/leer → Proxy-Ergebnis; beide leer → leere Map.
-- ID-Persistenz-Test (Cache liefert gespeicherte ID nur bei
-  Stempel-Match).
+- ID-Persistenz: kein direkter Unit-Test — `OfficialTimesCache` hängt am
+  Context-gebundenen DataStore und das Projekt hat bewusst kein
+  Robolectric; die Guard-Logik ist der wortgleiche `stampMatches`-Aufruf
+  wie im bestehenden `get()`. Die NUTZUNG der ID (Auflösungs-Reihenfolge
+  Bundle → Cache → Suche) wird über den Composite-Test mit Fakes
+  abgedeckt.
 - Bestehende Suiten beider Flavors + core bleiben grün.
 
 ## Feste Folgephase: Wear-Cache-Sync (eigene Spec nach diesem PR)
