@@ -20,8 +20,10 @@ data class AppSettings(
     val longitude: Double,
     val city: String,
     val showCountdown: Boolean,
-    /** Online flavor: use official Diyanet times fetched online (else offline calc). */
-    val useOnline: Boolean = false,
+    /** Online flavor: use official Diyanet times fetched online (else offline calc).
+     *  Im Online-Flavor ab Werk an — amtliche Zeiten sind der Zweck des Flavors;
+     *  der Settings-Schalter bleibt das Opt-out. Offline immer false. */
+    val useOnline: Boolean = de.gebetszeiten.official.OfficialTimesProvider.isOnline,
     /** Immer die lokale astronomische Berechnung nutzen (amtliche Quellen ignorieren). */
     val useCalculated: Boolean = false,
     /** Show optional voluntary (nafl) prayer windows. */
@@ -78,7 +80,7 @@ data class AppSettings(
             longitude = 11.0767,
             city = "Nürnberg",
             showCountdown = false,
-            useOnline = false,
+            useOnline = de.gebetszeiten.official.OfficialTimesProvider.isOnline,
             useCalculated = false,
             showNafl = false,
             showKaraha = true,
