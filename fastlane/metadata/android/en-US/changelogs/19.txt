@@ -1,0 +1,1 @@
+Wear OS: your watch now automatically receives the official prayer times and the chosen place from your phone, so watch and phone show identical official times outside Germany too. The watch itself never connects to the Internet and keeps working without a phone as before (watch app 0.1.14 or newer).

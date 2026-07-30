@@ -1,0 +1,1 @@
+Wear OS: Die Uhr übernimmt die amtlichen Gebetszeiten und den gewählten Ort jetzt automatisch vom Handy — damit zeigen Uhr und Handy auch außerhalb Deutschlands identische amtliche Zeiten. Die Uhr selbst geht dafür nie ins Internet und funktioniert ohne Handy unverändert weiter (Uhr-App ab Version 0.1.14).
