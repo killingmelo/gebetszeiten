@@ -110,6 +110,7 @@ class SettingsRepository(private val context: Context) {
         val CITY = stringPreferencesKey("city")
         val COUNTDOWN = booleanPreferencesKey("show_countdown")
         val USE_ONLINE = booleanPreferencesKey("use_online")
+        val USE_ONLINE_MIGRATED = booleanPreferencesKey("use_online_migrated")
         val USE_CALCULATED = booleanPreferencesKey("use_calculated")
         val SHOW_NAFL = booleanPreferencesKey("show_nafl")
         val SHOW_KARAHA = booleanPreferencesKey("show_karaha")
@@ -136,12 +137,31 @@ class SettingsRepository(private val context: Context) {
         } else {
             AppSettings.COUNTDOWN_OFF
         }
+        // Migration: vor dem Flavor-Wechsel wurde use_online im Offline-Build
+        // blind mitgespeichert (Schalter war nie sichtbar, siehe
+        // OfficialTimesProvider.isOnline-Gate). Bestandsnutzer mit
+        // use_online=false bekommen dadurch einmalig den Flavor-Default statt
+        // des versehentlich gespeicherten false — danach bleibt ein bewusst
+        // ausgeschalteter Schalter ausgeschaltet.
+        val useOnlineMigrated = prefs[Keys.USE_ONLINE_MIGRATED] ?: false
+        val storedUseOnline = prefs[Keys.USE_ONLINE]
+        val useOnline = if (!useOnlineMigrated && storedUseOnline == false) {
+            AppSettings.DEFAULT.useOnline
+        } else {
+            storedUseOnline ?: AppSettings.DEFAULT.useOnline
+        }
+        if (!useOnlineMigrated) {
+            context.dataStore.edit { migrated ->
+                migrated[Keys.USE_ONLINE] = useOnline
+                migrated[Keys.USE_ONLINE_MIGRATED] = true
+            }
+        }
         AppSettings(
             latitude = prefs[Keys.LAT] ?: AppSettings.DEFAULT.latitude,
             longitude = prefs[Keys.LNG] ?: AppSettings.DEFAULT.longitude,
             city = prefs[Keys.CITY] ?: AppSettings.DEFAULT.city,
             showCountdown = prefs[Keys.COUNTDOWN] ?: AppSettings.DEFAULT.showCountdown,
-            useOnline = prefs[Keys.USE_ONLINE] ?: AppSettings.DEFAULT.useOnline,
+            useOnline = useOnline,
             useCalculated = prefs[Keys.USE_CALCULATED] ?: AppSettings.DEFAULT.useCalculated,
             showNafl = prefs[Keys.SHOW_NAFL] ?: AppSettings.DEFAULT.showNafl,
             showKaraha = prefs[Keys.SHOW_KARAHA] ?: AppSettings.DEFAULT.showKaraha,
