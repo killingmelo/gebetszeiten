@@ -10,6 +10,12 @@ import java.time.LocalDate
  * none (see the flavor-specific [OfficialTimesProvider]).
  */
 interface OfficialTimesFetcher {
-    /** Returns date → times for as many upcoming days as the source offers. */
-    suspend fun fetch(settings: AppSettings): Map<LocalDate, SixTimes>
+    /** Zeiten für so viele Tage, wie die Quelle hergibt, plus die Diyanet-ID,
+     *  mit der sie geholt wurden (wird für Folge-Refreshes persistiert). */
+    suspend fun fetch(settings: AppSettings): FetchResult
 }
+
+data class FetchResult(
+    val schedule: Map<LocalDate, SixTimes>,
+    val locationId: Int?,
+)

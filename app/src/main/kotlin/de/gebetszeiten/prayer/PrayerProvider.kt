@@ -84,6 +84,7 @@ object PrayerProvider {
         val (stampOk, coveredUntil) = cache.freshness(settings.latitude, settings.longitude)
         if (!needsRefresh(coveredUntil, LocalDate.now(), stampOk)) return
         val fetcher = OfficialTimesProvider.fetcher(context) ?: return
-        cache.putAll(fetcher.fetch(settings), settings.latitude, settings.longitude)
+        val result = fetcher.fetch(settings)
+        cache.putAll(result.schedule, settings.latitude, settings.longitude, result.locationId)
     }
 }

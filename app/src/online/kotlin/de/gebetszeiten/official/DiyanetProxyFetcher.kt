@@ -1,7 +1,6 @@
 package de.gebetszeiten.official
 
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
-import de.gebetszeiten.data.AppSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -10,39 +9,21 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * Fetches official Diyanet times from the community proxy
- * (prayertimes.api.abdus.dev), a 1:1 scrape of namazvakitleri.diyanet.gov.tr.
- *
- * For Germany, the exact `diyanetId` of the bundled nearest location is used
- * (id-accurate, consistent with the offline table and footer). Outside the
- * bundled coverage, falls back to resolving the Diyanet location id by city
- * name. Any failure returns an empty map so callers fall back to the offline
- * calculation.
+ * Community-Proxy-Quelle (prayertimes.api.abdus.dev), 1:1-Scrape von
+ * namazvakitleri.diyanet.gov.tr — liefert ein 31-Tage-Fenster für eine
+ * bekannte Diyanet-ID, dazu eine Namenssuche zum Auflösen der ID.
  */
-class DiyanetProxyFetcher(private val context: android.content.Context) : OfficialTimesFetcher {
+class DiyanetProxyFetcher {
 
     private val base = "https://prayertimes.api.abdus.dev/api/diyanet"
 
-    override suspend fun fetch(settings: AppSettings): Map<LocalDate, SixTimes> =
+    /** 31-Tage-Fenster für eine bekannte Diyanet-ID — Fallback-Quelle. */
+    suspend fun fetchById(locationId: Int): Map<LocalDate, SixTimes> =
         withContext(Dispatchers.IO) {
-            try {
-                // Deutschland: exakte diyanetId des gebündelten Nearest-Standorts
-                // (id-genau, konsistent zu Offline-Tabelle und Footer). Sonst
-                // wie bisher Namens-Suche über den Proxy.
-                val locationId = BundledOfficialSource
-                    .nearestLocation(context, settings.latitude, settings.longitude)?.diyanetId
-                    ?: resolveLocationId(settings.city)
-                    ?: return@withContext emptyMap()
-                parseSchedule(httpGet("$base/prayertimes?location_id=$locationId"))
-            } catch (e: Exception) {
-                // Bewusst schlucken (Aufrufer fällt auf Bundle/Berechnung zurück),
-                // aber loggen — sonst ist ein Abruf-Fehler nicht diagnostizierbar.
-                android.util.Log.w("DiyanetFetch", "Online-Abruf fehlgeschlagen", e)
-                emptyMap()
-            }
+            parseSchedule(httpGet("$base/prayertimes?location_id=$locationId"))
         }
 
-    private fun resolveLocationId(city: String): Int? {
+    fun resolveLocationId(city: String): Int? {
         val q = URLEncoder.encode(city.trim(), "UTF-8")
         val arr = JSONArray(httpGet("$base/search?q=$q"))
         if (arr.length() == 0) return null
