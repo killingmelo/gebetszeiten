@@ -8,10 +8,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import de.gebetszeiten.core.prayertimes.officialtimes.ScheduleText
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
+import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
-import java.time.LocalTime
 
 private val Context.officialStore: DataStore<Preferences> by preferencesDataStore(name = "official_times")
 
@@ -32,8 +33,7 @@ class OfficialTimesCache(private val context: Context) {
     suspend fun get(date: LocalDate, lat: Double, lng: Double): SixTimes? {
         val prefs = context.officialStore.data.first()
         if (!stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)) return null
-        return (prefs[key] ?: return null)
-            .lineSequence().mapNotNull { parseLine(it) }.toMap()[date]
+        return ScheduleText.parse(prefs[key] ?: return null)[date]
     }
 
     /** Stempel-Match + letztes abgedecktes Datum in EINEM DataStore-Read —
@@ -42,7 +42,7 @@ class OfficialTimesCache(private val context: Context) {
         val prefs = context.officialStore.data.first()
         val ok = stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)
         if (!ok) return false to null
-        val until = prefs[key]?.lineSequence()?.mapNotNull { parseLine(it) }?.maxOfOrNull { it.first }
+        val until = prefs[key]?.let { ScheduleText.parse(it).keys.maxOrNull() }
         return true to until
     }
 
@@ -56,33 +56,12 @@ class OfficialTimesCache(private val context: Context) {
 
     suspend fun putAll(schedule: Map<LocalDate, SixTimes>, lat: Double, lng: Double, locationId: Int? = null) {
         if (schedule.isEmpty()) return
-        val text = schedule.entries
-            .sortedBy { it.key }
-            .joinToString("\n") { (d, t) ->
-                "$d ${t.fajr} ${t.sunrise} ${t.dhuhr} ${t.asr} ${t.maghrib} ${t.isha}"
-            }
+        val text = ScheduleText.serialize(schedule)
         context.officialStore.edit {
             it[key] = text
             it[stampLat] = lat
             it[stampLng] = lng
             if (locationId != null) it[stampId] = locationId else it.remove(stampId)
-        }
-    }
-
-    private fun parseLine(line: String): Pair<LocalDate, SixTimes>? {
-        val p = line.trim().split(" ")
-        if (p.size != 7) return null
-        return try {
-            LocalDate.parse(p[0]) to SixTimes(
-                fajr = LocalTime.parse(p[1]),
-                sunrise = LocalTime.parse(p[2]),
-                dhuhr = LocalTime.parse(p[3]),
-                asr = LocalTime.parse(p[4]),
-                maghrib = LocalTime.parse(p[5]),
-                isha = LocalTime.parse(p[6]),
-            )
-        } catch (e: Exception) {
-            null
         }
     }
 }

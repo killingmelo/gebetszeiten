@@ -5,21 +5,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
+// stampMatches liegt jetzt in core-prayertimes (CacheStampTest) — hier bleibt
+// nur noch needsRefresh.
 class CacheFreshnessTest {
-
-    @Test fun stampMatchesWithinOneKm() {
-        // ~500 m nördlich von Nürnberg-Zentrum.
-        assertTrue(stampMatches(49.4521, 11.0767, 49.4566, 11.0767))
-    }
-
-    @Test fun stampRejectsDifferentCity() {
-        // Nürnberg vs. Fürth (~7 km).
-        assertFalse(stampMatches(49.4521, 11.0767, 49.4759, 10.9886))
-    }
-
-    @Test fun stampRejectsMissing() {
-        assertFalse(stampMatches(null, null, 49.4521, 11.0767))
-    }
 
     @Test fun refreshWhenStampMismatch() {
         assertTrue(needsRefresh(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 7, 6), stampOk = false))
