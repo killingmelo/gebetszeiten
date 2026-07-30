@@ -21,7 +21,10 @@ enthält **keine Werbung, kein Tracking, keine Analyse-Dienste, keine Konten**.
 - **Abschaltbar:** In den Einstellungen lässt sich der Online-Abgleich
   deaktivieren; für Deutschland sind amtliche Tabellen offline gebündelt,
   sonst rechnet die App lokal.
-- **Wear OS:** Die Watch-App bleibt vollständig offline.
+- **Wear OS:** Die Watch-App geht selbst nie ins Internet. Sie erhält die
+  amtlichen Zeiten und den gewählten Ort vom gekoppelten Handy
+  (Play-Services-Gerätesync) und funktioniert ohne Handy vollständig
+  weiter (eingebaute Tabellen bzw. lokale Berechnung).
 
 **Offline-Variante:** Aus dem Quellcode ist weiterhin eine Variante ohne
 jede Internet-Berechtigung baubar (`de.gebetszeiten.offline`).
@@ -45,7 +48,10 @@ This app does **not collect, store, or share any personal data** and contains
 - **Can be turned off:** The online sync can be disabled in the settings;
   official tables for Germany are bundled offline, elsewhere the app
   calculates locally.
-- **Wear OS:** The watch app remains fully offline.
+- **Wear OS:** The watch app itself never connects to the Internet. It
+  receives the official times and the chosen place from the paired phone
+  (Play Services device sync) and keeps working fully without a phone
+  (bundled tables or local calculation).
 
 **Offline variant:** A variant without any Internet permission can still be
 built from source (`de.gebetszeiten.offline`).
