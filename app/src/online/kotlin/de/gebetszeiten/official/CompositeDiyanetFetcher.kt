@@ -3,6 +3,7 @@ package de.gebetszeiten.official
 import android.content.Context
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.data.AppSettings
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -26,6 +27,8 @@ class CompositeDiyanetFetcher(
     override suspend fun fetch(settings: AppSettings): FetchResult {
         val id = try {
             resolveId(settings)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log("Standort-Aufloesung fehlgeschlagen", e)
             null
@@ -41,6 +44,8 @@ class CompositeDiyanetFetcher(
         source: suspend (Int) -> Map<LocalDate, SixTimes>,
     ): Map<LocalDate, SixTimes> = try {
         source(id)
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Exception) {
         log("$label fehlgeschlagen (id=$id)", e)
         emptyMap()

@@ -11,6 +11,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.util.concurrent.TimeUnit
 
 /**
  * Repliziert den amtlichen Zeiten-Cache als DataItem an die Uhr
@@ -47,7 +48,7 @@ class WearCacheSync(
                     dataMap.putString(WearSyncContract.KEY_CITY, city)
                 }.asPutDataRequest()
                 withContext(Dispatchers.IO) {
-                    Tasks.await(Wearable.getDataClient(context).putDataItem(request))
+                    Tasks.await(Wearable.getDataClient(context).putDataItem(request), 10, TimeUnit.SECONDS)
                 }
             },
         )

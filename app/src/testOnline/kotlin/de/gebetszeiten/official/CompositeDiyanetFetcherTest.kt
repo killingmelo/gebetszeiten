@@ -2,9 +2,11 @@ package de.gebetszeiten.official
 
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.data.AppSettings
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalTime
@@ -71,5 +73,24 @@ class CompositeDiyanetFetcherTest {
         val result = f.fetch(settings)
         assertEquals(emptyMap<LocalDate, SixTimes>(), result.schedule)
         assertNull(result.locationId)
+    }
+
+    @Test
+    fun `CancellationException wird durchgereicht statt geschluckt`() {
+        assertThrows(CancellationException::class.java) {
+            runBlocking {
+                fetcher(direct = { throw CancellationException("abbruch") }).fetch(settings)
+            }
+        }
+        assertThrows(CancellationException::class.java) {
+            runBlocking {
+                CompositeDiyanetFetcher(
+                    { throw CancellationException("abbruch") },
+                    { yearData },
+                    { proxyData },
+                    log = { _, _ -> },
+                ).fetch(settings)
+            }
+        }
     }
 }

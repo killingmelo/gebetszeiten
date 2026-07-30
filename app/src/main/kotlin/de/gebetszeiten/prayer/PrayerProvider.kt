@@ -7,6 +7,8 @@ import de.gebetszeiten.official.BundledOfficialSource
 import de.gebetszeiten.official.OfficialTimesCache
 import de.gebetszeiten.official.OfficialTimesProvider
 import de.gebetszeiten.official.needsRefresh
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -85,8 +87,18 @@ object PrayerProvider {
         val (stampOk, coveredUntil) = cache.freshness(settings.latitude, settings.longitude)
         if (!needsRefresh(coveredUntil, LocalDate.now(), stampOk)) return
         val fetcher = OfficialTimesProvider.fetcher(context) ?: return
-        val result = fetcher.fetch(settings)
-        cache.putAll(result.schedule, settings.latitude, settings.longitude, result.locationId)
-        OfficialTimesProvider.syncToWear(context, result.schedule, settings)
+        // Broadcast-Budget (~10-30 s im Alarm-Receiver): der Refresh darf den
+        // Empfaenger nicht laenger blockieren — naechster Anlauf beim
+        // folgenden Gebet. Nur der Timeout wird geschluckt; echte
+        // Cancellation propagiert (Composite reicht sie durch).
+        try {
+            withTimeout(25_000) {
+                val result = fetcher.fetch(settings)
+                cache.putAll(result.schedule, settings.latitude, settings.longitude, result.locationId)
+                OfficialTimesProvider.syncToWear(context, result.schedule, settings)
+            }
+        } catch (e: TimeoutCancellationException) {
+            android.util.Log.w("PrayerProvider", "refreshOfficial abgebrochen (Timeout)", e)
+        }
     }
 }
