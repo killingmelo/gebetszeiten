@@ -77,7 +77,8 @@ object PrayerProvider {
 
     /** Online flavor + user opted in: refresh the official-times cache —
      *  aber nur bei Standortwechsel oder wenn weniger als 7 Tage Zukunft
-     *  abgedeckt sind (Proxy liefert ~31 Tage rollierend). */
+     *  abgedeckt sind (Diyanet-Jahresseite direkt liefert ein ganzes Jahr,
+     *  Fallback-Proxy nur 31 Tage rollierend). */
     suspend fun refreshOfficial(context: Context, settings: AppSettings) {
         if (!settings.useOnline || settings.useCalculated) return
         val cache = OfficialTimesCache(context)

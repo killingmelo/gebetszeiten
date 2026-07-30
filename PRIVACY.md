@@ -16,7 +16,8 @@ enthält **keine Werbung, kein Tracking, keine Analyse-Dienste, keine Konten**.
   `prayertimes.api.abdus.dev`. Übermittelt wird dabei ausschließlich die
   **Diyanet-Standort-Kennung** des gewählten Ortes (bei erstmaliger Auswahl
   eines Ortes außerhalb Deutschlands einmalig der **Städtename** zur
-  Auflösung). Keine Koordinaten, keine Geräte-Kennungen.
+  Auflösung). Keine Koordinaten, keine Geräte-Kennungen — technisch bedingt
+  sieht der jeweilige Server dabei die IP-Adresse.
 - **Abschaltbar:** In den Einstellungen lässt sich der Online-Abgleich
   deaktivieren; für Deutschland sind amtliche Tabellen offline gebündelt,
   sonst rechnet die App lokal.
@@ -39,7 +40,8 @@ This app does **not collect, store, or share any personal data** and contains
   as fallback. The only data transmitted is the **Diyanet location id** of
   the chosen place (plus, once, the **city name** when a location outside
   Germany is first selected, to resolve its id). No coordinates, no device
-  identifiers.
+  identifiers — for technical reasons the respective server does see the IP
+  address.
 - **Can be turned off:** The online sync can be disabled in the settings;
   official tables for Germany are bundled offline, elsewhere the app
   calculates locally.

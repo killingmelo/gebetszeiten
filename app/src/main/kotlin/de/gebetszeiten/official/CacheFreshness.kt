@@ -14,7 +14,8 @@ fun stampMatches(stampLat: Double?, stampLng: Double?, lat: Double, lng: Double)
 }
 
 /** Neu laden, wenn der Cache nicht zum Standort passt oder weniger als
- *  [minFutureDays] Tage Zukunft ab [today] abdeckt (Proxy liefert ~31 Tage). */
+ *  [minFutureDays] Tage Zukunft ab [today] abdeckt (Jahresseite direkt liefert
+ *  ein ganzes Jahr, Fallback-Proxy nur 31 Tage). */
 fun needsRefresh(
     coveredUntil: LocalDate?,
     today: LocalDate,
