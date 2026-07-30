@@ -1,0 +1,1 @@
+Official Diyanet prayer times now worldwide: the app fetches the official times for your chosen place directly from diyanet.gov.tr (full year, typically one request per year). Official tables for Germany remain bundled offline; the online sync can be disabled in the settings.

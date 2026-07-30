@@ -1,0 +1,1 @@
+Amtliche Diyanet-Gebetszeiten jetzt weltweit: Die App lädt die offiziellen Zeiten für den gewählten Ort direkt von diyanet.gov.tr (ganzjährig, typischerweise ein Abruf pro Jahr). Für Deutschland bleiben die amtlichen Tabellen offline eingebaut; der Online-Abgleich lässt sich in den Einstellungen abschalten.
