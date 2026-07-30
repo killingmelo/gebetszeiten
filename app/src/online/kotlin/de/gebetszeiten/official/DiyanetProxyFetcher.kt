@@ -5,8 +5,6 @@ import de.gebetszeiten.data.AppSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 import java.time.LocalDate
 import java.time.LocalTime
@@ -90,18 +88,4 @@ class DiyanetProxyFetcher(private val context: android.content.Context) : Offici
         return out
     }
 
-    private fun httpGet(urlString: String): String {
-        val conn = (URL(urlString).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 10_000
-            readTimeout = 10_000
-            setRequestProperty("Accept", "application/json")
-        }
-        try {
-            if (conn.responseCode !in 200..299) error("HTTP ${conn.responseCode}")
-            return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        } finally {
-            conn.disconnect()
-        }
-    }
 }
