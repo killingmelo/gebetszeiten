@@ -87,5 +87,6 @@ object PrayerProvider {
         val fetcher = OfficialTimesProvider.fetcher(context) ?: return
         val result = fetcher.fetch(settings)
         cache.putAll(result.schedule, settings.latitude, settings.longitude, result.locationId)
+        OfficialTimesProvider.syncToWear(context, result.schedule, settings)
     }
 }

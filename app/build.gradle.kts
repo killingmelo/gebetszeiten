@@ -110,5 +110,9 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
 
+    // Wear-Sync: nur der online-Flavor pusht den amtlichen Cache zur Uhr —
+    // der offline-Flavor bleibt gms-frei.
+    "onlineImplementation"(libs.play.services.wearable)
+
     testImplementation(libs.junit)
 }
