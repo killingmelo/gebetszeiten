@@ -1,16 +1,16 @@
 # Play-Store-Veröffentlichung — Checkliste
 
-Die signierten Release-Bundles sind frisch gebaut (offline-Flavor, R8/Minify,
+Die signierten Release-Bundles sind frisch gebaut (online-Flavor, R8/Minify,
 lintVital + voller Lint grün, signiert mit `keystore/gebetszeiten.jks`,
 Zertifikat gültig bis 2053). Neu bauen jederzeit mit:
-`.\gradlew.bat :app:bundleOfflineRelease :wear:bundleRelease`.
+`.\gradlew.bat :app:bundleOnlineRelease :wear:bundleRelease`.
 
 Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
 
 | Artefakt | Pfad |
 |---|---|
-| Phone-Bundle (AAB, signiert, v0.1.14 / versionCode 15) | `app/build/outputs/bundle/offlineRelease/app-offline-release.aab` |
-| Wear-Bundle (AAB, signiert, v0.1.11 / versionCode 11) | `wear/build/outputs/bundle/release/wear-release.aab` |
+| Phone-Bundle (AAB, signiert, aktueller Stand laut git tag) | `app/build/outputs/bundle/onlineRelease/app-online-release.aab` |
+| Wear-Bundle (AAB, signiert, aktueller Stand laut git tag) | `wear/build/outputs/bundle/release/wear-release.aab` |
 | App-Icon 512×512 | `playstore/icon_512.png` |
 | Feature-Graphic 1024×500 | `playstore/feature_1024x500.png` |
 | Phone-Screenshots (9:16) | `playstore/screenshots/phone/` |
@@ -38,10 +38,18 @@ Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
 - Kategorie **Lifestyle**, Kontakt-E-Mail, Datenschutz-URL (oben) eintragen.
 
 ### 4. Formulare (Antworten vorbereitet)
-**Datensicherheit (Data Safety):**
-- „Erhebt oder teilt deine App Nutzerdaten?" → **Nein** (für alles).
-- Verschlüsselung/Übertragung: entfällt (keine Datenerhebung).
-- Begründung falls gefragt: App hat keine Internet-Berechtigung.
+**Datensicherheit (Data Safety) — Stand Online-First:**
+- „Erhebt oder teilt deine App Nutzerdaten?" → **Ja** (Datenerhebung im
+  Play-Sinn = Übertragung vom Gerät).
+- Datentyp: **Standort → ungefährer Standort** (manuell gewählter Ort als
+  Diyanet-Standort-Kennung/Städtename an diyanet.gov.tr bzw. Fallback-Proxy).
+- Zweck: **App-Funktionen** (amtliche Gebetszeiten). Erhebung **optional**
+  (in den Einstellungen abschaltbar). **Keine Weitergabe** zu Werbe-/
+  Analysezwecken, **kein Verkauf**, Übertragung **verschlüsselt (HTTPS)**,
+  Daten **nicht mit Nutzern verknüpft** (keine Konten/Kennungen),
+  **Löschung entfällt** (es wird nichts serverseitig gespeichert, was der
+  App zuordenbar wäre — Antwort: Daten werden nicht gespeichert).
+- Abschnitt 5: Upload-Datei ist ab jetzt das **online**-Bundle.
 
 **Inhaltseinstufung (Content Rating, IARC):**
 - Kategorie: „Referenz, Nachrichten oder Bildung" bzw. „Dienstprogramm".
@@ -55,10 +63,10 @@ haben Zusatzauflagen). Werbung: **keine**.
 
 ### 5. Releases hochladen
 - **Produktion (bzw. zuerst geschlossener Test)** →
-  `app/build/outputs/bundle/offlineRelease/app-offline-release.aab` (v0.1.14).
+  `app/build/outputs/bundle/onlineRelease/app-online-release.aab` (aktueller Stand laut git tag).
 - **Wear OS Form-Faktor:** unter „Releases" den Wear-Track aktivieren
   (Erweiterte Einstellungen → Formfaktoren → Wear OS) und
-  `wear/build/outputs/bundle/release/wear-release.aab` (v0.1.11) hochladen; Wear-Screenshots (1:1) im
+  `wear/build/outputs/bundle/release/wear-release.aab` (aktueller Stand laut git tag) hochladen; Wear-Screenshots (1:1) im
   Store-Eintrag unter Wear OS ergänzen. Wear-Apps durchlaufen eine eigene
   kurze Google-Prüfung.
 - Beim ersten Upload fragt Play nach **Play App Signing** → zustimmen;
@@ -86,3 +94,6 @@ Dezember, Jahresansicht auf namazvakitleri.diyanet.gov.tr pruefen):
 4. Integritaetstest: `gradlew :app:testOfflineDebugUnitTest`,
 5. App- UND Wear-Update mit erhoehtem versionCode veroeffentlichen (beide
    Module buendeln dieselben Assets).
+
+Das Bundle bleibt dabei DE-Fallback und Quelle fuer die Wear-App; die
+Phone-App selbst holt sich das neue Jahr online, sobald es amtlich verfuegbar ist.

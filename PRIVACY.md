@@ -4,41 +4,49 @@
 
 ## Deutsch
 
-Diese App erhebt, speichert, verarbeitet und teilt **keinerlei personenbezogene Daten**.
+Diese App erhebt, speichert und teilt **keine personenbezogenen Daten** und
+enthält **keine Werbung, kein Tracking, keine Analyse-Dienste, keine Konten**.
 
-- Die App besitzt **keine Internet-Berechtigung** — sie kann technisch keine Daten übertragen.
-- Die App besitzt **keine Standort-Berechtigung** — der Gebetsort wird manuell aus einer
-  eingebauten Offline-Städteliste gewählt und ausschließlich lokal auf dem Gerät gespeichert.
-- Es gibt **keine Werbung, kein Tracking, keine Analyse-Dienste und keine Konten**.
-- Alle Berechnungen (Gebetszeiten nach der Diyanet-Methode) erfolgen vollständig offline
-  auf dem Gerät.
-- Auf Wear OS gilt dasselbe: Die Watch-App rechnet eigenständig und überträgt nichts.
+- **Kein GPS:** Der Gebetsort wird manuell aus einer eingebauten Städteliste
+  gewählt und nur lokal gespeichert.
+- **Internet nur für amtliche Zeiten:** Die App lädt die offiziellen
+  Diyanet-Gebetszeiten für den gewählten Ort — primär direkt von
+  `namazvakitleri.diyanet.gov.tr` (Jahres-Tabelle, typischerweise ein Abruf
+  pro Jahr und Ort), ersatzweise vom Community-Proxy
+  `prayertimes.api.abdus.dev`. Übermittelt wird dabei ausschließlich die
+  **Diyanet-Standort-Kennung** des gewählten Ortes (bei erstmaliger Auswahl
+  eines Ortes außerhalb Deutschlands einmalig der **Städtename** zur
+  Auflösung). Keine Koordinaten, keine Geräte-Kennungen.
+- **Abschaltbar:** In den Einstellungen lässt sich der Online-Abgleich
+  deaktivieren; für Deutschland sind amtliche Tabellen offline gebündelt,
+  sonst rechnet die App lokal.
+- **Wear OS:** Die Watch-App bleibt vollständig offline.
 
-Da keine Daten erhoben werden, werden auch keine Daten an Dritte weitergegeben.
-
-**Optionale Online-Variante:** Eine separat aus dem Quellcode baubare Variante kann
-auf Wunsch die offiziellen Diyanet-Zeiten online abgleichen. Nur sie besitzt die
-Internet-Berechtigung und übermittelt dabei ausschließlich den gewählten
-**Städtenamen** (keine Koordinaten, keine Kennungen) an den Diyanet-Proxy. Die im
-Play Store veröffentlichte Version enthält diese Variante nicht.
+**Offline-Variante:** Aus dem Quellcode ist weiterhin eine Variante ohne
+jede Internet-Berechtigung baubar (`de.gebetszeiten.offline`).
 
 ## English
 
-This app does **not collect, store, process, or share any personal data**.
+This app does **not collect, store, or share any personal data** and contains
+**no ads, no tracking, no analytics, and no accounts**.
 
-- The app has **no Internet permission** — it is technically unable to transmit data.
-- The app has **no location permission** — the prayer location is chosen manually from a
-  bundled offline city list and stored only locally on the device.
-- There are **no ads, no tracking, no analytics, and no accounts**.
-- All calculations (prayer times using the Diyanet method) happen entirely offline on the
-  device. The same applies to the Wear OS app.
+- **No GPS:** The prayer location is chosen manually from a bundled city list
+  and stored only locally on the device.
+- **Internet only for official times:** The app downloads the official
+  Diyanet prayer times for the chosen location — primarily directly from
+  `namazvakitleri.diyanet.gov.tr` (full-year table, typically one request per
+  year and location), with the community proxy `prayertimes.api.abdus.dev`
+  as fallback. The only data transmitted is the **Diyanet location id** of
+  the chosen place (plus, once, the **city name** when a location outside
+  Germany is first selected, to resolve its id). No coordinates, no device
+  identifiers.
+- **Can be turned off:** The online sync can be disabled in the settings;
+  official tables for Germany are bundled offline, elsewhere the app
+  calculates locally.
+- **Wear OS:** The watch app remains fully offline.
 
-Since no data is collected, no data is shared with third parties.
-
-**Optional online variant:** A separately source-built variant can optionally sync
-the official Diyanet times online. Only it holds the Internet permission, and it
-transmits only the selected **city name** (no coordinates, no identifiers) to the
-Diyanet proxy. The version published on the Play Store does not include this variant.
+**Offline variant:** A variant without any Internet permission can still be
+built from source (`de.gebetszeiten.offline`).
 
 ---
 
