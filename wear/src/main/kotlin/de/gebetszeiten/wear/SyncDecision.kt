@@ -27,4 +27,11 @@ object SyncDecision {
      *  bleibt ein Uhr-Picker-Override bestehen. */
     fun shouldAdoptLocation(payload: Payload, syncedLat: Double?, syncedLng: Double?): Boolean =
         !stampMatches(syncedLat, syncedLng, payload.lat, payload.lng)
+
+    /** Bestehendes DataItem beim App-Start nachholen? Nur wenn noch nie
+     *  etwas gesynct wurde (Neuinstallation/Daten geloescht: das DataItem
+     *  ist unveraendert, `onDataChanged` feuert nie). Sobald ein Sync
+     *  angekommen ist, bleibt der App-Start frei von gms-Roundtrips. */
+    fun shouldReplay(syncedLat: Double?, syncedLng: Double?): Boolean =
+        syncedLat == null || syncedLng == null
 }

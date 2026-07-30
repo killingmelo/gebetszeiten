@@ -42,4 +42,16 @@ class SyncDecisionTest {
     fun `neuer Handy-Ort wird uebernommen (ausserhalb 1-km-Toleranz)`() {
         assertTrue(SyncDecision.shouldAdoptLocation(payload(lat = 49.4521, lng = 11.0767), syncedLat = 41.0082, syncedLng = 28.9784))
     }
+
+    @Test
+    fun `noch nie gesynct - bestehendes DataItem wird nachgeholt`() {
+        assertTrue(SyncDecision.shouldReplay(null, null))
+        assertTrue(SyncDecision.shouldReplay(41.0082, null))
+        assertTrue(SyncDecision.shouldReplay(null, 28.9784))
+    }
+
+    @Test
+    fun `bereits gesynct - kein Nachholen beim App-Start`() {
+        assertFalse(SyncDecision.shouldReplay(41.0082, 28.9784))
+    }
 }

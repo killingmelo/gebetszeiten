@@ -85,11 +85,21 @@ object PrayerProvider {
         if (!settings.useOnline || settings.useCalculated) return
         val cache = OfficialTimesCache(context)
         val (stampOk, coveredUntil) = cache.freshness(settings.latitude, settings.longitude)
-        if (!needsRefresh(coveredUntil, LocalDate.now(), stampOk)) return
+        if (!needsRefresh(coveredUntil, LocalDate.now(), stampOk)) {
+            // Frischer Cache = kein Netz-Refresh. Trotzdem den GECACHTEN Stand
+            // zur Uhr replizieren: sonst bekaeme ein Bestandsnutzer mit
+            // Jahres-Cache monatelang nichts gesynct. Gleicher Inhalt = das
+            // DataItem bleibt unveraendert, der Data-Layer dedupliziert und die
+            // Uhr wird nicht geweckt. Offline-Flavor: syncToWear ist ein No-op.
+            OfficialTimesProvider.syncToWear(context, cache.snapshot(settings.latitude, settings.longitude), settings)
+            return
+        }
         val fetcher = OfficialTimesProvider.fetcher(context) ?: return
         // Broadcast-Budget (~10-30 s im Alarm-Receiver): der Refresh darf den
-        // Empfaenger nicht laenger blockieren — naechster Anlauf beim
-        // folgenden Gebet. Nur der Timeout wird geschluckt; echte
+        // Empfaenger nicht unbegrenzt blockieren — naechster Anlauf beim
+        // folgenden Gebet. Budget: ~25 s plus max. 10 s gebundenes Tasks.await
+        // im Wear-Push, Worst Case also ~35 s; praktisch greifen die
+        // HTTP-Timeouts frueher. Nur der Timeout wird geschluckt; echte
         // Cancellation propagiert (Composite reicht sie durch).
         try {
             withTimeout(25_000) {

@@ -36,6 +36,15 @@ class OfficialTimesCache(private val context: Context) {
         return ScheduleText.parse(prefs[key] ?: return null)[date]
     }
 
+    /** Kompletter gecachter Zeitplan — leer bei Stempel-Mismatch oder ohne
+     *  Daten. Quelle fuer den Wear-Sync, wenn der Cache noch frisch ist und
+     *  daher kein Netz-Refresh laeuft. */
+    suspend fun snapshot(lat: Double, lng: Double): Map<LocalDate, SixTimes> {
+        val prefs = context.officialStore.data.first()
+        if (!stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)) return emptyMap()
+        return ScheduleText.parse(prefs[key] ?: return emptyMap())
+    }
+
     /** Stempel-Match + letztes abgedecktes Datum in EINEM DataStore-Read —
      *  Eingabe für den Freshness-Check ([needsRefresh]). */
     suspend fun freshness(lat: Double, lng: Double): Pair<Boolean, LocalDate?> {

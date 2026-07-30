@@ -89,6 +89,14 @@ class MainActivity : Activity() {
     override fun onStart() {
         super.onStart()
         refresh()
+        // Nach Neuinstallation/Datenloeschung ist das DataItem des Handys
+        // unveraendert, onDataChanged feuert nie — bestehenden Sync einmalig
+        // nachholen und nur dann neu zeichnen. Danach (Sync vorhanden) ist der
+        // Aufruf ein reiner DataStore-Read, kein gms-Roundtrip.
+        scope.launch {
+            val applied = withContext(Dispatchers.IO) { WearSyncApplier.replayExisting(applicationContext) }
+            if (applied) refresh()
+        }
     }
 
     override fun onDestroy() {
