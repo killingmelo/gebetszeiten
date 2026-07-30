@@ -86,4 +86,9 @@ dependencies {
 
     // Persisted location (DataStore)
     implementation(libs.androidx.datastore.preferences)
+
+    // Phone-Sync: amtlicher Zeiten-Cache kommt als DataItem vom Handy.
+    implementation(libs.play.services.wearable)
+
+    testImplementation(libs.junit)
 }
