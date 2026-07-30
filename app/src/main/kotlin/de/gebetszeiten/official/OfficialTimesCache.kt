@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
@@ -24,6 +25,7 @@ class OfficialTimesCache(private val context: Context) {
     private val key = stringPreferencesKey("schedule")
     private val stampLat = doublePreferencesKey("stamp_lat")
     private val stampLng = doublePreferencesKey("stamp_lng")
+    private val stampId = intPreferencesKey("stamp_diyanet_id")
 
     /** Zeiten nur, wenn der Cache für (lat,lng) geladen wurde — sonst null,
      *  damit nie amtliche Zeiten eines alten Standorts angezeigt werden. */
@@ -44,7 +46,15 @@ class OfficialTimesCache(private val context: Context) {
         return true to until
     }
 
-    suspend fun putAll(schedule: Map<LocalDate, SixTimes>, lat: Double, lng: Double) {
+    /** Diyanet-ID des letzten erfolgreichen Abrufs — nur bei Stempel-Match,
+     *  damit nie die ID eines anderen Standorts wiederverwendet wird. */
+    suspend fun cachedLocationId(lat: Double, lng: Double): Int? {
+        val prefs = context.officialStore.data.first()
+        if (!stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)) return null
+        return prefs[stampId]
+    }
+
+    suspend fun putAll(schedule: Map<LocalDate, SixTimes>, lat: Double, lng: Double, locationId: Int? = null) {
         if (schedule.isEmpty()) return
         val text = schedule.entries
             .sortedBy { it.key }
@@ -55,6 +65,7 @@ class OfficialTimesCache(private val context: Context) {
             it[key] = text
             it[stampLat] = lat
             it[stampLng] = lng
+            if (locationId != null) it[stampId] = locationId else it.remove(stampId)
         }
     }
 
