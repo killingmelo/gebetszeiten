@@ -87,6 +87,21 @@
                 android:value="0" />
         </service>
 
+        <!-- Phone-Sync: amtlicher Zeiten-Cache kommt als DataItem vom Handy.
+             exported=true ist fuer WearableListenerService Pflicht; gms
+             erzwingt die BIND_LISTENER-Signatur-Permission. -->
+        <service
+            android:name=".WearSyncListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/official-times" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>

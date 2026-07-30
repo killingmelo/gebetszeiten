@@ -10,10 +10,11 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
- * Shared prayer-time helpers for the watch. Bevorzugt die gebündelten
- * amtlichen Diyanet-Tabellen (identisch zum Phone, nearest ≤ 25 km);
- * Berechnung nur bei useCalculated-Toggle oder fehlender Abdeckung.
- * Fully standalone — kein Phone-Sync (FOSS, keine Play Services).
+ * Shared prayer-time helpers for the watch. Prioritätskette wie am Phone:
+ * vom Handy gesyncte amtliche Zeiten (WearOfficialCache) → gebündelte
+ * Diyanet-Tabellen (nearest ≤ 25 km) → Berechnung. Die Uhr geht selbst
+ * nie ins Netz und läuft ohne Handy voll weiter; der Sync ist rein
+ * empfangend (Play-Services Data Layer).
  */
 object WearPrayer {
 
@@ -45,8 +46,8 @@ object WearPrayer {
             .take(count)
     }
 
-    /** Amtliche Tabelle (nearest Diyanet-Standort) vor Berechnung — dieselbe
-     *  Prioritätslogik wie PrayerProvider.daily am Phone (ohne Online-Stufe). */
+    /** Sync-Cache → amtliche Tabelle → Berechnung — dieselbe
+     *  Prioritätslogik wie PrayerProvider.daily am Phone. */
     private suspend fun daily(
         context: Context,
         location: GeoLocation,
@@ -54,6 +55,8 @@ object WearPrayer {
         zone: ZoneId,
     ): DailyPrayerTimes {
         if (!WearSettings.useCalculated(context)) {
+            WearOfficialCache.get(context, date, location.latitude, location.longitude)
+                ?.let { return it.toDaily(date, zone) }
             WearOfficialSource.get(context, location.latitude, location.longitude, date)
                 ?.let { return it.toDaily(date, zone) }
         }
