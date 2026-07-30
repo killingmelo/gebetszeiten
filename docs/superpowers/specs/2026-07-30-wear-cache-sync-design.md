@@ -88,7 +88,10 @@ Bundle/Berechnung.
 ## Tests (reine JVM, kein Robolectric — Repo-Konvention)
 
 - `core-prayertimes`: Round-trip `ScheduleText` (serialize ↔ parse;
-  leere Map; kaputte Zeile wirft).
+  leere Map; kaputte Zeile wird übersprungen — gleiches tolerantes
+  Verhalten wie der bisherige Cache-Parser, dessen Format übernommen
+  wird; ein komplett unlesbarer Payload ergibt eine leere Map, die der
+  Empfänger verwirft).
 - `wear` (erstes Test-Source-Set des Moduls): Übernahme-/
   Override-Entscheidung als reine Funktion geschnitten
   (Payload + aktuelle Settings + zuletzt übernommener Ort →
