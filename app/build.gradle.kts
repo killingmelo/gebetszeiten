@@ -27,16 +27,18 @@ android {
 
     flavorDimensions += "connectivity"
     productFlavors {
-        // Privacy-pure default: no INTERNET, fully offline calculation.
+        // Puristisch netzfreie Variante (kein INTERNET) — aus dem Quellcode
+        // baubar, nicht mehr die veroeffentlichte App.
         create("offline") {
             dimension = "connectivity"
             isDefault = true
+            applicationIdSuffix = ".offline"
+            versionNameSuffix = "-offline"
         }
-        // Optional variant that can fetch exact official Diyanet times online.
+        // Veroeffentlichte App (de.gebetszeiten): amtliche Diyanet-Zeiten
+        // on demand, DE-Bundle + Berechnung als Offline-Fallback.
         create("online") {
             dimension = "connectivity"
-            applicationIdSuffix = ".online"
-            versionNameSuffix = "-online"
         }
     }
 
