@@ -82,7 +82,7 @@ eigenen Schlüssel und bleibt mit der GitHub-APK kompatibel.
 ### 7. Nach dem Einreichen
 - Prüfung dauert typischerweise 1–7 Tage (erste App eines neuen Kontos eher länger).
 - Updates später: einfach neues AAB mit höherem versionCode hochladen —
-  ich baue die Bundles jederzeit (`gradlew :app:bundleOfflineRelease`).
+  ich baue die Bundles jederzeit (`.\gradlew.bat :app:bundleOnlineRelease :wear:bundleRelease`).
 
 ### 8. Jaehrliches Zeiten-Update (amtliche Diyanet-Tabellen)
 Die gebuendelten amtlichen Zeiten (shared-assets/official/) gelten je ein
