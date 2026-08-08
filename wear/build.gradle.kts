@@ -19,7 +19,10 @@ android {
         applicationId = "de.gebetszeiten"
         minSdk = 30
         targetSdk = 34
-        versionCode = 15
+        // Wear nutzt den 1000er-Block: Phone und Uhr teilen sich das Paket
+        // de.gebetszeiten, Play verlangt paketweit eindeutige versionCodes —
+        // die Phone-App hat 15..n laengst verbraucht. Phone bleibt < 1000.
+        versionCode = 1015
         versionName = "0.1.15"
     }
 

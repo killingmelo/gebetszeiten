@@ -1,0 +1,1 @@
+New: optional congregation time (cemaat) for the morning prayer — derived from sunrise (adjustable lead, Diyanet practice ≈30 min), shown under Fajr and on the watch. Much bigger place search: small towns worldwide (e.g. Esenköy/Yalova) are now findable offline, with region labels to tell namesakes apart; if the list has no match, an optional online lookup helps out.

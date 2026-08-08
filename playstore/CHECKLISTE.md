@@ -82,6 +82,13 @@ aktualisieren** (unterschiedliche Signatur). Das ist normal — Nutzer sollten
 sich für eine Quelle entscheiden. F-Droid (später) nutzt wieder unseren
 eigenen Schlüssel und bleibt mit der GitHub-APK kompatibel.
 
+### 6b. versionCode-Schema (wichtig seit 0.1.19)
+Phone und Wear teilen sich die applicationId `de.gebetszeiten` — Play verlangt
+**paketweit eindeutige versionCodes über alle Bundles**. Die Phone-App hatte
+15..19 schon verbraucht, daher kollidierte Wear-versionCode 15.
+- **Phone:** weiter fortlaufend (20, 21, …) — bleibt dauerhaft **unter 1000**.
+- **Wear:** eigener **1000er-Block** (1015, 1016, …).
+
 ### 7. Nach dem Einreichen
 - Prüfung dauert typischerweise 1–7 Tage (erste App eines neuen Kontos eher länger).
 - Updates später: einfach neues AAB mit höherem versionCode hochladen —
