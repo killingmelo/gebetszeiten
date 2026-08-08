@@ -42,7 +42,10 @@ Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
 - „Erhebt oder teilt deine App Nutzerdaten?" → **Ja** (Datenerhebung im
   Play-Sinn = Übertragung vom Gerät).
 - Datentyp: **Standort → ungefährer Standort** (manuell gewählter Ort als
-  Diyanet-Standort-Kennung/Städtename an diyanet.gov.tr bzw. Fallback-Proxy).
+  Diyanet-Standort-Kennung/Städtename an diyanet.gov.tr bzw. Fallback-Proxy;
+  **seit 0.1.19 zusätzlich:** getippter Ortsname an geocoding-api.open-meteo.com,
+  nur wenn die eingebaute Ortsliste keinen Treffer hat — gleicher Datentyp,
+  gleiche Antworten, keine neue Kategorie nötig).
 - Zweck: **App-Funktionen** (amtliche Gebetszeiten). Erhebung **optional**
   (in den Einstellungen abschaltbar). **Keine Weitergabe** zu Werbe-/
   Analysezwecken, **kein Verkauf**, Übertragung **verschlüsselt (HTTPS)**,
