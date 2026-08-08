@@ -115,4 +115,7 @@ dependencies {
     "onlineImplementation"(libs.play.services.wearable)
 
     testImplementation(libs.junit)
+    // Echte org.json-Implementierung für JVM-Tests (im mockable android.jar
+    // sind die JSON-Klassen nur Stubs) — genutzt vom Geocoder-Parse-Test.
+    testImplementation("org.json:json:20240303")
 }

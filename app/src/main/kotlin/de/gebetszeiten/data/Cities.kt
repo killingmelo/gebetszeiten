@@ -10,17 +10,26 @@ data class City(
     val country: String,
     val latitude: Double,
     val longitude: Double,
+    /** Verwaltungsregion (GeoNames admin1, z. B. „Yalova") — zur
+     *  Unterscheidung gleichnamiger Kleinorte. Leer bei Altdaten. */
+    val region: String? = null,
 )
 
-private class CityEntry(
+/** Kompakter interner Eintrag: Koordinaten als Float (~1 m Genauigkeit reicht
+ *  für die Ortswahl), [normAscii] nur wenn er vom [normName] abweicht —
+ *  bei 235k Zeilen zählt jeder eingesparte String. */
+internal class CityEntry(
     val name: String,
     val country: String,
-    val latitude: Double,
-    val longitude: Double,
+    val latitude: Float,
+    val longitude: Float,
     val normName: String,
-    val normAscii: String,
+    val normAscii: String?,
+    val region: String?,
     val normAliases: List<String> = emptyList(),
-)
+) {
+    fun toCity() = City(name, country, latitude.toDouble(), longitude.toDouble(), region)
+}
 
 internal class CityAliases(
     val normAliases: List<String>,
@@ -44,11 +53,68 @@ internal fun parseCityAliases(lines: Sequence<String>): Map<String, CityAliases>
     return aliases.mapValues { (key, list) -> CityAliases(list, display[key]) }
 }
 
+/** Parst `cities.tsv`-Zeilen (name, asciiname, country, lat, lng[, admin1]).
+ *  Toleriert das alte 5-Spalten-Format. Aliasse/Anzeigename greifen nur auf dem
+ *  ersten (= populationsreichsten) Vorkommen eines "name|country"-Schlüssels —
+ *  sonst hieße jedes türkische Dorf „Esenköy" plötzlich gleich. Pure Funktion. */
+internal fun parseCities(lines: Sequence<String>, aliases: Map<String, CityAliases>): List<CityEntry> {
+    // Interning: ~250 Ländercodes und ~4k Regionsnamen statt 470k Strings.
+    val intern = HashMap<String, String>()
+    fun interned(s: String): String = intern.getOrPut(s) { s }
+    val aliasUsed = HashSet<String>()
+    return lines.mapNotNull { line ->
+        val c = line.split('\t')
+        if (c.size < 5) return@mapNotNull null
+        val lat = c[3].toFloatOrNull() ?: return@mapNotNull null
+        val lng = c[4].toFloatOrNull() ?: return@mapNotNull null
+        val key = "${c[0]}|${c[2]}"
+        val alias = aliases[key]?.takeIf { aliasUsed.add(key) }
+        val normName = TextNormalize.normalize(c[0])
+        val normAscii = TextNormalize.normalize(c[1]).takeIf { it != normName }
+        CityEntry(
+            // Deutscher Anzeigename, falls definiert („Nuremberg" → „Nürnberg").
+            name = alias?.displayName ?: c[0],
+            country = interned(c[2]),
+            latitude = lat,
+            longitude = lng,
+            normName = normName,
+            normAscii = normAscii,
+            region = c.getOrNull(5)?.trim()?.ifEmpty { null }?.let(::interned),
+            normAliases = alias?.normAliases ?: emptyList(),
+        )
+    }.toList()
+}
+
+/** Suche über die geparsten Einträge: Präfix-Treffer bevorzugt, Substring nur
+ *  als Fallback. Sequence + take = Early-Exit, sobald [limit] voll ist —
+ *  häufige Anfragen scannen so nie die ganze Liste. Pure Funktion. */
+internal fun searchEntries(entries: List<CityEntry>, query: String, limit: Int): List<City> {
+    val q = TextNormalize.normalize(query)
+    val chosen = when {
+        q.isEmpty() -> entries.take(limit)
+        else -> {
+            val prefix = entries.asSequence().filter {
+                it.normName.startsWith(q) || it.normAscii?.startsWith(q) == true ||
+                    it.normAliases.any { a -> a.startsWith(q) }
+            }.take(limit).toList()
+            prefix.ifEmpty {
+                entries.asSequence().filter {
+                    it.normName.contains(q) || it.normAscii?.contains(q) == true ||
+                        it.normAliases.any { a -> a.contains(q) }
+                }.take(limit).toList()
+            }
+        }
+    }
+    return chosen.map { it.toCity() }
+}
+
 /**
- * Offline worldwide city database (GeoNames cities ≥15k population, CC BY 4.0),
- * bundled as a TSV asset (name, asciiname, country, lat, lng) sorted by
- * population so common cities rank first. The APK stores it zip-compressed
- * (~665 KB). No network lookup — searching/resolving coordinates is fully local.
+ * Offline worldwide city database (GeoNames cities500, ~235k Orte ab ~500
+ * Einwohnern plus Muss-Orte, CC BY 4.0), bundled as a TSV asset
+ * (name, asciiname, country, lat, lng, admin1) sorted by population so common
+ * cities rank first (~13 MB raw, zip-compressed im APK). No network lookup —
+ * searching/resolving coordinates is fully local. Regeneriert via
+ * tools/cities/build_cities.py.
  */
 object Cities {
 
@@ -74,48 +140,18 @@ object Cities {
         }
         context.assets.open("cities.tsv").use { raw ->
             raw.bufferedReader(Charsets.UTF_8).useLines { lines ->
-                return lines.mapNotNull { line ->
-                    val c = line.split('\t')
-                    if (c.size < 5) return@mapNotNull null
-                    val lat = c[3].toDoubleOrNull() ?: return@mapNotNull null
-                    val lng = c[4].toDoubleOrNull() ?: return@mapNotNull null
-                    val alias = aliases["${c[0]}|${c[2]}"]
-                    CityEntry(
-                        // Deutscher Anzeigename, falls definiert („Nuremberg" → „Nürnberg").
-                        name = alias?.displayName ?: c[0],
-                        country = c[2],
-                        latitude = lat,
-                        longitude = lng,
-                        normName = TextNormalize.normalize(c[0]),
-                        normAscii = TextNormalize.normalize(c[1]),
-                        normAliases = alias?.normAliases ?: emptyList(),
-                    )
-                }.toList()
+                return parseCities(lines, aliases)
             }
         }
     }
 
     /** Up to [limit] cities matching [query] by name (accent/case insensitive),
      *  ordered by population (the underlying asset order). Prefix matches are
-     *  preferred; substring matches are used only when there is no prefix hit. */
+     *  preferred; substring matches are used only when there is no prefix hit.
+     *  Filtert off-main — 235k Zeilen pro Tastendruck gehören nicht auf den
+     *  UI-Thread. */
     suspend fun search(context: Context, query: String, limit: Int = 20): List<City> {
         val all = entries(context)
-        val q = TextNormalize.normalize(query)
-        val chosen = when {
-            q.isEmpty() -> all.take(limit)
-            else -> {
-                val prefix = all.filter {
-                    it.normName.startsWith(q) || it.normAscii.startsWith(q) ||
-                        it.normAliases.any { a -> a.startsWith(q) }
-                }.take(limit)
-                prefix.ifEmpty {
-                    all.filter {
-                        it.normName.contains(q) || it.normAscii.contains(q) ||
-                            it.normAliases.any { a -> a.contains(q) }
-                    }.take(limit)
-                }
-            }
-        }
-        return chosen.map { City(it.name, it.country, it.latitude, it.longitude) }
+        return withContext(Dispatchers.Default) { searchEntries(all, query, limit) }
     }
 }

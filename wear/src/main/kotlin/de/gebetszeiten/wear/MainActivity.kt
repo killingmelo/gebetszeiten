@@ -82,6 +82,18 @@ class MainActivity : Activity() {
                 refresh()
             }
         }
+        // Toggle the derived Sabah congregation row (sunrise − 30 min).
+        findViewById<TextView>(R.id.cemaatLabel).setOnClickListener {
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    WearSettings.saveShowCemaat(
+                        applicationContext,
+                        !WearSettings.showCemaat(applicationContext),
+                    )
+                }
+                refresh()
+            }
+        }
     }
 
     // Recompute on every show so the next prayer is always current without any
@@ -124,6 +136,7 @@ class MainActivity : Activity() {
         val modeText: String,
         val vibrateText: String,
         val useCalculatedText: String,
+        val cemaatText: String,
         val rows: List<Pair<String, String>>,
     )
 
@@ -167,6 +180,11 @@ class MainActivity : Activity() {
             }
             val sunrise = todayTimes.sunrise
             if (sunrise.isAfter(now)) add(getString(R.string.label_sonnenaufgang) to sunrise)
+            // Abgeleitete Cemaat-Zeit (fester Vorlauf 30 Min, wie Diyanet-Praxis).
+            if (s.showCemaat) {
+                val cemaat = sunrise.minusMinutes(30)
+                if (cemaat.isAfter(now)) add(getString(R.string.label_cemaat) to cemaat)
+            }
         }.sortedBy { it.second }.map { it.first to it.second.format(timeFormat) }
 
         return ViewState(
@@ -179,6 +197,7 @@ class MainActivity : Activity() {
             modeText = if (s.showRemaining) getString(R.string.mode_remaining) else getString(R.string.mode_clock),
             vibrateText = if (s.vibrate) getString(R.string.vibrate_on) else getString(R.string.vibrate_off),
             useCalculatedText = if (s.useCalculated) getString(R.string.settings_use_calculated) else getString(R.string.settings_use_calculated_off),
+            cemaatText = if (s.showCemaat) getString(R.string.cemaat_on) else getString(R.string.cemaat_off),
             rows = rows,
         )
     }
@@ -218,6 +237,10 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.useCalculatedLabel).apply {
             text = state.useCalculatedText
             contentDescription = getString(R.string.desc_toggle, state.useCalculatedText)
+        }
+        findViewById<TextView>(R.id.cemaatLabel).apply {
+            text = state.cemaatText
+            contentDescription = getString(R.string.desc_toggle, state.cemaatText)
         }
 
         val list = findViewById<android.widget.LinearLayout>(R.id.upcomingList)

@@ -111,11 +111,20 @@
     <string name="nafl_tahajjud">Tahajjud</string>
     <string name="nafl_duha">Duha (Kuşluk)</string>
 
+    <!-- Cemaat (Gemeinschaftsgebet morgens, abgeleitet) -->
+    <string name="cemaat_label">Gemeinschaftsgebet (Cemaat)</string>
+    <string name="cemaat_time_inline">%1$s · %2$s</string>
+    <string name="desc_cemaat">Tipp: %1$s um %2$s</string>
+    <string name="cemaat_explain_title">Gemeinschaftsgebet (Cemaat)</string>
+    <string name="cemaat_explain_text">Übliche Zeit des Sabah-Gemeinschaftsgebets in der Moschee: kurz vor Sonnenaufgang (Diyanet-Praxis ≈30 Min davor). Die Zeit wird aus dem Sonnenaufgang berechnet — der Vorlauf ist in den Einstellungen anpassbar. Keine amtliche Diyanet-Angabe; die eigene Moschee kann abweichen.</string>
+
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
     <string name="settings_instant_apply">Änderungen werden sofort übernommen.</string>
     <string name="settings_city">Stadt</string>
     <string name="city_no_results">Keine Treffer – Schreibweise prüfen oder Koordinaten manuell eingeben.</string>
+    <string name="city_searching_online">Online-Suche…</string>
+    <string name="city_results_online">Online gefunden (Open-Meteo/GeoNames):</string>
     <string name="city_suggestions_toggle">Ortsvorschläge ein- oder ausblenden</string>
     <string name="settings_latitude">Breite</string>
     <string name="settings_longitude">Länge</string>
@@ -124,6 +133,10 @@
     <string name="settings_section_display">Anzeige</string>
     <string name="settings_show_makruh">Makruh-Zeiten anzeigen</string>
     <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>
+    <string name="settings_show_cemaat">Gemeinschaftsgebet (Cemaat) morgens anzeigen</string>
+    <string name="settings_cemaat_hint">Zeigt unter Fajr die übliche Moschee-Gemeinschaftszeit: Sonnenaufgang minus Vorlauf (Diyanet-Praxis ≈30 Min). Berechnet, keine amtliche Zeit — die eigene Moschee kann abweichen.</string>
+    <string name="settings_cemaat_offset">Vorlauf vor Sonnenaufgang</string>
+    <string name="cemaat_offset_chip">%1$d Min</string>
     <string name="settings_use_calculated">Eigene Berechnung verwenden</string>
     <string name="settings_use_calculated_hint">Statt amtlicher Diyanet-Tabellen die lokale astronomische Berechnung nutzen. Amtliche Zeiten sind Standard, wo verfügbar.</string>
     <string name="settings_remaining">Restzeit</string>

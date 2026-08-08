@@ -79,8 +79,12 @@ Dieses Projekt steht unter der **GNU General Public License v3.0** — siehe
 
 ## Attribution & Drittquellen
 
-- **Städtedaten:** [GeoNames](https://www.geonames.org/) (cities ≥ 15k),
+- **Städtedaten:** [GeoNames](https://www.geonames.org/) (cities500, Orte ab
+  ~500 Einwohnern plus Muss-Orte, regeneriert via `tools/cities/`),
   lizenziert unter **CC BY 4.0** — © GeoNames. Verwendung gemäß Namensnennung.
+- **Online-Ortssuche (Fallback):** [Open-Meteo Geocoding](https://open-meteo.com/)
+  (GeoNames-basiert) — nur im `online`-Flavor und nur, wenn die gebündelte
+  Liste keinen Treffer hat.
 - **Berechnungsmethode & Referenzzeiten:** Diyanet İşleri Başkanlığı
   (namazvakitleri.diyanet.gov.tr). Die mitgelieferte Jahrestabelle dient nur als
   Test-/Kalibrierungsreferenz.

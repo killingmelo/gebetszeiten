@@ -13,4 +13,11 @@ class TextNormalizeTest {
         assertEquals("istanbul", TextNormalize.normalize("İstanbul"))
         assertEquals("sisli", TextNormalize.normalize("Şişli"))
     }
+
+    /** Der ASCII-Fastpath muss dasselbe liefern wie der volle NFD-Pfad. */
+    @Test fun asciiFastPathMatchesFullPath() {
+        assertEquals("esenkoy", TextNormalize.normalize("Esenkoy"))
+        assertEquals("esenkoy", TextNormalize.normalize("Esenköy"))
+        assertEquals("new york", TextNormalize.normalize("  New York "))
+    }
 }

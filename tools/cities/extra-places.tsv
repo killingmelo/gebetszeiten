@@ -1,0 +1,3 @@
+# Muss-Orte, die im GeoNames-Extrakt fehlen koennen (fehlende Einwohnerzahl):
+# geonameid <TAB> ISO2 — werden aus dem jeweiligen Laender-Dump ergaenzt.
+747342	TR

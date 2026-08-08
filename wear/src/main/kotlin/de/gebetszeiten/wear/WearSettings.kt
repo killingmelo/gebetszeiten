@@ -23,6 +23,7 @@ object WearSettings {
     private val SHOW_REMAINING = booleanPreferencesKey("show_remaining")
     private val VIBRATE = booleanPreferencesKey("vibrate")
     private val USE_CALCULATED = booleanPreferencesKey("use_calculated")
+    private val SHOW_CEMAAT = booleanPreferencesKey("show_cemaat")
     private val DEFAULT = GeoLocation(49.4521, 11.0767) // Nürnberg
     private const val DEFAULT_CITY = "Nürnberg"
 
@@ -34,6 +35,7 @@ object WearSettings {
         val showRemaining: Boolean,
         val vibrate: Boolean,
         val useCalculated: Boolean,
+        val showCemaat: Boolean,
     )
 
     suspend fun snapshot(context: Context): Snapshot {
@@ -46,6 +48,7 @@ object WearSettings {
             showRemaining = prefs[SHOW_REMAINING] ?: false,
             vibrate = prefs[VIBRATE] ?: false,
             useCalculated = prefs[USE_CALCULATED] ?: false,
+            showCemaat = prefs[SHOW_CEMAAT] ?: false,
         )
     }
 
@@ -81,6 +84,14 @@ object WearSettings {
 
     suspend fun saveUseCalculated(context: Context, value: Boolean) {
         context.locationStore.edit { it[USE_CALCULATED] = value }
+    }
+
+    /** Abgeleitete Sabah-Cemaat-Zeile (Sonnenaufgang − 30 Min) anzeigen. */
+    suspend fun showCemaat(context: Context): Boolean =
+        context.locationStore.data.first()[SHOW_CEMAAT] ?: false
+
+    suspend fun saveShowCemaat(context: Context, value: Boolean) {
+        context.locationStore.edit { it[SHOW_CEMAAT] = value }
     }
 
     suspend fun save(context: Context, city: String, latitude: Double, longitude: Double) {

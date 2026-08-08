@@ -113,6 +113,7 @@ import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.data.Cities
 import de.gebetszeiten.data.City
 import de.gebetszeiten.official.OfficialTimesProvider
+import de.gebetszeiten.places.PlaceSearchProvider
 import de.gebetszeiten.prayer.IslamicWindows
 import de.gebetszeiten.prayer.KarahaCountdown
 import de.gebetszeiten.prayer.KarahaTimes
@@ -302,6 +303,8 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
                 now = ZonedDateTime.now(zone),
                 highlight = isToday,
                 showKaraha = settings.showKaraha,
+                showCemaat = settings.showCemaat,
+                cemaatOffsetMinutes = settings.cemaatOffsetMinutes,
                 showRemaining = settings.showCountdown,
                 onKaraha = { karahaInfo = it },
             )
@@ -399,9 +402,18 @@ private data class PrayerBlock(
     val before: MakruhBlock? = null, // Zenit / İsfirar — chip above the prayer
     val after: MakruhBlock? = null,  // (reserved) chip below the prayer
     val tip: NaflBlock? = null,      // voluntary-prayer hint (e.g. Awwabin)
+    val cemaat: CemaatTip? = null,   // derived congregation time (Fajr only)
 ) : DayBlock {
     override val sortAt: ZonedDateTime get() = time
 }
+
+/** Abgeleitete Gemeinschaftsgebetszeit (Sabah-Cemaat): Sonnenaufgang − Vorlauf.
+ *  Punktzeit, kein Fenster — keine amtliche Diyanet-Angabe. */
+private data class CemaatTip(
+    val label: String,
+    val time: ZonedDateTime,
+    val explain: Pair<String, String>,
+)
 
 /** A makruh (karaha) window — rendered as a compact chip attached to its prayer. */
 private data class MakruhBlock(
@@ -438,6 +450,8 @@ private fun TimesCard(
     now: ZonedDateTime,
     highlight: Boolean,
     showKaraha: Boolean,
+    showCemaat: Boolean,
+    cemaatOffsetMinutes: Int,
     showRemaining: Boolean,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
@@ -469,14 +483,17 @@ private fun TimesCard(
     val labelAwwabin = stringResource(R.string.nafl_awwabin)
     val labelTahajjud = stringResource(R.string.nafl_tahajjud)
     val labelDuha = stringResource(R.string.nafl_duha)
+    val labelCemaat = stringResource(R.string.cemaat_label)
+    val cemaatExplain = stringResource(R.string.cemaat_explain_title) to stringResource(R.string.cemaat_explain_text)
 
     // Prayers carry their makruh chips. Sunrise is just a moment (no makruh).
     // The forenoon period is represented by Duha, which also carries the İşrak
     // makruh (so it sits right above the Duha pill, not on Sunrise).
     val blocks = remember(
-        info, showKaraha,
+        info, showKaraha, showCemaat, cemaatOffsetMinutes,
         karahaSunrise, karahaZeval, karahaIsfirar, naflAwwabin, naflTahajjud,
         labelZenit, labelBeforeSunset, labelAfterSunrise, labelAwwabin, labelTahajjud, labelDuha,
+        labelCemaat, cemaatExplain,
     ) {
         val k = info.karaha
         val n = info.nafl
@@ -494,7 +511,12 @@ private fun TimesCard(
                     Prayer.ISHA -> NaflBlock(labelTahajjud, n.tahajjudStart, n.tahajjudEnd, explain = naflTahajjud, whenCurrent = true)
                     else -> null
                 }
-                add(PrayerBlock(p, t, before, null, tip))
+                val cemaat = if (showCemaat && p == Prayer.FAJR) {
+                    CemaatTip(labelCemaat, info.times.sunrise.minusMinutes(cemaatOffsetMinutes.toLong()), cemaatExplain)
+                } else {
+                    null
+                }
+                add(PrayerBlock(p, t, before, null, tip, cemaat))
             }
             // Duha is the forenoon entry that replaces Sunrise once it has
             // passed; İşrak makruh attaches to it.
@@ -836,6 +858,9 @@ private fun Timeline(
                                     }
                                 }
                             }
+                            block.cemaat?.let {
+                                CemaatTipRow(it, green, highlight && it.time.isBefore(now), onKaraha)
+                            }
                             block.tip?.takeIf { !it.whenCurrent || isSelected }?.let {
                                 NaflTipRow(it, green, highlight && it.end.isBefore(now), onKaraha)
                             }
@@ -1053,6 +1078,32 @@ private fun ProgressPill(
     }
 }
 
+/** Abgeleitete Cemaat-Punktzeit unter Fajr — Aufbau wie NaflTipRow, aber ohne Bereich. */
+@Composable
+private fun CemaatTipRow(block: CemaatTip, green: Color, faded: Boolean, onInfo: (Pair<String, String>) -> Unit) {
+    val c = green.copy(alpha = if (faded) 0.75f else 1f)
+    val desc = stringResource(R.string.desc_cemaat, block.label, block.time.format(HM))
+    val explainLabel = stringResource(R.string.show_explanation)
+    Row(
+        modifier = Modifier
+            .padding(start = 12.dp)
+            .minimumInteractiveComponentSize()
+            .clickable(onClickLabel = explainLabel) { onInfo(block.explain) }
+            .heightIn(min = 22.dp)
+            .padding(vertical = 1.dp)
+            .semantics(mergeDescendants = true) { contentDescription = desc },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(R.drawable.ic_nafl), null, tint = c, modifier = Modifier.size(12.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(
+            stringResource(R.string.cemaat_time_inline, block.label, block.time.format(HM)),
+            style = MaterialTheme.typography.labelSmall,
+            color = c,
+        )
+    }
+}
+
 /** Compact green nafl "tip" attached under a prayer (e.g. Awwabin on Maghrib). */
 @Composable
 private fun NaflTipRow(block: NaflBlock, green: Color, faded: Boolean, onInfo: (Pair<String, String>) -> Unit) {
@@ -1127,6 +1178,10 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
     var expanded by rememberSaveable { mutableStateOf(false) }
     var matches by remember { mutableStateOf<List<City>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
+    // Online-Fallback (nur online-Flavor + Online-Schalter): greift erst,
+    // wenn die gebündelte Liste keinen Treffer hat.
+    var onlineMatches by remember { mutableStateOf<List<City>>(emptyList()) }
+    var searchingOnline by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -1142,12 +1197,27 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
 
     LaunchedEffect(city.text, expanded) {
         if (expanded && city.text.isNotBlank()) {
+            // Tipp-Debounce: die Coroutine wird bei jedem Tastendruck neu
+            // gestartet — das delay macht daraus ein gratis Debouncing.
+            delay(200)
             searching = true
             matches = Cities.search(context, city.text, limit = 12)
             searching = false
+            onlineMatches = emptyList()
+            val lookup = PlaceSearchProvider.lookup()
+            if (matches.isEmpty() && lookup != null && settings.useOnline && city.text.trim().length >= 3) {
+                searchingOnline = true
+                delay(300)
+                onlineMatches = lookup.search(city.text, limit = 10)
+                searchingOnline = false
+            } else {
+                searchingOnline = false
+            }
         } else {
             matches = emptyList()
+            onlineMatches = emptyList()
             searching = false
+            searchingOnline = false
         }
     }
 
@@ -1197,19 +1267,38 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                     .fillMaxWidth()
                     .onFocusChanged { expanded = it.isFocused },
             )
-            if (expanded && searching) {
+            if (expanded && (searching || searchingOnline)) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (searchingOnline) {
+                    Text(
+                        stringResource(R.string.city_searching_online),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-            if (expanded && !searching && matches.isNotEmpty()) {
+            // Lokale Treffer haben Vorrang; Online-Treffer erscheinen nur,
+            // wenn die gebündelte Liste leer ausgeht (mit Quellen-Hinweis).
+            val shownMatches = matches.ifEmpty { onlineMatches }
+            if (expanded && !searching && !searchingOnline && shownMatches.isNotEmpty()) {
+                if (matches.isEmpty()) {
+                    Text(
+                        stringResource(R.string.city_results_online),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Surface(tonalElevation = 2.dp, shape = MaterialTheme.shapes.medium) {
                     Column {
-                        matches.forEach { c ->
+                        shownMatches.forEach { c ->
                             DropdownMenuItem(
                                 text = {
                                     Column {
                                         Text(highlightPrefix(c.name, city.text))
                                         Text(
-                                            countryDisplayName(c.country),
+                                            // Region unterscheidet gleichnamige Kleinorte
+                                            // („Esenköy — Yalova · Türkei" vs. „… Aydın · Türkei").
+                                            listOfNotNull(c.region, countryDisplayName(c.country)).joinToString(" · "),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
@@ -1229,7 +1318,7 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                     }
                 }
             }
-            if (expanded && !searching && matches.isEmpty() && city.text.isNotBlank()) {
+            if (expanded && !searching && !searchingOnline && matches.isEmpty() && onlineMatches.isEmpty() && city.text.isNotBlank()) {
                 Text(
                     stringResource(R.string.city_no_results),
                     style = MaterialTheme.typography.bodyMedium,
@@ -1274,6 +1363,25 @@ private fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Un
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            ToggleRow(stringResource(R.string.settings_show_cemaat), settings.showCemaat) { commit { copy(showCemaat = it) } }
+            if (settings.showCemaat) {
+                Text(
+                    stringResource(R.string.settings_cemaat_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(stringResource(R.string.settings_cemaat_offset), style = MaterialTheme.typography.bodyLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(15, 20, 30, 45, 60).forEach { v ->
+                        FilterChip(
+                            selected = settings.cemaatOffsetMinutes == v,
+                            onClick = { commit { copy(cemaatOffsetMinutes = v) } },
+                            label = { Text(stringResource(R.string.cemaat_offset_chip, v)) },
+                        )
+                    }
+                }
             }
 
             ToggleRow(stringResource(R.string.settings_use_calculated), settings.useCalculated) {

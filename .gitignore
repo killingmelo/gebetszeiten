@@ -29,3 +29,5 @@ keystore/
 
 tools/diyanet-fetch/cache/
 tools/diyanet-fetch/__pycache__/
+tools/cities/cache/
+tools/cities/__pycache__/

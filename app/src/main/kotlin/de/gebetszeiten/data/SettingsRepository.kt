@@ -30,6 +30,10 @@ data class AppSettings(
     val showNafl: Boolean = false,
     /** Show the Hanafi makruh (karaha) segments. */
     val showKaraha: Boolean = true,
+    /** Abgeleitete Gemeinschaftsgebetszeit (Sabah-Cemaat) unter Fajr anzeigen. */
+    val showCemaat: Boolean = false,
+    /** Cemaat-Vorlauf: Minuten vor Sonnenaufgang (übliche Diyanet-Praxis: 30). */
+    val cemaatOffsetMinutes: Int = 30,
     /** Extra text scaling on top of the system setting (1.0 = none). */
     val fontScale: Float = 1f,
     /** Stronger-contrast colour scheme. */
@@ -84,6 +88,8 @@ data class AppSettings(
             useCalculated = false,
             showNafl = false,
             showKaraha = true,
+            showCemaat = false,
+            cemaatOffsetMinutes = 30,
             fontScale = 1f,
             highContrast = false,
             reminders = DEFAULT_REMINDERS,
@@ -114,6 +120,8 @@ class SettingsRepository(private val context: Context) {
         val USE_CALCULATED = booleanPreferencesKey("use_calculated")
         val SHOW_NAFL = booleanPreferencesKey("show_nafl")
         val SHOW_KARAHA = booleanPreferencesKey("show_karaha")
+        val SHOW_CEMAAT = booleanPreferencesKey("show_cemaat")
+        val CEMAAT_OFFSET = intPreferencesKey("cemaat_offset_minutes")
         val FONT_SCALE = doublePreferencesKey("font_scale")
         val HIGH_CONTRAST = booleanPreferencesKey("high_contrast")
         val REMINDERS = stringSetPreferencesKey("reminders")
@@ -165,6 +173,8 @@ class SettingsRepository(private val context: Context) {
             useCalculated = prefs[Keys.USE_CALCULATED] ?: AppSettings.DEFAULT.useCalculated,
             showNafl = prefs[Keys.SHOW_NAFL] ?: AppSettings.DEFAULT.showNafl,
             showKaraha = prefs[Keys.SHOW_KARAHA] ?: AppSettings.DEFAULT.showKaraha,
+            showCemaat = prefs[Keys.SHOW_CEMAAT] ?: AppSettings.DEFAULT.showCemaat,
+            cemaatOffsetMinutes = prefs[Keys.CEMAAT_OFFSET] ?: AppSettings.DEFAULT.cemaatOffsetMinutes,
             fontScale = (prefs[Keys.FONT_SCALE] ?: AppSettings.DEFAULT.fontScale.toDouble()).toFloat(),
             highContrast = prefs[Keys.HIGH_CONTRAST] ?: AppSettings.DEFAULT.highContrast,
             reminders = prefs[Keys.REMINDERS] ?: AppSettings.DEFAULT.reminders,
@@ -193,6 +203,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.USE_CALCULATED] = value.useCalculated
             prefs[Keys.SHOW_NAFL] = value.showNafl
             prefs[Keys.SHOW_KARAHA] = value.showKaraha
+            prefs[Keys.SHOW_CEMAAT] = value.showCemaat
+            prefs[Keys.CEMAAT_OFFSET] = value.cemaatOffsetMinutes
             prefs[Keys.FONT_SCALE] = value.fontScale.toDouble()
             prefs[Keys.HIGH_CONTRAST] = value.highContrast
             prefs[Keys.REMINDERS] = value.reminders

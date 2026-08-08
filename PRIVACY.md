@@ -18,9 +18,14 @@ enthält **keine Werbung, kein Tracking, keine Analyse-Dienste, keine Konten**.
   eines Ortes außerhalb Deutschlands einmalig der **Städtename** zur
   Auflösung). Keine Koordinaten, keine Geräte-Kennungen — technisch bedingt
   sieht der jeweilige Server dabei die IP-Adresse.
+- **Online-Ortssuche (Fallback):** Findet die eingebaute Städteliste einen
+  gesuchten Ort nicht, fragt die App (nur bei aktiviertem Online-Abgleich)
+  den Geocoding-Dienst `geocoding-api.open-meteo.com` an. Übermittelt wird
+  dabei ausschließlich der **getippte Ortsname** — keine Koordinaten, keine
+  Geräte-Kennungen; technisch bedingt sieht der Server die IP-Adresse.
 - **Abschaltbar:** In den Einstellungen lässt sich der Online-Abgleich
-  deaktivieren; für Deutschland sind amtliche Tabellen offline gebündelt,
-  sonst rechnet die App lokal.
+  deaktivieren (deaktiviert auch die Online-Ortssuche); für Deutschland sind
+  amtliche Tabellen offline gebündelt, sonst rechnet die App lokal.
 - **Wear OS:** Die Watch-App geht selbst nie ins Internet. Sie erhält die
   amtlichen Zeiten und den gewählten Ort vom gekoppelten Handy
   (Play-Services-Gerätesync) und funktioniert ohne Handy vollständig
@@ -45,9 +50,14 @@ This app does **not collect, store, or share any personal data** and contains
   Germany is first selected, to resolve its id). No coordinates, no device
   identifiers — for technical reasons the respective server does see the IP
   address.
-- **Can be turned off:** The online sync can be disabled in the settings;
-  official tables for Germany are bundled offline, elsewhere the app
-  calculates locally.
+- **Online place search (fallback):** If the bundled city list has no match
+  for a searched place, the app (only with online sync enabled) queries the
+  geocoding service `geocoding-api.open-meteo.com`. The only data transmitted
+  is the **typed place name** — no coordinates, no device identifiers; for
+  technical reasons the server does see the IP address.
+- **Can be turned off:** The online sync can be disabled in the settings
+  (this also disables the online place search); official tables for Germany
+  are bundled offline, elsewhere the app calculates locally.
 - **Wear OS:** The watch app itself never connects to the Internet. It
   receives the official times and the chosen place from the paired phone
   (Play Services device sync) and keeps working fully without a phone
