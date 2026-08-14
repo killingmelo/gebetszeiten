@@ -67,8 +67,10 @@ und die UI hat weder Erfolgs- noch Fehleranzeige.
   TÜRKİYE 867, FRANSA 530, ABD 482, HOLLANDA 279, BELCIKA 218,
   AVUSTURYA 180, INGILTERE 153, ENDONEZYA 52, MISIR 23 — und
   **SUUDİ ARABİSTAN 0** (es gibt Länder ohne jeden Diyanet-Standort).
-  Elf Länder ergeben zusammen ~3.980; hochgerechnet auf 205 Länder mit
-  kleinem Rest-Durchschnitt liegt der Index bei **~10.000 Einträgen**.
+  Elf Länder ergeben zusammen ~3.980. Die daraus gezogene Hochrechnung auf
+  „~10.000 Einträge" war zu großzügig — **gebaut wurden 6.880 Einträge aus 185
+  Ländern** (20 Länder liefern nichts). Die Per-Land-Zahlen trafen dagegen genau:
+  TR 852 von 867, DE 1.006 von 1.195.
 - Es gibt **keine** Endpunkte `/states` oder `/cities` (beide `404`), und
   `search?q=<Provinz>,<Bezirk>` antwortet `500`. Die Länderliste plus
   `locations?country=…` ist der einzige Weg zur vollständigen Liste.
@@ -148,9 +150,17 @@ Format (Tab-getrennt, kein Header), analog `locations-de.tsv`:
 id	name(Bezirk)	province	iso2	lat	lng
 ```
 
-Umfang: **~10.000 Zeilen, ca. 400 KB** unkomprimiert (im APK ~130 KB). Zum
+Umfang (gebaut am 14.08.2026): **6.880 Zeilen, 311 KB** unkomprimiert. Zum
 Vergleich: `cities.tsv` ist 12,8 MB, die amtlichen Tabellen 13 MB — der Index
 fällt neben den bestehenden Assets nicht ins Gewicht.
+
+Verifiziert im ausgelieferten Asset: jede Zeile genau 6 Spalten, keine doppelten
+IDs, und der nächstgelegene Standort zu Serdivan ist `9807 SAKARYA` in **2,1 km**.
+
+Nachtrag zur Geokodierung: `cities.tsv` führt manche Orte unter dem englischen
+Exonym (Nürnberg steht dort als „Nuremberg"), Diyanet aber als „NURNBERG". Die
+Pipeline zieht deshalb zusätzlich `city-aliases.tsv` heran — dieselbe Datei, die
+`fetch_diyanet.py` für genau diesen Fall schon nutzt.
 
 **Platzierung im online-Flavor, nicht in `shared-assets`.** Begründung:
 `shared-assets` ist in `app/build.gradle.kts:87` an den `main`-SourceSet
