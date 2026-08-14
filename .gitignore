@@ -31,3 +31,5 @@ tools/diyanet-fetch/cache/
 tools/diyanet-fetch/__pycache__/
 tools/cities/cache/
 tools/cities/__pycache__/
+tools/diyanet-index/cache/
+tools/diyanet-index/__pycache__/
