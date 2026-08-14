@@ -982,7 +982,7 @@ git commit -m "fix: Diyanet-ID ueber Koordinatenindex statt Namenssuche aufloese
 - Produces:
   - `data class OfficialStatus(val locationId: Int?, val coveredUntil: LocalDate?, val lastAttemptEpochMs: Long?, val lastError: String?)`
   - `suspend fun OfficialTimesCache.status(lat: Double, lng: Double): OfficialStatus`
-  - `suspend fun OfficialTimesCache.recordAttempt(lastError: String?, nowEpochMs: Long)`
+  - `suspend fun OfficialTimesCache.recordAttempt(error: String?, nowEpochMs: Long)` — `error = null` heißt Erfolg
   - `fun officialStatusText(status: OfficialStatus, sourceName: String?, nowEpochMs: Long): String` in `prayer/OfficialStatusText.kt`
 
 `recordAttempt` bekommt die Zeit **übergeben** statt `System.currentTimeMillis()` intern zu lesen — sonst ist die Textformatierung nicht testbar.
@@ -1060,13 +1060,15 @@ In `OfficialTimesCache.kt` ergänzen:
         )
     }
 
-    /** Zeitstempel und Fehlergrund des letzten Abrufversuchs. [lastError] =
-     *  null heißt Erfolg. Zeit wird übergeben, damit Tests nicht an der
-     *  Systemuhr hängen. */
-    suspend fun recordAttempt(lastError: String?, nowEpochMs: Long) {
+    /** Zeitstempel und Fehlergrund des letzten Abrufversuchs. [error] = null
+     *  heißt Erfolg. Zeit wird übergeben, damit Tests nicht an der Systemuhr
+     *  hängen. Der Parameter heißt absichtlich NICHT `lastError` — das würde
+     *  den gleichnamigen Key beschatten und jede Zeile hier auf `this.`
+     *  angewiesen machen. */
+    suspend fun recordAttempt(error: String?, nowEpochMs: Long) {
         context.officialStore.edit {
-            it[this.lastAttempt] = nowEpochMs
-            if (lastError != null) it[this.lastError] = lastError else it.remove(this.lastError)
+            it[lastAttempt] = nowEpochMs
+            if (error != null) it[lastError] = error else it.remove(lastError)
         }
     }
 ```
@@ -1838,22 +1840,57 @@ git commit -m "feat(ui): Statuszeile Zeitenquelle mit Zeitstempel, Fehlergrund, 
 
 - [ ] **Step 1: Show the snackbar only on transition**
 
-In `HeuteContent` (dort liegt `officialName` schon vor):
+Geprüfter Ausgangszustand: `MainActivity.kt:190` hat ein `Scaffold`, aber **keinen**
+`SnackbarHost`; `HeuteContent` wird bei `:225` als `HeuteContent(inner, settings)`
+aufgerufen. Der State wird deshalb beim `Scaffold` gehalten und **hineingegeben** —
+nicht in `HeuteContent` deklariert, sonst hat der Host keinen Zugriff darauf.
+
+**(a) Beim `Scaffold` (`:190`)** den State anlegen und den Host anmelden:
 
 ```kotlin
-    val snackbarHost = remember { SnackbarHostState() }
+    val snackbarHostState = remember { SnackbarHostState() }
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // … bestehende Parameter unverändert …
+    ) { inner ->
+```
+
+**(b) Aufruf bei `:225`** um den State erweitern:
+
+```kotlin
+            Tab.HEUTE -> HeuteContent(inner, settings, snackbarHostState)
+```
+
+**(c) Signatur von `HeuteContent`** (`:244`) erweitern:
+
+```kotlin
+private fun HeuteContent(
+    inner: PaddingValues,
+    settings: AppSettings,
+    snackbarHostState: SnackbarHostState,
+) {
+```
+
+**(d) In `HeuteContent`**, nach der `officialName`-Deklaration:
+
+```kotlin
     // Nur beim WECHSEL melden, nicht bei jedem Start — sonst ist es Lärm.
+    // lastReported startet null, deshalb loest der erste beobachtete Wert
+    // (App-Start) keine Meldung aus, ein spaeterer Ortswechsel schon.
     var lastReported by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(officialName) {
         val name = officialName
         if (name != null && lastReported != null && name != lastReported) {
-            snackbarHost.showSnackbar(context.getString(R.string.snackbar_official_loaded, name))
+            snackbarHostState.showSnackbar(
+                context.getString(R.string.snackbar_official_loaded, name),
+            )
         }
         lastReported = name
     }
 ```
 
-Der `SnackbarHost` gehört in das `Scaffold` der Activity. Falls dort noch keiner existiert, `snackbarHost = { SnackbarHost(snackbarHost) }` am `Scaffold` ergänzen und `snackbarHost` von `HeuteContent` hochziehen (Parameter).
+Imports ergänzen: `androidx.compose.material3.SnackbarHost`,
+`androidx.compose.material3.SnackbarHostState`.
 
 String:
 
