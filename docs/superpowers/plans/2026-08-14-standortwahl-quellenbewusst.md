@@ -113,6 +113,14 @@ class DiyanetPlacesTest {
         assertEquals("Mustafakemalpaşa", DiyanetPlace(1, "MUSTAFAKEMALPAŞA", "BURSA", "TR", 40.0, 28.0).displayName())
     }
 
+    @Test fun `displayName verstuemmelt nicht-tuerkische Namen nicht`() {
+        // Das tuerkische Locale bildet ASCII-I auf das punktlose i ab: mit
+        // pauschalem tr-Locale wuerde "BERLIN" zu "Berlın". Der Index deckt
+        // 205 Laender ab, der Fall ist also erreichbar.
+        assertEquals("Berlin", DiyanetPlace(2, "BERLIN", "BERLIN", "DE", 52.5, 13.4).displayName())
+        assertEquals("Mainz", DiyanetPlace(3, "MAINZ", "RHEINLAND-PFALZ", "DE", 50.0, 8.27).displayName())
+    }
+
     @Test fun `leere Liste ist kein Absturz`() {
         assertNull(DiyanetPlaces.nearest(emptyList(), 40.0, 30.0))
     }
@@ -196,7 +204,7 @@ Falls `haversineKm` nicht auflösbar ist, weil es `private` statt `internal` ist
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `.\gradlew.bat :core-prayertimes:test --tests "*DiyanetPlacesTest*"`
-Expected: PASS (9 Tests)
+Expected: PASS (8 Tests)
 
 - [ ] **Step 5: Commit**
 
@@ -213,6 +221,7 @@ git commit -m "feat(core): DiyanetPlace-Index-Modell mit Naechster-Treffer-Suche
 - Create: `tools/diyanet-index/build_index.py`
 - Create: `tools/diyanet-index/README.md`
 - Create (Pipeline-Ausgabe): `app/src/online/assets/official/locations-world.tsv`
+- Modify: `.gitignore` (Cache-Verzeichnis des neuen Tools)
 - Test: `app/src/testOnline/kotlin/de/gebetszeiten/official/WorldIndexIntegrityTest.kt`
 
 **Interfaces:**
@@ -280,10 +289,14 @@ class WorldIndexIntegrityTest {
     }
 
     @Test fun grossstaedteVorhanden() {
-        listOf("TR" to "İSTANBUL", "TR" to "SAKARYA", "DE" to "NÜRNBERG").forEach { (cc, name) ->
-            assertTrue("$cc/$name fehlt",
-                places.any { it.countryCode == cc && it.name.equals(name, ignoreCase = true) })
-        }
+        // Schreibweisen wortgetreu wie Diyanet sie fuehrt (live geprueft):
+        // "NURNBERG" OHNE Umlaut, "İSTANBUL" MIT gepunktetem I. `ignoreCase`
+        // gleicht Ü und U nicht aus — hier keine Schreibweise raten.
+        listOf("TR" to "İSTANBUL", "TR" to "SAKARYA", "DE" to "NURNBERG", "DE" to "BERLIN")
+            .forEach { (cc, name) ->
+                assertTrue("$cc/$name fehlt",
+                    places.any { it.countryCode == cc && it.name.equals(name, ignoreCase = true) })
+            }
     }
 }
 ```
@@ -460,12 +473,26 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 4: Smoke-Test der Pipeline (3 Länder)**
+- [ ] **Step 4: Cache-Verzeichnis ignorieren**
+
+Die `.gitignore` listet Tool-Caches einzeln (`tools/diyanet-fetch/cache/`,
+`tools/cities/cache/`). Das neue Verzeichnis fehlt dort noch — ohne diesen
+Schritt landen ~205 gecachte JSON-Dateien im Commit. Nach Zeile 33 ergänzen:
+
+```
+tools/diyanet-index/cache/
+tools/diyanet-index/__pycache__/
+```
+
+Prüfen: `git check-ignore -v tools/diyanet-index/cache/countries.json` muss die
+neue Regel nennen.
+
+- [ ] **Step 5: Smoke-Test der Pipeline (3 Länder)**
 
 Run: `python tools/diyanet-index/build_index.py --limit 3`
 Expected: läuft ohne Traceback durch, gibt pro Land eine Zeile mit erkanntem ISO2-Code aus und schreibt das Asset. Prüfen: die Statistik nennt `name`-Treffer, und `laender_ohne_votum` ist 0 oder klein.
 
-- [ ] **Step 5: Vollauf**
+- [ ] **Step 6: Vollauf**
 
 Run: `python tools/diyanet-index/build_index.py`
 Expected: ~205 Länder, ~4 Minuten, Ausgabe „~10.000 Zeilen, ~400 KB".
@@ -473,12 +500,12 @@ Prüfen vor dem Commit:
 - `verworfen` liegt in plausibler Größenordnung (erwartet grob 1.500–2.500 — DE allein steuert ~197 bei),
 - `province-center` ist eine **kleine** Zahl (erwartet < 100). Ist sie groß, greift Stufe 3 zu breit — dann stimmt die `name == province`-Bedingung nicht mehr und der Lauf darf **nicht** committet werden.
 
-- [ ] **Step 6: Run integrity test to verify it passes**
+- [ ] **Step 7: Run integrity test to verify it passes**
 
 Run: `.\gradlew.bat :app:testOnlineDebugUnitTest --tests "*WorldIndexIntegrityTest*"`
 Expected: PASS (6 Tests), insbesondere `serdivanFindetSakarya`.
 
-- [ ] **Step 7: README schreiben**
+- [ ] **Step 8: README schreiben**
 
 `tools/diyanet-index/README.md`:
 
@@ -502,10 +529,10 @@ Adapazarı/SAKARYA).
 - Jährlich zusammen mit `tools/diyanet-fetch/fetch_diyanet.py` ausführen.
 ```
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add tools/diyanet-index app/src/online/assets/official/locations-world.tsv app/src/testOnline/kotlin/de/gebetszeiten/official/WorldIndexIntegrityTest.kt
+git add .gitignore tools/diyanet-index app/src/online/assets/official/locations-world.tsv app/src/testOnline/kotlin/de/gebetszeiten/official/WorldIndexIntegrityTest.kt
 git commit -m "feat(data): weltweiter Diyanet-Standortindex plus Pipeline"
 ```
 
@@ -670,7 +697,8 @@ git commit -m "feat: DiyanetPlaceIndex je Flavor (online Asset, offline No-op)"
 
 **Files:**
 - Modify: `app/src/online/kotlin/de/gebetszeiten/official/CompositeDiyanetFetcher.kt:54-67` (companion `create`) und `:27-39` (`fetch`, Logging)
-- Modify: `app/src/online/kotlin/de/gebetszeiten/official/DiyanetProxyFetcher.kt:26-47` (`resolveLocationId`, Logging)
+- Modify: `app/src/online/kotlin/de/gebetszeiten/official/DiyanetProxyFetcher.kt:26-52` (`resolveLocationId` Logging + private `normalize` durch `TextNormalize.normalize` ersetzen)
+- Test: `app/src/testOnline/kotlin/de/gebetszeiten/official/ProxyNameNormalizeTest.kt`
 - Test: `app/src/testOnline/kotlin/de/gebetszeiten/official/CompositeDiyanetFetcherTest.kt` (erweitern)
 
 **Interfaces:**
@@ -868,6 +896,59 @@ In `DiyanetProxyFetcher.resolveLocationId` den Leerfall protokollieren:
             android.util.Log.w("DiyanetFetch", "Namenssuche ohne Treffer fuer '$city'")
             return null
         }
+```
+
+**Zusätzlich: die unvollständige private Normalisierung ersetzen.**
+`DiyanetProxyFetcher.kt:49-52` hat eine eigene `normalize`, die nur NFD-Marken
+entfernt. Das punktlose türkische `ı` (U+0131) ist aber **nicht zerlegbar** — es
+überlebt das NFD-Strippen und wird nie auf `i` abgebildet. Mit dem echten JDK
+gegengeprüft:
+
+| Vergleich | private `normalize` | `TextNormalize.normalize` |
+|---|---|---|
+| `Şanlıurfa` ↔ `ŞANLIURFA` | **MISS** | MATCH |
+| `Niğde` ↔ `NIĞDE` | MATCH | MATCH |
+
+Der Fehlerfall ist real: `settings.city` kommt aus `cities.tsv` in türkischer
+Schreibweise („Şanlıurfa"), Diyanet listet „ŞANLIURFA" — die Namenssuche
+verfehlt den Standort, obwohl er existiert. Deshalb die private Funktion löschen
+und die bestehende, vollständige Normalisierung nutzen (die `ı`, `ş`, `ğ`, `ç`,
+`ö`, `ü`, `ß` explizit abbildet):
+
+```kotlin
+import de.gebetszeiten.data.TextNormalize
+// …
+    private fun normalize(s: String): String = TextNormalize.normalize(s)
+```
+
+Damit gilt in der ganzen App **eine** Normalisierung — auch für Nutzer, die mit
+deutscher Tastatur „sanliurfa" tippen.
+
+Test dazu in `app/src/testOnline/kotlin/de/gebetszeiten/official/`
+(neue Datei `ProxyNameNormalizeTest.kt`):
+
+```kotlin
+package de.gebetszeiten.official
+
+import de.gebetszeiten.data.TextNormalize
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/** Das punktlose tuerkische ı ist nicht NFD-zerlegbar — ohne explizite
+ *  Abbildung verfehlt die Namenssuche jeden Ort mit diesem Buchstaben. */
+class ProxyNameNormalizeTest {
+
+    @Test fun `tuerkische Schreibweise trifft die Diyanet-Grossschreibung`() {
+        assertEquals(TextNormalize.normalize("ŞANLIURFA"), TextNormalize.normalize("Şanlıurfa"))
+        assertEquals(TextNormalize.normalize("NIĞDE"), TextNormalize.normalize("Niğde"))
+        assertEquals(TextNormalize.normalize("İSTANBUL"), TextNormalize.normalize("İstanbul"))
+    }
+
+    @Test fun `deutsche Tastatur trifft ebenfalls`() {
+        assertEquals(TextNormalize.normalize("ŞANLIURFA"), TextNormalize.normalize("sanliurfa"))
+        assertEquals(TextNormalize.normalize("NIĞDE"), TextNormalize.normalize("nigde"))
+    }
+}
 ```
 
 - [ ] **Step 5: Run tests to verify they pass**
