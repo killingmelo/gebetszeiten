@@ -64,6 +64,11 @@ class DiyanetPlacesTest {
         assertEquals("Mustafakemalpaşa", DiyanetPlace(1, "MUSTAFAKEMALPAŞA", "BURSA", "TR", 40.0, 28.0).displayName())
     }
 
+    @Test fun `displayName verstuemmelt nicht-tuerkische Namen nicht`() {
+        assertEquals("Berlin", DiyanetPlace(2, "BERLIN", "BERLIN", "DE", 52.5, 13.4).displayName())
+        assertEquals("Mainz", DiyanetPlace(3, "MAINZ", "RHEINLAND-PFALZ", "DE", 50.0, 8.27).displayName())
+    }
+
     @Test fun `leere Liste ist kein Absturz`() {
         assertNull(DiyanetPlaces.nearest(emptyList(), 40.0, 30.0))
     }

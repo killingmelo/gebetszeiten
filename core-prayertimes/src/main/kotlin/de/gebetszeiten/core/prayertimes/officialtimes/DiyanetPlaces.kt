@@ -24,9 +24,14 @@ data class DiyanetPlace(
 /** Türkische Groß-/Kleinschreibung: „İSTANBUL" → „İstanbul", nicht „Istanbul". */
 private val TURKISH = Locale.forLanguageTag("tr")
 
-/** Diyanet schreibt alles groß; für die UI lesbar machen. */
-fun DiyanetPlace.displayName(): String =
-    name.lowercase(TURKISH).replaceFirstChar { it.titlecase(TURKISH) }
+/** Diyanet schreibt alles groß; für die UI lesbar machen.
+ *  Tuerkisch nur fuer tuerkische Orte: das tr-Locale braucht "İSTANBUL" (ROOT
+ *  erzeugt daraus i + Combining-Dot), verstuemmelt aber jedes ASCII-I ausserhalb
+ *  der Tuerkei ("BERLIN" -> "berlın"). */
+fun DiyanetPlace.displayName(): String {
+    val locale = if (countryCode == "TR") TURKISH else Locale.ROOT
+    return name.lowercase(locale).replaceFirstChar { it.titlecase(locale) }
+}
 
 /** Parst den Index (`id name province iso2 lat lng`, Tab-getrennt, kein
  *  Header). Defekte Zeilen werden übersprungen — ein Tippfehler im Asset darf
