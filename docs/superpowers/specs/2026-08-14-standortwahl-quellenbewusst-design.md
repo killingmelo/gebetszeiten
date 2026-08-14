@@ -58,7 +58,10 @@ und die UI hat weder Erfolgs- noch Fehleranzeige.
   **Kein Koordinatenfeld** — Geokodierung bleibt Aufgabe der Pipeline.
 - Provinz Sakarya hat genau 9 Bezirke: AKYAZI, GEYVE, HENDEK, KARASU,
   KAYNARCA, KOCAALİ, PAMUKOVA, **SAKARYA (id 9807)**, TARAKLI. Serdivan wird
-  vom Eintrag SAKARYA abgedeckt, Zentrum ca. **7 km** entfernt.
+  vom Eintrag SAKARYA abgedeckt.
+- Koordinaten (aus `cities.tsv`): Serdivan 40.77376/30.38006, der Diyanet-
+  Standort SAKARYA liegt auf Adapazarı 40.78056/30.40333 →
+  **Distanz 2,1 km** (weit innerhalb der 25-km-Schwelle).
 - `GET /api/diyanet/countries` → **205 Länder**.
 - Stichprobe der Standortzahlen (für die Index-Größe): ALMANYA 1.195,
   TÜRKİYE 867, FRANSA 530, ABD 482, HOLLANDA 279, BELCIKA 218,
@@ -87,15 +90,43 @@ Erzeugt `locations-world.tsv`. Ablauf:
 2. Pro Land `/locations?country=<name>` (Rate-Limit 1 req/s, ~4 min gesamt,
    Roh-JSON in `cache/` → resumierbar wie die bestehende Pipeline). Leere
    Antworten sind normal (z. B. Saudi-Arabien) und kein Fehler.
-3. Geokodierung jedes Standorts gegen `app/src/main/assets/cities.tsv` +
-   `city-aliases.tsv`. Die Helfer (`normalize`, Matching) werden aus
-   `tools/diyanet-fetch/fetch_diyanet.py` **importiert, nicht kopiert**.
-4. Der **ISO2-Ländercode fällt bei der Geokodierung gratis an** — er steht in
-   der getroffenen GeoNames-Zeile. Keine Handmapping-Tabelle für 205
-   türkische Ländernamen nötig.
-5. Nicht auflösbare Standorte fallen aus dem Index (mit Report der Anzahl),
-   genau wie in der DE-Pipeline. Sie verlieren nichts: für sie greift
-   weiterhin die Namenssuche als letzte Stufe.
+3. **Ländervotum statt Handmapping.** Diyanet nennt Länder auf Türkisch
+   („ALMANYA"), `cities.tsv` führt ISO2-Codes. Pro Land wird der ISO2-Code
+   gewählt, der die meisten seiner Standortnamen trifft. Das ist eindeutig,
+   nicht knapp: für TÜRKİYE gewinnt `TR` mit 826 Treffern, der Zweitplatzierte
+   (`US`) hat 5. Damit entfällt eine Handmapping-Tabelle für 205 Ländernamen —
+   **aber sie entfällt durch diesen Schritt, nicht „gratis".**
+4. **Dreistufige Geokodierung** gegen `cities.tsv` + `city-aliases.tsv`,
+   innerhalb des per Votum bestimmten Landes:
+   1. Exakter normalisierter Name (Name- und ASCII-Spalte).
+   2. Namensvarianten: Klammer-Suffix entfernen (`YENIPAZAR (A)` → `Yenipazar`)
+      und Leerzeichen entfernen (`MUSTAFA KEMALPASA` → `Mustafakemalpaşa`).
+   3. **Provinzzentrum — nur wenn der Eintrag selbst der Provinzeintrag ist**
+      (`name == province`). `cities.tsv` ist populationssortiert, der erste
+      Treffer einer `admin1`-Region ist deren größte Stadt.
+5. Alles andere fällt aus dem Index (mit Report der Anzahl), wie in der
+   DE-Pipeline. Kein Verlust: für diese Standorte greift weiterhin die
+   Namenssuche als letzte Kettenstufe.
+
+**Warum Stufe 3 streng sein MUSS** (gemessen, nicht vermutet): ohne die
+Bedingung `name == province` würde in Deutschland jeder nicht auflösbare
+Kleinort die Koordinaten der größten Stadt seines *Bundeslands* erben — ein
+bayerisches Dorf bekäme München, hunderte Kilometer daneben. Ein fehlender
+Indexeintrag ist harmlos (die Kette fällt weiter), eine falsche Koordinate
+wäre es nicht: sie würde stillschweigend die Zeiten einer fremden Stadt als
+„amtlich" ausweisen.
+
+Gemessene Ausbeute mit der strengen Regel:
+
+| Land | Standorte | per Name | per Provinzzentrum | verworfen | im Index |
+|---|---|---|---|---|---|
+| TÜRKİYE | 867 | 849 | 2 | 16 | **98,2 %** |
+| ALMANYA | 1.195 | 998 | 0 | 197 | **83,5 %** |
+
+Die zwei Provinzzentren in der Türkei sind genau die beiden Einträge, die es
+brauchen: **HATAY → Antakya** und **SAKARYA → Adapazarı** (der Eintrag, der
+Serdivan löst). Deutschlands niedrigere Quote ist unkritisch — dort greift
+ohnehin Kettenstufe 1 (gebündelte Tabellen).
 
 Ausführung: einmal jährlich zusammen mit `fetch_diyanet.py`; Ergebnis wird
 committet und reviewt.
@@ -166,7 +197,7 @@ Neuer zweiter Schritt; die Namenssuche verliert ihre Rolle als Primärweg:
 | # | Schritt | Serdivan |
 |---|---|---|
 | 1 | `BundledOfficialSource.nearestLocation` (DE, id-genau) | – |
-| 2 | **`DiyanetPlaceIndex.nearest(lat, lng, ≤25 km)`** ← neu | **9807, 7 km ✓** |
+| 2 | **`DiyanetPlaceIndex.nearest(lat, lng, ≤25 km)`** ← neu | **9807, 2,1 km ✓** |
 | 3 | `OfficialTimesCache.cachedLocationId` | – |
 | 4 | Proxy-Namenssuche (Rettung für Index-Lücken) | – |
 
@@ -192,7 +223,7 @@ Jeder Treffer trägt ein **lokal berechnetes** Badge (beide Indizes vorgewärmt,
 kein Netz pro Tastendruck):
 
 ```
-Serdivan     Sakarya · Türkei        [Amtlich · Sakarya, 7 km]
+Serdivan     Sakarya · Türkei        [Amtlich · Sakarya, 2 km]
 Nürnberg     Bayern · Deutschland    [Amtlich]
 Wien         Wien · Österreich       [Berechnet]
 ```
@@ -274,7 +305,7 @@ TDD, in der Reihenfolge der Komponenten.
 - **`OfficialAssetsIntegrityTest`:** Index parst vollständig, keine doppelten
   IDs, Koordinaten in gültigen Bereichen, und **id 9807 „SAKARYA" ist
   vorhanden** — der Regressionswächter für genau diesen Bug.
-- **Gerätecheck (manuell):** Serdivan wählen → Badge `Amtlich · Sakarya, 7 km`,
+- **Gerätecheck (manuell):** Serdivan wählen → Badge `Amtlich · Sakarya, 2 km`,
   Footer `Amtliche Diyanet-Zeiten · Sakarya`, Isha **21:36** statt 21:41.
   Screenshot. Gegenprobe Wien → `Berechnet`.
 
