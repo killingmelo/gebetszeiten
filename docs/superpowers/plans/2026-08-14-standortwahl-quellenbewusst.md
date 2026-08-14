@@ -550,7 +550,7 @@ git commit -m "feat(data): weltweiter Diyanet-Standortindex plus Pipeline"
 - Produces (identische Signatur in beiden Flavors):
   - `suspend fun DiyanetPlaceIndex.preload(context: Context)`
   - `suspend fun DiyanetPlaceIndex.nearest(context: Context, lat: Double, lng: Double): DiyanetPlace?`
-  - `suspend fun DiyanetPlaceIndex.distanceKm(context: Context, place: DiyanetPlace, lat: Double, lng: Double): Double`
+  - `fun DiyanetPlaceIndex.distanceKm(place: DiyanetPlace, lat: Double, lng: Double): Double` — **nicht** `suspend`, **kein** `Context`: die Berechnung ist reine Arithmetik auf einem bereits geladenen `DiyanetPlace`. So rufen die Code-Blöcke unten und der Konsument in Task 9 sie auf.
 
 Muster wie `OfficialTimesProvider`/`PlaceSearchProvider`: gleiche API, flavorabhängige Implementierung. Ladeschema wie `Cities` (`@Volatile`-Cache + `withContext(Dispatchers.IO)`).
 
@@ -1744,11 +1744,14 @@ git commit -m "feat(ui): letzte Orte, Autofokus, Leeren-Knopf, Koordinaten einge
 **Files:**
 - Modify: `app/src/main/kotlin/de/gebetszeiten/ui/SettingsSheet.kt`
 - Modify: `app/src/main/kotlin/de/gebetszeiten/ui/PrayerViewModel.kt`
+- Modify: `app/src/main/kotlin/de/gebetszeiten/ui/MainActivity.kt` (Aufrufstelle von `LocationSettings` — die Signatur bekommt den neuen `onRefresh`-Parameter)
 - Modify: `app/src/main/res/values/strings.xml`
 
 **Interfaces:**
 - Consumes: `OfficialTimesCache.status`, `officialStatusText` (Task 5), `DiyanetPlaceIndex.nearest` (Task 3).
-- Produces: `PrayerViewModel.refreshOfficialNow()`
+- Produces:
+  - `PrayerViewModel.refreshOfficialNow()`
+  - `internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Unit, onRefresh: () -> Unit)` — erweitert die Signatur aus Task 8 um den dritten Parameter
 
 - [ ] **Step 1: Add the refresh entry point**
 
