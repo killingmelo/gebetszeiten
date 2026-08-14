@@ -8,6 +8,9 @@ Adapazarı/SAKARYA).
     python tools/diyanet-index/build_index.py            # Vollauf (~4 min)
     python tools/diyanet-index/build_index.py --limit 3  # Smoke-Test
 
+- Unter Windows vorher `$env:PYTHONIOENCODING = "utf-8"` setzen — sonst bricht
+  die Fortschrittsausgabe an türkischen Namen wie „TÜRKİYE" mit
+  `UnicodeEncodeError` ab (cp1252 kennt kein İ).
 - Roh-JSON liegt in `cache/` → Abbruch/Neustart überspringt Geholtes.
   Für einen frischen Jahresabruf `cache/` löschen!
 - Vor dem Commit prüfen: `province-center` in der Statistik muss klein

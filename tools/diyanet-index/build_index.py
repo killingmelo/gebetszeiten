@@ -16,7 +16,6 @@ import json
 import re
 import sys
 import time
-import unicodedata
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
