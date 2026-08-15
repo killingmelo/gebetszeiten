@@ -229,7 +229,11 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, re
                 bundledName != null -> TimesSourceBadge.Bundled(bundledName)
                 else -> TimesSourceBadge.Calculated
             }
-            value = de.gebetszeiten.prayer.officialStatusText(status, source)
+            // Dieselbe Bedingung wie die Sichtbarkeit von "Jetzt aktualisieren"
+            // unten — Knopf sichtbar ⟺ Abruf-Zeilen sichtbar, kann nicht mehr
+            // auseinanderlaufen (Fix-Runde 3).
+            val canFetch = settings.useOnline && !settings.useCalculated
+            value = de.gebetszeiten.prayer.officialStatusText(status, source, canFetch)
         }
         Text(
             statusText ?: stringResource(R.string.status_loading),

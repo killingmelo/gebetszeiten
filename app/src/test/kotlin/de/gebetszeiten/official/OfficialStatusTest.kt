@@ -15,6 +15,7 @@ class OfficialStatusTest {
         val text = officialStatusText(
             OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
             source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
         )
         assertTrue(text, text.contains("Sakarya"))
         assertTrue(text, text.contains("9807"))
@@ -25,6 +26,7 @@ class OfficialStatusTest {
         val text = officialStatusText(
             OfficialStatus(null, null, now, "Kein Diyanet-Standort aufloesbar"),
             source = TimesSourceBadge.Calculated,
+            canFetch = true,
         )
         assertTrue(text, text.contains("Kein Diyanet-Standort aufloesbar"))
     }
@@ -33,6 +35,7 @@ class OfficialStatusTest {
         val text = officialStatusText(
             OfficialStatus(null, null, null, null),
             source = TimesSourceBadge.Calculated,
+            canFetch = true,
         )
         assertTrue(text, text.isNotBlank())
         assertTrue(text, text.contains("noch kein"))
@@ -46,6 +49,7 @@ class OfficialStatusTest {
         val text = officialStatusText(
             OfficialStatus(9807, LocalDate.of(2026, 12, 31), null, null),
             source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
         )
         assertTrue(text, text.contains("unbekannt"))
         assertTrue(text, !text.contains("noch kein Versuch"))
@@ -55,6 +59,7 @@ class OfficialStatusTest {
         val text = officialStatusText(
             OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
             source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
             zone = ZoneId.of("Europe/Istanbul"),
         )
         // Erwarteter Zeitstempel unabhaengig ausgerechnet (nicht mit dem
@@ -76,10 +81,12 @@ class OfficialStatusTest {
         // laesst Cache und Stempel unangetastet. Die Zeile darf trotzdem
         // nicht mehr "amtliche Diyanet-Zeiten" behaupten, wenn die
         // Klassifikation (die den tatsaechlich genutzten Pfad widerspiegelt)
-        // Calculated liefert.
+        // Calculated liefert. canFetch = false, weil useCalculated an bereits
+        // per Definition canFetch = useOnline && !useCalculated ausschliesst.
         val text = officialStatusText(
             OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
             source = TimesSourceBadge.Calculated,
+            canFetch = false,
         )
         assertTrue(text, text.contains("Quelle: eigene Berechnung (Diyanet-Methode)"))
         assertTrue(text, !text.contains("Diyanet-Zeiten"))
@@ -92,23 +99,26 @@ class OfficialStatusTest {
         // Klassifikation liefert hier ebenfalls Calculated (kein aktueller
         // Cache-Treffer, keine gebuendelte DE-Tabelle fuer diesen Ort) —
         // die Zeile muss das ehrlich wiedergeben statt den alten Stempel.
+        // canFetch = false, weil useOnline aus ist.
         val text = officialStatusText(
             OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
             source = TimesSourceBadge.Calculated,
+            canFetch = false,
         )
         assertTrue(text, text.contains("eigene Berechnung"))
         assertTrue(text, !text.contains("amtliche Diyanet-Zeiten"))
     }
 
-    @Test fun `F1c gebuendelte DE-Tabelle behauptet keinen Abruf, der nie stattfand`() {
-        // Offline-Flavor (oder DE-Ort vor dem ersten Online-Fetch): status
-        // hat NICHTS (kein locationId, keine Abdeckung, kein Versuch) — die
-        // Quelle kommt ausschliesslich aus dem Bundle. "Letzter Abruf"/
-        // "Fehler" waeren hier eine Aussage ueber ein Ereignis, das im
-        // offline-Flavor gar nicht existieren kann.
+    @Test fun `F1c gebuendelte DE-Tabelle behauptet keinen Abruf, der nie stattfand (offline-Flavor)`() {
+        // Offline-Flavor: status hat NICHTS (kein locationId, keine
+        // Abdeckung, kein Versuch) — die Quelle kommt ausschliesslich aus dem
+        // Bundle, und im offline-Flavor existiert kein Fetcher ueberhaupt
+        // (canFetch = false). "Letzter Abruf"/"Fehler" waeren hier eine
+        // Aussage ueber ein Ereignis, das gar nicht stattfinden kann.
         val text = officialStatusText(
             OfficialStatus(null, null, null, null),
             source = TimesSourceBadge.Bundled("Nürnberg"),
+            canFetch = false,
         )
         assertTrue(text, text.contains("Quelle: amtliche Diyanet-Zeiten · Nürnberg (gebündelt)"))
         assertTrue(text, !text.contains("Abruf"))
@@ -125,8 +135,64 @@ class OfficialStatusTest {
         val text = officialStatusText(
             OfficialStatus(null, LocalDate.of(2026, 12, 31), now, null),
             source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
         )
         assertTrue(text, text.contains("Quelle: amtliche Diyanet-Zeiten · Sakarya"))
         assertTrue(text, !text.contains("(ID"))
+    }
+
+    // --- Fix-Runde 3 (Re-Review nach Fix-Runde 2): die Unterdrueckung von
+    // "Letzter Abruf"/"Fehler" haengt jetzt an canFetch (ob es ueberhaupt
+    // einen Abrufmechanismus gibt), nicht mehr an `source is Bundled`. Und
+    // "Abgedeckt bis" (Abdeckung des ONLINE-CACHES) haengt an `source is
+    // Official`, nicht mehr bedingungslos an `status.coveredUntil`.
+
+    @Test fun `F-Runde3 Befund1 online-Flavor mit fehlgeschlagenem Abruf zeigt den Fehler auch wenn das Bundle traegt`() {
+        // Online-Flavor, deutscher Ort: der Abruf scheitert wiederholt, die
+        // gebuendelte DE-Tabelle traegt die Zeiten (Einordnung = Bundled).
+        // canFetch = true (useOnline an, keine eigene Berechnung) — der
+        // Fehlergrund MUSS erscheinen, sonst aendert sich die Statuszeile
+        // trotz sichtbarem "Jetzt aktualisieren"-Knopf nie (die Stille, gegen
+        // die dieser Umbau urspruenglich antrat).
+        val text = officialStatusText(
+            OfficialStatus(null, null, now, "Zeitüberschreitung beim Abruf"),
+            source = TimesSourceBadge.Bundled("Nürnberg"),
+            canFetch = true,
+        )
+        assertTrue(text, text.contains("Fehler: Zeitüberschreitung beim Abruf"))
+    }
+
+    @Test fun `F-Runde3 Befund1 offline-Flavor unterdrueckt die Abruf-Zeilen bei Bundled weiterhin`() {
+        // Gegenprobe: canFetch = false (offline-Flavor, kein Fetcher
+        // existiert) — hier bleibt die Unterdrueckung richtig, auch wenn
+        // (hypothetisch) ein Fehlergrund im Status stuende.
+        val text = officialStatusText(
+            OfficialStatus(null, null, now, "Zeitüberschreitung beim Abruf"),
+            source = TimesSourceBadge.Bundled("Nürnberg"),
+            canFetch = false,
+        )
+        assertTrue(text, !text.contains("Fehler"))
+        assertTrue(text, !text.contains("Abruf"))
+    }
+
+    @Test fun `F-Runde3 Befund2 Abgedeckt-bis nur bei Official, nicht bei Bundled mit demselben Stempel`() {
+        // status.coveredUntil beschreibt die Abdeckung des ONLINE-CACHES.
+        // Bei Bundled (die gebuendelte Tabelle traegt, der Cache ist z. B.
+        // veraltet) darf ein vergangenes "Abgedeckt bis" nicht so aussehen,
+        // als beschriebe es die gebuendelte Tabelle.
+        val coveredUntil = LocalDate.of(2026, 12, 31)
+        val bundledText = officialStatusText(
+            OfficialStatus(9807, coveredUntil, now, null),
+            source = TimesSourceBadge.Bundled("Nürnberg"),
+            canFetch = true,
+        )
+        assertTrue(bundledText, !bundledText.contains("Abgedeckt bis"))
+
+        val officialText = officialStatusText(
+            OfficialStatus(9807, coveredUntil, now, null),
+            source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
+        )
+        assertTrue(officialText, officialText.contains("Abgedeckt bis: 31.12.2026"))
     }
 }
