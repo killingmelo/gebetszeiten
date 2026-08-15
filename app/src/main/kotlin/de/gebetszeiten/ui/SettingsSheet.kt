@@ -109,7 +109,12 @@ private fun countryDisplayName(code: String): String = runCatching {
 
 /** Chips für zuletzt gewählte Orte — nur sichtbar, solange das Suchfeld leer ist. */
 @Composable
-private fun RecentPlacesRow(places: List<City>, current: String, onPick: (City) -> Unit) {
+private fun RecentPlacesRow(
+    places: List<City>,
+    currentLat: Double,
+    currentLng: Double,
+    onPick: (City) -> Unit,
+) {
     Text(
         stringResource(R.string.city_recent),
         style = MaterialTheme.typography.labelMedium,
@@ -118,7 +123,12 @@ private fun RecentPlacesRow(places: List<City>, current: String, onPick: (City) 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         places.forEach { c ->
             FilterChip(
-                selected = c.name == current,
+                // Identität über die Koordinaten, wie bei withRecentPlace:
+                // zwei gleichnamige Orte dürfen nicht beide als aktiv
+                // erscheinen. Steht der aktive Ort gar nicht in den letzten
+                // Orten, matcht keine Koordinate — dann ist schlicht kein
+                // Chip ausgewählt.
+                selected = c.latitude == currentLat && c.longitude == currentLng,
                 onClick = { onPick(c) },
                 // Gleichnamige Orte (Esenköy in Yalova und in Aydın) bekommen
                 // die Region angehängt, damit die Chips unterscheidbar bleiben.
@@ -299,7 +309,7 @@ internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> U
                     .onFocusChanged { expanded = it.isFocused },
             )
             if (city.text.isBlank() && settings.recentPlaces.isNotEmpty()) {
-                RecentPlacesRow(settings.recentPlaces, settings.city) { c ->
+                RecentPlacesRow(settings.recentPlaces, settings.latitude, settings.longitude) { c ->
                     commit {
                         copy(
                             city = c.name,
