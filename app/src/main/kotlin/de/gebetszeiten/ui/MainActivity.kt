@@ -272,9 +272,12 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
         value = if (settings.useCalculated) {
             null
         } else {
-            de.gebetszeiten.official.BundledOfficialSource
-                .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
-                ?: officialCacheName(context, settings, selectedDate)
+            // Reihenfolge spiegelt PrayerProvider.daily: Online-Cache vor
+            // gebuendelter Tabelle. Andernfalls koennte der Footer einen
+            // anderen Standort nennen als den, dessen Zeiten angezeigt werden.
+            officialCacheName(context, settings, selectedDate)
+                ?: de.gebetszeiten.official.BundledOfficialSource
+                    .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
         }
     }
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
