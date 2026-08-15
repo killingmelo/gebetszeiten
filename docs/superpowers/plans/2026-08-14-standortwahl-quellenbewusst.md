@@ -1282,19 +1282,19 @@ class TimesSourceBadgeTest {
         )
     }
 
-    @Test fun `Online-Pfad hat Vorrang vor der gebuendelten Tabelle`() {
-        // Spiegelt PrayerProvider.daily: der Online-Cache wird VOR der
-        // gebuendelten Tabelle gefragt.
+    @Test fun `gebuendelte Tabelle hat Vorrang vor dem Index`() {
+        // Spiegelt resolveLocationIdChain (Bundle vor Index). Beide meinen
+        // oft denselben Standort; das Bundle hat die bessere Schreibweise.
         assertEquals(
-            TimesSourceBadge.Official("Sakarya", 2),
+            TimesSourceBadge.Bundled("Nürnberg"),
             timesSourceBadge("Nürnberg", sakarya, 2.1, useCalculated = false),
         )
     }
 
-    @Test fun `ohne Online-Treffer greift die gebuendelte Tabelle`() {
+    @Test fun `ohne gebuendelten Treffer greift der Index`() {
         assertEquals(
-            TimesSourceBadge.Bundled("Nürnberg"),
-            timesSourceBadge("Nürnberg", null, null, useCalculated = false),
+            TimesSourceBadge.Official("Sakarya", 2),
+            timesSourceBadge(null, sakarya, 2.1, useCalculated = false),
         )
     }
 
@@ -1353,12 +1353,18 @@ sealed interface TimesSourceBadge {
 }
 
 /**
- * Klassifiziert einen Suchtreffer. Reihenfolge spiegelt `PrayerProvider.daily`:
- * Nutzerwunsch → Online-Cache/Index → gebündelte Tabelle → Berechnung.
+ * Klassifiziert einen Suchtreffer. Reihenfolge spiegelt
+ * [resolveLocationIdChain] — die Funktion, die tatsächlich entscheidet, WELCHER
+ * Diyanet-Standort abgerufen wird: Nutzerwunsch → gebündelte Tabelle → Index →
+ * Berechnung.
  *
- * ACHTUNG: Der Online-Pfad kommt VOR der gebündelten Tabelle. Ein früherer
- * Entwurf hatte es umgekehrt — das Badge hätte dann eine Quelle versprochen,
- * die die App nicht liefert.
+ * ACHTUNG, hier wurde schon zweimal falsch abgebogen: `PrayerProvider.daily`
+ * fragt zwar den Online-Cache vor der gebündelten Tabelle, aber das ist eine
+ * andere Frage — dort geht es um die ZEITEN, und der Cache enthält genau die
+ * Zeiten der ID, die zuvor aus dem Bundle kam. Für die Frage, welcher STANDORT
+ * benannt wird, gilt Bundle vor Index. Beide führen beim selben Ort oft
+ * dieselbe Diyanet-ID (Nürnberg = 11024 in beiden), aber das Bundle hat die
+ * bessere Schreibweise („Nürnberg" statt Diyanets „NURNBERG").
  */
 fun timesSourceBadge(
     bundledName: String?,
@@ -1367,9 +1373,9 @@ fun timesSourceBadge(
     useCalculated: Boolean,
 ): TimesSourceBadge = when {
     useCalculated -> TimesSourceBadge.Calculated
+    bundledName != null -> TimesSourceBadge.Bundled(bundledName)
     officialPlace != null && distanceKm != null ->
         TimesSourceBadge.Official(officialPlace.displayName(), distanceKm.roundToInt())
-    bundledName != null -> TimesSourceBadge.Bundled(bundledName)
     else -> TimesSourceBadge.Calculated
 }
 ```
