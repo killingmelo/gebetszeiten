@@ -272,12 +272,15 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
         value = if (settings.useCalculated) {
             null
         } else {
-            // Reihenfolge spiegelt PrayerProvider.daily: Online-Cache vor
-            // gebuendelter Tabelle. Andernfalls koennte der Footer einen
-            // anderen Standort nennen als den, dessen Zeiten angezeigt werden.
-            officialCacheName(context, settings, selectedDate)
-                ?: de.gebetszeiten.official.BundledOfficialSource
-                    .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
+            // Reihenfolge spiegelt resolveLocationIdChain (Bundle vor Index) —
+            // die Kette, die entscheidet, WELCHER Diyanet-Standort geholt wird.
+            // NICHT PrayerProvider.daily: dort geht es um die ZEITEN, und der
+            // Online-Cache enthaelt genau die Zeiten der ID aus dem Bundle.
+            // Beide Quellen fuehren denselben Ort (Nuernberg = 11024 in beiden),
+            // aber das Bundle schreibt ihn richtig ("Nürnberg" statt "NURNBERG").
+            de.gebetszeiten.official.BundledOfficialSource
+                .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
+                ?: officialCacheName(context, settings, selectedDate)
         }
     }
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
