@@ -1,0 +1,4 @@
+• Official Diyanet times now also for places without their own Diyanet entry
+• Place search shows which source a place will use
+• New status line: source, coverage, last fetch, error reason
+• Recent places, search field with focus and clear button

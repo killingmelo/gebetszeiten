@@ -1,0 +1,4 @@
+• Amtliche Diyanet-Zeiten jetzt auch für Orte ohne eigenen Diyanet-Eintrag
+• Ortssuche zeigt vorab, welche Quelle ein Ort liefert
+• Neue Statuszeile: Quelle, Abdeckung, letzter Abruf, Fehlergrund
+• Zuletzt gewählte Orte, Suchfeld mit Fokus und Löschknopf

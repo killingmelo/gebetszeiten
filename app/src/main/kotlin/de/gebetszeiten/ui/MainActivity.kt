@@ -48,6 +48,8 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -163,8 +165,10 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
     val settings by viewModel.settings.collectAsState()
     var tab by rememberSaveable { mutableStateOf(Tab.HEUTE) }
     var showSettings by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(when (tab) { Tab.HEUTE -> settings.city; Tab.MONAT -> stringResource(R.string.tab_month); Tab.QIBLA -> stringResource(R.string.tab_qibla) }) },
@@ -199,7 +203,7 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
         },
     ) { inner ->
         when (tab) {
-            Tab.HEUTE -> HeuteContent(inner, settings)
+            Tab.HEUTE -> HeuteContent(inner, settings, snackbarHostState)
             Tab.MONAT -> MonatScreen(inner, settings)
             Tab.QIBLA -> QiblaScreen(inner, settings)
         }
@@ -224,7 +228,11 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
 }
 
 @Composable
-private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
+private fun HeuteContent(
+    inner: PaddingValues,
+    settings: AppSettings,
+    snackbarHostState: SnackbarHostState,
+) {
     val context = LocalContext.current
     val zone = ZoneId.systemDefault()
 
@@ -265,6 +273,21 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
                 ?: officialCacheName(context, settings, selectedDate)
         }
     }
+
+    // Nur beim WECHSEL melden, nicht bei jedem Start — sonst ist es Lärm.
+    // lastReported startet null, deshalb loest der erste beobachtete Wert
+    // (App-Start) keine Meldung aus, ein spaeterer Ortswechsel schon.
+    var lastReported by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(officialName) {
+        val name = officialName
+        if (name != null && lastReported != null && name != lastReported) {
+            snackbarHostState.showSnackbar(
+                context.getString(R.string.snackbar_official_loaded, name),
+            )
+        }
+        lastReported = name
+    }
+
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Column(

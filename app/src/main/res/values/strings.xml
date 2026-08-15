@@ -34,6 +34,7 @@
     <string name="data_credit">Städtedaten: GeoNames (CC BY 4.0) · Berechnung: Diyanet-Methode (offline)</string>
     <string name="data_credit_official">Amtliche Diyanet-Zeiten · %1$s</string>
     <string name="data_credit_calculated">Berechnet · Diyanet-Methode</string>
+    <string name="snackbar_official_loaded">Amtliche Zeiten für %1$s geladen</string>
 
     <!-- Qibla -->
     <string name="qibla_bearing">%1$d° · %2$s</string>
