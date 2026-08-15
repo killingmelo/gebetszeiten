@@ -126,6 +126,9 @@
     <string name="city_searching_online">Online-Suche…</string>
     <string name="city_results_online">Online gefunden (Open-Meteo/GeoNames):</string>
     <string name="city_suggestions_toggle">Ortsvorschläge ein- oder ausblenden</string>
+    <string name="badge_bundled">Amtlich · %1$s</string>
+    <string name="badge_official">Amtlich · %1$s, %2$d km</string>
+    <string name="badge_calculated">Berechnet</string>
     <string name="settings_latitude">Breite</string>
     <string name="settings_longitude">Länge</string>
     <string name="settings_coordinate_error">Gültige Werte: Breite -90 bis 90, Länge -180 bis 180.</string>

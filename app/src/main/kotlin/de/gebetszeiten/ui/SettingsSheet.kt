@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -62,7 +63,9 @@ import de.gebetszeiten.data.Cities
 import de.gebetszeiten.data.City
 import de.gebetszeiten.official.OfficialTimesProvider
 import de.gebetszeiten.places.PlaceSearchProvider
+import de.gebetszeiten.prayer.TimesSourceBadge
 import de.gebetszeiten.prayer.labelRes
+import de.gebetszeiten.prayer.timesSourceBadge
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import java.util.Locale
@@ -128,8 +131,12 @@ internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> U
         lat.toDoubleOrNull() != settings.latitude || lng.toDoubleOrNull() != settings.longitude
 
     // Die Städteliste einmalig vorwärmen — sonst hängt die allererste
-    // Suche still an der TSV-Parse-Latenz (33k Zeilen).
-    LaunchedEffect(Unit) { Cities.preload(context) }
+    // Suche still an der TSV-Parse-Latenz (33k Zeilen). Der Diyanet-Index
+    // (online-Flavor) ebenso, sonst hängt die erste Badge-Berechnung.
+    LaunchedEffect(Unit) {
+        Cities.preload(context)
+        de.gebetszeiten.official.DiyanetPlaceIndex.preload(context)
+    }
 
     LaunchedEffect(city.text, expanded) {
         if (expanded && city.text.isNotBlank()) {
@@ -216,6 +223,25 @@ internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> U
             // Lokale Treffer haben Vorrang; Online-Treffer erscheinen nur,
             // wenn die gebündelte Liste leer ausgeht (mit Quellen-Hinweis).
             val shownMatches = matches.ifEmpty { onlineMatches }
+            // Quelle pro Treffer: beide Indizes sind vorgewärmt, das läuft
+            // ohne Netz und ohne merkbare Verzögerung.
+            val badges by produceState(emptyMap<String, TimesSourceBadge>(), shownMatches, settings.useCalculated) {
+                value = shownMatches.associate { c ->
+                    val key = "${c.name}|${c.latitude}|${c.longitude}"
+                    val bundled = de.gebetszeiten.official.BundledOfficialSource
+                        .nearestLocation(context, c.latitude, c.longitude)?.name
+                    val place = de.gebetszeiten.official.DiyanetPlaceIndex
+                        .nearest(context, c.latitude, c.longitude)
+                    key to timesSourceBadge(
+                        bundledName = bundled,
+                        officialPlace = place,
+                        distanceKm = place?.let {
+                            de.gebetszeiten.official.DiyanetPlaceIndex.distanceKm(it, c.latitude, c.longitude)
+                        },
+                        useCalculated = settings.useCalculated,
+                    )
+                }
+            }
             if (expanded && !searching && !searchingOnline && shownMatches.isNotEmpty()) {
                 if (matches.isEmpty()) {
                     Text(
@@ -238,6 +264,25 @@ internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> U
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
+                                        val badge = badges["${c.name}|${c.latitude}|${c.longitude}"]
+                                        if (badge != null) {
+                                            Text(
+                                                when (badge) {
+                                                    is TimesSourceBadge.Bundled ->
+                                                        stringResource(R.string.badge_bundled, badge.locationName)
+                                                    is TimesSourceBadge.Official ->
+                                                        stringResource(R.string.badge_official, badge.locationName, badge.distanceKm)
+                                                    TimesSourceBadge.Calculated ->
+                                                        stringResource(R.string.badge_calculated)
+                                                },
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (badge is TimesSourceBadge.Calculated) {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                } else {
+                                                    MaterialTheme.colorScheme.primary
+                                                },
+                                            )
+                                        }
                                     }
                                 },
                                 onClick = {
