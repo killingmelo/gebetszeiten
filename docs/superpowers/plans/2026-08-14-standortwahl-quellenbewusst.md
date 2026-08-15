@@ -1274,10 +1274,19 @@ class TimesSourceBadgeTest {
         )
     }
 
-    @Test fun `gebuendelte Tabelle hat Vorrang vor dem Index`() {
+    @Test fun `Online-Pfad hat Vorrang vor der gebuendelten Tabelle`() {
+        // Spiegelt PrayerProvider.daily: der Online-Cache wird VOR der
+        // gebuendelten Tabelle gefragt.
+        assertEquals(
+            TimesSourceBadge.Official("Sakarya", 2),
+            timesSourceBadge("Nürnberg", sakarya, 2.1, useCalculated = false),
+        )
+    }
+
+    @Test fun `ohne Online-Treffer greift die gebuendelte Tabelle`() {
         assertEquals(
             TimesSourceBadge.Bundled("Nürnberg"),
-            timesSourceBadge("Nürnberg", sakarya, 2.1, useCalculated = false),
+            timesSourceBadge("Nürnberg", null, null, useCalculated = false),
         )
     }
 
@@ -1337,7 +1346,11 @@ sealed interface TimesSourceBadge {
 
 /**
  * Klassifiziert einen Suchtreffer. Reihenfolge spiegelt `PrayerProvider.daily`:
- * Nutzerwunsch → gebündelte Tabelle → Index/Abruf → Berechnung.
+ * Nutzerwunsch → Online-Cache/Index → gebündelte Tabelle → Berechnung.
+ *
+ * ACHTUNG: Der Online-Pfad kommt VOR der gebündelten Tabelle. Ein früherer
+ * Entwurf hatte es umgekehrt — das Badge hätte dann eine Quelle versprochen,
+ * die die App nicht liefert.
  */
 fun timesSourceBadge(
     bundledName: String?,
@@ -1346,9 +1359,9 @@ fun timesSourceBadge(
     useCalculated: Boolean,
 ): TimesSourceBadge = when {
     useCalculated -> TimesSourceBadge.Calculated
-    bundledName != null -> TimesSourceBadge.Bundled(bundledName)
     officialPlace != null && distanceKm != null ->
         TimesSourceBadge.Official(officialPlace.displayName(), distanceKm.roundToInt())
+    bundledName != null -> TimesSourceBadge.Bundled(bundledName)
     else -> TimesSourceBadge.Calculated
 }
 ```
