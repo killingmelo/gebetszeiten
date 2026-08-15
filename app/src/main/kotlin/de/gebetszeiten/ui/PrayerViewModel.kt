@@ -53,9 +53,11 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
      *  Fehlergrund in den Cache, den die Statuszeile liest. */
     fun refreshOfficialNow() {
         viewModelScope.launch {
-            val value = repository.current()
-            PrayerProvider.refreshOfficial(getApplication(), value)
-            reschedule(value)
+            // reschedule() ruft refreshOfficial() bereits selbst auf; ein
+            // zusaetzlicher Aufruf davor waere bei einem Fehlschlag ein
+            // zweiter echter Netzversuch (zusammen bis zu ~50 s) — und
+            // gedrueckt wird der Knopf gerade dann, wenn es vorher hakte.
+            reschedule(repository.current())
             _officialRefreshes.value += 1 // erst NACH getaner Arbeit — Erfolg wie Fehlschlag zaehlen
         }
     }
