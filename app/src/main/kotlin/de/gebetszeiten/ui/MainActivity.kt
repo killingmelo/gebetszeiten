@@ -271,6 +271,11 @@ private fun HeuteContent(
         }
     }
 
+    // stringResource statt context.getString: Lint verbietet
+    // Ressourcenzugriffe ueber LocalContext.current in Compose
+    // (LocalContextGetResourceValueCall). Die Vorlage wird bei der
+    // Komposition geholt, der Ortsname erst im Effekt eingesetzt.
+    val snackbarTemplate = stringResource(R.string.snackbar_official_loaded)
     // Nur beim WECHSEL melden, nicht bei jedem Start — sonst ist es Lärm.
     // lastReported startet null, deshalb loest der erste beobachtete Wert
     // (App-Start) keine Meldung aus, ein spaeterer Ortswechsel schon.
@@ -278,9 +283,7 @@ private fun HeuteContent(
     LaunchedEffect(officialName) {
         val name = officialName
         if (name != null && lastReported != null && name != lastReported) {
-            snackbarHostState.showSnackbar(
-                context.getString(R.string.snackbar_official_loaded, name),
-            )
+            snackbarHostState.showSnackbar(snackbarTemplate.format(name))
         }
         lastReported = name
     }
