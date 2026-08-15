@@ -982,7 +982,7 @@ git commit -m "fix: Diyanet-ID ueber Koordinatenindex statt Namenssuche aufloese
   - `data class OfficialStatus(val locationId: Int?, val coveredUntil: LocalDate?, val lastAttemptEpochMs: Long?, val lastError: String?)`
   - `suspend fun OfficialTimesCache.status(lat: Double, lng: Double): OfficialStatus`
   - `suspend fun OfficialTimesCache.recordAttempt(error: String?, nowEpochMs: Long, lat: Double, lng: Double)` — `error = null` heißt Erfolg. Der Versuch trägt seinen EIGENEN Ort: der Erfolgsstempel wird nur von `putAll` gesetzt, ein Fehlschlag würde sonst dem vorherigen Ort zugeschrieben.
-  - `fun officialStatusText(status: OfficialStatus, sourceName: String?, zone: ZoneId = ZoneId.systemDefault()): String` in `prayer/OfficialStatusText.kt` — Zone als Parameter, damit die Funktion vollständig deterministisch und ohne versteckte Umgebungsabhängigkeit testbar ist
+  - `fun officialStatusText(status: OfficialStatus, source: TimesSourceBadge, zone: ZoneId = ZoneId.systemDefault()): String` in `prayer/OfficialStatusText.kt` — die aktive Quelle wird **klassifiziert übergeben**, nicht aus dem Cache erraten. Die Einordnung spiegelt `PrayerProvider.daily` (Nutzerwunsch → Online-Cache → gebündelte Tabelle → Berechnung). Zone als Parameter, damit die Funktion deterministisch testbar bleibt.
 
 `recordAttempt` bekommt die Zeit **übergeben** statt `System.currentTimeMillis()` intern zu lesen — sonst ist die Textformatierung nicht testbar.
 
