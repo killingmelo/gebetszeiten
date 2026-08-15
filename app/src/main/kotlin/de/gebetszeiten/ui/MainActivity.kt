@@ -109,6 +109,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import de.gebetszeiten.R
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
 import de.gebetszeiten.core.prayertimes.Prayer
+import de.gebetszeiten.core.prayertimes.officialtimes.displayName
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.data.Cities
 import de.gebetszeiten.data.City
@@ -267,16 +268,13 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
         val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone).fajr
         value = DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr), nextFajr)
     }
-    val officialName by produceState<String?>(null, settings, selectedDate) {
+    val officialName by produceState<String?>(null, settings, selectedDate, tick) {
         value = if (settings.useCalculated) {
             null
         } else {
             de.gebetszeiten.official.BundledOfficialSource
                 .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
-                ?: settings.city.takeIf {
-                    settings.useOnline &&
-                        de.gebetszeiten.official.OfficialTimesCache(context).get(selectedDate, settings.latitude, settings.longitude) != null
-                }
+                ?: officialCacheName(context, settings, selectedDate)
         }
     }
     var karahaInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -327,6 +325,24 @@ private fun HeuteContent(inner: PaddingValues, settings: AppSettings) {
             text = { Text(text) },
         )
     }
+}
+
+/** Name des Standorts, dessen gecachte amtliche Zeiten gerade greifen — oder
+ *  null, wenn kein Cache-Treffer vorliegt. Der Name kommt aus dem
+ *  Diyanet-Index (echter Standort, z. B. „Sakarya" für Serdivan) und fällt
+ *  auf den Ortsnamen der Einstellungen zurück. */
+private suspend fun officialCacheName(
+    context: android.content.Context,
+    settings: AppSettings,
+    date: java.time.LocalDate,
+): String? {
+    if (!settings.useOnline) return null
+    // Kein Cache-Treffer = keine amtlichen Zeiten fuer diesen Tag.
+    de.gebetszeiten.official.OfficialTimesCache(context)
+        .get(date, settings.latitude, settings.longitude) ?: return null
+    val place = de.gebetszeiten.official.DiyanetPlaceIndex
+        .nearest(context, settings.latitude, settings.longitude)
+    return place?.displayName() ?: settings.city
 }
 
 @Composable
