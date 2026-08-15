@@ -52,14 +52,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
     /** Manueller Abruf aus den Einstellungen — schreibt Zeitstempel und
      *  Fehlergrund in den Cache, den die Statuszeile liest. */
     fun refreshOfficialNow() {
-        viewModelScope.launch {
-            // reschedule() ruft refreshOfficial() bereits selbst auf; ein
-            // zusaetzlicher Aufruf davor waere bei einem Fehlschlag ein
-            // zweiter echter Netzversuch (zusammen bis zu ~50 s) — und
-            // gedrueckt wird der Knopf gerade dann, wenn es vorher hakte.
-            reschedule(repository.current())
-            _officialRefreshes.value += 1 // erst NACH getaner Arbeit — Erfolg wie Fehlschlag zaehlen
-        }
+        viewModelScope.launch { reschedule(repository.current()) }
     }
 
     private suspend fun reschedule(value: AppSettings) {
@@ -84,5 +77,10 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         )
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)
+        // Zaehler hier, nicht in refreshOfficialNow: JEDER abgeschlossene
+        // Durchlauf soll die Statuszeile neu lesen lassen — auch der nach
+        // einem Ortswechsel (save() -> reschedule()), sonst bleibt dort
+        // "noch kein Versuch" stehen, nachdem der Abruf laengst durch ist.
+        _officialRefreshes.value += 1
     }
 }
