@@ -53,6 +53,11 @@ Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
   **Löschung entfällt** (es wird nichts serverseitig gespeichert, was der
   App zuordenbar wäre — Antwort: Daten werden nicht gespeichert).
 - Abschnitt 5: Upload-Datei ist ab jetzt das **online**-Bundle.
+- **Stand 0.1.20 — keine Änderung nötig.** Der neue weltweite Standortindex ist
+  ein *gebündeltes* Asset, kein zusätzlicher Abruf: die Netz-Endpunkte sind
+  unverändert dieselben drei (diyanet.gov.tr, der Fallback-Proxy,
+  open-meteo für die Ortssuche). Datentyp, Zweck und alle Antworten oben
+  bleiben also wie sie sind.
 
 **Inhaltseinstufung (Content Rating, IARC):**
 - Kategorie: „Referenz, Nachrichten oder Bildung" bzw. „Dienstprogramm".
@@ -65,6 +70,17 @@ haben Zusatzauflagen). Werbung: **keine**.
 **Staatliche App / Finanz-App / Gesundheits-App:** jeweils Nein.
 
 ### 5. Releases hochladen
+
+**Stand dieses Release: 0.1.20 (versionCode 21).** Nur das **Phone**-Bundle ist
+neu. Das `wear/`-Modul wurde in diesem Umbau nicht angefasst — sein Bundle
+(versionCode 1015) ist unverändert gültig und muss **nicht** erneut hochgeladen
+werden. Neu bauen falls nötig: `.\gradlew.bat :app:bundleOnlineRelease`.
+
+Vor dem Upload geprüft: 252 Unit-Tests grün, `lintOnlineRelease` **0 Fehler**
+(nicht nur `lintVital` — der volle Lint hatte einen Compose-Fehler gefunden,
+den der Release-Build allein durchgelassen hätte), Bundle signiert mit
+`keystore/gebetszeiten.jks`, Standortindex im Bundle enthalten.
+
 - **Produktion (bzw. zuerst geschlossener Test)** →
   `app/build/outputs/bundle/onlineRelease/app-online-release.aab` (aktueller Stand laut git tag).
 - **Wear OS Form-Faktor:** unter „Releases" den Wear-Track aktivieren
