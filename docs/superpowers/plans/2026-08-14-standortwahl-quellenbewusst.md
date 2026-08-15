@@ -1653,10 +1653,22 @@ fun parseRecentPlaces(text: String?): List<City> =
         City(c[0], c[1], lat, lng, c[4].ifBlank { null })
     }?.toList() ?: emptyList()
 
-/** [added] nach vorn, Duplikate (Name + Land) entfernt, auf [max] gekürzt. */
+/** [added] nach vorn, Duplikate entfernt, auf [max] gekürzt. Identität über die
+ *  KOORDINATEN, nicht über den Namen: gleichnamige Orte gibt es wirklich
+ *  (Esenköy in Yalova und in Aydın — genau dafür hat `City` ein `region`-Feld). */
 fun withRecentPlace(existing: List<City>, added: City, max: Int = 5): List<City> =
-    (listOf(added) + existing.filterNot { it.name == added.name && it.country == added.country })
-        .take(max)
+    (listOf(added) + existing.filterNot {
+        it.latitude == added.latitude && it.longitude == added.longitude
+    }).take(max)
+
+/** Chip-Beschriftung: der bloße Name, außer ein anderer Eintrag heißt genauso —
+ *  dann mit Region, damit die Chips unterscheidbar bleiben. */
+fun recentPlaceLabel(place: City, all: List<City>): String =
+    if (all.count { it.name == place.name } > 1 && !place.region.isNullOrBlank()) {
+        "${place.name} · ${place.region}"
+    } else {
+        place.name
+    }
 ```
 
 - [ ] **Step 4: Wire the field into settings**
