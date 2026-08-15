@@ -66,6 +66,7 @@ import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.data.Cities
 import de.gebetszeiten.data.City
+import de.gebetszeiten.data.recentPlaceLabel
 import de.gebetszeiten.data.withRecentPlace
 import de.gebetszeiten.official.OfficialTimesProvider
 import de.gebetszeiten.places.PlaceSearchProvider
@@ -119,7 +120,9 @@ private fun RecentPlacesRow(places: List<City>, current: String, onPick: (City) 
             FilterChip(
                 selected = c.name == current,
                 onClick = { onPick(c) },
-                label = { Text(c.name) },
+                // Gleichnamige Orte (Esenköy in Yalova und in Aydın) bekommen
+                // die Region angehängt, damit die Chips unterscheidbar bleiben.
+                label = { Text(recentPlaceLabel(c, places)) },
             )
         }
     }
