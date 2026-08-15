@@ -1115,7 +1115,15 @@ fun officialStatusText(status: OfficialStatus, sourceName: String?, nowEpochMs: 
     }
     status.coveredUntil?.let { lines += "Abgedeckt bis: ${DATE.format(it)}" }
     if (status.lastAttemptEpochMs == null) {
-        lines += "Letzter Abruf: noch kein Versuch"
+        // "noch kein Versuch" nur, wenn es auch keinerlei Beleg fuer einen
+        // frueheren Abruf gibt. Liegen Standort oder Abdeckung vor, hat es
+        // sehr wohl einen gegeben — seine Aufzeichnung wurde nur vom Versuch
+        // fuer einen anderen Ort verdraengt (ein Datensatz fuer alle Orte).
+        lines += if (status.locationId != null || status.coveredUntil != null) {
+            "Letzter Abruf: unbekannt"
+        } else {
+            "Letzter Abruf: noch kein Versuch"
+        }
     } else {
         val stamp = STAMP.format(Instant.ofEpochMilli(status.lastAttemptEpochMs).atZone(zone))
         lines += "Letzter Abruf: $stamp"

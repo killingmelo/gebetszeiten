@@ -37,6 +37,19 @@ class OfficialStatusTest {
         assertTrue(text, text.contains("noch kein"))
     }
 
+    @Test fun `mit Abdeckung aber ohne Versuchsdatensatz heisst es unbekannt statt noch kein Versuch`() {
+        // Standort/Abdeckung belegen einen frueheren Erfolg, aber der
+        // Versuchsdatensatz wurde von einem Abruf an einem anderen Ort
+        // verdraengt (ein Datensatz fuer alle Orte, siehe Fix-Runde 1).
+        // "noch kein Versuch" waere hier eine Falschaussage.
+        val text = officialStatusText(
+            OfficialStatus(9807, LocalDate.of(2026, 12, 31), null, null),
+            sourceName = "Sakarya",
+        )
+        assertTrue(text, text.contains("unbekannt"))
+        assertTrue(text, !text.contains("noch kein Versuch"))
+    }
+
     @Test fun `Zeitstempel wird in der uebergebenen Zone formatiert`() {
         val text = officialStatusText(
             OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
