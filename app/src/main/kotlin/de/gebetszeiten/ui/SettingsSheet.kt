@@ -77,6 +77,8 @@ import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.prayer.timesSourceBadge
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.roundToInt
+import java.time.LocalDate
 import java.util.Locale
 
 @Composable
@@ -204,12 +206,30 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, re
             // hier den ALTEN Text stehen lassen und ihn faelschlich als
             // Ergebnis des Klicks ausgeben.
             value = null
+            val lat = settings.latitude
+            val lng = settings.longitude
+            val today = LocalDate.now()
             val cache = de.gebetszeiten.official.OfficialTimesCache(context)
-            val status = cache.status(settings.latitude, settings.longitude)
-            val name = de.gebetszeiten.official.DiyanetPlaceIndex
-                .nearest(context, settings.latitude, settings.longitude)
-                ?.displayName()
-            value = de.gebetszeiten.prayer.officialStatusText(status, name)
+            val status = cache.status(lat, lng)
+            // Spiegelt PrayerProvider.daily — die Funktion, die entscheidet, welche
+            // ZEITEN gezeigt werden. Nicht timesSourceBadge: das beantwortet die
+            // andere Frage ("was wuerde dieser Ort liefern").
+            val bundledName = de.gebetszeiten.official.BundledOfficialSource.locationNameFor(context, lat, lng, today)
+            val cached = if (settings.useOnline) cache.get(today, lat, lng) else null
+            val indexPlace = de.gebetszeiten.official.DiyanetPlaceIndex.nearest(context, lat, lng)
+            val source: TimesSourceBadge = when {
+                settings.useCalculated -> TimesSourceBadge.Calculated
+                // 1) Online-Cache — Name bevorzugt aus dem Bundle (bessere Schreibweise),
+                //    sonst aus dem Index, sonst der Ortsname der Einstellungen.
+                cached != null -> TimesSourceBadge.Official(
+                    bundledName ?: indexPlace?.displayName() ?: settings.city,
+                    indexPlace?.let { de.gebetszeiten.official.DiyanetPlaceIndex.distanceKm(it, lat, lng).roundToInt() } ?: 0,
+                )
+                // 2) Gebuendelte Tabelle.
+                bundledName != null -> TimesSourceBadge.Bundled(bundledName)
+                else -> TimesSourceBadge.Calculated
+            }
+            value = de.gebetszeiten.prayer.officialStatusText(status, source)
         }
         Text(
             statusText ?: stringResource(R.string.status_loading),
@@ -278,10 +298,12 @@ internal fun LocationSettings(
 
     // Die Städteliste einmalig vorwärmen — sonst hängt die allererste
     // Suche still an der TSV-Parse-Latenz (33k Zeilen). Der Diyanet-Index
-    // (online-Flavor) ebenso, sonst hängt die erste Badge-Berechnung.
+    // (online-Flavor) und die gebündelte DE-Tabelle (im offline-Flavor die
+    // EINZIGE Badge-Quelle) ebenso, sonst hängt die erste Badge-Berechnung.
     LaunchedEffect(Unit) {
         Cities.preload(context)
         de.gebetszeiten.official.DiyanetPlaceIndex.preload(context)
+        de.gebetszeiten.official.BundledOfficialSource.preload(context)
     }
 
     LaunchedEffect(city.text, expanded) {
@@ -392,10 +414,19 @@ internal fun LocationSettings(
             // Quelle pro Treffer: beide Indizes sind vorgewärmt, das läuft
             // ohne Netz und ohne merkbare Verzögerung.
             val badges by produceState(emptyMap<String, TimesSourceBadge>(), shownMatches, settings.useCalculated) {
+                // F8: bei Schluesselwechsel (z. B. Toggle "Eigene Berechnung")
+                // zuruecksetzen — sonst blitzen kurz die Badges des vorherigen
+                // Zustands auf, genau der Fehler, den SourceStatusSection oben
+                // schon per "value = null" vermeidet.
+                value = emptyMap()
                 value = shownMatches.associate { c ->
                     val key = "${c.name}|${c.latitude}|${c.longitude}"
+                    // F3: wie im Footer datumsabhaengig pruefen (locationNameFor),
+                    // nicht nur den naechsten Standort (nearestLocation) — die
+                    // gebuendelten Tabellen sind nur fuer 2026 befuellt, ab 2027
+                    // waere sonst jeder deutsche Ort faelschlich "Amtlich".
                     val bundled = de.gebetszeiten.official.BundledOfficialSource
-                        .nearestLocation(context, c.latitude, c.longitude)?.name
+                        .locationNameFor(context, c.latitude, c.longitude, LocalDate.now())
                     val place = de.gebetszeiten.official.DiyanetPlaceIndex
                         .nearest(context, c.latitude, c.longitude)
                     key to timesSourceBadge(

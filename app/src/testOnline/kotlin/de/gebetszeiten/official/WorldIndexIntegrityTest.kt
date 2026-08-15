@@ -61,4 +61,22 @@ class WorldIndexIntegrityTest {
                     places.any { it.countryCode == cc && it.name.equals(name, ignoreCase = true) })
             }
     }
+
+    // Die folgenden zwei Tests stammten urspruenglich aus DiyanetPlaceIndexTest.kt
+    // (F6, Fix-Runde 2): jene Klasse testete nie DiyanetPlaceIndex selbst, sondern
+    // dieselbe Datei ueber denselben Parser wie hier — mit eigenem, dupliziertem
+    // Loader. Die beiden tatsaechlich neuen Aussagen (nearest() ueber echte
+    // Koordinaten statt reiner Namens-Mitgliedschaft) wandern hierher, der Rest
+    // der Klasse wurde geloescht.
+
+    @Test fun nuernbergLoestAufEinenDeutschenStandortAuf() {
+        val hit = DiyanetPlaces.nearest(places, 49.4521, 11.0767)
+        assertEquals("DE", hit?.countryCode)
+    }
+
+    @Test fun wienLiegtInKeinem25KmRadiusEinesTuerkischenStandorts() {
+        val hit = DiyanetPlaces.nearest(places, 48.2082, 16.3738)
+        // Wien selbst kann ein Diyanet-Standort sein; wenn ja, dann als AT.
+        assertTrue("unerwartet: $hit", hit == null || hit.countryCode == "AT")
+    }
 }

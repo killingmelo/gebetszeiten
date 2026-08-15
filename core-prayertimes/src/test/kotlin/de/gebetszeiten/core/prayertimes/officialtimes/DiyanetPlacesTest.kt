@@ -58,6 +58,38 @@ class DiyanetPlacesTest {
         assertEquals(sakarya, DiyanetPlaces.nearest(places, 40.77376, 30.38006, maxKm = 3.0))
     }
 
+    @Test fun `nearest zaehlt eine Distanz exakt an der Schwelle noch als Treffer (kleiner-gleich, nicht kleiner)`() {
+        // Bisher wurden nur test-eigene Schwellen (1.0, 3.0) geprueft, nie die
+        // tatsaechlich ausgelieferte Konstante (Standard-maxKm = 25.0). Ziel
+        // ist speziell die Grenze selbst: eine Implementierung, die versehentlich
+        // `< maxKm` statt `<= maxKm` prueft, wuerde einen Treffer GENAU an der
+        // Schwelle faelschlich verwerfen.
+        //
+        // Ziel- und Kandidatenpunkt liegen auf demselben Meridian (gleiche
+        // Laenge) — dafuer reduziert sich die haversine-Formel exakt auf den
+        // Erdradius mal Breitenwinkel, ohne Naeherung. Die Distanz wird nicht
+        // geschaetzt, sondern direkt ueber distanceKm() derselben Produktions-
+        // formel ausgelesen, die nearest() intern verwendet — kein zweiter,
+        // moeglicherweise abweichender Rechenweg.
+        val ziel = DiyanetPlace(1, "GRENZTEST", "GRENZTEST", "DE", 50.0, 10.0)
+        val deltaLatGrad = Math.toDegrees(25.0 / 6371.0) // ~ die produktiv genutzte 25-km-Schwelle
+        val kandidatLat = ziel.latitude + deltaLatGrad
+        val distanz = DiyanetPlaces.distanceKm(ziel, kandidatLat, ziel.longitude)
+        assertTrue("Konstruktion liegt nicht bei ~25 km: $distanz km", distanz in 24.9..25.1)
+
+        // Exakt an der (selbst ausgelesenen) Distanz als maxKm: muss ein Treffer
+        // sein. `<` statt `<=` würde hier durchfallen.
+        assertEquals(
+            ziel,
+            DiyanetPlaces.nearest(listOf(ziel), kandidatLat, ziel.longitude, maxKm = distanz),
+        )
+        // Der naechste darstellbare Double darunter darf keinen Treffer mehr liefern —
+        // die andere Seite der Grenze.
+        assertNull(
+            DiyanetPlaces.nearest(listOf(ziel), kandidatLat, ziel.longitude, maxKm = Math.nextDown(distanz)),
+        )
+    }
+
     @Test fun `displayName macht aus Schreiaufschrift lesbare Namen`() {
         assertEquals("Sakarya", sakarya.displayName())
         assertEquals("İstanbul", DiyanetPlace(9541, "İSTANBUL", "İSTANBUL", "TR", 41.0, 29.0).displayName())

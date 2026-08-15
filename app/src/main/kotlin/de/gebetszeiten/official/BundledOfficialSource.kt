@@ -23,6 +23,14 @@ object BundledOfficialSource {
     @Volatile private var locations: List<OfficialLocation>? = null
     @Volatile private var tables: Map<String, Map<LocalDate, SixTimes>> = emptyMap()
 
+    /** Vorab laden (beim Öffnen der Einstellungen), damit die erste
+     *  Badge-Berechnung nicht an der TSV-Parse-Latenz hängt — analog
+     *  [DiyanetPlaceIndex.preload]. Wärmt nur die Standortliste (die
+     *  einzelnen Jahrestabellen sind klein und werden bei Bedarf geladen). */
+    suspend fun preload(context: Context) {
+        allLocations(context)
+    }
+
     suspend fun get(context: Context, lat: Double, lng: Double, date: LocalDate): SixTimes? =
         nearestCovering(context, lat, lng, date)?.second
 
