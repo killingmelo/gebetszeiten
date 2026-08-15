@@ -10,10 +10,10 @@ private val STAMP = DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm")
 
 /**
  * Mehrzeiliger Klartext für die Statuszeile im Einstellungs-Sheet.
- * Reine Funktion (Zeit wird übergeben) — deshalb ohne Android testbar.
+ * Reine Funktion (keine versteckte Systemuhr-/Zeitzonen-Abhaengigkeit) —
+ * deshalb ohne Android testbar.
  */
-fun officialStatusText(status: OfficialStatus, sourceName: String?, nowEpochMs: Long): String {
-    val zone = ZoneId.systemDefault()
+fun officialStatusText(status: OfficialStatus, sourceName: String?, zone: ZoneId = ZoneId.systemDefault()): String {
     val lines = mutableListOf<String>()
     if (status.locationId != null && sourceName != null) {
         lines += "Quelle: amtliche Diyanet-Zeiten · $sourceName (ID ${status.locationId})"

@@ -30,6 +30,8 @@ class OfficialTimesCache(private val context: Context) {
     private val stampId = intPreferencesKey("stamp_diyanet_id")
     private val lastAttempt = longPreferencesKey("last_attempt")
     private val lastError = stringPreferencesKey("last_error")
+    private val attemptLat = doublePreferencesKey("attempt_lat")
+    private val attemptLng = doublePreferencesKey("attempt_lng")
 
     /** Zeiten nur, wenn der Cache für (lat,lng) geladen wurde — sonst null,
      *  damit nie amtliche Zeiten eines alten Standorts angezeigt werden. */
@@ -77,26 +79,42 @@ class OfficialTimesCache(private val context: Context) {
         }
     }
 
-    /** Alles, was die Statuszeile braucht — in EINEM DataStore-Read. */
+    /** Alles, was die Statuszeile braucht — in EINEM DataStore-Read.
+     *  Versuchs-Stempel (lastAttempt/lastError) und Erfolgs-Stempel
+     *  (stampLat/stampLng, gesetzt nur von [putAll]) werden UNABHAENGIG
+     *  gegen (lat,lng) geprueft: ein Fehlschlag an Ort B nach Erfolg an
+     *  Ort A darf weder als "an A gescheitert" (Erfolgs-Stempel bleibt A)
+     *  noch als spurlos verschwunden zaehlen, wenn man spaeter nach B
+     *  fragt. */
     suspend fun status(lat: Double, lng: Double): OfficialStatus {
         val prefs = context.officialStore.data.first()
         val match = stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)
+        val attemptMatch = stampMatches(prefs[attemptLat], prefs[attemptLng], lat, lng)
         return OfficialStatus(
             locationId = if (match) prefs[stampId] else null,
             coveredUntil = if (match) prefs[key]?.let { ScheduleText.parse(it).keys.maxOrNull() } else null,
-            lastAttemptEpochMs = prefs[lastAttempt],
-            lastError = prefs[lastError],
+            lastAttemptEpochMs = if (attemptMatch) prefs[lastAttempt] else null,
+            lastError = if (attemptMatch) prefs[lastError] else null,
         )
     }
 
-    /** Zeitstempel und Fehlergrund des letzten Abrufversuchs. [error] = null
-     *  heißt Erfolg. Zeit wird übergeben, damit Tests nicht an der Systemuhr
-     *  hängen. Der Parameter heißt absichtlich NICHT `lastError` — das würde
-     *  den gleichnamigen Key beschatten und jede Zeile hier auf `this.`
-     *  angewiesen machen. */
-    suspend fun recordAttempt(error: String?, nowEpochMs: Long) {
+    /** Zeitstempel und Fehlergrund des letzten Abrufversuchs für (lat,lng).
+     *  [error] = null heißt Erfolg. Zeit wird übergeben, damit Tests nicht an
+     *  der Systemuhr hängen. Der Parameter heißt absichtlich NICHT `lastError`
+     *  — das würde den gleichnamigen Key beschatten und jede Zeile hier auf
+     *  `this.` angewiesen machen.
+     *
+     *  Der Versuch trägt seinen EIGENEN Ortsstempel (attemptLat/attemptLng),
+     *  getrennt vom Erfolgs-Stempel (stampLat/stampLng, nur von [putAll]
+     *  gesetzt): sonst würde ein Fehlschlag an einem neuen Ort fälschlich
+     *  dem vorherigen (noch gestempelten) Ort zugeschrieben — und an ihm
+     *  selbst als "noch nie versucht" erscheinen, obwohl gerade ein Fehler
+     *  aufgetreten ist. */
+    suspend fun recordAttempt(error: String?, nowEpochMs: Long, lat: Double, lng: Double) {
         context.officialStore.edit {
             it[lastAttempt] = nowEpochMs
+            it[attemptLat] = lat
+            it[attemptLng] = lng
             if (error != null) it[lastError] = error else it.remove(lastError)
         }
     }

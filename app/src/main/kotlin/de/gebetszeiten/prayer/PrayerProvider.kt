@@ -106,16 +106,16 @@ object PrayerProvider {
             withTimeout(25_000) {
                 val result = fetcher.fetch(settings)
                 if (result.schedule.isEmpty()) {
-                    cache.recordAttempt("Keine amtlichen Zeiten erhalten (Standort oder Netz)", now)
+                    cache.recordAttempt("Keine amtlichen Zeiten erhalten (Standort oder Netz)", now, settings.latitude, settings.longitude)
                     return@withTimeout
                 }
                 cache.putAll(result.schedule, settings.latitude, settings.longitude, result.locationId)
-                cache.recordAttempt(null, now)
+                cache.recordAttempt(null, now, settings.latitude, settings.longitude)
                 OfficialTimesProvider.syncToWear(context, result.schedule, settings)
             }
         } catch (e: TimeoutCancellationException) {
             android.util.Log.w("PrayerProvider", "refreshOfficial abgebrochen (Timeout)", e)
-            cache.recordAttempt("Zeitüberschreitung beim Abruf", now)
+            cache.recordAttempt("Zeitüberschreitung beim Abruf", now, settings.latitude, settings.longitude)
         }
     }
 }

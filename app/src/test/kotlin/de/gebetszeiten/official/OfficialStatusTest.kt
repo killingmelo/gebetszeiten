@@ -4,6 +4,7 @@ import de.gebetszeiten.prayer.officialStatusText
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.ZoneId
 
 class OfficialStatusTest {
 
@@ -13,7 +14,6 @@ class OfficialStatusTest {
         val text = officialStatusText(
             OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
             sourceName = "Sakarya",
-            nowEpochMs = now,
         )
         assertTrue(text, text.contains("Sakarya"))
         assertTrue(text, text.contains("9807"))
@@ -24,7 +24,6 @@ class OfficialStatusTest {
         val text = officialStatusText(
             OfficialStatus(null, null, now, "Kein Diyanet-Standort aufloesbar"),
             sourceName = null,
-            nowEpochMs = now,
         )
         assertTrue(text, text.contains("Kein Diyanet-Standort aufloesbar"))
     }
@@ -33,9 +32,21 @@ class OfficialStatusTest {
         val text = officialStatusText(
             OfficialStatus(null, null, null, null),
             sourceName = null,
-            nowEpochMs = now,
         )
         assertTrue(text, text.isNotBlank())
         assertTrue(text, text.contains("noch kein"))
+    }
+
+    @Test fun `Zeitstempel wird in der uebergebenen Zone formatiert`() {
+        val text = officialStatusText(
+            OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
+            sourceName = "Sakarya",
+            zone = ZoneId.of("Europe/Istanbul"),
+        )
+        // Erwarteter Zeitstempel unabhaengig ausgerechnet (nicht mit dem
+        // gleichen DateTimeFormatter erzeugt, den die Funktion selbst nutzt):
+        // 1_786_000_000_000 ms = 2026-08-06T07:06:40Z = 2026-08-06T10:06:40
+        // in Europe/Istanbul (fest UTC+3, keine Sommerzeit seit 2016).
+        assertTrue(text, text.contains("Letzter Abruf: 06.08.2026, 10:06"))
     }
 }

@@ -981,8 +981,8 @@ git commit -m "fix: Diyanet-ID ueber Koordinatenindex statt Namenssuche aufloese
 - Produces:
   - `data class OfficialStatus(val locationId: Int?, val coveredUntil: LocalDate?, val lastAttemptEpochMs: Long?, val lastError: String?)`
   - `suspend fun OfficialTimesCache.status(lat: Double, lng: Double): OfficialStatus`
-  - `suspend fun OfficialTimesCache.recordAttempt(error: String?, nowEpochMs: Long)` — `error = null` heißt Erfolg
-  - `fun officialStatusText(status: OfficialStatus, sourceName: String?, nowEpochMs: Long): String` in `prayer/OfficialStatusText.kt`
+  - `suspend fun OfficialTimesCache.recordAttempt(error: String?, nowEpochMs: Long, lat: Double, lng: Double)` — `error = null` heißt Erfolg. Der Versuch trägt seinen EIGENEN Ort: der Erfolgsstempel wird nur von `putAll` gesetzt, ein Fehlschlag würde sonst dem vorherigen Ort zugeschrieben.
+  - `fun officialStatusText(status: OfficialStatus, sourceName: String?, zone: ZoneId = ZoneId.systemDefault()): String` in `prayer/OfficialStatusText.kt` — Zone als Parameter, damit die Funktion vollständig deterministisch und ohne versteckte Umgebungsabhängigkeit testbar ist
 
 `recordAttempt` bekommt die Zeit **übergeben** statt `System.currentTimeMillis()` intern zu lesen — sonst ist die Textformatierung nicht testbar.
 
@@ -1783,9 +1783,7 @@ In `LocationSettings` unterhalb des Ort-Abschnitts, als eigener `SettingsSection
                 val name = de.gebetszeiten.official.DiyanetPlaceIndex
                     .nearest(context, settings.latitude, settings.longitude)
                     ?.displayName()
-                value = de.gebetszeiten.prayer.officialStatusText(
-                    status, name, System.currentTimeMillis(),
-                )
+                value = de.gebetszeiten.prayer.officialStatusText(status, name)
             }
             Text(
                 statusText ?: stringResource(R.string.status_loading),
