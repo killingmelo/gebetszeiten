@@ -60,6 +60,8 @@ data class AppSettings(
     val widgetCountdown: String = COUNTDOWN_OFF,
     /** Lock-screen (persistent notification) remaining-time mode. */
     val notificationCountdown: String = COUNTDOWN_OFF,
+    /** Zuletzt gewählte Orte (neuester zuerst), für schnellen Ortswechsel ohne Suche. */
+    val recentPlaces: List<City> = emptyList(),
 ) {
     /** True if any surface still needs the STEPS display-alarm chain. */
     fun anyStepsCountdown(): Boolean =
@@ -102,6 +104,7 @@ data class AppSettings(
             remainingPrecision = PRECISION_STEPS,
             widgetCountdown = COUNTDOWN_OFF,
             notificationCountdown = COUNTDOWN_OFF,
+            recentPlaces = emptyList(),
         )
     }
 }
@@ -134,6 +137,7 @@ class SettingsRepository(private val context: Context) {
         val REMAINING_PRECISION = stringPreferencesKey("remaining_precision")
         val WIDGET_COUNTDOWN = stringPreferencesKey("widget_countdown")
         val NOTIFICATION_COUNTDOWN = stringPreferencesKey("notification_countdown")
+        val RECENT_PLACES = stringPreferencesKey("recent_places")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -188,6 +192,7 @@ class SettingsRepository(private val context: Context) {
             remainingPrecision = prefs[Keys.REMAINING_PRECISION] ?: AppSettings.DEFAULT.remainingPrecision,
             widgetCountdown = prefs[Keys.WIDGET_COUNTDOWN] ?: legacyMode,
             notificationCountdown = prefs[Keys.NOTIFICATION_COUNTDOWN] ?: legacyMode,
+            recentPlaces = parseRecentPlaces(prefs[Keys.RECENT_PLACES]),
         )
     }
 
@@ -217,6 +222,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.REMAINING_PRECISION] = value.remainingPrecision
             prefs[Keys.WIDGET_COUNTDOWN] = value.widgetCountdown
             prefs[Keys.NOTIFICATION_COUNTDOWN] = value.notificationCountdown
+            prefs[Keys.RECENT_PLACES] = serializeRecentPlaces(value.recentPlaces)
         }
     }
 }

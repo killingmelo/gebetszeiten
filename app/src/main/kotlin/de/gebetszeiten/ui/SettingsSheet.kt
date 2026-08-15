@@ -22,6 +22,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,10 +41,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,6 +66,7 @@ import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.data.Cities
 import de.gebetszeiten.data.City
+import de.gebetszeiten.data.withRecentPlace
 import de.gebetszeiten.official.OfficialTimesProvider
 import de.gebetszeiten.places.PlaceSearchProvider
 import de.gebetszeiten.prayer.TimesSourceBadge
@@ -100,6 +106,63 @@ private fun countryDisplayName(code: String): String = runCatching {
     Locale.Builder().setRegion(code).build().displayCountry
 }.getOrDefault("").ifBlank { code }
 
+/** Chips für zuletzt gewählte Orte — nur sichtbar, solange das Suchfeld leer ist. */
+@Composable
+private fun RecentPlacesRow(places: List<City>, current: String, onPick: (City) -> Unit) {
+    Text(
+        stringResource(R.string.city_recent),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        places.forEach { c ->
+            FilterChip(
+                selected = c.name == current,
+                onClick = { onPick(c) },
+                label = { Text(c.name) },
+            )
+        }
+    }
+}
+
+/**
+ * Breiten-/Längenfelder mit Validierung und optionalem Anwenden-Knopf.
+ * Fehlerprüfung passiert lokal (aus [lat]/[lng] ableitbar) — nur die
+ * geänderten Werte und die fertige Anwenden-Aktion müssen von außen kommen.
+ */
+@Composable
+private fun ManualCoordinatesFields(
+    lat: String,
+    onLatChange: (String) -> Unit,
+    lng: String,
+    onLngChange: (String) -> Unit,
+    showApply: Boolean,
+    onApply: () -> Unit,
+) {
+    val latErr = de.gebetszeiten.data.Coordinates.latError(lat)
+    val lngErr = de.gebetszeiten.data.Coordinates.lngError(lng)
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(value = lat, onValueChange = onLatChange, label = { Text(stringResource(R.string.settings_latitude)) }, isError = latErr, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
+        OutlinedTextField(value = lng, onValueChange = onLngChange, label = { Text(stringResource(R.string.settings_longitude)) }, isError = lngErr, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
+    }
+    if (latErr || lngErr) {
+        Text(
+            stringResource(R.string.settings_coordinate_error),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+    if (showApply) {
+        Button(
+            onClick = onApply,
+            enabled = !latErr && !lngErr,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.settings_apply_location))
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Unit) {
@@ -121,14 +184,28 @@ internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> U
     // wenn die gebündelte Liste keinen Treffer hat.
     var onlineMatches by remember { mutableStateOf<List<City>>(emptyList()) }
     var searchingOnline by remember { mutableStateOf(false) }
+    var manual by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
 
     // Named "commit" (not "apply") to avoid clashing with Kotlin's stdlib apply.
     val commit: (AppSettings.() -> AppSettings) -> Unit = { change -> onApply(settings.change()) }
     val locationDirty = (city.text.isNotBlank() && city.text != settings.city) ||
         lat.toDoubleOrNull() != settings.latitude || lng.toDoubleOrNull() != settings.longitude
+
+    // Autofokus aufs leere Suchfeld beim Öffnen — die Tastatur soll sofort
+    // stehen, ohne erst antippen zu müssen. Anders als das Race oben (das
+    // beim *Ändern des Textwerts* auf Fokus hin auftritt) wird hier nur der
+    // Fokus angefordert, kein Text gesetzt — trotzdem eine kurze Verzögerung,
+    // damit die IME-Startsequenz des Sheets sicher abgeklungen ist, bevor wir
+    // requestFocus() aufrufen (Fallback laut Spezifikation; ungetestet ohne
+    // Gerät/Emulator in dieser Umgebung).
+    LaunchedEffect(Unit) {
+        delay(150)
+        focusRequester.requestFocus()
+    }
 
     // Die Städteliste einmalig vorwärmen — sonst hängt die allererste
     // Suche still an der TSV-Parse-Latenz (33k Zeilen). Der Diyanet-Index
@@ -198,18 +275,38 @@ internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> U
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 trailingIcon = {
-                    val toggleLabel = stringResource(R.string.city_suggestions_toggle)
-                    IconButton(
-                        onClick = { expanded = !expanded },
-                        modifier = Modifier.semantics { contentDescription = toggleLabel },
-                    ) {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    Row {
+                        if (city.text.isNotEmpty()) {
+                            IconButton(onClick = { city = TextFieldValue(""); expanded = true }) {
+                                Icon(painterResource(R.drawable.ic_close), stringResource(R.string.city_clear))
+                            }
+                        }
+                        val toggleLabel = stringResource(R.string.city_suggestions_toggle)
+                        IconButton(
+                            onClick = { expanded = !expanded },
+                            modifier = Modifier.semantics { contentDescription = toggleLabel },
+                        ) {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        }
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .focusRequester(focusRequester)
                     .onFocusChanged { expanded = it.isFocused },
             )
+            if (city.text.isBlank() && settings.recentPlaces.isNotEmpty()) {
+                RecentPlacesRow(settings.recentPlaces, settings.city) { c ->
+                    commit {
+                        copy(
+                            city = c.name,
+                            latitude = c.latitude,
+                            longitude = c.longitude,
+                            recentPlaces = withRecentPlace(recentPlaces, c),
+                        )
+                    }
+                }
+            }
             if (expanded && (searching || searchingOnline)) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (searchingOnline) {
@@ -292,7 +389,14 @@ internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> U
                                     keyboard?.hide()
                                     focusManager.clearFocus()
                                     // Picked from the list = complete data → applies directly.
-                                    commit { copy(city = c.name, latitude = c.latitude, longitude = c.longitude) }
+                                    commit {
+                                        copy(
+                                            city = c.name,
+                                            latitude = c.latitude,
+                                            longitude = c.longitude,
+                                            recentPlaces = withRecentPlace(recentPlaces, c),
+                                        )
+                                    }
                                 },
                             )
                         }
@@ -307,32 +411,25 @@ internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> U
                 )
             }
 
-            val latErr = de.gebetszeiten.data.Coordinates.latError(lat)
-            val lngErr = de.gebetszeiten.data.Coordinates.lngError(lng)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text(stringResource(R.string.settings_latitude)) }, isError = latErr, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
-                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text(stringResource(R.string.settings_longitude)) }, isError = lngErr, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
+            // Koordinatenfelder sind der Ausnahmefall (Suche/Chips reichen
+            // sonst) — hinter einem Aufklapper, statt immer sichtbar zu sein.
+            TextButton(onClick = { manual = !manual }) {
+                Text(stringResource(if (manual) R.string.coords_hide else R.string.coords_show))
             }
-            if (latErr || lngErr) {
-                Text(
-                    stringResource(R.string.settings_coordinate_error),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            if (locationDirty) {
-                Button(
-                    onClick = {
+            if (manual) {
+                ManualCoordinatesFields(
+                    lat = lat,
+                    onLatChange = { lat = it },
+                    lng = lng,
+                    onLngChange = { lng = it },
+                    showApply = locationDirty,
+                    onApply = {
                         val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
                         val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
                         // Leeres Suchfeld = Name unverändert (nur Koordinaten angepasst).
                         commit { copy(city = city.text.ifBlank { settings.city }, latitude = parsedLat, longitude = parsedLng) }
                     },
-                    enabled = !latErr && !lngErr,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.settings_apply_location))
-                }
+                )
             }
         }
 
