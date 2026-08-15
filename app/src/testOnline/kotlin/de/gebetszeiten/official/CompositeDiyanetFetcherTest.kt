@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalTime
@@ -73,6 +74,26 @@ class CompositeDiyanetFetcherTest {
         val result = f.fetch(settings)
         assertEquals(emptyMap<LocalDate, SixTimes>(), result.schedule)
         assertNull(result.locationId)
+    }
+
+    @Test
+    fun `nicht aufloesbarer Standort wird protokolliert statt still verschluckt`() = runBlocking {
+        // Vor dem Umbau war dies ein stilles `?: return`: Serdivan fiel ohne
+        // jede Spur auf die eigene Berechnung zurueck.
+        val logged = mutableListOf<String>()
+        val f = CompositeDiyanetFetcher(
+            resolveId = { null },
+            direct = { yearData },
+            proxy = { proxyData },
+            log = { msg, _ -> logged.add(msg) },
+        )
+        val result = f.fetch(settings)
+        assertEquals(emptyMap<LocalDate, SixTimes>(), result.schedule)
+        assertNull(result.locationId)
+        assertTrue(
+            "kein Log-Eintrag zum nicht aufloesbaren Standort: $logged",
+            logged.any { it.contains("Kein Diyanet-Standort") && it.contains(settings.city) },
+        )
     }
 
     @Test

@@ -32,7 +32,17 @@ class CompositeDiyanetFetcher(
         } catch (e: Exception) {
             log("Standort-Aufloesung fehlgeschlagen", e)
             null
-        } ?: return FetchResult(emptyMap(), null)
+        }
+        if (id == null) {
+            // Vorher ein stilles `?: return` — genau deshalb war der
+            // Serdivan-Fall unsichtbar: kein Log, keine UI-Meldung, nur
+            // klammheimlich die eigene Berechnung.
+            log(
+                "Kein Diyanet-Standort fuer '${settings.city}' aufloesbar",
+                IllegalStateException("keine ID"),
+            )
+            return FetchResult(emptyMap(), null)
+        }
         val schedule = attempt("Direktabruf", id, direct)
             .ifEmpty { attempt("Proxy-Abruf", id, proxy) }
         return FetchResult(schedule, id.takeIf { schedule.isNotEmpty() })
@@ -56,9 +66,18 @@ class CompositeDiyanetFetcher(
             val proxyFetcher = DiyanetProxyFetcher()
             return CompositeDiyanetFetcher(
                 resolveId = { settings ->
-                    BundledOfficialSource.nearestLocation(context, settings.latitude, settings.longitude)?.diyanetId
-                        ?: OfficialTimesCache(context).cachedLocationId(settings.latitude, settings.longitude)
-                        ?: withContext(Dispatchers.IO) { proxyFetcher.resolveLocationId(settings.city) }
+                    resolveLocationIdChain(
+                        bundledId = BundledOfficialSource
+                            .nearestLocation(context, settings.latitude, settings.longitude)
+                            ?.diyanetId,
+                        indexPlace = DiyanetPlaceIndex
+                            .nearest(context, settings.latitude, settings.longitude),
+                        cachedId = OfficialTimesCache(context)
+                            .cachedLocationId(settings.latitude, settings.longitude),
+                        searchByName = {
+                            withContext(Dispatchers.IO) { proxyFetcher.resolveLocationId(settings.city) }
+                        },
+                    )
                 },
                 direct = DiyanetDirectFetcher()::fetchYear,
                 proxy = proxyFetcher::fetchById,
@@ -66,3 +85,22 @@ class CompositeDiyanetFetcher(
         }
     }
 }
+
+/**
+ * ID-Aufloesung als reine Funktion: Bundle -> Index -> Cache -> Namenssuche.
+ *
+ * Die Namenssuche war bis 2026-08 der Primaerweg. Sie scheiterte an jedem Ort,
+ * den Diyanet nicht selbst als Standort fuehrt — etwa Serdivan, das vom
+ * Eintrag SAKARYA (2,1 km entfernt) abgedeckt wird. Der Koordinatenindex steht
+ * deshalb VOR ihr; sie bleibt nur noch fuer Luecken im Index.
+ *
+ * [bundledId] und [indexPlace] werden eifrig ausgewertet — beide sind rein
+ * lokal und in Millisekunden fertig. [searchByName] bleibt ein Lambda: der
+ * einzige Netzaufruf der Kette darf nur laufen, wenn er gebraucht wird.
+ */
+internal suspend fun resolveLocationIdChain(
+    bundledId: Int?,
+    indexPlace: de.gebetszeiten.core.prayertimes.officialtimes.DiyanetPlace?,
+    cachedId: Int?,
+    searchByName: suspend () -> Int?,
+): Int? = bundledId ?: indexPlace?.diyanetId ?: cachedId ?: searchByName()

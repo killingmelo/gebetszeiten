@@ -1,6 +1,7 @@
 package de.gebetszeiten.official
 
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
+import de.gebetszeiten.data.TextNormalize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -25,7 +26,18 @@ class DiyanetProxyFetcher {
 
     fun resolveLocationId(city: String): Int? {
         val q = URLEncoder.encode(city.trim(), "UTF-8")
-        val arr = JSONArray(httpGet("$base/search?q=$q"))
+        val id = pickLocationId(httpGet("$base/search?q=$q"), city)
+        // Loggen hier, NICHT in pickLocationId: die Auswahlfunktion bleibt
+        // damit frei von Android und in JVM-Tests aufrufbar.
+        if (id == null) android.util.Log.w("DiyanetFetch", "Namenssuche ohne Treffer fuer '$city'")
+        return id
+    }
+
+    /** Reine Auswahlfunktion (unit-testbar): Antwortkörper der Namenssuche →
+     *  Diyanet-ID. Getrennt von [resolveLocationId], damit die Auswahl ohne
+     *  Netzaufruf und ohne Android-Abhängigkeit geprüft werden kann. */
+    internal fun pickLocationId(body: String, city: String): Int? {
+        val arr = JSONArray(body)
         if (arr.length() == 0) return null
         // The proxy may return nearby places first (e.g. "Altdorf b. Nürnberg"
         // before "Nürnberg"). Prefer an exact accent/case-insensitive match on
@@ -46,10 +58,11 @@ class DiyanetProxyFetcher {
         return cityMatch ?: fallback
     }
 
-    /** Lower-case and strip diacritics so "Nürnberg" matches "NURNBERG". */
-    private fun normalize(s: String): String =
-        java.text.Normalizer.normalize(s.trim().lowercase(), java.text.Normalizer.Form.NFD)
-            .replace(Regex("\\p{M}+"), "")
+    /** Eine Normalisierung für die ganze App. Die frühere private Variante hier
+     *  strippte nur NFD-Marken — das punktlose türkische ı (U+0131) ist aber
+     *  nicht zerlegbar und überlebte, sodass „Şanlıurfa" das amtliche
+     *  „ŞANLIURFA" verfehlte. [TextNormalize] bildet ı/ş/ğ/ç/ö/ü/ß explizit ab. */
+    private fun normalize(s: String): String = TextNormalize.normalize(s)
 
     private fun parseSchedule(body: String): Map<LocalDate, SixTimes> {
         val arr = JSONArray(body)
