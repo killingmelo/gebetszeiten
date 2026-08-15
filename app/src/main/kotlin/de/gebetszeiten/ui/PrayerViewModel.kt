@@ -10,8 +10,10 @@ import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.notify.PrayerNotifier
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.widget.NextPrayerWidget
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -24,6 +26,14 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         started = SharingStarted.Eagerly,
         initialValue = AppSettings.DEFAULT,
     )
+
+    private val _officialRefreshes = MutableStateFlow(0)
+
+    /** Zaehlt ABGESCHLOSSENE Abrufe (Erfolg wie Fehlschlag). Die Statuszeile
+     *  nutzt ihn als produceState-Key und liest damit genau dann neu, wenn es
+     *  etwas Neues geben KANN — kein Pollen, keine Wartezeit bei fruehem
+     *  Ruecksprung (Cache schon frisch). */
+    val officialRefreshes: StateFlow<Int> = _officialRefreshes.asStateFlow()
 
     fun save(value: AppSettings) {
         viewModelScope.launch {
@@ -46,6 +56,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
             val value = repository.current()
             PrayerProvider.refreshOfficial(getApplication(), value)
             reschedule(value)
+            _officialRefreshes.value += 1 // erst NACH getaner Arbeit — Erfolg wie Fehlschlag zaehlen
         }
     }
 

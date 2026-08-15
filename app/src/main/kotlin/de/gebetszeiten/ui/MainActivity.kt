@@ -212,10 +212,12 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
             // kaum Platz für die Ortsvorschläge.
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
+            val officialRefreshes by viewModel.officialRefreshes.collectAsState()
             LocationSettings(
                 settings = settings,
                 onApply = { viewModel.save(it) },
                 onRefresh = { viewModel.refreshOfficialNow() },
+                refreshTick = officialRefreshes,
             )
         }
     }

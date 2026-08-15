@@ -35,7 +35,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -185,43 +184,28 @@ private fun ManualCoordinatesFields(
  * Abruf ueberhaupt etwas bewirken kann (online-Flavor, Online-Schalter an,
  * keine eigene Berechnung gewaehlt — sonst gibt es entweder keinen Fetcher
  * oder der Nutzer hat sich bewusst gegen den Online-Abruf entschieden).
+ *
+ * [refreshTick] ist [PrayerViewModel.officialRefreshes] — er zaehlt
+ * ABGESCHLOSSENE Abrufe (Erfolg wie Fehlschlag) und ist neben [settings] ein
+ * zweiter produceState-Schluessel. Kein Pollen: die Zeile liest genau dann
+ * neu, wenn es wirklich etwas Neues geben kann, und bei fruehem Ruecksprung
+ * (Cache schon frisch) steht das Ergebnis praktisch sofort wieder da.
  */
 @Composable
-private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit) {
+private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, refreshTick: Int) {
     val context = LocalContext.current
     SettingsSection(stringResource(R.string.settings_section_source)) {
-        // reloads zaehlt Klicks auf "Jetzt aktualisieren" und ist ein
-        // zusaetzlicher produceState-Schluessel, damit nach dem Klick neu
-        // gelesen wird.
-        var reloads by remember { mutableIntStateOf(0) }
-        val statusText by produceState<String?>(null, settings, reloads) {
-            // value bleibt null (→ "Status wird geladen…"), solange wir auf
-            // das Ergebnis eines gerade angestossenen Abrufs warten — niemals
-            // wird hier der ALTE Text stehen gelassen, der nach einem Klick
-            // faelschlich als dessen Ergebnis durchginge.
+        val statusText by produceState<String?>(null, settings, refreshTick) {
+            // value bleibt null (→ "Status wird geladen…"), bis die neue
+            // Zeile fertig ist. produceStates initialValue greift NUR bei der
+            // allerersten Komposition, nicht bei jedem Schluesselwechsel (die
+            // remembered MutableState ueberlebt den Key-Wechsel unveraendert)
+            // — ohne dieses explizite Zuruecksetzen wuerde ein Refresh-Klick
+            // hier den ALTEN Text stehen lassen und ihn faelschlich als
+            // Ergebnis des Klicks ausgeben.
             value = null
             val cache = de.gebetszeiten.official.OfficialTimesCache(context)
-            var status = cache.status(settings.latitude, settings.longitude)
-            if (reloads > 0) {
-                // refreshOfficialNow() laeuft asynchron im ViewModelScope (Netzabruf
-                // bis zu 25 s, siehe PrayerProvider.refreshOfficial) und liefert dem
-                // Klick kein Fertig-Signal zurueck — onRefresh ist ein einfaches
-                // () -> Unit. Der einzige Weg, das ECHTE Ergebnis zu zeigen statt
-                // eines geratenen, ist auf eine Aenderung des persistierten
-                // Versuchs-Stempels zu pollen, bis zu ~26 s (etwas ueber dem
-                // Netz-Timeout). Bleibt der Stempel unveraendert (Cache war schon
-                // frisch genug, refreshOfficial ist ohne Abruf zurueckgekehrt),
-                // zeigt die Zeile danach unveraendert den vorherigen — weiterhin
-                // wahren — Stand; sie behauptet nie einen Abruf, der nicht
-                // stattfand.
-                val before = status.lastAttemptEpochMs
-                var waitedMs = 0L
-                while (status.lastAttemptEpochMs == before && waitedMs < 26_000L) {
-                    delay(500)
-                    waitedMs += 500
-                    status = cache.status(settings.latitude, settings.longitude)
-                }
-            }
+            val status = cache.status(settings.latitude, settings.longitude)
             val name = de.gebetszeiten.official.DiyanetPlaceIndex
                 .nearest(context, settings.latitude, settings.longitude)
                 ?.displayName()
@@ -234,7 +218,7 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit) {
         )
         if (settings.useOnline && !settings.useCalculated) {
             OutlinedButton(
-                onClick = { onRefresh(); reloads++ },
+                onClick = onRefresh,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.status_refresh))
@@ -245,7 +229,12 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> Unit, onRefresh: () -> Unit) {
+internal fun LocationSettings(
+    settings: AppSettings,
+    onApply: (AppSettings) -> Unit,
+    onRefresh: () -> Unit,
+    refreshTick: Int,
+) {
     // Location is the only draft state (typing half a coordinate must not
     // trigger a reschedule) — everything else applies instantly via commit().
     // Das Stadt-Feld ist ein reines Suchfeld: Entwurf startet leer, der
@@ -513,7 +502,7 @@ internal fun LocationSettings(settings: AppSettings, onApply: (AppSettings) -> U
             }
         }
 
-        SourceStatusSection(settings, onRefresh)
+        SourceStatusSection(settings, onRefresh, refreshTick)
 
         SettingsSection(stringResource(R.string.settings_section_display)) {
             ToggleRow(stringResource(R.string.settings_show_makruh), settings.showKaraha) { commit { copy(showKaraha = it) } }
