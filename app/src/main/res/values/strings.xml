@@ -137,6 +137,9 @@
     <string name="settings_longitude">Länge</string>
     <string name="settings_coordinate_error">Gültige Werte: Breite -90 bis 90, Länge -180 bis 180.</string>
     <string name="settings_apply_location">Ort übernehmen</string>
+    <string name="settings_section_source">Zeitenquelle</string>
+    <string name="status_loading">Status wird geladen…</string>
+    <string name="status_refresh">Jetzt aktualisieren</string>
     <string name="settings_section_display">Anzeige</string>
     <string name="settings_show_makruh">Makruh-Zeiten anzeigen</string>
     <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>

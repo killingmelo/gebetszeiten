@@ -39,6 +39,16 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** Manueller Abruf aus den Einstellungen — schreibt Zeitstempel und
+     *  Fehlergrund in den Cache, den die Statuszeile liest. */
+    fun refreshOfficialNow() {
+        viewModelScope.launch {
+            val value = repository.current()
+            PrayerProvider.refreshOfficial(getApplication(), value)
+            reschedule(value)
+        }
+    }
+
     private suspend fun reschedule(value: AppSettings) {
         val app = getApplication<Application>()
         // Online flavor: refresh the official-times cache (no-op offline).
