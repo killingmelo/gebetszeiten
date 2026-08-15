@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import de.gebetszeiten.core.prayertimes.officialtimes.ScheduleText
@@ -27,6 +28,8 @@ class OfficialTimesCache(private val context: Context) {
     private val stampLat = doublePreferencesKey("stamp_lat")
     private val stampLng = doublePreferencesKey("stamp_lng")
     private val stampId = intPreferencesKey("stamp_diyanet_id")
+    private val lastAttempt = longPreferencesKey("last_attempt")
+    private val lastError = stringPreferencesKey("last_error")
 
     /** Zeiten nur, wenn der Cache für (lat,lng) geladen wurde — sonst null,
      *  damit nie amtliche Zeiten eines alten Standorts angezeigt werden. */
@@ -73,4 +76,36 @@ class OfficialTimesCache(private val context: Context) {
             if (locationId != null) it[stampId] = locationId else it.remove(stampId)
         }
     }
+
+    /** Alles, was die Statuszeile braucht — in EINEM DataStore-Read. */
+    suspend fun status(lat: Double, lng: Double): OfficialStatus {
+        val prefs = context.officialStore.data.first()
+        val match = stampMatches(prefs[stampLat], prefs[stampLng], lat, lng)
+        return OfficialStatus(
+            locationId = if (match) prefs[stampId] else null,
+            coveredUntil = if (match) prefs[key]?.let { ScheduleText.parse(it).keys.maxOrNull() } else null,
+            lastAttemptEpochMs = prefs[lastAttempt],
+            lastError = prefs[lastError],
+        )
+    }
+
+    /** Zeitstempel und Fehlergrund des letzten Abrufversuchs. [error] = null
+     *  heißt Erfolg. Zeit wird übergeben, damit Tests nicht an der Systemuhr
+     *  hängen. Der Parameter heißt absichtlich NICHT `lastError` — das würde
+     *  den gleichnamigen Key beschatten und jede Zeile hier auf `this.`
+     *  angewiesen machen. */
+    suspend fun recordAttempt(error: String?, nowEpochMs: Long) {
+        context.officialStore.edit {
+            it[lastAttempt] = nowEpochMs
+            if (error != null) it[lastError] = error else it.remove(lastError)
+        }
+    }
 }
+
+/** Momentaufnahme für die Statuszeile. */
+data class OfficialStatus(
+    val locationId: Int?,
+    val coveredUntil: LocalDate?,
+    val lastAttemptEpochMs: Long?,
+    val lastError: String?,
+)

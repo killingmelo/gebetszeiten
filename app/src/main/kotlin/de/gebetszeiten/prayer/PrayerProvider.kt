@@ -95,6 +95,7 @@ object PrayerProvider {
             return
         }
         val fetcher = OfficialTimesProvider.fetcher(context) ?: return
+        val now = System.currentTimeMillis()
         // Broadcast-Budget (~10-30 s im Alarm-Receiver): der Refresh darf den
         // Empfaenger nicht unbegrenzt blockieren — naechster Anlauf beim
         // folgenden Gebet. Budget: ~25 s plus max. 10 s gebundenes Tasks.await
@@ -104,11 +105,17 @@ object PrayerProvider {
         try {
             withTimeout(25_000) {
                 val result = fetcher.fetch(settings)
+                if (result.schedule.isEmpty()) {
+                    cache.recordAttempt("Keine amtlichen Zeiten erhalten (Standort oder Netz)", now)
+                    return@withTimeout
+                }
                 cache.putAll(result.schedule, settings.latitude, settings.longitude, result.locationId)
+                cache.recordAttempt(null, now)
                 OfficialTimesProvider.syncToWear(context, result.schedule, settings)
             }
         } catch (e: TimeoutCancellationException) {
             android.util.Log.w("PrayerProvider", "refreshOfficial abgebrochen (Timeout)", e)
+            cache.recordAttempt("Zeitüberschreitung beim Abruf", now)
         }
     }
 }
