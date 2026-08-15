@@ -15,14 +15,14 @@ class TimesSourceBadgeTest {
         )
     }
 
-    @Test fun `Index hat Vorrang vor der gebuendelten Tabelle`() {
+    @Test fun `gebuendelte Tabelle hat Vorrang vor dem Index`() {
         assertEquals(
-            TimesSourceBadge.Official("Sakarya", 2),
+            TimesSourceBadge.Bundled("Nürnberg"),
             timesSourceBadge("Nürnberg", sakarya, 2.1, useCalculated = false),
         )
     }
 
-    @Test fun `Index liefert Standortname und gerundete Distanz`() {
+    @Test fun `ohne gebuendelten Treffer greift der Index`() {
         assertEquals(
             TimesSourceBadge.Official("Sakarya", 2),
             timesSourceBadge(null, sakarya, 2.1, useCalculated = false),
@@ -40,6 +40,13 @@ class TimesSourceBadgeTest {
         assertEquals(
             TimesSourceBadge.Bundled("Nürnberg"),
             timesSourceBadge("Nürnberg", null, null, useCalculated = false),
+        )
+    }
+
+    @Test fun `Index ohne Distanz verdraengt einen Bundle-Treffer nicht`() {
+        assertEquals(
+            TimesSourceBadge.Bundled("Nürnberg"),
+            timesSourceBadge("Nürnberg", sakarya, null, useCalculated = false),
         )
     }
 

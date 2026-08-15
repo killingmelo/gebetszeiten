@@ -15,8 +15,18 @@ sealed interface TimesSourceBadge {
 }
 
 /**
- * Klassifiziert einen Suchtreffer. Reihenfolge spiegelt `PrayerProvider.daily`:
- * Nutzerwunsch → Online-Cache/Index-Abruf → gebündelte Tabelle → Berechnung.
+ * Klassifiziert einen Suchtreffer. Reihenfolge spiegelt
+ * `resolveLocationIdChain` (`CompositeDiyanetFetcher.kt`) — die Funktion, die
+ * entscheidet, WELCHER Diyanet-Standort abgerufen wird: Nutzerwunsch ->
+ * gebuendelte Tabelle -> Index -> Berechnung.
+ *
+ * ACHTUNG, hier wurde schon zweimal falsch abgebogen: `PrayerProvider.daily`
+ * fragt den Online-Cache vor der gebuendelten Tabelle, aber das ist eine
+ * andere Frage — dort geht es um die ZEITEN, und der Cache enthaelt genau die
+ * Zeiten der ID, die zuvor aus dem Bundle kam. `daily()` kennt den Index
+ * ueberhaupt nicht. Fuer die Frage, welcher STANDORT benannt wird, gilt
+ * Bundle vor Index: Nuernberg ist in beiden Quellen ID 11024, das Bundle
+ * schreibt ihn nur besser ("Nürnberg" statt Diyanets "NURNBERG").
  */
 fun timesSourceBadge(
     bundledName: String?,
@@ -25,8 +35,8 @@ fun timesSourceBadge(
     useCalculated: Boolean,
 ): TimesSourceBadge = when {
     useCalculated -> TimesSourceBadge.Calculated
+    bundledName != null -> TimesSourceBadge.Bundled(bundledName)
     officialPlace != null && distanceKm != null ->
         TimesSourceBadge.Official(officialPlace.displayName(), distanceKm.roundToInt())
-    bundledName != null -> TimesSourceBadge.Bundled(bundledName)
     else -> TimesSourceBadge.Calculated
 }
