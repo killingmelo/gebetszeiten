@@ -8,12 +8,26 @@ import org.junit.Test
 class FavoritesTest {
 
     // Wie im RecentPlacesTest: die Koordinaten leiten sich deterministisch vom
-    // Namen ab — derselbe Name ergibt denselben Ort (nötig für die Dedup-Tests),
-    // verschiedene Namen ergeben (praktisch immer) verschiedene Orte.
-    private fun city(name: String, lat: Double = 40.0 + name.sumOf { it.code } / 1000.0, region: String? = "SAKARYA") =
-        City(name, "TR", lat, 30.0, region)
+    // Namen ab — derselbe Name ergibt denselben Ort (nötig für die Dedup-Tests).
+    // Das Raster ist bewusst grob (0,05° ≈ 5,5 km): die Ortsidentität hat ~1 km
+    // Toleranz (`stampMatches`), verschiedene Namen müssen also spürbar weiter
+    // auseinanderliegen, sonst wären sie unbeabsichtigt derselbe Ort.
+    // (n % 90, n / 90 % 90) ist für Summen unter 8100 eindeutig.
+    private fun city(name: String, region: String? = "SAKARYA"): City {
+        val n = name.sumOf { it.code }
+        return City(name, "TR", 35.0 + (n % 90) * 0.05, 26.0 + (n / 90 % 90) * 0.05, region)
+    }
 
     private fun fav(name: String, addedEpochMs: Long = 1_000L) = Favorite(city(name), addedEpochMs)
+
+    private val nuernberg = City("Nürnberg", "DE", 49.4521, 11.0767, "BAYERN")
+
+    /** ~500 m nördlich von [nuernberg] — z. B. über die manuellen Koordinatenfelder
+     *  getippt. Für den Zeiten-Cache derselbe Ort, also auch hier. */
+    private val nuernbergVerschoben = City("Nürnberg", "DE", 49.4566, 11.0767, "BAYERN")
+
+    /** ~4,8 km von [nuernberg] entfernt — ein anderer Ort. */
+    private val nuernbergNachbarort = City("Nachbarort", "DE", 49.4951, 11.0767, "BAYERN")
 
     // --- Serialisierung ---
 
@@ -33,6 +47,14 @@ class FavoritesTest {
         assertEquals(emptyList<Favorite>(), parseFavorites(null))
         assertEquals(emptyList<Favorite>(), parseFavorites(""))
         assertEquals(emptyList<Favorite>(), parseFavorites("kaputt\tzeile"))
+    }
+
+    /** Pinnt Reihenfolge UND Bedeutung der sechs Spalten: eine konsistente
+     *  Vertauschung in Serialisierung und Parser bliebe sonst unbemerkt,
+     *  obwohl sie vom dokumentierten Zeilenformat abweicht. */
+    @Test fun `das Zeilenformat ist auf sechs Spalten in fester Reihenfolge gepinnt`() {
+        val nbg = Favorite(City("Nürnberg", "DE", 49.45, 11.08, "BAYERN"), 7L)
+        assertEquals("Nürnberg\tDE\t49.45\t11.08\tBAYERN\t7", serializeFavorites(listOf(nbg)))
     }
 
     @Test fun `Tabs im Ortsnamen und in der Region zerstoeren die Serialisierung nicht`() {
@@ -55,6 +77,12 @@ class FavoritesTest {
         assertEquals(emptyList<Favorite>(), parseFavorites(text))
     }
 
+    /** Sechs Spalten, aber kein Name: ein namenloser Chip wäre nicht anwählbar. */
+    @Test fun `eine vollstaendige Zeile ohne Ortsnamen wird verworfen`() {
+        assertEquals(emptyList<Favorite>(), parseFavorites("\tDE\t49.45\t11.08\tBAYERN\t7"))
+        assertEquals(emptyList<Favorite>(), parseFavorites("   \tDE\t49.45\t11.08\tBAYERN\t7"))
+    }
+
     // --- withFavorite: Ablage, keine Historie ---
 
     @Test fun `neuer Favorit kommt ans Ende`() {
@@ -70,8 +98,33 @@ class FavoritesTest {
         assertEquals(200L, result.single { it.city.name == "B" }.addedEpochMs)
     }
 
+    // --- Ortsidentität mit der Toleranz des Caches (~1 km, `stampMatches`) ---
+
+    @Test fun `ein um 500 Meter verschobener Ort wird kein zweiter Favorit`() {
+        val start = listOf(Favorite(nuernberg, 100L))
+        val result = withFavorite(start, nuernbergVerschoben, nowEpochMs = 999L)
+        assertEquals(start, result)
+        assertTrue(isFavorite(result, nuernberg))
+        assertTrue(isFavorite(result, nuernbergVerschoben))
+    }
+
+    @Test fun `zwei Orte fuenf Kilometer auseinander bleiben zwei Favoriten`() {
+        val start = listOf(Favorite(nuernberg, 100L))
+        assertFalse(isFavorite(start, nuernbergNachbarort))
+        val result = withFavorite(start, nuernbergNachbarort, nowEpochMs = 999L)
+        assertEquals(listOf(Favorite(nuernberg, 100L), Favorite(nuernbergNachbarort, 999L)), result)
+    }
+
+    @Test fun `withoutFavorite entfernt auch bei leicht verschobenen Koordinaten den richtigen`() {
+        val start = listOf(Favorite(nuernberg, 100L), Favorite(nuernbergNachbarort, 200L))
+        assertEquals(
+            listOf(Favorite(nuernbergNachbarort, 200L)),
+            withoutFavorite(start, nuernbergVerschoben),
+        )
+    }
+
     // --- Identität über Koordinaten, nicht über den Namen (Esenköy gibt es
-    // in Yalova UND in Aydın — gleicher Name, verschiedene Orte). ---
+    // in Yalova UND in Aydın — gleicher Name, 330 km auseinander). ---
 
     @Test fun `gleichnamige Orte mit verschiedenen Koordinaten sind zwei Favoriten`() {
         val yalova = City("Esenköy", "TR", 40.65, 29.25, "YALOVA")
@@ -81,15 +134,20 @@ class FavoritesTest {
         assertEquals(listOf(Favorite(yalova, 100L), Favorite(aydin, 200L)), result)
     }
 
+    // --- die Zehner-Grenze von beiden Seiten ---
+
+    @Test fun `neun Favoriten plus einer ergibt zehn`() {
+        val neun = (1..9).map { fav("Ort$it", it.toLong()) }
+        val result = withFavorite(neun, city("Zehnter"), nowEpochMs = 999L)
+        assertEquals(10, result.size)
+        assertEquals("Zehnter", result.last().city.name)
+        assertEquals(999L, result.last().addedEpochMs)
+    }
+
     @Test fun `volle Liste nimmt nichts Neues auf und verdraengt niemanden`() {
         val voll = (1..10).map { fav("Ort$it", it.toLong()) }
         val result = withFavorite(voll, city("Elfter"), nowEpochMs = 999L)
         assertEquals(voll, result)
-    }
-
-    @Test fun `bei voller Liste bleibt ein bereits vorhandener Favorit unveraendert`() {
-        val voll = (1..10).map { fav("Ort$it", it.toLong()) }
-        assertEquals(voll, withFavorite(voll, city("Ort3"), nowEpochMs = 999L))
     }
 
     // --- withoutFavorite / isFavorite ---

@@ -1,5 +1,7 @@
 package de.gebetszeiten.data
 
+import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
+
 /**
  * Dauerhaft gemerkte Orte — bewusst angelegt, im Gegensatz zu den flüchtigen
  * „zuletzt gewählten" Orten in `RecentPlaces.kt`. Beide Listen existieren
@@ -37,9 +39,26 @@ fun parseFavorites(text: String?): List<Favorite> =
     }?.toList() ?: emptyList()
 
 /** Identität über die Koordinaten, NICHT über den Namen: gleichnamige Orte
- *  gibt es wirklich (Esenköy in Yalova und in Aydın). */
+ *  gibt es wirklich (Esenköy in Yalova und in Aydın).
+ *
+ *  Verglichen wird mit `stampMatches` aus `core-prayertimes` — demselben
+ *  Begriff von „derselbe Ort“, den der Zeiten-Cache benutzt (~1 km Toleranz).
+ *  Zwei Gründe:
+ *
+ *  - Unterhalb von ~1 km liefert die App ohnehin dieselben Zeiten, sowohl über
+ *    die amtliche Diyanet-Standort-ID als auch über die Berechnung. Zwei
+ *    Favoriten zu führen, die sich nachweislich nicht unterscheiden können,
+ *    wäre eine Unterscheidung ohne Unterschied — zwei Zeilen mit identischen
+ *    Zeiten, die sich einen Cache-Eintrag teilen.
+ *  - Der Nutzer denkt in Orten, nicht in Dezimalgraden. „Nürnberg ist
+ *    gespeichert“ darf nicht davon abhängen, ob er Nürnberg über die Suche
+ *    oder über die manuellen Koordinatenfelder ausgewählt hat; ein exakter
+ *    `Double`-Vergleich ließe den Stern ohne erkennbaren Grund ausgehen.
+ *
+ *  `recentPlaces` bleibt bewusst beim exakten Vergleich: das ist eine Historie,
+ *  kein Schlüssel in den Cache. */
 private fun City.sameSpotAs(other: City): Boolean =
-    latitude == other.latitude && longitude == other.longitude
+    stampMatches(latitude, longitude, other.latitude, other.longitude)
 
 /** [added] hinten anhängen. Die Favoritenliste ist eine Ablage, keine Historie:
  *  ein schon vorhandener Favorit rutscht nicht nach vorn und behält seinen
@@ -58,7 +77,7 @@ fun withFavorite(
         existing + Favorite(added, nowEpochMs)
     }
 
-/** Entfernt genau den Eintrag an denselben Koordinaten wie [removed]. */
+/** Entfernt den Eintrag am selben Ort wie [removed] (siehe `sameSpotAs`). */
 fun withoutFavorite(existing: List<Favorite>, removed: City): List<Favorite> =
     existing.filterNot { it.city.sameSpotAs(removed) }
 
