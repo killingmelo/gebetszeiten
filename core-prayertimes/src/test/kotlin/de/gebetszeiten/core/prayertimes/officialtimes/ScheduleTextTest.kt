@@ -1,6 +1,7 @@
 package de.gebetszeiten.core.prayertimes.officialtimes
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalTime
@@ -40,5 +41,20 @@ class ScheduleTextTest {
     fun `kaputte Zeilen werden uebersprungen`() {
         val text = "kaputt\n2026-07-30 03:54 05:38 13:27 17:34 21:07 22:36\n2026-07-31 xx"
         assertEquals(mapOf(day to times), ScheduleText.parse(text))
+    }
+
+    @Test
+    fun `parseDay liefert fuer jedes Datum dasselbe wie parse(text)(date), und null wenn nicht enthalten`() {
+        val start = LocalDate.of(2026, 1, 1)
+        val schedule = (0 until 366).associate { start.plusDays(it.toLong()) to times.copy(fajr = times.fajr.plusMinutes(it.toLong() % 30)) }
+        val text = ScheduleText.serialize(schedule)
+        val parsed = ScheduleText.parse(text)
+
+        for (date in schedule.keys) {
+            assertEquals(parsed[date], ScheduleText.parseDay(text, date))
+        }
+
+        assertNull(ScheduleText.parseDay(text, start.minusDays(1)))
+        assertNull(parsed[start.minusDays(1)])
     }
 }

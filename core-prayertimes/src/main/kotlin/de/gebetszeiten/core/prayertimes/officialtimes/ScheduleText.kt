@@ -22,6 +22,29 @@ object ScheduleText {
     fun parse(text: String): Map<LocalDate, SixTimes> =
         text.lineSequence().mapNotNull { parseLine(it) }.toMap()
 
+    /** Genau einen Tag aus dem Rumpf lesen, ohne den Rest zu parsen.
+     *  `daily()` läuft bei jedem Minutentakt, jedem Widget-Update und jedem
+     *  Alarm — der volle [parse] würde dabei den kompletten Jahresplan
+     *  parsen (366 Zeilen × 6 `LocalTime.parse`). Hier werden nur Zeilen mit
+     *  dem Präfix "$date " überhaupt an [parseLine] übergeben — im
+     *  Normalfall genau eine, also 6 Aufrufe statt ~2200.
+     *
+     *  Liefert für jedes Datum dasselbe wie `parse(text)[date]`: bei
+     *  mehreren Zeilen zum selben Datum gewinnt wie bei `parse` (das über
+     *  `toMap()` läuft) die LETZTE; eine kaputte Zeile mit passendem
+     *  Präfix ergibt `null`, genau wie sie in `parse` aus der Map fehlen
+     *  würde. */
+    fun parseDay(text: String, date: LocalDate): SixTimes? {
+        val prefix = "$date "
+        var result: SixTimes? = null
+        for (line in text.lineSequence()) {
+            if (line.startsWith(prefix)) {
+                result = parseLine(line)?.second
+            }
+        }
+        return result
+    }
+
     private fun parseLine(line: String): Pair<LocalDate, SixTimes>? {
         val p = line.trim().split(" ")
         if (p.size != 7) return null
