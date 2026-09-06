@@ -225,6 +225,121 @@ class CacheStoreTest {
         assertTrue(entries.any { it.header.updatedEpochMs == 105L })
     }
 
+    /** Eintrag mit echtem Zeitplan — `lastDate` steht im Kopf, wie ihn
+     *  `serialize`/`split` hinterlassen. */
+    private fun rawWithPlan(lat: Double, lng: Double, updatedEpochMs: Long): RawEntry {
+        val plan = schedule(LocalDate.of(2026, 1, 1), 1)
+        return RawEntry(
+            header(
+                lat = lat,
+                lng = lng,
+                updatedEpochMs = updatedEpochMs,
+                firstDate = plan.keys.minOrNull(),
+                lastDate = plan.keys.maxOrNull(),
+            ),
+            ScheduleText.serialize(plan),
+        )
+    }
+
+    /** Eintrag, der NUR einen Fehlversuch protokolliert: leerer Rumpf,
+     *  `lastDate == null`. */
+    private fun rawEmpty(lat: Double, lng: Double, updatedEpochMs: Long) = RawEntry(
+        header(lat = lat, lng = lng, locationId = null, updatedEpochMs = updatedEpochMs, lastError = "Kein Netz"),
+        "",
+    )
+
+    @Test
+    fun `put opfert bei Verdraengung zuerst den Eintrag ohne Zeitplan`() {
+        // Fuenf Orte erfolgreich abgerufen, aufsteigend aktualisiert.
+        var entries = emptyList<RawEntry>()
+        for (i in 0 until 5) {
+            entries = CacheStore.put(
+                entries = entries,
+                added = CacheEntry(
+                    header(lat = 10.0 + i, lng = 10.0 + i, updatedEpochMs = (100 + i).toLong()),
+                    schedule(LocalDate.of(2026, 1, 1), 1),
+                ),
+                pinnedCoords = emptyList(),
+                maxUnpinned = 5,
+            )
+        }
+
+        // Wechsel zum sechsten Ort, Abruf scheitert: ein Eintrag ohne Zeitplan.
+        val result = CacheStore.put(
+            entries = entries,
+            added = CacheEntry(
+                header(lat = 20.0, lng = 20.0, locationId = null, updatedEpochMs = 999L, lastError = "Kein Netz"),
+                emptyMap(),
+            ),
+            pinnedCoords = emptyList(),
+            maxUnpinned = 5,
+        )
+
+        assertEquals(5, result.size)
+        // Alle fuenf Jahresplaene ueberleben — auch der aelteste.
+        for (i in 0 until 5) {
+            assertTrue(
+                "Zeitplan fuer Ort $i wurde verdraengt",
+                result.any { stampMatches(it.header.latitude, it.header.longitude, 10.0 + i, 10.0 + i) },
+            )
+        }
+        // Der leere Eintrag ist gefallen: ein Versuchsprotokoll ist weniger
+        // wert als irgendein Zeitplan.
+        assertTrue(result.none { stampMatches(it.header.latitude, it.header.longitude, 20.0, 20.0) })
+    }
+
+    @Test
+    fun `put verdraengt unter mehreren leeren Eintraegen den aeltesten leeren`() {
+        val entries = listOf(
+            rawEmpty(lat = 20.0, lng = 20.0, updatedEpochMs = 100L),
+            rawEmpty(lat = 21.0, lng = 21.0, updatedEpochMs = 200L),
+            // Der aelteste Eintrag ueberhaupt — aber er traegt einen Zeitplan.
+            rawWithPlan(lat = 22.0, lng = 22.0, updatedEpochMs = 50L),
+        )
+
+        val result = CacheStore.put(
+            entries = entries,
+            added = CacheEntry(
+                header(lat = 23.0, lng = 23.0, updatedEpochMs = 300L),
+                schedule(LocalDate.of(2026, 1, 1), 1),
+            ),
+            pinnedCoords = emptyList(),
+            maxUnpinned = 3,
+        )
+
+        assertEquals(3, result.size)
+        // Der aeltere leere faellt ...
+        assertTrue(
+            "der aeltere leere Eintrag haette fallen muessen",
+            result.none { stampMatches(it.header.latitude, it.header.longitude, 20.0, 20.0) },
+        )
+        // ... der juengere leere bleibt ...
+        assertTrue(
+            "der juengere leere Eintrag wurde verdraengt",
+            result.any { stampMatches(it.header.latitude, it.header.longitude, 21.0, 21.0) },
+        )
+        // ... und der Zeitplan bleibt, obwohl er der aelteste Eintrag ist.
+        assertTrue(
+            "der Zeitplan wurde verdraengt, obwohl leere Eintraege da waren",
+            result.any { stampMatches(it.header.latitude, it.header.longitude, 22.0, 22.0) },
+        )
+    }
+
+    @Test
+    fun `serializeRaw - Rundreise ueber split laesst Kopf und Rumpf unveraendert`() {
+        val entries = listOf(
+            rawWithPlan(lat = 49.0, lng = 11.0, updatedEpochMs = 1_000L),
+            // Eintrag mit leerem Rumpf (nur Versuchsprotokoll) mittendrin —
+            // die Kopfzeile darf nicht mit der des Nachbarn verschmelzen.
+            rawEmpty(lat = 41.0, lng = 29.0, updatedEpochMs = 2_000L),
+            rawWithPlan(lat = 37.0, lng = 15.0, updatedEpochMs = 3_000L),
+        )
+
+        val split = CacheStore.split(CacheStore.serializeRaw(entries))
+
+        assertEquals(entries, split)
+    }
+
     @Test
     fun `migrateLegacy - alles vorhanden`() {
         val plan = schedule(LocalDate.of(2026, 9, 6), 2)

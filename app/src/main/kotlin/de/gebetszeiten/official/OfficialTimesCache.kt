@@ -120,16 +120,27 @@ class OfficialTimesCache(private val context: Context) {
      *  — das würde den gleichnamigen Key beschatten.
      *
      *  Gibt es fuer den Ort noch keinen Eintrag, entsteht einer mit leerem
-     *  Zeitplan: sonst gaebe es kein Versuchsprotokoll fuer einen Ort, an
-     *  dem noch nie ein Abruf gelungen ist, und die Wiederholungs-Bremse in
-     *  [needsRefresh] liefe leer. */
+     *  Zeitplan. Er haelt die STATUSZEILE an einem Ort ohne Erfolg am Leben
+     *  ("Letzter Abruf" / "Fehler", siehe `officialStatusText`) — genau das,
+     *  was frueher die getrennten Versuchs-Stempel `attempt_lat`/`attempt_lng`
+     *  leisteten. Die Wiederholungs-Bremse in [needsRefresh] erreicht er
+     *  dagegen NICHT: ein leerer Eintrag hat `lastDate == null`, also
+     *  `stampOk == false`, und `needsRefresh` kehrt bei `!stampOk` zurueck,
+     *  bevor es `lastAttemptEpochMs` ueberhaupt ansieht. */
     suspend fun recordAttempt(error: String?, nowEpochMs: Long, lat: Double, lng: Double) {
         update { entries ->
-            val existing = CacheStore.select(entries, lat, lng)
-            if (existing != null) {
+            // Index statt Referenzvergleich: dieselbe "nur der erste
+            // Treffer"-Semantik wie `CacheStore.select`, aber ohne die
+            // Annahme, dass genau dieses Listenelement zurueckkommt. Gaebe
+            // `select` je einen kopierten Wert zurueck, taete `recordAttempt`
+            // sonst stillschweigend nichts.
+            val index = entries.indexOfFirst {
+                stampMatches(it.header.latitude, it.header.longitude, lat, lng)
+            }
+            if (index >= 0) {
                 // Nur den Kopf anfassen — der Zeitplan bleibt unberuehrt.
-                entries.map { entry ->
-                    if (entry === existing) {
+                entries.mapIndexed { i, entry ->
+                    if (i == index) {
                         entry.copy(
                             header = entry.header.copy(lastAttemptEpochMs = nowEpochMs, lastError = error),
                         )
@@ -139,10 +150,11 @@ class OfficialTimesCache(private val context: Context) {
                 }
             } else {
                 // `updatedEpochMs = nowEpochMs`, damit der frisch angelegte
-                // Eintrag die Verdraengung in `put` ueberlebt: mit 0 waere er
-                // der aelteste und flaege bei vollem Cache sofort wieder
-                // raus — der Fehlversuch waere nicht protokolliert und jeder
-                // Alarm loeste einen neuen aussichtslosen Netzversuch aus.
+                // Eintrag unter den leeren Eintraegen der juengste ist: `put`
+                // opfert leere Eintraege zuerst und darunter den aeltesten:
+                // mit 0 flaege der eben angelegte sofort selbst wieder raus,
+                // und die Statuszeile haette an diesem Ort weiterhin kein
+                // "Letzter Abruf"/"Fehler" zu zeigen.
                 CacheStore.put(
                     entries,
                     CacheEntry(
@@ -183,9 +195,30 @@ class OfficialTimesCache(private val context: Context) {
         lastError = lastError,
     )
 
+    /** Ein Eintrag fuer diesen Ort, oder null.
+     *
+     *  Fehlt `entries`, ist der gespeicherte Stand noch der alte
+     *  Einzel-Cache. Dann wird der migrierte Stand hier EINMALIG
+     *  persistiert, statt auf den naechsten Schreibvorgang zu warten: der
+     *  kommt nur ueber [putAll] oder [recordAttempt], und `refreshOfficial`
+     *  kehrt bei ausreichender Abdeckung vorher zurueck, ohne zu schreiben —
+     *  bei einem Bestandsnutzer mit vollem Jahres-Cache also potenziell erst
+     *  Monate nach dem Update. Bis dahin kostete JEDER Lesevorgang
+     *  `parse` + `serialize` + `split` ueber den ganzen Jahresplan, mehr als
+     *  vor dem Umbau. Nach diesem einen Schreibvorgang ist `entries` gesetzt
+     *  und der Lesepfad laeuft fuer immer ueber `split` + `parseDay`.
+     *
+     *  Zwei gleichzeitige Lesungen sind unkritisch: `edit{}` ist
+     *  serialisiert, der zweite Durchgang findet `entries` bereits vor, und
+     *  `update { it }` ist dann ein reiner No-op-Rewrite desselben Inhalts. */
     private suspend fun entryFor(lat: Double, lng: Double): RawEntry? {
         val prefs = context.officialStore.data.first()
-        return CacheStore.select(entriesOf(prefs), lat, lng)
+        prefs[entriesKey]?.let { return CacheStore.select(CacheStore.split(it), lat, lng) }
+        // Nichts zu migrieren (frische Installation, oder kein Ortsstempel):
+        // dann auch nichts schreiben — die Pruefung selbst ist billig, sie
+        // faellt ohne Koordinaten sofort durch.
+        if (migrateLegacy(prefs).isEmpty()) return null
+        return CacheStore.select(entriesOf(update { it }), lat, lng)
     }
 
     /** Lesen, aendern, schreiben und aufraeumen in EINER DataStore-
@@ -194,19 +227,18 @@ class OfficialTimesCache(private val context: Context) {
      *  sind weg, oder es hat sich gar nichts geaendert. Ein Abbruch dazwischen
      *  laesst die alten Schluessel unangetastet, die naechste Lesung migriert
      *  einfach erneut. */
-    private suspend fun update(transform: (List<RawEntry>) -> List<RawEntry>) {
+    private suspend fun update(transform: (List<RawEntry>) -> List<RawEntry>): Preferences =
         context.officialStore.edit { prefs ->
             prefs[entriesKey] = CacheStore.serializeRaw(transform(entriesOf(prefs)))
             removeLegacyKeys(prefs)
         }
-    }
 
     /** Alle Eintraege aus dem Speicher. Fehlt `entries`, stammt der Stand
      *  aus einer aelteren Version: dann wird der alte Einzel-Cache im
-     *  Arbeitsspeicher migriert (persistiert wird er beim naechsten
-     *  Schreibvorgang, siehe [update]). Der Umweg ueber serialize/split
-     *  erzeugt die [RawEntry]s ausschliesslich ueber die getestete
-     *  [CacheStore]-API. */
+     *  Arbeitsspeicher migriert. Persistiert wird das entweder gleich beim
+     *  ersten Lesen (siehe [entryFor]) oder vom umschliessenden [update].
+     *  Der Umweg ueber serialize/split erzeugt die [RawEntry]s
+     *  ausschliesslich ueber die getestete [CacheStore]-API. */
     private fun entriesOf(prefs: Preferences): List<RawEntry> {
         prefs[entriesKey]?.let { return CacheStore.split(it) }
         val migrated = migrateLegacy(prefs)

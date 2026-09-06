@@ -105,11 +105,17 @@ object CacheStore {
         entries.firstOrNull { stampMatches(it.header.latitude, it.header.longitude, lat, lng) }
 
     /** [added] einfuegen oder den passenden Eintrag ersetzen (Identitaet
-     *  ueber `stampMatches` — eine Ortsverschiebung um 300 m aktualisiert
+     *  ueber `stampMatches` — eine Ortsverschiebung um ~1 km aktualisiert
      *  den bestehenden Eintrag, statt einen Platz zu verbrauchen).
      *  Angeheftete Eintraege werden NIE verdraengt. Nicht angeheftete
-     *  werden auf [maxUnpinned] begrenzt, aeltester `updatedEpochMs`
-     *  zuerst raus. */
+     *  werden auf [maxUnpinned] begrenzt.
+     *
+     *  Verdraengt wird zuerst, was KEINEN Zeitplan traegt (`lastDate ==
+     *  null`) — so ein Eintrag haelt nur ein Versuchsprotokoll fest und ist
+     *  immer weniger wert als irgendein Zeitplan. Sonst koennte ein
+     *  einziger Fehlversuch an einem sechsten Ort bei vollem Cache einen
+     *  echten Jahresplan hinauswerfen. Erst innerhalb dieser beiden Gruppen
+     *  entscheidet `updatedEpochMs`, aeltester zuerst raus. */
     fun put(
         entries: List<RawEntry>,
         added: CacheEntry,
@@ -129,7 +135,8 @@ object CacheStore {
 
         val unpinned = result.filterNot { isPinned(it) }
         if (unpinned.size > maxUnpinned) {
-            val toEvict = unpinned.sortedBy { it.header.updatedEpochMs }
+            val toEvict = unpinned
+                .sortedWith(compareBy({ it.header.lastDate != null }, { it.header.updatedEpochMs }))
                 .take(unpinned.size - maxUnpinned)
                 .toSet()
             result = result.filterNot { it in toEvict }

@@ -62,8 +62,10 @@ fun officialStatusText(
         if (status.lastAttemptEpochMs == null) {
             // "noch kein Versuch" nur, wenn es auch keinerlei Beleg fuer einen
             // frueheren Abruf gibt. Liegen Standort oder Abdeckung vor, hat es
-            // sehr wohl einen gegeben — seine Aufzeichnung wurde nur vom Versuch
-            // fuer einen anderen Ort verdraengt (ein Datensatz fuer alle Orte).
+            // sehr wohl einen gegeben, nur ohne erhaltenes Protokoll: das Fenster
+            // zwischen `putAll` und `recordAttempt`, oder ein migrierter
+            // Alt-Cache, dessen Versuchs-Stempel auf einen anderen Ort zeigte
+            // und deshalb verworfen wurde.
             lines += if (status.locationId != null || status.coveredUntil != null) {
                 "Letzter Abruf: unbekannt"
             } else {
