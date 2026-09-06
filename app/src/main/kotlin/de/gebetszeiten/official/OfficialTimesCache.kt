@@ -95,6 +95,7 @@ class OfficialTimesCache(private val context: Context) {
             coveredUntil = if (match) prefs[key]?.let { ScheduleText.parse(it).keys.maxOrNull() } else null,
             lastAttemptEpochMs = if (attemptMatch) prefs[lastAttempt] else null,
             lastError = if (attemptMatch) prefs[lastError] else null,
+            stampOk = match,
         )
     }
 
@@ -120,10 +121,15 @@ class OfficialTimesCache(private val context: Context) {
     }
 }
 
-/** Momentaufnahme für die Statuszeile. */
+/** Momentaufnahme für die Statuszeile UND Eingabe für [needsRefresh]
+ *  (Aufrufer: [PrayerProvider][de.gebetszeiten.prayer.PrayerProvider].refreshOfficial).
+ *  [stampOk] default `true`, weil ihn nur `refreshOfficial` braucht — die
+ *  Statuszeile (`officialStatusText`) ignoriert ihn und alle bestehenden
+ *  Aufrufe dort bleiben unveraendert gueltig. */
 data class OfficialStatus(
     val locationId: Int?,
     val coveredUntil: LocalDate?,
     val lastAttemptEpochMs: Long?,
     val lastError: String?,
+    val stampOk: Boolean = true,
 )

@@ -80,12 +80,29 @@ object PrayerProvider {
     /** Online flavor + user opted in: refresh the official-times cache —
      *  aber nur bei Standortwechsel oder wenn weniger als 7 Tage Zukunft
      *  abgedeckt sind (Diyanet-Jahresseite direkt liefert ein ganzes Jahr,
-     *  Fallback-Proxy nur 31 Tage rollierend). */
-    suspend fun refreshOfficial(context: Context, settings: AppSettings) {
+     *  Fallback-Proxy nur 31 Tage rollierend), bzw. bei [force] (Knopf) immer.
+     *  Sonst greift die Wiederholungs-Bremse in [needsRefresh]: nach einem
+     *  Fehlschlag oder einem erfolgreichen, aber duennen Abruf wird erst nach
+     *  Ablauf der jeweiligen Sperrfrist erneut versucht — sonst wuerde jeder
+     *  der 5-6 taeglichen Alarme sowie App-Start und Einstellungsaenderung
+     *  einen aussichtslosen Netzversuch ausloesen. */
+    suspend fun refreshOfficial(context: Context, settings: AppSettings, force: Boolean = false) {
         if (!settings.useOnline || settings.useCalculated) return
         val cache = OfficialTimesCache(context)
-        val (stampOk, coveredUntil) = cache.freshness(settings.latitude, settings.longitude)
-        if (!needsRefresh(coveredUntil, LocalDate.now(), stampOk)) {
+        // status() liefert Stempel-Match, Abdeckung UND Versuchs-Stempel in
+        // einem einzigen DataStore-Read — freshness() allein wuerde einen
+        // zweiten Read fuer lastAttemptEpochMs/lastError erfordern.
+        val status = cache.status(settings.latitude, settings.longitude)
+        if (!needsRefresh(
+                coveredUntil = status.coveredUntil,
+                today = LocalDate.now(),
+                stampOk = status.stampOk,
+                lastAttemptEpochMs = status.lastAttemptEpochMs,
+                lastAttemptFailed = status.lastError != null,
+                nowEpochMs = System.currentTimeMillis(),
+                force = force,
+            )
+        ) {
             // Frischer Cache = kein Netz-Refresh. Trotzdem den GECACHTEN Stand
             // zur Uhr replizieren: sonst bekaeme ein Bestandsnutzer mit
             // Jahres-Cache monatelang nichts gesynct. Gleicher Inhalt = das

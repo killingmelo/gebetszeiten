@@ -50,15 +50,18 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /** Manueller Abruf aus den Einstellungen — schreibt Zeitstempel und
-     *  Fehlergrund in den Cache, den die Statuszeile liest. */
+     *  Fehlergrund in den Cache, den die Statuszeile liest. `force = true`
+     *  gilt NUR fuer diesen einen Aufruf (Default-Parameter von [reschedule]):
+     *  App-Start ([ensureScheduled]) und Einstellungsaenderung ([save]) rufen
+     *  [reschedule] ohne das Argument und erzwingen damit weiterhin nichts. */
     fun refreshOfficialNow() {
-        viewModelScope.launch { reschedule(repository.current()) }
+        viewModelScope.launch { reschedule(repository.current(), force = true) }
     }
 
-    private suspend fun reschedule(value: AppSettings) {
+    private suspend fun reschedule(value: AppSettings, force: Boolean = false) {
         val app = getApplication<Application>()
         // Online flavor: refresh the official-times cache (no-op offline).
-        PrayerProvider.refreshOfficial(app, value)
+        PrayerProvider.refreshOfficial(app, value, force = force)
         PrayerNotifier.ensureChannel(app)
         val zone = java.time.ZoneId.systemDefault()
         val now = java.time.ZonedDateTime.now(zone)
