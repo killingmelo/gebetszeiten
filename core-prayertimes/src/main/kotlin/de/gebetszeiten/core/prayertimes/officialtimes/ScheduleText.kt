@@ -30,16 +30,17 @@ object ScheduleText {
      *  Normalfall genau eine, also 6 Aufrufe statt ~2200.
      *
      *  Liefert für jedes Datum dasselbe wie `parse(text)[date]`: bei
-     *  mehreren Zeilen zum selben Datum gewinnt wie bei `parse` (das über
-     *  `toMap()` läuft) die LETZTE; eine kaputte Zeile mit passendem
-     *  Präfix ergibt `null`, genau wie sie in `parse` aus der Map fehlen
-     *  würde. */
+     *  mehreren Zeilen zum selben Datum gewinnt die letzte GÜLTIGE Zeile —
+     *  eine kaputte Zeile mit passendem Präfix wird übersprungen und
+     *  überschreibt kein zuvor gefundenes gutes Ergebnis, genau wie bei
+     *  `parse` (dort fällt die kaputte Zeile schon über `mapNotNull` heraus,
+     *  bevor `toMap()` läuft). */
     fun parseDay(text: String, date: LocalDate): SixTimes? {
         val prefix = "$date "
         var result: SixTimes? = null
         for (line in text.lineSequence()) {
             if (line.startsWith(prefix)) {
-                result = parseLine(line)?.second
+                parseLine(line)?.second?.let { result = it }
             }
         }
         return result

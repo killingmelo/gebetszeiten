@@ -57,4 +57,18 @@ class ScheduleTextTest {
         assertNull(ScheduleText.parseDay(text, start.minusDays(1)))
         assertNull(parsed[start.minusDays(1)])
     }
+
+    @Test
+    fun `parseDay liefert die letzte gueltige Zeile, wenn eine spaetere Zeile zum selben Datum kaputt ist`() {
+        val kaputtTag = LocalDate.of(2026, 9, 6)
+        val text = "2026-09-06 04:54 06:23 13:02 16:39 19:31 20:53\n2026-09-06 kaputt"
+        val expected = SixTimes(
+            fajr = LocalTime.of(4, 54), sunrise = LocalTime.of(6, 23),
+            dhuhr = LocalTime.of(13, 2), asr = LocalTime.of(16, 39),
+            maghrib = LocalTime.of(19, 31), isha = LocalTime.of(20, 53),
+        )
+
+        assertEquals(expected, ScheduleText.parse(text)[kaputtTag])
+        assertEquals(expected, ScheduleText.parseDay(text, kaputtTag))
+    }
 }

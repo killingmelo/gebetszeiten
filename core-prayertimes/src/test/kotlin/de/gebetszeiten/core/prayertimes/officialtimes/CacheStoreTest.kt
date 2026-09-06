@@ -109,6 +109,8 @@ class CacheStoreTest {
         assertEquals(2, split.size)
         assertEquals(49.0, split[0].header.latitude, 0.0)
         assertEquals(41.0, split[1].header.latitude, 0.0)
+        assertEquals(plan1, ScheduleText.parse(split[0].body))
+        assertEquals(plan3, ScheduleText.parse(split[1].body))
     }
 
     @Test
