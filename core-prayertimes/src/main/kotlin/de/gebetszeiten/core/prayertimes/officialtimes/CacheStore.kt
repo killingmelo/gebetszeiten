@@ -100,22 +100,41 @@ object CacheStore {
             if (entry.body.isEmpty()) headerLine else "$headerLine\n${entry.body}"
         }
 
+    /** Position des Eintrags fuer diese Koordinaten, oder -1. EINZIGE
+     *  Stelle, an der die Ortsidentitaet ausgewertet wird — [select] und
+     *  Aufrufer, die den Eintrag an Ort und Stelle aendern wollen
+     *  (`OfficialTimesCache.recordAttempt`), gehen beide hierueber, damit
+     *  sie nie auseinanderdriften. */
+    fun indexOf(entries: List<RawEntry>, lat: Double, lng: Double): Int =
+        entries.indexOfFirst { stampMatches(it.header.latitude, it.header.longitude, lat, lng) }
+
     /** Eintrag fuer diese Koordinaten (ueber `stampMatches`), oder null. */
     fun select(entries: List<RawEntry>, lat: Double, lng: Double): RawEntry? =
-        entries.firstOrNull { stampMatches(it.header.latitude, it.header.longitude, lat, lng) }
+        entries.getOrNull(indexOf(entries, lat, lng))
 
     /** [added] einfuegen oder den passenden Eintrag ersetzen (Identitaet
      *  ueber `stampMatches` — eine Ortsverschiebung um ~1 km aktualisiert
      *  den bestehenden Eintrag, statt einen Platz zu verbrauchen).
-     *  Angeheftete Eintraege werden NIE verdraengt. Nicht angeheftete
-     *  werden auf [maxUnpinned] begrenzt.
+     *  Angeheftete Eintraege werden NIE verdraengt.
      *
-     *  Verdraengt wird zuerst, was KEINEN Zeitplan traegt (`lastDate ==
-     *  null`) — so ein Eintrag haelt nur ein Versuchsprotokoll fest und ist
-     *  immer weniger wert als irgendein Zeitplan. Sonst koennte ein
-     *  einziger Fehlversuch an einem sechsten Ort bei vollem Cache einen
-     *  echten Jahresplan hinauswerfen. Erst innerhalb dieser beiden Gruppen
-     *  entscheidet `updatedEpochMs`, aeltester zuerst raus. */
+     *  Nicht angeheftete Eintraege werden GETRENNT begrenzt, je nachdem ob
+     *  sie einen Zeitplan tragen:
+     *  - MIT Zeitplan: hoechstens [maxUnpinned], aeltester `updatedEpochMs`
+     *    zuerst raus.
+     *  - OHNE Zeitplan (`lastDate == null`, also nur ein Versuchsprotokoll):
+     *    hoechstens EINER, und zwar der juengste.
+     *
+     *  Der Cache haelt damit hoechstens `maxUnpinned + 1` nicht angeheftete
+     *  Eintraege, von denen hoechstens einer leer ist. Beide Gruppen um
+     *  denselben Platz konkurrieren zu lassen, geht in beide Richtungen
+     *  schief: entweder wirft ein einziger Fehlversuch an einem sechsten Ort
+     *  einen echten Jahresplan hinaus, oder — verdraengt man leere Eintraege
+     *  zuerst — faellt der eben protokollierte Fehlversuch bei vollem Cache
+     *  im selben Atemzug wieder raus und die Statuszeile verschweigt den
+     *  Fehler. Ein leerer Eintrag kostet eine Kopfzeile statt eines
+     *  Jahresplans, er braucht keinen der [maxUnpinned] Plaetze. Mehr als
+     *  einen braucht niemand: relevant ist immer der Ort, an dem gerade
+     *  etwas schiefging. */
     fun put(
         entries: List<RawEntry>,
         added: CacheEntry,
@@ -127,21 +146,22 @@ object CacheStore {
         val withoutMatch = entries.filterNot {
             stampMatches(it.header.latitude, it.header.longitude, newEntry.header.latitude, newEntry.header.longitude)
         }
-        var result = withoutMatch + newEntry
+        val result = withoutMatch + newEntry
 
         fun isPinned(entry: RawEntry) = pinnedCoords.any { (pLat, pLng) ->
             stampMatches(entry.header.latitude, entry.header.longitude, pLat, pLng)
         }
 
-        val unpinned = result.filterNot { isPinned(it) }
-        if (unpinned.size > maxUnpinned) {
-            val toEvict = unpinned
-                .sortedWith(compareBy({ it.header.lastDate != null }, { it.header.updatedEpochMs }))
-                .take(unpinned.size - maxUnpinned)
-                .toSet()
-            result = result.filterNot { it in toEvict }
-        }
-        return result
+        val (withSchedule, empty) = result.filterNot { isPinned(it) }
+            .partition { it.header.lastDate != null }
+        // Aufsteigend nach Alter sortiert und die juengsten behalten: was
+        // uebrig bleibt, ist zu viel. `dropLast` auf einer zu kurzen Liste
+        // ist leer — dann faellt nichts.
+        val evicted = (
+            withSchedule.sortedBy { it.header.updatedEpochMs }.dropLast(maxUnpinned) +
+                empty.sortedBy { it.header.updatedEpochMs }.dropLast(1)
+            ).toSet()
+        return result.filterNot { it in evicted }
     }
 
     /** Alten Einzel-Cache in einen Eintrag ueberfuehren. Gibt eine leere

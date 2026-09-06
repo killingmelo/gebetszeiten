@@ -133,10 +133,10 @@ class OfficialTimesCache(private val context: Context) {
             // Treffer"-Semantik wie `CacheStore.select`, aber ohne die
             // Annahme, dass genau dieses Listenelement zurueckkommt. Gaebe
             // `select` je einen kopierten Wert zurueck, taete `recordAttempt`
-            // sonst stillschweigend nichts.
-            val index = entries.indexOfFirst {
-                stampMatches(it.header.latitude, it.header.longitude, lat, lng)
-            }
+            // sonst stillschweigend nichts. Die Ortsidentitaet selbst steht
+            // nur in `CacheStore` — hier nachgebaut, wuerde sie still
+            // abdriften, sobald sie sich dort aendert.
+            val index = CacheStore.indexOf(entries, lat, lng)
             if (index >= 0) {
                 // Nur den Kopf anfassen — der Zeitplan bleibt unberuehrt.
                 entries.mapIndexed { i, entry ->
@@ -150,11 +150,13 @@ class OfficialTimesCache(private val context: Context) {
                 }
             } else {
                 // `updatedEpochMs = nowEpochMs`, damit der frisch angelegte
-                // Eintrag unter den leeren Eintraegen der juengste ist: `put`
-                // opfert leere Eintraege zuerst und darunter den aeltesten:
-                // mit 0 flaege der eben angelegte sofort selbst wieder raus,
-                // und die Statuszeile haette an diesem Ort weiterhin kein
-                // "Letzter Abruf"/"Fehler" zu zeigen.
+                // Eintrag unter den leeren Eintraegen der juengste ist:
+                // `put` haelt von denen nur den juengsten. Mit 0 flaege der
+                // eben angelegte sofort selbst wieder raus, sobald schon ein
+                // anderer leerer Eintrag da ist — und die Statuszeile haette
+                // an diesem Ort weiterhin kein "Letzter Abruf"/"Fehler" zu
+                // zeigen. Einen Jahresplan verdraengt er nicht: leere
+                // Eintraege haben in `put` ihre eigene Grenze.
                 CacheStore.put(
                     entries,
                     CacheEntry(
@@ -279,8 +281,10 @@ class OfficialTimesCache(private val context: Context) {
     }
 
     private companion object {
-        /** Fuenf Orte, kein Anheften — Favoriten und die due()-Auswahl
-         *  kommen spaeter. */
+        /** Fuenf Orte MIT Zeitplan, kein Anheften — Favoriten und die
+         *  due()-Auswahl kommen spaeter. Dazu kommt hoechstens ein leerer
+         *  Eintrag (reines Versuchsprotokoll), den [CacheStore.put] getrennt
+         *  begrenzt. */
         const val MAX_ENTRIES = 5
     }
 }

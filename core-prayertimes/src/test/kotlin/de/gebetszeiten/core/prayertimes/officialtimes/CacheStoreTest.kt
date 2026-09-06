@@ -206,23 +206,29 @@ class CacheStoreTest {
 
     @Test
     fun `put verdraengt den aeltesten nicht angehefteten bei Ueberschreitung von maxUnpinned`() {
-        var entries = emptyList<RawEntry>()
-        for (i in 0 until 6) {
-            entries = CacheStore.put(
-                entries = entries,
-                added = CacheEntry(
-                    header(lat = 10.0 + i, lng = 10.0 + i, updatedEpochMs = (100 + i).toLong()),
-                    schedule(LocalDate.of(2026, 1, 1), 1),
-                ),
-                pinnedCoords = emptyList(),
-                maxUnpinned = 5,
-            )
+        // Absichtlich ABSTEIGEND nach Alter: der aelteste Eintrag steht
+        // HINTEN. Kaeme die Liste schon in aufsteigender Altersreihenfolge,
+        // truebe die stabile Sortierung das Ergebnis — der Test bliebe dann
+        // gruen, auch wenn jemand den Sortierschluessel `updatedEpochMs`
+        // ersatzlos streicht.
+        val entries = (0 until 5).map { i ->
+            rawWithPlan(lat = 10.0 + i, lng = 10.0 + i, updatedEpochMs = (500 - 100 * i).toLong())
         }
 
-        assertEquals(5, entries.size)
-        // Der aelteste (i=0, updatedEpochMs=100) muss weg sein.
-        assertTrue(entries.none { it.header.updatedEpochMs == 100L })
-        assertTrue(entries.any { it.header.updatedEpochMs == 105L })
+        val result = CacheStore.put(
+            entries = entries,
+            added = CacheEntry(
+                header(lat = 20.0, lng = 20.0, updatedEpochMs = 600L),
+                schedule(LocalDate.of(2026, 1, 1), 1),
+            ),
+            pinnedCoords = emptyList(),
+            maxUnpinned = 5,
+        )
+
+        assertEquals(5, result.size)
+        // Der aelteste (updatedEpochMs=100, ganz hinten) muss weg sein.
+        assertTrue(result.none { it.header.updatedEpochMs == 100L })
+        assertTrue(result.any { it.header.updatedEpochMs == 600L })
     }
 
     /** Eintrag mit echtem Zeitplan — `lastDate` steht im Kopf, wie ihn
@@ -249,7 +255,7 @@ class CacheStoreTest {
     )
 
     @Test
-    fun `put opfert bei Verdraengung zuerst den Eintrag ohne Zeitplan`() {
+    fun `put haelt den Fehlversuch am sechsten Ort fest, ohne einen Zeitplan zu opfern`() {
         // Fuenf Orte erfolgreich abgerufen, aufsteigend aktualisiert.
         var entries = emptyList<RawEntry>()
         for (i in 0 until 5) {
@@ -275,7 +281,8 @@ class CacheStoreTest {
             maxUnpinned = 5,
         )
 
-        assertEquals(5, result.size)
+        // maxUnpinned zaehlt nur Zeitplaene, der leere Eintrag kommt dazu.
+        assertEquals(6, result.size)
         // Alle fuenf Jahresplaene ueberleben — auch der aelteste.
         for (i in 0 until 5) {
             assertTrue(
@@ -283,16 +290,25 @@ class CacheStoreTest {
                 result.any { stampMatches(it.header.latitude, it.header.longitude, 10.0 + i, 10.0 + i) },
             )
         }
-        // Der leere Eintrag ist gefallen: ein Versuchsprotokoll ist weniger
-        // wert als irgendein Zeitplan.
-        assertTrue(result.none { stampMatches(it.header.latitude, it.header.longitude, 20.0, 20.0) })
+        // Und der Fehlversuch ist protokolliert — sonst zeigte die
+        // Statuszeile an diesem Ort "noch kein Versuch", obwohl der Abruf
+        // gerade eben gescheitert ist.
+        val empty = result.single { stampMatches(it.header.latitude, it.header.longitude, 20.0, 20.0) }
+        assertEquals("Kein Netz", empty.header.lastError)
+        assertNull(empty.header.lastDate)
     }
 
     @Test
-    fun `put verdraengt unter mehreren leeren Eintraegen den aeltesten leeren`() {
+    fun `put behaelt von mehreren leeren Eintraegen nur den juengsten`() {
+        // Zwei Fehlversuche an zwei verschiedenen unbekannten Orten liegen
+        // schon vor, dazu ein Zeitplan.
         val entries = listOf(
-            rawEmpty(lat = 20.0, lng = 20.0, updatedEpochMs = 100L),
-            rawEmpty(lat = 21.0, lng = 21.0, updatedEpochMs = 200L),
+            // Der JUENGERE leere Eintrag steht vorn, der aeltere dahinter:
+            // so faellt der Test um, sobald jemand den Sortierschluessel
+            // `updatedEpochMs` streicht (stabile Sortierung wuerde sonst
+            // schon die Eingabereihenfolge richtig raten).
+            rawEmpty(lat = 20.0, lng = 20.0, updatedEpochMs = 200L),
+            rawEmpty(lat = 21.0, lng = 21.0, updatedEpochMs = 100L),
             // Der aelteste Eintrag ueberhaupt — aber er traegt einen Zeitplan.
             rawWithPlan(lat = 22.0, lng = 22.0, updatedEpochMs = 50L),
         )
@@ -304,25 +320,51 @@ class CacheStoreTest {
                 schedule(LocalDate.of(2026, 1, 1), 1),
             ),
             pinnedCoords = emptyList(),
-            maxUnpinned = 3,
+            // Reichlich Platz fuer Zeitplaene: die leeren Eintraege werden
+            // trotzdem begrenzt, sie haben ihre eigene Grenze.
+            maxUnpinned = 5,
         )
 
+        // Zwei Zeitplaene plus genau ein leerer Eintrag.
         assertEquals(3, result.size)
         // Der aeltere leere faellt ...
         assertTrue(
             "der aeltere leere Eintrag haette fallen muessen",
-            result.none { stampMatches(it.header.latitude, it.header.longitude, 20.0, 20.0) },
+            result.none { stampMatches(it.header.latitude, it.header.longitude, 21.0, 21.0) },
         )
         // ... der juengere leere bleibt ...
         assertTrue(
             "der juengere leere Eintrag wurde verdraengt",
-            result.any { stampMatches(it.header.latitude, it.header.longitude, 21.0, 21.0) },
+            result.any { stampMatches(it.header.latitude, it.header.longitude, 20.0, 20.0) },
         )
-        // ... und der Zeitplan bleibt, obwohl er der aelteste Eintrag ist.
+        // ... und die Zeitplaene sind unberuehrt, auch der aelteste Eintrag
+        // der ganzen Liste.
         assertTrue(
-            "der Zeitplan wurde verdraengt, obwohl leere Eintraege da waren",
+            "der Zeitplan wurde verdraengt, obwohl er gar nicht mit leeren Eintraegen konkurriert",
             result.any { stampMatches(it.header.latitude, it.header.longitude, 22.0, 22.0) },
         )
+        assertTrue(result.any { stampMatches(it.header.latitude, it.header.longitude, 23.0, 23.0) })
+    }
+
+    @Test
+    fun `indexOf trifft denselben Eintrag wie select - ein Fehlversuch legt keinen zweiten an`() {
+        val entries = listOf(
+            rawWithPlan(lat = 41.0, lng = 29.0, updatedEpochMs = 100L),
+            rawWithPlan(lat = lat, lng = lng, updatedEpochMs = 200L),
+        )
+
+        // ~500 m entfernt: derselbe Ort. `recordAttempt` findet den
+        // bestehenden Eintrag darueber und aktualisiert nur dessen Kopf,
+        // statt einen zweiten Eintrag fuer denselben Ort anzulegen.
+        val index = CacheStore.indexOf(entries, lat = 49.4566, lng = 11.0767)
+        assertEquals(1, index)
+        assertEquals(CacheStore.select(entries, lat = 49.4566, lng = 11.0767), entries[index])
+
+        // ~5 km entfernt: kein Treffer, und zwar derselbe Nicht-Treffer wie
+        // bei `select` — beide gehen ueber dieselbe Ortsidentitaet.
+        assertEquals(-1, CacheStore.indexOf(entries, lat = lat, lng = 11.13))
+        assertNull(CacheStore.select(entries, lat = lat, lng = 11.13))
+        assertEquals(-1, CacheStore.indexOf(emptyList(), lat = lat, lng = lng))
     }
 
     @Test
