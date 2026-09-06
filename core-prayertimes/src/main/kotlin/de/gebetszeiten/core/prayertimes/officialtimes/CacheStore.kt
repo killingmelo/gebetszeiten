@@ -88,15 +88,16 @@ object CacheStore {
     /** firstDate/lastDate werden aus dem Zeitplan ABGELEITET, nicht vom
      *  Aufrufer uebernommen — so kann der Kopf nie vom Rumpf abweichen. */
     fun serialize(entries: List<CacheEntry>): String =
+        serializeRaw(entries.map { toRawEntry(it) })
+
+    /** Gegenstueck zu [split]: schreibt Eintraege zurueck, OHNE die Ruempfe
+     *  anzufassen. [put] liefert [RawEntry]s — ein Umweg ueber [CacheEntry]
+     *  wuerde bei JEDEM Schreibvorgang jeden gespeicherten Jahresplan neu
+     *  parsen und serialisieren, obwohl sich nur ein Kopffeld aendert. */
+    fun serializeRaw(entries: List<RawEntry>): String =
         entries.joinToString("\n") { entry ->
-            val body = ScheduleText.serialize(entry.schedule)
-            val dates = entry.schedule.keys
-            val header = entry.header.copy(
-                firstDate = dates.minOrNull(),
-                lastDate = dates.maxOrNull(),
-            )
-            val headerLine = formatHeader(header)
-            if (body.isEmpty()) headerLine else "$headerLine\n$body"
+            val headerLine = formatHeader(entry.header)
+            if (entry.body.isEmpty()) headerLine else "$headerLine\n${entry.body}"
         }
 
     /** Eintrag fuer diese Koordinaten (ueber `stampMatches`), oder null. */

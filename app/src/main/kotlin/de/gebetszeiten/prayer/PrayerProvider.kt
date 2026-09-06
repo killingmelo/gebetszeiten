@@ -89,9 +89,8 @@ object PrayerProvider {
     suspend fun refreshOfficial(context: Context, settings: AppSettings, force: Boolean = false) {
         if (!settings.useOnline || settings.useCalculated) return
         val cache = OfficialTimesCache(context)
-        // status() liefert Stempel-Match, Abdeckung UND Versuchs-Stempel in
-        // einem einzigen DataStore-Read — freshness() allein wuerde einen
-        // zweiten Read fuer lastAttemptEpochMs/lastError erfordern.
+        // status() liefert Stempel-Treffer, Abdeckung UND Versuchsprotokoll in
+        // einem einzigen DataStore-Read, ohne den Zeitplan zu parsen.
         val status = cache.status(settings.latitude, settings.longitude)
         if (!needsRefresh(
                 coveredUntil = status.coveredUntil,
