@@ -154,9 +154,11 @@ object CacheStore {
 
         val (withSchedule, empty) = result.filterNot { isPinned(it) }
             .partition { it.header.lastDate != null }
-        // Aufsteigend nach Alter sortiert und die juengsten behalten: was
-        // uebrig bleibt, ist zu viel. `dropLast` auf einer zu kurzen Liste
-        // ist leer — dann faellt nichts.
+        // Aufsteigend nach `updatedEpochMs` — der AELTESTE steht damit vorn,
+        // der juengste hinten. `dropLast(n)` nimmt die n juengsten aus der
+        // Verdraengungsliste heraus; was uebrig bleibt, ist zu viel und
+        // faellt. Auf einer zu kurzen Liste ist das Ergebnis leer, dann
+        // faellt nichts.
         val evicted = (
             withSchedule.sortedBy { it.header.updatedEpochMs }.dropLast(maxUnpinned) +
                 empty.sortedBy { it.header.updatedEpochMs }.dropLast(1)
