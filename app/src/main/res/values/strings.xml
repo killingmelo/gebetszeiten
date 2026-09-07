@@ -129,6 +129,11 @@
     <string name="city_suggestions_toggle">Ortsvorschläge ein- oder ausblenden</string>
     <string name="city_clear">Eingabe löschen</string>
     <string name="city_recent">Zuletzt gewählt</string>
+    <string name="favorites_title">Favoriten</string>
+    <string name="favorites_add">Als Favorit merken</string>
+    <string name="favorites_remove">Favorit entfernen</string>
+    <string name="favorites_full">Favoriten voll — höchstens 10</string>
+    <string name="favorites_switch">Favoriten-Ort wechseln</string>
     <string name="coords_show">Koordinaten manuell eingeben</string>
     <string name="coords_hide">Manuelle Eingabe schließen</string>
     <string name="badge_bundled">Amtlich · %1$s</string>

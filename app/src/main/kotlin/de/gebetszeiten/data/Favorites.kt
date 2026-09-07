@@ -10,6 +10,11 @@ import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
  */
 private const val SEP = '\t'
 
+/** Obergrenze der Liste. Öffentlich, weil die Oberfläche sie kennen muss: nur
+ *  so kann sie das stille Ablehnen von [withFavorite] in eine sichtbare
+ *  Meldung übersetzen, statt den Stern wirkungslos verpuffen zu lassen. */
+const val FAVORITES_MAX = 10
+
 /** [addedEpochMs] liest heute niemand; es hält die Reihenfolge unabhängig von
  *  der Listenposition fest, damit spätere Umbauten sie nicht verlieren. */
 data class Favorite(val city: City, val addedEpochMs: Long)
@@ -69,7 +74,7 @@ fun withFavorite(
     existing: List<Favorite>,
     added: City,
     nowEpochMs: Long,
-    max: Int = 10,
+    max: Int = FAVORITES_MAX,
 ): List<Favorite> =
     if (isFavorite(existing, added) || existing.size >= max) {
         existing

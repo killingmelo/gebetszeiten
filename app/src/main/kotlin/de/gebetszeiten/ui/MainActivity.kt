@@ -36,6 +36,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -90,7 +92,11 @@ import de.gebetszeiten.R
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
 import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.core.prayertimes.officialtimes.displayName
+import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
 import de.gebetszeiten.data.AppSettings
+import de.gebetszeiten.data.City
+import de.gebetszeiten.data.Favorite
+import de.gebetszeiten.data.recentPlaceLabel
 import de.gebetszeiten.prayer.IslamicWindows
 import de.gebetszeiten.prayer.KarahaCountdown
 import de.gebetszeiten.prayer.KarahaTimes
@@ -156,20 +162,132 @@ private fun NotificationPermissionRequester() {
 
 private enum class Tab { HEUTE, MONAT, QIBLA }
 
+/**
+ * Das Favoriten-Menü der Kopfzeile. Der Knopf in `actions` und (nur im Tab
+ * HEUTE) der Ortsname im Titel öffnen DASSELBE Menü — geteilt wird nur der
+ * Zustand `expanded`, es gibt keine zweite Umsetzung.
+ *
+ * Der aktive Eintrag wird über [stampMatches] erkannt, nicht über `==`: das
+ * ist dieselbe Identität, mit der `Favorites.kt` und der Zeiten-Cache arbeiten
+ * (~1 km Toleranz).
+ */
+@Composable
+private fun FavoritesMenu(
+    favorites: List<Favorite>,
+    currentLat: Double,
+    currentLng: Double,
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onPick: (City) -> Unit,
+) {
+    val cities = favorites.map { it.city }
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        cities.forEach { c ->
+            val active = stampMatches(c.latitude, c.longitude, currentLat, currentLng)
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        // Gleiche Beschriftung wie die Chips im
+                        // Einstellungsblatt — dieselbe Funktion, keine zweite.
+                        recentPlaceLabel(c, cities),
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    )
+                },
+                // Gefüllter Stern = das ist der Ort, der gerade gilt. Der
+                // Zustand steht schon fett im Text, deshalb keine zweite
+                // Vorlesung für die Sprachausgabe.
+                leadingIcon = {
+                    Icon(
+                        painterResource(
+                            if (active) R.drawable.ic_star else R.drawable.ic_star_outline,
+                        ),
+                        contentDescription = null,
+                    )
+                },
+                onClick = { onPick(c) },
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
     val settings by viewModel.settings.collectAsState()
     var tab by rememberSaveable { mutableStateOf(Tab.HEUTE) }
     var showSettings by remember { mutableStateOf(false) }
+    var favoritesMenuOpen by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    // Ein Knopf, der ein leeres Menü öffnet, ist eine Sackgasse — ohne
+    // Favoriten gibt es also weder Knopf noch antippbaren Titel.
+    val hasFavorites = settings.favorites.isNotEmpty()
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(when (tab) { Tab.HEUTE -> settings.city; Tab.MONAT -> stringResource(R.string.tab_month); Tab.QIBLA -> stringResource(R.string.tab_qibla) }) },
+                title = {
+                    val title = when (tab) {
+                        Tab.HEUTE -> settings.city
+                        Tab.MONAT -> stringResource(R.string.tab_month)
+                        Tab.QIBLA -> stringResource(R.string.tab_qibla)
+                    }
+                    // Nur im Tab HEUTE IST der Titel der Ortsname — dort ist
+                    // er die naheliegendste Stelle für den Umschalter. In
+                    // MONAT und QIBLA steht dort der Tab-Name; ein Titel, der
+                    // auf einem Tab ein Knopf ist und auf zwei anderen nicht,
+                    // wäre schlechter zu bedienen als der klare Knopf rechts.
+                    if (tab == Tab.HEUTE && hasFavorites) {
+                        // onClickLabel, damit die Sprachausgabe sagt, WAS der
+                        // Tipp auf den Ortsnamen bewirkt.
+                        val switchLabel = stringResource(R.string.favorites_switch)
+                        Text(
+                            title,
+                            modifier = Modifier.clickable(onClickLabel = switchLabel) {
+                                favoritesMenuOpen = true
+                            },
+                        )
+                    } else {
+                        Text(title)
+                    }
+                },
                 actions = {
+                    if (hasFavorites) {
+                        // Box als Anker: das Menü hängt am Knopf, egal welcher
+                        // der beiden Wege es geöffnet hat.
+                        Box {
+                            IconButton(onClick = { favoritesMenuOpen = true }) {
+                                Icon(
+                                    painterResource(R.drawable.ic_star),
+                                    contentDescription = stringResource(R.string.favorites_switch),
+                                )
+                            }
+                            FavoritesMenu(
+                                favorites = settings.favorites,
+                                currentLat = settings.latitude,
+                                currentLng = settings.longitude,
+                                expanded = favoritesMenuOpen,
+                                onDismiss = { favoritesMenuOpen = false },
+                                onPick = { c ->
+                                    favoritesMenuOpen = false
+                                    // Kompletter Umzug über denselben Weg, den
+                                    // auch das Einstellungsblatt nimmt (commit
+                                    // → onApply → viewModel.save): reschedule()
+                                    // zieht Benachrichtigung, Wecker, Widget
+                                    // und Qibla mit. recentPlaces bleibt
+                                    // unberührt — ein Favoritenwechsel ist
+                                    // keine Suche.
+                                    viewModel.save(
+                                        settings.copy(
+                                            city = c.name,
+                                            latitude = c.latitude,
+                                            longitude = c.longitude,
+                                        ),
+                                    )
+                                },
+                            )
+                        }
+                    }
                     IconButton(onClick = { showSettings = true }) {
                         Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.settings_icon_desc))
                     }
@@ -219,6 +337,7 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
                 onApply = { viewModel.save(it) },
                 onRefresh = { viewModel.refreshOfficialNow() },
                 refreshTick = officialRefreshes,
+                snackbarHostState = snackbarHostState,
             )
         }
     }
