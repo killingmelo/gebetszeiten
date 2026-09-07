@@ -1,6 +1,7 @@
 package de.gebetszeiten.core.prayertimes.officialtimes
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -470,5 +471,272 @@ class CacheStoreTest {
         )
 
         assertTrue(result.isEmpty())
+    }
+
+    // ---------- Verdraengung mit echten Favoriten (Task 5) ----------
+
+    @Test
+    fun `put haelt alle zehn Favoriten, auch wenn zehn fremde Orte dazukommen`() {
+        val pinnedCoords = (0 until 10).map { (10.0 + it) to (10.0 + it) }
+        var entries = emptyList<RawEntry>()
+        for ((i, p) in pinnedCoords.withIndex()) {
+            entries = CacheStore.put(
+                entries = entries,
+                added = CacheEntry(
+                    header(lat = p.first, lng = p.second, updatedEpochMs = (100 + i).toLong()),
+                    schedule(LocalDate.of(2026, 1, 1), 1),
+                ),
+                pinnedCoords = pinnedCoords,
+                maxUnpinned = 5,
+            )
+        }
+        // Zehn fremde Orte, doppelt so viele wie maxUnpinned erlaubt.
+        for (i in 0 until 10) {
+            entries = CacheStore.put(
+                entries = entries,
+                added = CacheEntry(
+                    header(lat = 40.0 + i, lng = 40.0 + i, updatedEpochMs = (1_000 + i).toLong()),
+                    schedule(LocalDate.of(2026, 1, 1), 1),
+                ),
+                pinnedCoords = pinnedCoords,
+                maxUnpinned = 5,
+            )
+        }
+
+        for (p in pinnedCoords) {
+            assertTrue(
+                "Favorit bei " + p.first + " wurde verdraengt",
+                entries.any { stampMatches(it.header.latitude, it.header.longitude, p.first, p.second) },
+            )
+        }
+        // Zehn Favoriten plus die fuenf erlaubten fremden Orte.
+        assertEquals(15, entries.size)
+    }
+
+    @Test
+    fun `put verdraengt einen Favoriten nicht, obwohl sein Zeitstempel der aelteste von allen ist`() {
+        val favorit = 49.0 to 11.0
+        var entries = listOf(rawWithPlan(lat = favorit.first, lng = favorit.second, updatedEpochMs = 1L))
+        for (i in 0 until 6) {
+            entries = CacheStore.put(
+                entries = entries,
+                added = CacheEntry(
+                    header(lat = 20.0 + i, lng = 20.0 + i, updatedEpochMs = (500 + i).toLong()),
+                    schedule(LocalDate.of(2026, 1, 1), 1),
+                ),
+                pinnedCoords = listOf(favorit),
+                maxUnpinned = 5,
+            )
+        }
+
+        val favEntry = entries.single {
+            stampMatches(it.header.latitude, it.header.longitude, favorit.first, favorit.second)
+        }
+        assertEquals(1L, favEntry.header.updatedEpochMs)
+        // Favorit plus die fuenf erlaubten fremden Orte.
+        assertEquals(6, entries.size)
+    }
+
+    @Test
+    fun `put aktualisiert einen angehefteten Ort statt ihn zu duplizieren`() {
+        val favorit = lat to lng
+        val neuerPlan = schedule(LocalDate.of(2026, 9, 6), 3)
+
+        val result = CacheStore.put(
+            entries = listOf(rawWithPlan(lat = lat, lng = lng, updatedEpochMs = 100L)),
+            // ~500 m daneben: derselbe Ort.
+            added = CacheEntry(header(lat = 49.4566, lng = lng, updatedEpochMs = 2_000L), neuerPlan),
+            pinnedCoords = listOf(favorit),
+            maxUnpinned = 5,
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(2_000L, result[0].header.updatedEpochMs)
+        assertEquals(neuerPlan, ScheduleText.parse(result[0].body))
+    }
+
+    @Test
+    fun `put verdraengt niemals den gerade hinzugefuegten Eintrag`() {
+        // Ein JUENGERER leerer Eintrag liegt schon vor, der neue ist aelter
+        // (rueckwaerts gestellte Uhr, oder ein migrierter Eintrag mit
+        // spaeterem Stempel). Der neue darf trotzdem nicht selbst
+        // rausfallen — sonst verschweigt die Statuszeile den Fehler, den
+        // `recordAttempt` gerade eben protokolliert hat.
+        val result = CacheStore.put(
+            entries = listOf(rawEmpty(lat = 20.0, lng = 20.0, updatedEpochMs = 500L)),
+            added = CacheEntry(
+                header(lat = 30.0, lng = 30.0, locationId = null, updatedEpochMs = 100L, lastError = "Kein Netz"),
+                emptyMap(),
+            ),
+            pinnedCoords = emptyList(),
+            maxUnpinned = 5,
+        )
+
+        assertEquals(1, result.size)
+        assertTrue(
+            "der gerade hinzugefuegte Eintrag wurde verdraengt",
+            result.any { stampMatches(it.header.latitude, it.header.longitude, 30.0, 30.0) },
+        )
+    }
+
+    // ---------- dueOrder (Task 5) ----------
+
+    private val today = LocalDate.of(2026, 9, 7)
+
+    /** Eintrag, dessen Abdeckung bis [lastDate] reicht. Ein einziger Tag im
+     *  Rumpf genuegt — `dueOrder` liest nur den Kopf. */
+    private fun rawCovering(
+        lat: Double,
+        lng: Double,
+        lastDate: LocalDate,
+        updatedEpochMs: Long = 1_000L,
+    ) = RawEntry(
+        header(lat = lat, lng = lng, firstDate = lastDate, lastDate = lastDate, updatedEpochMs = updatedEpochMs),
+        ScheduleText.serialize(mapOf(lastDate to sixTimes(0))),
+    )
+
+    @Test
+    fun `dueOrder - ein Favorit ohne Eintrag steht vor einem mit 300 Tagen Abdeckung`() {
+        val versorgt = 20.0 to 20.0
+        val ohneZeiten = 10.0 to 10.0
+        val entries = listOf(rawCovering(versorgt.first, versorgt.second, today.plusDays(300)))
+
+        // Der versorgte Favorit steht ABSICHTLICH vorn in pinnedCoords.
+        val order = CacheStore.dueOrder(entries, listOf(versorgt, ohneZeiten), activeCoords = null, today = today)
+
+        assertEquals(listOf(10.0, 20.0), order.map { it.latitude })
+        assertNull(order[0].entry)
+        assertTrue(order[0].pinned)
+    }
+
+    @Test
+    fun `dueOrder - abgelaufene Abdeckung vor knapper, knappe vor reichlicher`() {
+        val abgelaufen = 10.0 to 10.0
+        val knapp = 20.0 to 20.0
+        val reichlich = 30.0 to 30.0
+        val entries = listOf(
+            rawCovering(reichlich.first, reichlich.second, today.plusDays(300)),
+            rawCovering(knapp.first, knapp.second, today.plusDays(3)),
+            rawCovering(abgelaufen.first, abgelaufen.second, today.minusDays(5)),
+        )
+
+        // pinnedCoords absichtlich genau umgekehrt zum erwarteten Ergebnis.
+        val order = CacheStore.dueOrder(
+            entries,
+            listOf(reichlich, knapp, abgelaufen),
+            activeCoords = null,
+            today = today,
+        )
+
+        assertEquals(listOf(10.0, 20.0, 30.0), order.map { it.latitude })
+    }
+
+    @Test
+    fun `dueOrder - bei gleicher Restabdeckung steht der aktive Ort vor dem Favoriten`() {
+        val favorit = 10.0 to 10.0
+        val aktiv = 20.0 to 20.0
+        val entries = listOf(
+            rawCovering(favorit.first, favorit.second, today.plusDays(30)),
+            rawCovering(aktiv.first, aktiv.second, today.plusDays(30)),
+        )
+
+        val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = aktiv, today = today)
+
+        assertEquals(listOf(20.0, 10.0), order.map { it.latitude })
+        // Der aktive Ort ist hier KEIN Favorit.
+        assertFalse(order[0].pinned)
+        assertTrue(order[1].pinned)
+    }
+
+    @Test
+    fun `dueOrder - bei Gleichstand gilt die Reihenfolge von pinnedCoords`() {
+        val a = 30.0 to 30.0
+        val b = 10.0 to 10.0
+        val c = 20.0 to 20.0
+        val entries = listOf(a, b, c).map { rawCovering(it.first, it.second, today.plusDays(30)) }
+
+        val order = CacheStore.dueOrder(entries, listOf(a, b, c), activeCoords = null, today = today)
+
+        assertEquals(listOf(30.0, 10.0, 20.0), order.map { it.latitude })
+    }
+
+    @Test
+    fun `dueOrder - der aktive Ort, der zugleich Favorit ist, erscheint einmal und angeheftet`() {
+        val favorit = lat to lng
+        val aktivGleicherOrt = 49.4566 to lng // ~500 m daneben
+        val entries = listOf(rawCovering(lat, lng, today.plusDays(10)))
+
+        val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = aktivGleicherOrt, today = today)
+
+        assertEquals(1, order.size)
+        assertTrue(order[0].pinned)
+        // Beim Verschmelzen gewinnen die AKTIVEN Koordinaten — der Ort, an dem
+        // der Nutzer gerade ist. Seinen Eintrag findet er trotzdem.
+        assertEquals(49.4566, order[0].latitude, 0.0)
+        assertEquals(today.plusDays(10), order[0].entry?.header?.lastDate)
+    }
+
+    @Test
+    fun `dueOrder - ein nicht angehefteter Cache-Eintrag erscheint nicht`() {
+        val favorit = 10.0 to 10.0
+        val fremd = 41.0 to 29.0
+        val entries = listOf(
+            // Waere mit Abstand das dringendste, ist aber weder Favorit noch
+            // aktiver Ort: ein zufaellig besuchter Ort, an dem der Nutzer
+            // nicht ist.
+            rawCovering(fremd.first, fremd.second, today.minusDays(100)),
+            rawCovering(favorit.first, favorit.second, today.plusDays(300)),
+        )
+
+        val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = null, today = today)
+
+        assertEquals(1, order.size)
+        assertEquals(10.0, order[0].latitude, 0.0)
+    }
+
+    @Test
+    fun `dueOrder - ohne aktiven Ort kommen nur die Favoriten`() {
+        val order = CacheStore.dueOrder(
+            entries = listOf(rawCovering(41.0, 29.0, today)),
+            pinnedCoords = listOf(10.0 to 10.0, 20.0 to 20.0),
+            activeCoords = null,
+            today = today,
+        )
+
+        assertEquals(listOf(10.0, 20.0), order.map { it.latitude })
+    }
+
+    @Test
+    fun `dueOrder - leere Eingaben ergeben eine leere Liste`() {
+        assertTrue(
+            CacheStore.dueOrder(emptyList(), emptyList(), activeCoords = null, today = today).isEmpty(),
+        )
+    }
+
+    @Test
+    fun `dueOrder - ein Eintrag mit leerem Zeitplan zaehlt als keine Zeiten`() {
+        val nurVersuch = 10.0 to 10.0
+        val versorgt = 20.0 to 20.0
+        val entries = listOf(
+            rawCovering(versorgt.first, versorgt.second, today.plusDays(300)),
+            rawEmpty(lat = nurVersuch.first, lng = nurVersuch.second, updatedEpochMs = 900L),
+        )
+
+        val order = CacheStore.dueOrder(entries, listOf(versorgt, nurVersuch), activeCoords = null, today = today)
+
+        assertEquals(listOf(10.0, 20.0), order.map { it.latitude })
+        // Der Eintrag EXISTIERT (Fehlerprotokoll), er traegt nur keine Zeiten.
+        assertEquals("Kein Netz", order[0].entry?.header?.lastError)
+    }
+
+    @Test
+    fun `dueOrder - ein Favorit findet seinen Eintrag 500 m daneben`() {
+        val favorit = lat to lng
+        val entries = listOf(rawCovering(49.4566, lng, today.plusDays(42)))
+
+        val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = null, today = today)
+
+        assertEquals(1, order.size)
+        assertEquals(today.plusDays(42), order[0].entry?.header?.lastDate)
     }
 }

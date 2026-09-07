@@ -112,6 +112,10 @@ object PrayerProvider {
         }
         val fetcher = OfficialTimesProvider.fetcher(context) ?: return
         val now = System.currentTimeMillis()
+        // Angeheftete Orte fuer die Verdraengung: ein Favorit darf nie aus
+        // dem Cache fallen. Hier gelesen und uebergeben, damit der Cache
+        // selbst die Einstellungen nicht kennen muss.
+        val pinned = settings.favorites.map { it.city.latitude to it.city.longitude }
         // Broadcast-Budget (~10-30 s im Alarm-Receiver): der Refresh darf den
         // Empfaenger nicht unbegrenzt blockieren — naechster Anlauf beim
         // folgenden Gebet. Budget: ~25 s plus max. 10 s gebundenes Tasks.await
@@ -122,16 +126,22 @@ object PrayerProvider {
             withTimeout(25_000) {
                 val result = fetcher.fetch(settings)
                 if (result.schedule.isEmpty()) {
-                    cache.recordAttempt("Keine amtlichen Zeiten erhalten (Standort oder Netz)", now, settings.latitude, settings.longitude)
+                    cache.recordAttempt(
+                        "Keine amtlichen Zeiten erhalten (Standort oder Netz)",
+                        now,
+                        settings.latitude,
+                        settings.longitude,
+                        pinned,
+                    )
                     return@withTimeout
                 }
-                cache.putAll(result.schedule, settings.latitude, settings.longitude, result.locationId)
-                cache.recordAttempt(null, now, settings.latitude, settings.longitude)
+                cache.putAll(result.schedule, settings.latitude, settings.longitude, pinned, result.locationId)
+                cache.recordAttempt(null, now, settings.latitude, settings.longitude, pinned)
                 OfficialTimesProvider.syncToWear(context, result.schedule, settings)
             }
         } catch (e: TimeoutCancellationException) {
             android.util.Log.w("PrayerProvider", "refreshOfficial abgebrochen (Timeout)", e)
-            cache.recordAttempt("Zeitüberschreitung beim Abruf", now, settings.latitude, settings.longitude)
+            cache.recordAttempt("Zeitüberschreitung beim Abruf", now, settings.latitude, settings.longitude, pinned)
         }
     }
 }

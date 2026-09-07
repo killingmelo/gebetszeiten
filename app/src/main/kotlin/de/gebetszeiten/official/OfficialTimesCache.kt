@@ -93,8 +93,21 @@ class OfficialTimesCache(private val context: Context) {
 
     /** Erfolgreichen Abruf ablegen. Ein vorhandener Eintrag fuer denselben
      *  Ort wird ersetzt, sein Versuchsprotokoll aber uebernommen — frueher
-     *  fasste `putAll` die Versuchs-Schluessel ebenfalls nicht an. */
-    suspend fun putAll(schedule: Map<LocalDate, SixTimes>, lat: Double, lng: Double, locationId: Int? = null) {
+     *  fasste `putAll` die Versuchs-Schluessel ebenfalls nicht an.
+     *
+     *  [pinnedCoords] wird UEBERGEBEN, nicht hier gelesen: der Cache kennt
+     *  nur einen `Context` und soll keine `SettingsRepository` bekommen —
+     *  sonst haengen Cache und Einstellungen aneinander und die reine,
+     *  testbare Schicht in [CacheStore] bringt nichts mehr. Autoritativ ist
+     *  die Favoritenliste in den Einstellungen; der Aufrufer
+     *  (`PrayerProvider.refreshOfficial`) hat sie ohnehin zur Hand. */
+    suspend fun putAll(
+        schedule: Map<LocalDate, SixTimes>,
+        lat: Double,
+        lng: Double,
+        pinnedCoords: List<Pair<Double, Double>>,
+        locationId: Int? = null,
+    ) {
         if (schedule.isEmpty()) return
         val now = System.currentTimeMillis()
         update { entries ->
@@ -110,7 +123,7 @@ class OfficialTimesCache(private val context: Context) {
                 ),
                 schedule = schedule,
             )
-            CacheStore.put(entries, added, pinnedCoords = emptyList(), maxUnpinned = MAX_ENTRIES)
+            CacheStore.put(entries, added, pinnedCoords = pinnedCoords, maxUnpinned = MAX_ENTRIES)
         }
     }
 
@@ -126,8 +139,16 @@ class OfficialTimesCache(private val context: Context) {
      *  leisteten. Die Wiederholungs-Bremse in [needsRefresh] erreicht er
      *  dagegen NICHT: ein leerer Eintrag hat `lastDate == null`, also
      *  `stampOk == false`, und `needsRefresh` kehrt bei `!stampOk` zurueck,
-     *  bevor es `lastAttemptEpochMs` ueberhaupt ansieht. */
-    suspend fun recordAttempt(error: String?, nowEpochMs: Long, lat: Double, lng: Double) {
+     *  bevor es `lastAttemptEpochMs` ueberhaupt ansieht.
+     *
+     *  [pinnedCoords] wie bei [putAll] uebergeben — Begruendung dort. */
+    suspend fun recordAttempt(
+        error: String?,
+        nowEpochMs: Long,
+        lat: Double,
+        lng: Double,
+        pinnedCoords: List<Pair<Double, Double>>,
+    ) {
         update { entries ->
             // Index statt Referenzvergleich: dieselbe "nur der erste
             // Treffer"-Semantik wie `CacheStore.select`, aber ohne die
@@ -170,7 +191,7 @@ class OfficialTimesCache(private val context: Context) {
                         ),
                         schedule = emptyMap(),
                     ),
-                    pinnedCoords = emptyList(),
+                    pinnedCoords = pinnedCoords,
                     maxUnpinned = MAX_ENTRIES,
                 )
             }
@@ -281,10 +302,18 @@ class OfficialTimesCache(private val context: Context) {
     }
 
     private companion object {
-        /** Fuenf Orte MIT Zeitplan, kein Anheften — Favoriten und die
-         *  due()-Auswahl kommen spaeter. Dazu kommt hoechstens ein leerer
-         *  Eintrag (reines Versuchsprotokoll), den [CacheStore.put] getrennt
-         *  begrenzt. */
+        /** Fuenf NICHT angeheftete Orte mit Zeitplan. Dazu kommt hoechstens
+         *  ein nicht angehefteter leerer Eintrag (reines Versuchsprotokoll),
+         *  den [CacheStore.put] getrennt begrenzt — und, ohne Grenze, die
+         *  angehefteten Orte: ein Favorit wird NIE verdraengt.
+         *
+         *  Speichergroesse, bewusst akzeptiert: 10 Favoriten + 5 nicht
+         *  angeheftete + 1 leerer Eintrag sind ~16 Eintraege a ~17 KB, also
+         *  ~270 KB in einem einzigen Preferences-String. DataStore haelt den
+         *  im Speicher und schreibt ihn bei jedem `edit{}` komplett neu; bei
+         *  ~6 Schreibvorgaengen am Tag ist das belanglos. Der Lesepfad parst
+         *  weiterhin nur den gefragten Tag ([ScheduleText.parseDay]), nicht
+         *  den ganzen String. */
         const val MAX_ENTRIES = 5
     }
 }

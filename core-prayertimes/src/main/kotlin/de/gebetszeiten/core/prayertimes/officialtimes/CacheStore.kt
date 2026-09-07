@@ -1,6 +1,7 @@
 package de.gebetszeiten.core.prayertimes.officialtimes
 
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /**
  * Kopfzeile eines Cache-Eintrags. Kein `pinned`-Feld absichtlich: welche
@@ -27,6 +28,18 @@ data class CacheHeader(
 data class RawEntry(val header: CacheHeader, val body: String)
 
 data class CacheEntry(val header: CacheHeader, val schedule: Map<LocalDate, SixTimes>)
+
+/**
+ * Ein Ort, der fuer einen Abruf in Frage kommt, samt dem Cache-Eintrag, der
+ * heute fuer ihn vorliegt. Ergebnis von [CacheStore.dueOrder].
+ */
+data class DueLocation(
+    val latitude: Double,
+    val longitude: Double,
+    val pinned: Boolean,
+    /** null = fuer diesen Ort gibt es noch gar keinen Eintrag. */
+    val entry: RawEntry?,
+)
 
 /**
  * Reine Speicherschicht fuer MEHRERE Orte im Zeiten-Cache. Ein Eintrag =
@@ -134,7 +147,22 @@ object CacheStore {
      *  Fehler. Ein leerer Eintrag kostet eine Kopfzeile statt eines
      *  Jahresplans, er braucht keinen der [maxUnpinned] Plaetze. Mehr als
      *  einen braucht niemand: relevant ist immer der Ort, an dem gerade
-     *  etwas schiefging. */
+     *  etwas schiefging.
+     *
+     *  Angeheftete Eintraege sind von BEIDEN Grenzen ausgenommen, auch von
+     *  der Eins-Grenze fuer leere. Bei zehn Favoriten koennen also bis zu
+     *  zehn leere Eintraege koexistieren, dazu der eine nicht angeheftete.
+     *  Das ist gewollt: ein leerer Eintrag ist das Versuchsprotokoll seines
+     *  Ortes, und an einem Favoriten, an dem noch nie ein Abruf gelang, ist
+     *  genau das die einzige Auskunft, die die Statuszeile geben kann. Er
+     *  kostet eine Kopfzeile, kein Jahresplan weicht ihm.
+     *
+     *  [added] selbst wird NIE verdraengt — sonst koennte `put` den eben
+     *  hinzugefuegten Eintrag im selben Atemzug wieder wegwerfen (leerer
+     *  Eintrag, dessen `updatedEpochMs` hinter dem eines schon vorhandenen
+     *  leeren liegt: rueckwaerts gestellte Uhr, oder ein migrierter Eintrag
+     *  mit spaeterem Stempel). Er zaehlt aber weiter GEGEN die Grenze —
+     *  verdraengt wird dann der aelteste der anderen. */
     fun put(
         entries: List<RawEntry>,
         added: CacheEntry,
@@ -154,17 +182,115 @@ object CacheStore {
 
         val (withSchedule, empty) = result.filterNot { isPinned(it) }
             .partition { it.header.lastDate != null }
-        // Aufsteigend nach `updatedEpochMs` — der AELTESTE steht damit vorn,
-        // der juengste hinten. `dropLast(n)` nimmt die n juengsten aus der
-        // Verdraengungsliste heraus; was uebrig bleibt, ist zu viel und
-        // faellt. Auf einer zu kurzen Liste ist das Ergebnis leer, dann
-        // faellt nichts.
         val evicted = (
-            withSchedule.sortedBy { it.header.updatedEpochMs }.dropLast(maxUnpinned) +
-                empty.sortedBy { it.header.updatedEpochMs }.dropLast(1)
+            evictionCandidates(withSchedule, keep = maxUnpinned, protected = newEntry) +
+                evictionCandidates(empty, keep = 1, protected = newEntry)
             ).toSet()
         return result.filterNot { it in evicted }
     }
+
+    /** Die Eintraege aus [group], die ueber [keep] hinausgehen: die
+     *  aeltesten nach `updatedEpochMs`. [protected] (der gerade
+     *  hinzugefuegte Eintrag) zaehlt gegen [keep], kommt aber selbst nie in
+     *  die Verdraengungsliste — Identitaets-, nicht Wertvergleich, denn
+     *  verglichen wird ein bestimmtes Listenelement, nicht ein gleicher
+     *  Inhalt. */
+    private fun evictionCandidates(group: List<RawEntry>, keep: Int, protected: RawEntry): List<RawEntry> {
+        val excess = group.size - keep
+        if (excess <= 0) return emptyList()
+        return group.filterNot { it === protected }
+            .sortedBy { it.header.updatedEpochMs }
+            .take(excess)
+    }
+
+    /**
+     * Orte, die einen Abruf brauchen — DAS DRINGLICHSTE ZUERST.
+     *
+     * Kandidaten sind die Favoriten ([pinnedCoords]) plus der aktive Ort
+     * ([activeCoords]), und sonst nichts. Die nicht angehefteten
+     * Cache-Eintraege bleiben ausdruecklich draussen: das sind zufaellig
+     * besuchte Orte, an denen der Nutzer nicht ist — fuer sie Netz zu
+     * verbrauchen hilft niemandem. Ist der aktive Ort selbst ein Favorit
+     * (Identitaet ueber `stampMatches`), erscheint er EINMAL, mit
+     * `pinned = true` und seinen aktiven Koordinaten. Die aktiven gewinnen,
+     * weil das der Ort ist, an dem der Nutzer gerade steht; auf seinen
+     * Eintrag und auf sein Angeheftet-Sein hat das keinen Einfluss, beides
+     * laeuft ohnehin ueber die ~1-km-Toleranz.
+     *
+     * Sortiert wird nach der Restabdeckung in Tagen
+     * (`header.lastDate − today`), aufsteigend. Fehlt der Eintrag oder traegt
+     * er keinen Zeitplan (`lastDate == null`, also nur ein
+     * Versuchsprotokoll), gilt der Ort als unendlich dringend und steht vor
+     * allem anderen. Vorn stehen damit: erst Orte ohne jede Zeiten — darunter
+     * ein gerade angelegter Favorit, der noch nie geholt wurde —, dann Orte
+     * mit ABGELAUFENER Abdeckung (negative Restabdeckung), dann alles uebrige.
+     *
+     * Bei Gleichstand kommt der AKTIVE Ort zuerst, danach gilt die
+     * Reihenfolge von [pinnedCoords]. Der aktive Ort ist der einzige, dessen
+     * Zeiten der Nutzer in diesem Moment ansieht: ein Favorit in Istanbul
+     * darf warten, der Bildschirm vor ihm nicht. Der Gleichstands-Schluessel
+     * ist explizit (nicht bloss der stabilen Sortierung ueberlassen), das
+     * Ergebnis also deterministisch.
+     *
+     * KEINE Sperrfristen — hier wird nur geordnet. Ob ein Ort tatsaechlich
+     * abgerufen wird, entscheidet der Aufrufer (`needsRefresh`): er geht die
+     * Liste von vorn durch und nimmt den ersten, der die Bremse passiert.
+     * Deshalb eine LISTE statt eines einzelnen Eintrags — waere es einer,
+     * wuerde ein Ort in Sperrfrist alle anderen blockieren.
+     *
+     * Zuordnung Ort → Eintrag ueber [select], also der ERSTE Treffer.
+     * `stampMatches` ist nicht transitiv: liegen zwei Favoriten dicht
+     * beieinander, kann derselbe Eintrag zu beiden passen und wird dann auch
+     * beiden zugeordnet. Das ist die konservative Richtung — beide gelten als
+     * versorgt, statt dass einer von ihnen grundlos einen Abruf ausloest.
+     */
+    fun dueOrder(
+        entries: List<RawEntry>,
+        pinnedCoords: List<Pair<Double, Double>>,
+        activeCoords: Pair<Double, Double>?,
+        today: LocalDate,
+    ): List<DueLocation> {
+        // Aufbau in der Gleichstands-Reihenfolge: aktiver Ort (Rang 0), dann
+        // die Favoriten in ihrer eigenen Reihenfolge. `tieRank` haelt sie
+        // fest, damit die Sortierung nicht von der Stabilitaet abhaengt.
+        val candidates = mutableListOf<Candidate>()
+
+        fun add(lat: Double, lng: Double, pinned: Boolean, tieRank: Int) {
+            val entry = select(entries, lat, lng)
+            candidates.add(
+                Candidate(
+                    location = DueLocation(latitude = lat, longitude = lng, pinned = pinned, entry = entry),
+                    // Restabdeckung in Tagen; null = keine Zeiten, also
+                    // unendlich dringend (kein Eintrag, oder ein Eintrag mit
+                    // leerem Zeitplan).
+                    remainingDays = entry?.header?.lastDate?.let { ChronoUnit.DAYS.between(today, it) },
+                    tieRank = tieRank,
+                ),
+            )
+        }
+
+        if (activeCoords != null) {
+            val (aLat, aLng) = activeCoords
+            val pinned = pinnedCoords.any { (pLat, pLng) -> stampMatches(aLat, aLng, pLat, pLng) }
+            add(lat = aLat, lng = aLng, pinned = pinned, tieRank = 0)
+        }
+        for ((index, coords) in pinnedCoords.withIndex()) {
+            val (pLat, pLng) = coords
+            // Schon aufgenommen (der aktive Ort, oder ein Favorit innerhalb
+            // der Toleranz): kein zweiter Kandidat fuer denselben Ort.
+            val known = candidates.any {
+                stampMatches(it.location.latitude, it.location.longitude, pLat, pLng)
+            }
+            if (known) continue
+            add(lat = pLat, lng = pLng, pinned = true, tieRank = index + 1)
+        }
+
+        return candidates
+            .sortedWith(compareBy<Candidate, Long?>(nullsFirst()) { it.remainingDays }.thenBy { it.tieRank })
+            .map { it.location }
+    }
+
+    private data class Candidate(val location: DueLocation, val remainingDays: Long?, val tieRank: Int)
 
     /** Alten Einzel-Cache in einen Eintrag ueberfuehren. Gibt eine leere
      *  Liste zurueck, wenn nichts Brauchbares da ist: kein Ortsstempel,
