@@ -742,9 +742,11 @@ class CacheStoreTest {
         val versorgt = 20.0 to 20.0
         val entries = listOf(
             rawCovering(versorgt.first, versorgt.second, today.plusDays(300)),
-            // Versucht, aber OHNE Fehler (Abruf lief, lieferte nichts
-            // Verwertbares): also nicht hoffnungslos, Schluessel 1 haelt ihn
-            // nicht zurueck.
+            // Versucht, aber OHNE Fehler vermerkt: also nicht hoffnungslos,
+            // Schluessel 1 haelt ihn nicht zurueck. Ein gescheiterter Abruf
+            // erzeugt diesen Zustand NICHT (`refreshOfficial` schreibt dort
+            // immer einen Fehlertext) — er stammt aus `migrateLegacy`, wenn
+            // ein Alt-Cache einen Versuchsstempel ohne Fehlergrund trug.
             rawEmpty(
                 lat = nurVersuch.first,
                 lng = nurVersuch.second,
@@ -1021,6 +1023,32 @@ class CacheStoreTest {
         val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = aktiv, today = today)
 
         assertEquals(listOf(20.0, 10.0), order.map { it.latitude })
+    }
+
+    @Test
+    fun `dueOrder - unter Hoffnungslosen rotiert es, der aktive Ort hat KEINEN Vorrang`() {
+        // Die Gegenprobe zum Test darueber, und die Zeile mit dem hoechsten
+        // Schadenspotenzial im ganzen Sortierer: gaelte Schluessel 3 auch
+        // innerhalb der hoffnungslosen Gruppe, haette ein dauerhaft nicht
+        // aufloesbarer AKTIVER Ort jeden Ausloeser belegt — und Favoriten, die
+        // inzwischen wieder abrufbar waeren, kaemen nie wieder dran. Derselbe
+        // Aushungerungs-Fehler wie ohne Schluessel 1, nur mit vertauschten
+        // Rollen; gemessen 33 von 33 Ausloesern fuer den aktiven Ort.
+        //
+        // Der aktive Ort wurde hier ZULETZT versucht, steht also hinten. Die
+        // Eingabereihenfolge widerspricht der Erwartung, damit nicht die
+        // stabile Sortierung den Test traegt.
+        val aktiv = 20.0 to 20.0
+        val favorit = 10.0 to 10.0
+        val entries = listOf(
+            rawEmpty(aktiv.first, aktiv.second, updatedEpochMs = 900L, lastAttemptEpochMs = 9_000L),
+            rawEmpty(favorit.first, favorit.second, updatedEpochMs = 900L, lastAttemptEpochMs = 1L),
+        )
+
+        val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = aktiv, today = today)
+
+        assertTrue("beide sind hoffnungslos", order.all { it.hopeless })
+        assertEquals(listOf(10.0, 20.0), order.map { it.latitude })
     }
 
     // ---------- Verschmelzen: Abdeckung und Protokoll GETRENNT ----------

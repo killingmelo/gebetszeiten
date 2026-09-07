@@ -323,13 +323,21 @@ object CacheStore {
      * Kandidaten-Koordinaten legt einen Eintrag ab, der zu BEIDEN passt. Ein
      * Abruf bedient damit beide.
      *
-     * Ein Sturm entsteht daraus nicht — aber NICHT, weil nach dem ersten
+     * Er verdraengt danach niemanden mehr — aber NICHT, weil nach dem ersten
      * Versuch ein Eintrag an den Kandidaten-Koordinaten laege: bei einem
      * FEHLVERSUCH tut er das gerade nicht, `recordAttempt` findet ueber
      * `indexOf` den vorhandenen Eintrag und aendert diesen an SEINEN
      * Koordinaten. Was bremst, ist das getrennt verschmolzene Protokoll: der
      * Kandidat erbt den Fehlversuch, bleibt ohne Abdeckung, ist damit
-     * `hopeless` und sortiert nach hinten. Gelingt der Abruf, legt `putAll`
+     * `hopeless` und sortiert nach hinten.
+     *
+     * Ist er der EINZIGE Kandidat, wird er trotzdem bei jedem Ausloeser
+     * versucht — hinten sortieren hilft nicht, wenn niemand vor ihm steht.
+     * Das ist das allgemeine `hopeless`-Verhalten und bewusst so: ~6
+     * aussichtslose Versuche am Tag sind der Preis dafuer, einen Ort nicht
+     * dauerhaft aufzugeben. Gedeckelt ist die Zahl nicht.
+     *
+     * Gelingt der Abruf, legt `putAll`
      * den Eintrag tatsaechlich an den Kandidaten-Koordinaten ab und er passt
      * zu beiden Punkten — der Fall heilt sich also selbst.
      */
@@ -442,7 +450,17 @@ object CacheStore {
             .sortedWith(
                 compareBy<Candidate> { if (it.location.hopeless) 1 else 0 }
                     .thenBy(nullsFirst<Long>()) { it.remainingDays }
-                    .thenBy { it.activeRank }
+                    // Schluessel 3 gilt NUR fuer nicht hoffnungslose
+                    // Kandidaten. Innerhalb der hoffnungslosen Gruppe wird
+                    // rotiert (Schluessel 4) — sonst haette der Vorrang des
+                    // aktiven Orts denselben Aushungerungs-Fehler mit
+                    // vertauschten Rollen: ein dauerhaft nicht aufloesbarer
+                    // aktiver Ort belegte jeden Ausloeser, und Favoriten, die
+                    // inzwischen abrufbar waeren, kaemen NIE wieder dran (33
+                    // von 33 Ausloesern gemessen). Der Bildschirm gewinnt also
+                    // gegen alles, was gehen KOENNTE, aber nicht gegen andere,
+                    // die nachweislich genauso nicht gehen.
+                    .thenBy { if (it.location.hopeless) 0 else it.activeRank }
                     .thenBy(nullsFirst<Long>()) { it.location.lastAttemptEpochMs }
                     .thenBy { it.pinnedRank },
             )
