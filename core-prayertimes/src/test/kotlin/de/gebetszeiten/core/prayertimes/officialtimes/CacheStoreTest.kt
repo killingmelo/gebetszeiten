@@ -794,4 +794,98 @@ class CacheStoreTest {
         assertNull(order[0].entry)
         assertTrue(order[1].pinned)
     }
+
+    @Test
+    fun `dueOrder - der verschmolzene Kandidat erbt keine Zeiten, die dem Favoriten nicht gehoeren`() {
+        // `stampMatches` ist nicht transitiv: favA und favB liegen 1,81 km
+        // auseinander und passen NICHT zueinander, der aktive Ort liegt
+        // 0,905 km von beiden und passt zu BEIDEN.
+        val favA = lat to lng
+        val favB = lat + 0.0163 to lng
+        val aktiv = lat + 0.00815 to lng
+        // Zeiten gibt es NUR an favB. Der Eintrag passt zum aktiven Ort,
+        // aber nicht zu favA.
+        val entries = listOf(rawCovering(favB.first, favB.second, today.plusDays(300)))
+
+        val order = CacheStore.dueOrder(entries, listOf(favA, favB), activeCoords = aktiv, today = today)
+
+        assertEquals(2, order.size)
+        // Der verschmolzene Kandidat steht auf favAs Platz und traegt die
+        // aktiven Koordinaten. favA hat nachweislich KEINE Zeiten, also darf
+        // der Kandidat keine melden — sonst gilt favA als versorgt und wird
+        // nie abgerufen.
+        assertEquals(aktiv.first, order[0].latitude, 0.0)
+        assertNull("favA hat keine Zeiten, der Kandidat darf keine erben", order[0].entry)
+        // favB behaelt seine 300 Tage.
+        assertEquals(favB.first, order[1].latitude, 0.0)
+        assertEquals(today.plusDays(300), order[1].entry?.header?.lastDate)
+    }
+
+    @Test
+    fun `dueOrder - der verschmolzene Kandidat maskiert die Luecke des aktiven Orts nicht`() {
+        // Die umgekehrte Richtung: der Eintrag liegt 0,905 km VOR dem
+        // Favoriten, der aktive Ort 0,905 km dahinter. Der Eintrag passt zum
+        // Favoriten, aber 1,81 km entfernt NICHT zum aktiven Ort.
+        val favorit = lat to lng
+        val aktiv = lat + 0.00815 to lng
+        val entries = listOf(rawCovering(lat - 0.00815, lng, today.plusDays(300)))
+
+        val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = aktiv, today = today)
+
+        assertEquals(1, order.size)
+        assertEquals(aktiv.first, order[0].latitude, 0.0)
+        // Sonst sieht der Nutzer auf dem Bildschirm, den er gerade ansieht,
+        // eine Berechnung statt amtlicher Zeiten.
+        assertNull("die Luecke des aktiven Orts darf der Eintrag des Favoriten nicht verdecken", order[0].entry)
+    }
+
+    @Test
+    fun `dueOrder - der verschmolzene Kandidat meldet die knappere der beiden Abdeckungen`() {
+        val favA = lat to lng
+        val favB = lat + 0.0163 to lng
+        val aktiv = lat + 0.00815 to lng
+        val knapp = rawCovering(favA.first, favA.second, today.plusDays(2))
+        val reichlich = rawCovering(favB.first, favB.second, today.plusDays(300))
+
+        // Beide Reihenfolgen: `select` nimmt den ERSTEN Treffer, das Ergebnis
+        // darf davon nicht abhaengen.
+        for (entries in listOf(listOf(knapp, reichlich), listOf(reichlich, knapp))) {
+            val order = CacheStore.dueOrder(entries, listOf(favA, favB), activeCoords = aktiv, today = today)
+
+            assertEquals(2, order.size)
+            assertEquals(aktiv.first, order[0].latitude, 0.0)
+            assertEquals(
+                "der Kandidat muss die knappere der beiden Abdeckungen melden",
+                today.plusDays(2),
+                order[0].entry?.header?.lastDate,
+            )
+            assertEquals(today.plusDays(300), order[1].entry?.header?.lastDate)
+        }
+    }
+
+    @Test
+    fun `put verdraengt von zwei wertgleichen Eintraegen genau einen`() {
+        // `split` entdoppelt nicht: eine doppelt geschriebene Cache-Zeile
+        // ergibt zwei WERTGLEICHE, aber VERSCHIEDENE Instanzen. Verdraengt
+        // wird eine bestimmte Instanz, nicht ein gleicher Inhalt — sonst
+        // faellt der Cache unter seine eigene Grenze.
+        val doppelt = rawWithPlan(lat = 10.0, lng = 10.0, updatedEpochMs = 100L)
+        val nochmal = rawWithPlan(lat = 10.0, lng = 10.0, updatedEpochMs = 100L)
+        assertEquals("die beiden Eintraege muessen wertgleich sein", doppelt, nochmal)
+        assertFalse("und trotzdem verschiedene Instanzen", doppelt === nochmal)
+
+        val result = CacheStore.put(
+            entries = listOf(doppelt, nochmal, rawWithPlan(lat = 11.0, lng = 11.0, updatedEpochMs = 200L)),
+            added = CacheEntry(
+                header(lat = 20.0, lng = 20.0, updatedEpochMs = 300L),
+                schedule(LocalDate.of(2026, 1, 1), 1),
+            ),
+            pinnedCoords = emptyList(),
+            maxUnpinned = 3,
+        )
+
+        // Vier Eintraege, Grenze drei: genau EINER faellt.
+        assertEquals("genau einer der beiden wertgleichen Eintraege faellt", 3, result.size)
+        assertEquals(1, result.count { it == doppelt })
+    }
 }

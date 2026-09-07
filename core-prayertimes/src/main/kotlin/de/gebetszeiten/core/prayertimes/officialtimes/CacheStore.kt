@@ -256,7 +256,32 @@ object CacheStore {
      * `stampMatches` ist nicht transitiv: liegen zwei Favoriten dicht
      * beieinander, kann derselbe Eintrag zu beiden passen und wird dann auch
      * beiden zugeordnet. Das ist die konservative Richtung — beide gelten als
-     * versorgt, statt dass einer von ihnen grundlos einen Abruf ausloest.
+     * versorgt, statt dass einer von ihnen grundlos einen Abruf ausloest —,
+     * und sie ist begruendet: es ist DERSELBE Eintrag, er passt wirklich zu
+     * beiden.
+     *
+     * Beim VERSCHMELZEN des aktiven Orts in einen Favoriten gilt diese
+     * Begruendung gerade nicht: die Koordinaten sind die aktiven, aber der
+     * Nachschlag am Favoriten und der am aktiven Ort koennen VERSCHIEDENE
+     * Eintraege finden — zwischen den beiden Punkten liegen bis zu 1,81 km.
+     * Der verschmolzene Kandidat bekommt deshalb den DRINGLICHEREN der
+     * beiden Nachschlaege, wobei `null` gewinnt (siehe [moreUrgent]). Sonst
+     * gilt einer der beiden Orte als versorgt, obwohl SEINE Zeiten fehlen —
+     * und das ist die eine gefaehrliche Richtung: der Nutzer sieht eine
+     * Berechnung statt amtlicher Zeiten, ohne dass die App je versucht
+     * haette, sie zu holen. Genau dagegen gibt es diese Funktion.
+     *
+     * „Hole, wenn EINER der beiden es braucht" kostet keinen zusaetzlichen
+     * Abruf: beide Punkte liegen unter 1 km von den Kandidaten-Koordinaten,
+     * loesen also zur selben Diyanet-Standort-ID auf, und ein Abruf mit den
+     * Kandidaten-Koordinaten legt einen Eintrag ab, der zu BEIDEN passt. Ein
+     * Abruf bedient damit beide.
+     *
+     * Eine Endlosschleife entsteht daraus nicht: mit `entry == null` hat der
+     * Kandidat kein Versuchsprotokoll und passiert jede Sperrfrist — aber nur
+     * bis zum ERSTEN Versuch. Danach liegt ein Eintrag an den
+     * Kandidaten-Koordinaten, und der passt zu beiden Punkten; ab dann greift
+     * die Sperre normal. Darauf kann sich der Aufrufer verlassen.
      */
     fun dueOrder(
         entries: List<RawEntry>,
@@ -270,29 +295,32 @@ object CacheStore {
         // von der Stabilitaet abhaengt.
         val candidates = mutableListOf<Candidate>()
 
-        fun candidateFor(lat: Double, lng: Double, pinned: Boolean, tieRank: Int): Candidate {
-            val entry = select(entries, lat, lng)
-            return Candidate(
-                location = DueLocation(latitude = lat, longitude = lng, pinned = pinned, entry = entry),
-                // Restabdeckung in Tagen; null = keine Zeiten, also unendlich
-                // dringend (kein Eintrag, oder ein Eintrag mit leerem
-                // Zeitplan).
-                remainingDays = entry?.header?.lastDate?.let { ChronoUnit.DAYS.between(today, it) },
-                tieRank = tieRank,
-            )
-        }
+        // Der Eintrag kommt von aussen herein, statt hier nachgeschlagen zu
+        // werden: der verschmolzene Kandidat waehlt zwischen ZWEI
+        // Nachschlaegen (siehe unten).
+        fun candidateAt(lat: Double, lng: Double, pinned: Boolean, tieRank: Int, entry: RawEntry?) = Candidate(
+            location = DueLocation(latitude = lat, longitude = lng, pinned = pinned, entry = entry),
+            // Restabdeckung in Tagen; null = keine Zeiten, also unendlich
+            // dringend (kein Eintrag, oder ein Eintrag mit leerem Zeitplan).
+            remainingDays = entry?.header?.lastDate?.let { ChronoUnit.DAYS.between(today, it) },
+            tieRank = tieRank,
+        )
 
         // ZUERST alle Favoriten, in ihrer Listenreihenfolge — so kann keiner
-        // von ihnen verlorengehen. Die Entdopplung untereinander ist
-        // Guertel-und-Hosentraeger: `withFavorite` laesst zwei Favoriten
-        // innerhalb der Toleranz gar nicht erst zu.
+        // von ihnen verlorengehen. Die Entdopplung untereinander ist eine
+        // eigene Zusicherung dieser Funktion: derselbe Ort erscheint nie
+        // zweimal, unabhaengig davon, was der Aufrufer liefert. Zwei
+        // Favoriten innerhalb der Toleranz ergeben also EINEN Kandidaten. Sie
+        // ist tragend, nicht ueberfluessig — `pinnedCoords` kommt ungeprueft
+        // herein.
         for ((index, coords) in pinnedCoords.withIndex()) {
             val (pLat, pLng) = coords
             val known = candidates.any {
                 stampMatches(it.location.latitude, it.location.longitude, pLat, pLng)
             }
             if (known) continue
-            candidates.add(candidateFor(lat = pLat, lng = pLng, pinned = true, tieRank = index + 1))
+            val entry = select(entries, pLat, pLng)
+            candidates.add(candidateAt(pLat, pLng, pinned = true, tieRank = index + 1, entry = entry))
         }
 
         // DANN der aktive Ort — er VERSCHMILZT in den ersten passenden
@@ -300,16 +328,43 @@ object CacheStore {
         // er ein eigener, nicht angehefteter Kandidat.
         if (activeCoords != null) {
             val (aLat, aLng) = activeCoords
+            val activeEntry = select(entries, aLat, aLng)
             val matchIndex = candidates.indexOfFirst {
                 stampMatches(it.location.latitude, it.location.longitude, aLat, aLng)
             }
-            val merged = candidateFor(lat = aLat, lng = aLng, pinned = matchIndex >= 0, tieRank = 0)
-            if (matchIndex >= 0) candidates[matchIndex] = merged else candidates.add(merged)
+            if (matchIndex >= 0) {
+                // Die Koordinaten sind die aktiven, der Eintrag aber der
+                // DRINGLICHERE der beiden Nachschlaege. Der Nachschlag mit
+                // den aktiven Koordinaten allein wuerde den Favoriten als
+                // versorgt melden, obwohl DESSEN Zeiten fehlen — die beiden
+                // Punkte koennen 1,81 km auseinanderliegen.
+                candidates[matchIndex] = candidateAt(
+                    aLat,
+                    aLng,
+                    pinned = true,
+                    tieRank = 0,
+                    entry = moreUrgent(candidates[matchIndex].location.entry, activeEntry),
+                )
+            } else {
+                candidates.add(candidateAt(aLat, aLng, pinned = false, tieRank = 0, entry = activeEntry))
+            }
         }
 
         return candidates
             .sortedWith(compareBy<Candidate, Long?>(nullsFirst()) { it.remainingDays }.thenBy { it.tieRank })
             .map { it.location }
+    }
+
+    /** Der DRINGLICHERE von zwei Eintragsnachschlaegen — `null` gewinnt:
+     *  kein Eintrag heisst keine Zeiten, also maximal dringend. Sonst
+     *  gewinnt die kleinere Restabdeckung; ein Eintrag ohne Zeitplan
+     *  (`lastDate == null`) ist nur ein Versuchsprotokoll und zaehlt
+     *  ebenfalls als keine Zeiten. Bei Gleichstand bleibt [a]. */
+    private fun moreUrgent(a: RawEntry?, b: RawEntry?): RawEntry? {
+        if (a == null || b == null) return null
+        val aLast = a.header.lastDate ?: return a
+        val bLast = b.header.lastDate ?: return b
+        return if (bLast.isBefore(aLast)) b else a
     }
 
     private data class Candidate(val location: DueLocation, val remainingDays: Long?, val tieRank: Int)
