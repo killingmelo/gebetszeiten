@@ -77,9 +77,18 @@ fun withFavorite(
         existing + Favorite(added, nowEpochMs)
     }
 
-/** Entfernt den Eintrag am selben Ort wie [removed] (siehe `sameSpotAs`). */
-fun withoutFavorite(existing: List<Favorite>, removed: City): List<Favorite> =
-    existing.filterNot { it.city.sameSpotAs(removed) }
+/** Entfernt GENAU EINEN Eintrag, nämlich den ersten am selben Ort wie
+ *  [removed] (siehe `sameSpotAs`).
+ *
+ *  Bewusst nicht `filterNot`: die Toleranz von `stampMatches` ist nicht
+ *  transitiv. Zwei Favoriten können 1,9 km auseinanderliegen — also zu Recht
+ *  zwei Einträge sein — während ein Punkt genau dazwischen zu beiden passt.
+ *  Ein `filterNot` würde dann auf einen Tipp hin BEIDE löschen. Ein Klick auf
+ *  einen Stern darf niemals mehr als einen Favoriten kosten. */
+fun withoutFavorite(existing: List<Favorite>, removed: City): List<Favorite> {
+    val index = existing.indexOfFirst { it.city.sameSpotAs(removed) }
+    return if (index < 0) existing else existing.filterIndexed { i, _ -> i != index }
+}
 
 fun isFavorite(list: List<Favorite>, city: City): Boolean =
     list.any { it.city.sameSpotAs(city) }

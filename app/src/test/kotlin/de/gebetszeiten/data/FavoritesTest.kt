@@ -139,9 +139,7 @@ class FavoritesTest {
     @Test fun `neun Favoriten plus einer ergibt zehn`() {
         val neun = (1..9).map { fav("Ort$it", it.toLong()) }
         val result = withFavorite(neun, city("Zehnter"), nowEpochMs = 999L)
-        assertEquals(10, result.size)
-        assertEquals("Zehnter", result.last().city.name)
-        assertEquals(999L, result.last().addedEpochMs)
+        assertEquals(neun + Favorite(city("Zehnter"), 999L), result)
     }
 
     @Test fun `volle Liste nimmt nichts Neues auf und verdraengt niemanden`() {
@@ -158,6 +156,19 @@ class FavoritesTest {
         val start = listOf(Favorite(yalova, 100L), fav("Regensburg", 150L), Favorite(aydin, 200L))
         val result = withoutFavorite(start, aydin)
         assertEquals(listOf(Favorite(yalova, 100L), fav("Regensburg", 150L)), result)
+    }
+
+    @Test fun `ein Stern-Klick kostet nie mehr als einen Favoriten`() {
+        // Die Toleranz von stampMatches ist nicht transitiv: A und B liegen
+        // 1,9 km auseinander (zu Recht zwei Favoriten), der Punkt genau
+        // dazwischen passt mit je 0,94 km zu BEIDEN. Ein `filterNot` in
+        // withoutFavorite würde hier auf einen Tipp hin beide löschen.
+        val a = City("Nürnberg-West", "DE", 49.4521, 11.0767, "BAYERN")
+        val b = City("Nürnberg-Ost", "DE", 49.4521, 11.1027, "BAYERN")
+        val dazwischen = City("Irgendwo", "DE", 49.4521, 11.0897, "BAYERN")
+        val start = listOf(Favorite(a, 100L), Favorite(b, 200L))
+        assertTrue(isFavorite(start, dazwischen))
+        assertEquals(listOf(Favorite(b, 200L)), withoutFavorite(start, dazwischen))
     }
 
     @Test fun `withoutFavorite fuer einen Nicht-Favoriten aendert nichts`() {
