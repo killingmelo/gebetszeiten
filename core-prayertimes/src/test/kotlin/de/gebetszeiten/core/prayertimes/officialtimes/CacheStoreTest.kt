@@ -739,4 +739,59 @@ class CacheStoreTest {
         assertEquals(1, order.size)
         assertEquals(today.plusDays(42), order[0].entry?.header?.lastDate)
     }
+
+    @Test
+    fun `dueOrder - der aktive Ort verschmilzt in den ersten passenden Favoriten, verdraengt keinen`() {
+        // `stampMatches` ist nicht transitiv: A und B liegen 1,8 km
+        // auseinander (also zu Recht zwei Favoriten), der aktive Ort liegt
+        // genau dazwischen und passt zu BEIDEN.
+        val favA = lat to lng
+        val favB = lat + 0.0163 to lng
+        val aktiv = lat + 0.00815 to lng
+        // Weit weg von allen dreien und ABSICHTLICH vorn in pinnedCoords.
+        val favC = 10.0 to 10.0
+        val entries = listOf(favA, favB, favC).map { rawCovering(it.first, it.second, today.plusDays(30)) }
+
+        val order = CacheStore.dueOrder(entries, listOf(favC, favA, favB), activeCoords = aktiv, today = today)
+
+        // Verdraengte der aktive Ort die passenden Favoriten, blieben von den
+        // drei Favoriten nur zwei Kandidaten uebrig. Es bleiben drei: A hat
+        // den aktiven Ort aufgenommen, B und C sind unveraendert da.
+        assertEquals(3, order.size)
+        // A traegt den Gleichstands-Vorrang des aktiven Orts (tieRank 0) und
+        // steht deshalb vor C, obwohl C in pinnedCoords vorn steht. Beim
+        // Verschmelzen gewinnen die aktiven Koordinaten.
+        assertEquals(listOf(aktiv.first, favC.first, favB.first), order.map { it.latitude })
+        assertTrue("kein Favorit darf sein Angeheftet-Sein verlieren", order.all { it.pinned })
+    }
+
+    @Test
+    fun `dueOrder - die Gleichstands-Reihenfolge haengt nicht an der Sortierstabilitaet`() {
+        // Die Eingabereihenfolge WIDERSPRICHT der tieRank-Reihenfolge: die
+        // Favoriten stehen vorn, der aktive Ort kommt zuletzt in die
+        // Kandidatenliste. Ohne expliziten Gleichstands-Schluessel wuerde die
+        // stabile Sortierung ihn hinten lassen.
+        val favA = 30.0 to 30.0
+        val favB = 40.0 to 40.0
+        val aktiv = 10.0 to 10.0
+        val entries = listOf(favA, favB, aktiv).map { rawCovering(it.first, it.second, today.plusDays(30)) }
+
+        val order = CacheStore.dueOrder(entries, listOf(favA, favB), activeCoords = aktiv, today = today)
+
+        assertEquals(listOf(10.0, 30.0, 40.0), order.map { it.latitude })
+    }
+
+    @Test
+    fun `dueOrder - ein aktiver Ort ohne passenden Favoriten bleibt ein eigener Kandidat`() {
+        val favorit = 30.0 to 30.0
+        val aktiv = 10.0 to 10.0
+        val entries = listOf(rawCovering(favorit.first, favorit.second, today.plusDays(300)))
+
+        val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = aktiv, today = today)
+
+        assertEquals(listOf(10.0, 30.0), order.map { it.latitude })
+        assertFalse("der aktive Ort ist hier kein Favorit", order[0].pinned)
+        assertNull(order[0].entry)
+        assertTrue(order[1].pinned)
+    }
 }

@@ -182,11 +182,14 @@ object CacheStore {
 
         val (withSchedule, empty) = result.filterNot { isPinned(it) }
             .partition { it.header.lastDate != null }
-        val evicted = (
-            evictionCandidates(withSchedule, keep = maxUnpinned, protected = newEntry) +
-                evictionCandidates(empty, keep = 1, protected = newEntry)
-            ).toSet()
-        return result.filterNot { it in evicted }
+        val evicted = evictionCandidates(withSchedule, keep = maxUnpinned, protected = newEntry) +
+            evictionCandidates(empty, keep = 1, protected = newEntry)
+        // Aussortiert wird ueber IDENTITAET, derselbe Begriff, mit dem
+        // `evictionCandidates` den geschuetzten Eintrag heraushaelt. Ein Set
+        // aus `RawEntry` wuerde ueber WERTgleichheit filtern — zwei Begriffe
+        // in einer Funktion, und der Unterschied waere genau dann zu spueren,
+        // wenn er am wenigsten auffaellt.
+        return result.filterNot { entry -> evicted.any { it === entry } }
     }
 
     /** Die Eintraege aus [group], die ueber [keep] hinausgehen: die
@@ -210,12 +213,23 @@ object CacheStore {
      * ([activeCoords]), und sonst nichts. Die nicht angehefteten
      * Cache-Eintraege bleiben ausdruecklich draussen: das sind zufaellig
      * besuchte Orte, an denen der Nutzer nicht ist — fuer sie Netz zu
-     * verbrauchen hilft niemandem. Ist der aktive Ort selbst ein Favorit
-     * (Identitaet ueber `stampMatches`), erscheint er EINMAL, mit
-     * `pinned = true` und seinen aktiven Koordinaten. Die aktiven gewinnen,
-     * weil das der Ort ist, an dem der Nutzer gerade steht; auf seinen
-     * Eintrag und auf sein Angeheftet-Sein hat das keinen Einfluss, beides
-     * laeuft ohnehin ueber die ~1-km-Toleranz.
+     * verbrauchen hilft niemandem.
+     *
+     * Kandidaten sind ZUERST alle Favoriten in ihrer Listenreihenfolge; der
+     * aktive Ort kommt danach und VERSCHMILZT in den ersten passenden
+     * Favoriten (Identitaet ueber `stampMatches`), statt einen zu verdraengen.
+     * Er erscheint also genau einmal, mit `pinned = true` und seinen aktiven
+     * Koordinaten — die aktiven gewinnen, weil das der Ort ist, an dem der
+     * Nutzer gerade steht; auf seinen Eintrag hat das keinen Einfluss, der
+     * laeuft ohnehin ueber die ~1-km-Toleranz. Passt er zu KEINEM Favoriten,
+     * wird er ein eigener Kandidat mit `pinned = false`.
+     *
+     * Nur der ERSTE passende Favorit verschmilzt, alle uebrigen bleiben
+     * unveraendert erhalten. Das ist der Grund fuer diese Richtung:
+     * `stampMatches` ist nicht transitiv, zwei Favoriten koennen 1,8 km
+     * auseinanderliegen, waehrend der aktive Ort genau dazwischen zu beiden
+     * passt. Wuerde er beide als „schon bekannt" verwerfen, kaeme der zweite
+     * Favorit NIE wieder an die Reihe und veraltete stillschweigend.
      *
      * Sortiert wird nach der Restabdeckung in Tagen
      * (`header.lastDate − today`), aufsteigend. Fehlt der Eintrag oder traegt
@@ -250,39 +264,47 @@ object CacheStore {
         activeCoords: Pair<Double, Double>?,
         today: LocalDate,
     ): List<DueLocation> {
-        // Aufbau in der Gleichstands-Reihenfolge: aktiver Ort (Rang 0), dann
-        // die Favoriten in ihrer eigenen Reihenfolge. `tieRank` haelt sie
-        // fest, damit die Sortierung nicht von der Stabilitaet abhaengt.
+        // Der Gleichstands-Vorrang haengt NICHT an der Aufbaureihenfolge: die
+        // Favoriten kommen zuerst in die Liste, der aktive Ort (Rang 0)
+        // danach. `tieRank` haelt den Vorrang fest, damit die Sortierung nicht
+        // von der Stabilitaet abhaengt.
         val candidates = mutableListOf<Candidate>()
 
-        fun add(lat: Double, lng: Double, pinned: Boolean, tieRank: Int) {
+        fun candidateFor(lat: Double, lng: Double, pinned: Boolean, tieRank: Int): Candidate {
             val entry = select(entries, lat, lng)
-            candidates.add(
-                Candidate(
-                    location = DueLocation(latitude = lat, longitude = lng, pinned = pinned, entry = entry),
-                    // Restabdeckung in Tagen; null = keine Zeiten, also
-                    // unendlich dringend (kein Eintrag, oder ein Eintrag mit
-                    // leerem Zeitplan).
-                    remainingDays = entry?.header?.lastDate?.let { ChronoUnit.DAYS.between(today, it) },
-                    tieRank = tieRank,
-                ),
+            return Candidate(
+                location = DueLocation(latitude = lat, longitude = lng, pinned = pinned, entry = entry),
+                // Restabdeckung in Tagen; null = keine Zeiten, also unendlich
+                // dringend (kein Eintrag, oder ein Eintrag mit leerem
+                // Zeitplan).
+                remainingDays = entry?.header?.lastDate?.let { ChronoUnit.DAYS.between(today, it) },
+                tieRank = tieRank,
             )
         }
 
-        if (activeCoords != null) {
-            val (aLat, aLng) = activeCoords
-            val pinned = pinnedCoords.any { (pLat, pLng) -> stampMatches(aLat, aLng, pLat, pLng) }
-            add(lat = aLat, lng = aLng, pinned = pinned, tieRank = 0)
-        }
+        // ZUERST alle Favoriten, in ihrer Listenreihenfolge — so kann keiner
+        // von ihnen verlorengehen. Die Entdopplung untereinander ist
+        // Guertel-und-Hosentraeger: `withFavorite` laesst zwei Favoriten
+        // innerhalb der Toleranz gar nicht erst zu.
         for ((index, coords) in pinnedCoords.withIndex()) {
             val (pLat, pLng) = coords
-            // Schon aufgenommen (der aktive Ort, oder ein Favorit innerhalb
-            // der Toleranz): kein zweiter Kandidat fuer denselben Ort.
             val known = candidates.any {
                 stampMatches(it.location.latitude, it.location.longitude, pLat, pLng)
             }
             if (known) continue
-            add(lat = pLat, lng = pLng, pinned = true, tieRank = index + 1)
+            candidates.add(candidateFor(lat = pLat, lng = pLng, pinned = true, tieRank = index + 1))
+        }
+
+        // DANN der aktive Ort — er VERSCHMILZT in den ersten passenden
+        // Favoriten, statt Favoriten zu verdraengen. Passt er zu keinem, wird
+        // er ein eigener, nicht angehefteter Kandidat.
+        if (activeCoords != null) {
+            val (aLat, aLng) = activeCoords
+            val matchIndex = candidates.indexOfFirst {
+                stampMatches(it.location.latitude, it.location.longitude, aLat, aLng)
+            }
+            val merged = candidateFor(lat = aLat, lng = aLng, pinned = matchIndex >= 0, tieRank = 0)
+            if (matchIndex >= 0) candidates[matchIndex] = merged else candidates.add(merged)
         }
 
         return candidates
