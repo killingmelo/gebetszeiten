@@ -3,14 +3,13 @@ package de.gebetszeiten.prayer
 import android.content.Context
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.CacheStore
-import de.gebetszeiten.core.prayertimes.officialtimes.DueLocation
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.official.BundledOfficialSource
 import de.gebetszeiten.official.OfficialTimesCache
 import de.gebetszeiten.official.OfficialTimesProvider
-import de.gebetszeiten.official.needsRefresh
+import de.gebetszeiten.official.chooseTarget
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import java.time.LocalDate
@@ -86,8 +85,8 @@ object PrayerProvider {
      *
      *  Das ist der Kern von „einmal Nuernberg einspeichern und sich nie wieder
      *  kuemmern": [CacheStore.dueOrder] ordnet Favoriten und aktiven Ort nach
-     *  Dringlichkeit, und hier wird der erste genommen, der die
-     *  Wiederholungs-Bremse ([needsRefresh]) passiert. Bei ~6 Ausloesern am Tag
+     *  Dringlichkeit, und [chooseTarget] nimmt daraus den ersten, der die
+     *  Wiederholungs-Bremse passiert. Bei ~6 Ausloesern am Tag
      *  (App-Start, Einstellungsaenderung, Knopf, Gebets-Alarme) sind zehn
      *  Favoriten binnen zwei Tagen versorgt.
      *
@@ -110,13 +109,16 @@ object PrayerProvider {
         // selbst die Einstellungen nicht kennen muss.
         val pinned = settings.favorites.map { it.city.latitude to it.city.longitude }
 
-        val target: Pair<Double, Double>? = if (force) {
-            active
-        } else {
-            cache.dueOrder(pinned, active, today)
-                .firstOrNull { it.isDue(today, now) }
-                ?.let { it.latitude to it.longitude }
-        }
+        // Bei `force` wird `dueOrder` nicht einmal gelesen — der Knopf gilt
+        // ohnehin nur fuer den aktiven Ort, und ein DataStore-Read weniger
+        // im Klick-Pfad.
+        val target = chooseTarget(
+            due = if (force) emptyList() else cache.dueOrder(pinned, active, today),
+            activeCoords = active,
+            force = force,
+            today = today,
+            nowEpochMs = now,
+        )
 
         var fetchedActive: Map<LocalDate, SixTimes>? = null
         val fetcher = if (target == null) null else OfficialTimesProvider.fetcher(context)
@@ -169,22 +171,6 @@ object PrayerProvider {
         // syncToWear ist ein No-op.
         val activeSchedule = fetchedActive ?: cache.snapshot(active.first, active.second)
         OfficialTimesProvider.syncToWear(context, activeSchedule, settings)
-    }
-
-    /** Passt die Bremse auf einen Kandidaten aus [CacheStore.dueOrder] an.
-     *  Alles kommt aus SEINEM Eintrag, nicht aus dem des aktiven Orts —
-     *  `stampOk` heisst „hat einen Zeitplan", genau wie in
-     *  `OfficialTimesCache.status`. */
-    private fun DueLocation.isDue(today: LocalDate, nowEpochMs: Long): Boolean {
-        val header = entry?.header
-        return needsRefresh(
-            coveredUntil = header?.lastDate,
-            today = today,
-            stampOk = header?.lastDate != null,
-            lastAttemptEpochMs = header?.lastAttemptEpochMs,
-            lastAttemptFailed = header?.lastError != null,
-            nowEpochMs = nowEpochMs,
-        )
     }
 
     /** [settings] auf den gewaehlten Ort umgestellt.

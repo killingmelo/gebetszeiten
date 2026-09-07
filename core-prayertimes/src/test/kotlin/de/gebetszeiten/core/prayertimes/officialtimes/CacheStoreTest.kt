@@ -250,8 +250,21 @@ class CacheStoreTest {
 
     /** Eintrag, der NUR einen Fehlversuch protokolliert: leerer Rumpf,
      *  `lastDate == null`. */
-    private fun rawEmpty(lat: Double, lng: Double, updatedEpochMs: Long) = RawEntry(
-        header(lat = lat, lng = lng, locationId = null, updatedEpochMs = updatedEpochMs, lastError = "Kein Netz"),
+    private fun rawEmpty(
+        lat: Double,
+        lng: Double,
+        updatedEpochMs: Long,
+        lastAttemptEpochMs: Long? = 1_000L,
+        lastError: String? = "Kein Netz",
+    ) = RawEntry(
+        header(
+            lat = lat,
+            lng = lng,
+            locationId = null,
+            updatedEpochMs = updatedEpochMs,
+            lastAttemptEpochMs = lastAttemptEpochMs,
+            lastError = lastError,
+        ),
         "",
     )
 
@@ -590,8 +603,18 @@ class CacheStoreTest {
         lng: Double,
         lastDate: LocalDate,
         updatedEpochMs: Long = 1_000L,
+        lastAttemptEpochMs: Long? = 1_000L,
+        lastError: String? = null,
     ) = RawEntry(
-        header(lat = lat, lng = lng, firstDate = lastDate, lastDate = lastDate, updatedEpochMs = updatedEpochMs),
+        header(
+            lat = lat,
+            lng = lng,
+            firstDate = lastDate,
+            lastDate = lastDate,
+            updatedEpochMs = updatedEpochMs,
+            lastAttemptEpochMs = lastAttemptEpochMs,
+            lastError = lastError,
+        ),
         ScheduleText.serialize(mapOf(lastDate to sixTimes(0))),
     )
 
@@ -605,7 +628,7 @@ class CacheStoreTest {
         val order = CacheStore.dueOrder(entries, listOf(versorgt, ohneZeiten), activeCoords = null, today = today)
 
         assertEquals(listOf(10.0, 20.0), order.map { it.latitude })
-        assertNull(order[0].entry)
+        assertNull(order[0].coveredUntil)
         assertTrue(order[0].pinned)
     }
 
@@ -673,7 +696,7 @@ class CacheStoreTest {
         // Beim Verschmelzen gewinnen die AKTIVEN Koordinaten — der Ort, an dem
         // der Nutzer gerade ist. Seinen Eintrag findet er trotzdem.
         assertEquals(49.4566, order[0].latitude, 0.0)
-        assertEquals(today.plusDays(10), order[0].entry?.header?.lastDate)
+        assertEquals(today.plusDays(10), order[0].coveredUntil)
     }
 
     @Test
@@ -719,14 +742,24 @@ class CacheStoreTest {
         val versorgt = 20.0 to 20.0
         val entries = listOf(
             rawCovering(versorgt.first, versorgt.second, today.plusDays(300)),
-            rawEmpty(lat = nurVersuch.first, lng = nurVersuch.second, updatedEpochMs = 900L),
+            // Versucht, aber OHNE Fehler (Abruf lief, lieferte nichts
+            // Verwertbares): also nicht hoffnungslos, Schluessel 1 haelt ihn
+            // nicht zurueck.
+            rawEmpty(
+                lat = nurVersuch.first,
+                lng = nurVersuch.second,
+                updatedEpochMs = 900L,
+                lastAttemptEpochMs = 900L,
+                lastError = null,
+            ),
         )
 
         val order = CacheStore.dueOrder(entries, listOf(versorgt, nurVersuch), activeCoords = null, today = today)
 
         assertEquals(listOf(10.0, 20.0), order.map { it.latitude })
-        // Der Eintrag EXISTIERT (Fehlerprotokoll), er traegt nur keine Zeiten.
-        assertEquals("Kein Netz", order[0].entry?.header?.lastError)
+        // Der Eintrag EXISTIERT (Versuchsprotokoll), er traegt nur keine Zeiten.
+        assertEquals(900L, order[0].lastAttemptEpochMs)
+        assertNull(order[0].coveredUntil)
     }
 
     @Test
@@ -737,7 +770,7 @@ class CacheStoreTest {
         val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = null, today = today)
 
         assertEquals(1, order.size)
-        assertEquals(today.plusDays(42), order[0].entry?.header?.lastDate)
+        assertEquals(today.plusDays(42), order[0].coveredUntil)
     }
 
     @Test
@@ -791,7 +824,7 @@ class CacheStoreTest {
 
         assertEquals(listOf(10.0, 30.0), order.map { it.latitude })
         assertFalse("der aktive Ort ist hier kein Favorit", order[0].pinned)
-        assertNull(order[0].entry)
+        assertNull(order[0].coveredUntil)
         assertTrue(order[1].pinned)
     }
 
@@ -815,10 +848,10 @@ class CacheStoreTest {
         // der Kandidat keine melden — sonst gilt favA als versorgt und wird
         // nie abgerufen.
         assertEquals(aktiv.first, order[0].latitude, 0.0)
-        assertNull("favA hat keine Zeiten, der Kandidat darf keine erben", order[0].entry)
+        assertNull("favA hat keine Zeiten, der Kandidat darf keine Abdeckung erben", order[0].coveredUntil)
         // favB behaelt seine 300 Tage.
         assertEquals(favB.first, order[1].latitude, 0.0)
-        assertEquals(today.plusDays(300), order[1].entry?.header?.lastDate)
+        assertEquals(today.plusDays(300), order[1].coveredUntil)
     }
 
     @Test
@@ -836,7 +869,10 @@ class CacheStoreTest {
         assertEquals(aktiv.first, order[0].latitude, 0.0)
         // Sonst sieht der Nutzer auf dem Bildschirm, den er gerade ansieht,
         // eine Berechnung statt amtlicher Zeiten.
-        assertNull("die Luecke des aktiven Orts darf der Eintrag des Favoriten nicht verdecken", order[0].entry)
+        assertNull("die Luecke des aktiven Orts darf der Eintrag des Favoriten nicht verdecken", order[0].coveredUntil)
+        // Das Protokoll ueberlebt die weggeworfene Abdeckung — beides
+        // verschmilzt getrennt, sonst waere der Kandidat unbremsbar.
+        assertEquals(1_000L, order[0].lastAttemptEpochMs)
     }
 
     @Test
@@ -857,10 +893,241 @@ class CacheStoreTest {
             assertEquals(
                 "der Kandidat muss die knappere der beiden Abdeckungen melden",
                 today.plusDays(2),
-                order[0].entry?.header?.lastDate,
+                order[0].coveredUntil,
             )
-            assertEquals(today.plusDays(300), order[1].entry?.header?.lastDate)
+            assertEquals(today.plusDays(300), order[1].coveredUntil)
         }
+    }
+
+    // ---------- Schluessel 1: hoffnungslose Orte nach hinten ----------
+
+    @Test
+    fun `dueOrder - Schluessel 1 - ein hoffnungsloser Ort steht hinter allen anderen`() {
+        // Versucht, gescheitert, immer noch gar keine Zeiten: nachweislich
+        // nicht abrufbar. Er darf keinen verdraengen, der gehen koennte —
+        // auch keinen, der reichlich versorgt ist und daher gar nichts
+        // braucht, denn hier wird nur geordnet.
+        val hoffnungslos = 10.0 to 10.0
+        val abgelaufen = 20.0 to 20.0
+        val reichlich = 30.0 to 30.0
+        val entries = listOf(
+            rawEmpty(lat = hoffnungslos.first, lng = hoffnungslos.second, updatedEpochMs = 900L),
+            rawCovering(abgelaufen.first, abgelaufen.second, today.minusDays(5)),
+            rawCovering(reichlich.first, reichlich.second, today.plusDays(300)),
+        )
+
+        // pinnedCoords WIDERSPRICHT der erwarteten Ausgabe: der
+        // hoffnungslose steht vorn, der abgelaufene hinten.
+        val order = CacheStore.dueOrder(
+            entries,
+            listOf(hoffnungslos, reichlich, abgelaufen),
+            activeCoords = null,
+            today = today,
+        )
+
+        assertEquals(listOf(20.0, 30.0, 10.0), order.map { it.latitude })
+        assertTrue(order[2].hopeless)
+        assertFalse(order[0].hopeless)
+    }
+
+    @Test
+    fun `dueOrder - Schluessel 1 - ein frisch angelegter Favorit ist nicht hoffnungslos`() {
+        // Kein Eintrag, also kein Fehler vorzuweisen: er kommt sofort dran,
+        // obwohl er in pinnedCoords HINTER dem hoffnungslosen steht.
+        val hoffnungslos = 10.0 to 10.0
+        val frisch = 20.0 to 20.0
+        val entries = listOf(rawEmpty(lat = hoffnungslos.first, lng = hoffnungslos.second, updatedEpochMs = 900L))
+
+        val order = CacheStore.dueOrder(entries, listOf(hoffnungslos, frisch), activeCoords = null, today = today)
+
+        assertEquals(listOf(20.0, 10.0), order.map { it.latitude })
+        assertFalse("ohne Fehlversuch ist nichts hoffnungslos", order[0].hopeless)
+    }
+
+    // ---------- Schluessel 4: Rotation ----------
+
+    @Test
+    fun `dueOrder - Schluessel 4 - unter gleich Dringlichen kommt der am laengsten nicht Versuchte zuerst`() {
+        val alt = 10.0 to 10.0
+        val mittel = 20.0 to 20.0
+        val neu = 30.0 to 30.0
+        // Gleiche Abdeckung, kein Fehler — nur das Versuchsprotokoll
+        // unterscheidet sie.
+        val entries = listOf(
+            rawCovering(neu.first, neu.second, today.plusDays(30), lastAttemptEpochMs = 3_000L),
+            rawCovering(mittel.first, mittel.second, today.plusDays(30), lastAttemptEpochMs = 2_000L),
+            rawCovering(alt.first, alt.second, today.plusDays(30), lastAttemptEpochMs = 1_000L),
+        )
+
+        // pinnedCoords WIDERSPRICHT der erwarteten Ausgabe.
+        val order = CacheStore.dueOrder(entries, listOf(neu, mittel, alt), activeCoords = null, today = today)
+
+        assertEquals(listOf(10.0, 20.0, 30.0), order.map { it.latitude })
+    }
+
+    @Test
+    fun `dueOrder - Schluessel 4 - noch nie versucht kommt vor schon versucht`() {
+        val nieVersucht = 10.0 to 10.0
+        val laengstVersucht = 20.0 to 20.0
+        val entries = listOf(
+            rawCovering(laengstVersucht.first, laengstVersucht.second, today.plusDays(30), lastAttemptEpochMs = 1L),
+            rawCovering(nieVersucht.first, nieVersucht.second, today.plusDays(30), lastAttemptEpochMs = null),
+        )
+
+        // Absichtlich hinten in pinnedCoords.
+        val order = CacheStore.dueOrder(
+            entries,
+            listOf(laengstVersucht, nieVersucht),
+            activeCoords = null,
+            today = today,
+        )
+
+        assertEquals(listOf(10.0, 20.0), order.map { it.latitude })
+    }
+
+    @Test
+    fun `dueOrder - alle hoffnungslos - die Auswahl rotiert statt am ersten zu haengen`() {
+        // Genau der Fall aus der Pruefung: kein Netz, mehrere Favoriten, alle
+        // ohne Zeiten. Ohne Schluessel 4 stuenden sie in pinnedCoords-
+        // Reihenfolge und der erste bekaeme jeden Ausloeser.
+        val orte = listOf(10.0 to 10.0, 20.0 to 20.0, 30.0 to 30.0)
+        val entries = orte.mapIndexed { index, coords ->
+            rawEmpty(
+                lat = coords.first,
+                lng = coords.second,
+                updatedEpochMs = 900L,
+                // Der ERSTE Favorit wurde ZULETZT versucht.
+                lastAttemptEpochMs = (3_000 - 1_000 * index).toLong(),
+            )
+        }
+
+        val order = CacheStore.dueOrder(entries, orte, activeCoords = null, today = today)
+
+        assertTrue("alle drei sind hoffnungslos", order.all { it.hopeless })
+        assertEquals(listOf(30.0, 20.0, 10.0), order.map { it.latitude })
+    }
+
+    @Test
+    fun `dueOrder - Schluessel 3 schlaegt Schluessel 4 - der Bildschirm vor der Rotation`() {
+        // Der aktive Ort wurde gerade erst versucht, der Favorit vor Ewigkeiten
+        // — trotzdem gewinnt der Bildschirm. Beide gleich dringend.
+        val favorit = 10.0 to 10.0
+        val aktiv = 20.0 to 20.0
+        val entries = listOf(
+            rawCovering(favorit.first, favorit.second, today.plusDays(30), lastAttemptEpochMs = 1L),
+            rawCovering(aktiv.first, aktiv.second, today.plusDays(30), lastAttemptEpochMs = 9_000L),
+        )
+
+        val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = aktiv, today = today)
+
+        assertEquals(listOf(20.0, 10.0), order.map { it.latitude })
+    }
+
+    // ---------- Verschmelzen: Abdeckung und Protokoll GETRENNT ----------
+
+    @Test
+    fun `dueOrder - der verschmolzene Kandidat erbt das Protokoll des Nachbareintrags`() {
+        // Die Konstellation aus der Pruefung: der Favorit hat KEINEN eigenen
+        // Eintrag, der aktive Ort findet 0,94 km weiter einen — mit vollem
+        // Jahresplan und einem Fehlversuch. 1,83 km vom Favoriten entfernt,
+        // also gehoert der Plan nicht ihm.
+        val favorit = 49.4500 to lng
+        val aktiv = 49.4580 to lng
+        val nachbar = 49.4665 to lng
+        val entries = listOf(
+            rawCovering(
+                nachbar.first,
+                nachbar.second,
+                today.plusDays(300),
+                lastAttemptEpochMs = 7_000L,
+                lastError = "Kein Netz",
+            ),
+        )
+
+        val order = CacheStore.dueOrder(entries, listOf(favorit), activeCoords = aktiv, today = today)
+
+        assertEquals(1, order.size)
+        // Abdeckung: null gewinnt — der Favorit hat nachweislich keine Zeiten.
+        assertNull(order[0].coveredUntil)
+        // Protokoll: aus dem Nachbareintrag. Wuerde es mit der Abdeckung
+        // zusammen weggeworfen, saehe der Kandidat fuer immer wie „noch nie
+        // versucht" aus und passierte jede Sperrfrist — ein Versuch je
+        // Ausloeser, unbegrenzt.
+        assertEquals(7_000L, order[0].lastAttemptEpochMs)
+        assertEquals("Kein Netz", order[0].lastError)
+        assertTrue("keine Zeiten plus Fehlversuch = hoffnungslos", order[0].hopeless)
+    }
+
+    @Test
+    fun `dueOrder - der verschmolzene Kandidat nimmt den juengeren Versuch samt dessen Fehler`() {
+        val favorit = 49.4500 to lng
+        val aktiv = 49.4580 to lng
+        val nachbar = 49.4665 to lng
+        val amFavoriten = rawCovering(
+            favorit.first,
+            favorit.second,
+            today.plusDays(300),
+            lastAttemptEpochMs = 1_000L,
+            lastError = "alter Fehler",
+        )
+        val amNachbarn = rawCovering(
+            nachbar.first,
+            nachbar.second,
+            today.plusDays(100),
+            lastAttemptEpochMs = 5_000L,
+            lastError = "neuer Fehler",
+        )
+
+        // Der Nachbareintrag steht VORN: `select` mit den aktiven Koordinaten
+        // findet ihn, `select` mit den Favoriten-Koordinaten den anderen
+        // (1,83 km passen nicht mehr).
+        val order = CacheStore.dueOrder(
+            listOf(amNachbarn, amFavoriten),
+            listOf(favorit),
+            activeCoords = aktiv,
+            today = today,
+        )
+
+        assertEquals(1, order.size)
+        // Abdeckung: die KLEINERE der beiden.
+        assertEquals(today.plusDays(100), order[0].coveredUntil)
+        // Protokoll: der juengere Versuch, und der Fehler aus DEMSELBEN Kopf
+        // — nicht gemischt, sonst behauptet die Statuszeile einen Fehler zu
+        // einem Zeitpunkt, an dem er nicht auftrat.
+        assertEquals(5_000L, order[0].lastAttemptEpochMs)
+        assertEquals("neuer Fehler", order[0].lastError)
+    }
+
+    @Test
+    fun `dueOrder - beim Verschmelzen gewinnt der juengere Versuch auch aus der anderen Richtung`() {
+        val favorit = 49.4500 to lng
+        val aktiv = 49.4580 to lng
+        val nachbar = 49.4665 to lng
+        val amFavoriten = rawCovering(
+            favorit.first,
+            favorit.second,
+            today.plusDays(300),
+            lastAttemptEpochMs = 9_000L,
+            lastError = "neuer Fehler",
+        )
+        val amNachbarn = rawCovering(
+            nachbar.first,
+            nachbar.second,
+            today.plusDays(100),
+            lastAttemptEpochMs = 5_000L,
+            lastError = "alter Fehler",
+        )
+
+        val order = CacheStore.dueOrder(
+            listOf(amNachbarn, amFavoriten),
+            listOf(favorit),
+            activeCoords = aktiv,
+            today = today,
+        )
+
+        assertEquals(today.plusDays(100), order[0].coveredUntil)
+        assertEquals(9_000L, order[0].lastAttemptEpochMs)
+        assertEquals("neuer Fehler", order[0].lastError)
     }
 
     @Test

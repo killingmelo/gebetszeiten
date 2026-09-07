@@ -117,9 +117,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)
                 // Online-Flavor: amtlichen Cache auch ohne App-Öffnen frisch
-                // halten (Gate: nur bei Standortwechsel oder <7 Tagen
-                // Abdeckung). Bewusst NACH Notification/Widget/Alarm, damit
-                // der Gebets-Alarm nie auf das Netzwerk wartet.
+                // halten — und zwar fuer ALLE Favoriten plus den aktiven Ort,
+                // nicht nur fuer den aktiven. Genau EIN Abruf je Alarm, der
+                // faelligste Ort (<60 Tage Abdeckung, oder gar keine
+                // Zeiten). Bewusst NACH Notification/Widget/Alarm, damit der
+                // Gebets-Alarm nie auf das Netzwerk wartet.
                 PrayerProvider.refreshOfficial(context, settings)
             } finally {
                 pending.finish()

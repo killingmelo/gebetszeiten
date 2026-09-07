@@ -76,11 +76,9 @@ class OfficialTimesCache(private val context: Context) {
      *  ohne eine einzige Zeit zu parsen: Zeitplan und Versuchsprotokoll
      *  liegen mit einem Eintrag je Ort ohnehin zusammen im selben Kopf.
      *
-     *  [OfficialStatus.stampOk] heisst hier: es gibt einen Eintrag fuer
-     *  diesen Ort MIT Zeitplan. Ein Eintrag, der nur einen Fehlversuch
-     *  protokolliert (leerer Rumpf, also `lastDate == null`), zaehlt nicht
-     *  als Treffer — sonst hielte [needsRefresh] einen Ort fuer versorgt,
-     *  fuer den es gar keine Zeiten gibt. */
+     *  `coveredUntil == null` heisst: es gibt fuer diesen Ort keine Zeiten —
+     *  entweder gar keinen Eintrag, oder einen, der nur einen Fehlversuch
+     *  protokolliert (leerer Rumpf, also `lastDate == null`). */
     suspend fun status(lat: Double, lng: Double): OfficialStatus {
         val header = entryFor(lat, lng)?.header
         return OfficialStatus(
@@ -88,7 +86,6 @@ class OfficialTimesCache(private val context: Context) {
             coveredUntil = header?.lastDate,
             lastAttemptEpochMs = header?.lastAttemptEpochMs,
             lastError = header?.lastError,
-            stampOk = header?.lastDate != null,
         )
     }
 
@@ -139,12 +136,15 @@ class OfficialTimesCache(private val context: Context) {
      *  was frueher die getrennten Versuchs-Stempel `attempt_lat`/`attempt_lng`
      *  leisteten.
      *
-     *  Er traegt zugleich die Wiederholungs-Bremse: [needsRefresh] prueft die
-     *  Fehlschlag-Sperre VOR `!stampOk`, ein leerer Eintrag bremst also
-     *  wirklich. Ohne ihn wuerde ein Ort, an dem noch nie ein Abruf gelang,
-     *  bei jedem Ausloeser erneut versucht — und in [CacheStore.dueOrder]
-     *  stuende er dabei immer ganz oben und haette alle anderen Orte
-     *  ausgehungert.
+     *  Er traegt zugleich das, was die Auswahl bremst: `lastError` ohne
+     *  Zeitplan heisst `DueLocation.hopeless`, und [CacheStore.dueOrder]
+     *  sortiert solche Orte nach hinten. DAS ist der Aushungerungsschutz —
+     *  nicht die Fehlschlag-Sperre in [needsRefresh]: die faengt nur schnelle
+     *  Wiederholungen (App-Start, Einstellungsaenderung, Knopf in Folge),
+     *  nicht den Abstand zwischen zwei Gebets-Alarmen, der bei ~1-5 h liegt.
+     *  Ohne diesen Eintrag hat ein Ort, an dem noch nie ein Abruf gelang,
+     *  nichts vorzuweisen, gilt nicht als hoffnungslos und stuende bei jedem
+     *  Ausloeser wieder ganz oben.
      *
      *  [pinnedCoords] wie bei [putAll] uebergeben — Begruendung dort. */
     suspend fun recordAttempt(
@@ -341,19 +341,13 @@ class OfficialTimesCache(private val context: Context) {
 /** Momentaufnahme für die Statuszeile eines EINZELNEN Orts (Aufrufer:
  *  `SettingsSheet`).
  *
- *  Die Auffrischung geht NICHT mehr hierueber: `refreshOfficial` waehlt seinen
- *  Ort ueber [OfficialTimesCache.dueOrder] und liest die Bremsen-Eingaben
- *  direkt aus dem Kopf des jeweiligen Kandidaten — es braucht ja Angaben zu
- *  mehreren Orten, nicht nur zum aktiven.
- *
- *  [stampOk] hat deshalb keinen Produktionsaufrufer mehr und ist nur noch
- *  Vertragsdokumentation („hat dieser Ort einen Zeitplan?"); der Default
- *  `true` haelt die bestehenden Aufrufe in der Statuszeile gueltig, die ihn
- *  ohnehin ignorieren. */
+ *  Die Auffrischung geht NICHT hierueber: `refreshOfficial` waehlt seinen Ort
+ *  ueber [OfficialTimesCache.dueOrder] und `chooseTarget`, mit den Kopffeldern
+ *  des jeweiligen Kandidaten — es braucht ja Angaben zu mehreren Orten, nicht
+ *  nur zum aktiven. */
 data class OfficialStatus(
     val locationId: Int?,
     val coveredUntil: LocalDate?,
     val lastAttemptEpochMs: Long?,
     val lastError: String?,
-    val stampOk: Boolean = true,
 )

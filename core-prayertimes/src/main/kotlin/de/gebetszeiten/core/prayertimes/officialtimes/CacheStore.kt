@@ -30,16 +30,34 @@ data class RawEntry(val header: CacheHeader, val body: String)
 data class CacheEntry(val header: CacheHeader, val schedule: Map<LocalDate, SixTimes>)
 
 /**
- * Ein Ort, der fuer einen Abruf in Frage kommt, samt dem Cache-Eintrag, der
- * heute fuer ihn vorliegt. Ergebnis von [CacheStore.dueOrder].
+ * Ein Ort, der fuer einen Abruf in Frage kommt, samt der Kopfdaten, die heute
+ * fuer ihn vorliegen. Ergebnis von [CacheStore.dueOrder].
+ *
+ * Bewusst KEIN `entry: RawEntry?`: Abdeckung und Versuchsprotokoll sind zwei
+ * verschiedene Dinge und muessen beim Verschmelzen des aktiven Orts in einen
+ * Favoriten GETRENNT verschmelzen (Begruendung in [CacheStore.dueOrder]).
+ * Steckten sie in EINEM Eintrag, muesste das Verschmelzen beides zusammen
+ * wegwerfen — und der Kandidat saehe fuer immer wie „noch nie versucht" aus,
+ * also unbremsbar. Mehr als diese Felder braucht auch niemand: der Rumpf des
+ * Eintrags ist fuer die Auswahl belanglos.
  */
 data class DueLocation(
     val latitude: Double,
     val longitude: Double,
     val pinned: Boolean,
-    /** null = fuer diesen Ort gibt es noch gar keinen Eintrag. */
-    val entry: RawEntry?,
-)
+    /** Abdeckung bis; null = fuer diesen Ort gibt es keine Zeiten (kein
+     *  Eintrag, oder ein Eintrag mit leerem Zeitplan). */
+    val coveredUntil: LocalDate?,
+    val lastAttemptEpochMs: Long?,
+    val lastError: String?,
+) {
+    /** Schon versucht, gescheitert, und immer noch GAR KEINE Zeiten — ein Ort,
+     *  der nachweislich nicht geht. Er wird weiter versucht, aber erst, wenn
+     *  nichts anderes etwas braucht (Sortierschluessel 1 in
+     *  [CacheStore.dueOrder]). Ein FRISCH angelegter Favorit ist nicht
+     *  hoffnungslos: er hat noch keinen Fehler vorzuweisen. */
+    val hopeless: Boolean get() = lastError != null && coveredUntil == null
+}
 
 /**
  * Reine Speicherschicht fuer MEHRERE Orte im Zeiten-Cache. Ein Eintrag =
@@ -231,26 +249,46 @@ object CacheStore {
      * passt. Wuerde er beide als „schon bekannt" verwerfen, kaeme der zweite
      * Favorit NIE wieder an die Reihe und veraltete stillschweigend.
      *
-     * Sortiert wird nach der Restabdeckung in Tagen
-     * (`header.lastDate − today`), aufsteigend. Fehlt der Eintrag oder traegt
-     * er keinen Zeitplan (`lastDate == null`, also nur ein
-     * Versuchsprotokoll), gilt der Ort als unendlich dringend und steht vor
-     * allem anderen. Vorn stehen damit: erst Orte ohne jede Zeiten — darunter
-     * ein gerade angelegter Favorit, der noch nie geholt wurde —, dann Orte
-     * mit ABGELAUFENER Abdeckung (negative Restabdeckung), dann alles uebrige.
+     * **Sortierschluessel, aufsteigend, dringlichstes zuerst:**
      *
-     * Bei Gleichstand kommt der AKTIVE Ort zuerst, danach gilt die
-     * Reihenfolge von [pinnedCoords]. Der aktive Ort ist der einzige, dessen
-     * Zeiten der Nutzer in diesem Moment ansieht: ein Favorit in Istanbul
-     * darf warten, der Bildschirm vor ihm nicht. Der Gleichstands-Schluessel
-     * ist explizit (nicht bloss der stabilen Sortierung ueberlassen), das
-     * Ergebnis also deterministisch.
+     * 1. `hopeless` (0/1, siehe [DueLocation.hopeless]) — ein Ort, der
+     *    NACHWEISLICH nicht geht, darf keinen verdraengen, der gehen koennte.
+     * 2. Restabdeckung in Tagen (`coveredUntil − today`), `null` zuerst.
+     *    Fehlt der Eintrag oder traegt er keinen Zeitplan, gilt der Ort als
+     *    unendlich dringend. Vorn stehen damit: erst Orte ohne jede Zeiten —
+     *    darunter ein gerade angelegter Favorit —, dann Orte mit
+     *    ABGELAUFENER Abdeckung, dann alles uebrige.
+     * 3. der AKTIVE Ort (0) vor Favoriten (1). Er ist der einzige, dessen
+     *    Zeiten der Nutzer in diesem Moment ansieht: ein Favorit in Istanbul
+     *    darf warten, der Bildschirm vor ihm nicht.
+     * 4. `lastAttemptEpochMs` aufsteigend, `null` zuerst — ROTATION: am
+     *    laengsten nicht versucht zuerst.
+     * 5. Reihenfolge in [pinnedCoords] — Determinismus.
+     *
+     * **Schluessel 1 und 4 sind der Aushungerungsschutz, nicht die
+     * Sperrfrist.** Die Fehlschlag-Sperre in `needsRefresh` deckelt nur
+     * schnelle Wiederholungen (halbe Stunde); der kuerzeste echte
+     * Ausloeser-Abstand — Maghrib zu Isha, Fajr zu Guenes — liegt bei ~1 h,
+     * typisch 2-5 h, die Sperre ist bei jedem Gebets-Alarm also laengst
+     * abgelaufen. Ohne Schluessel 1 stuende ein dauerhaft scheiternder Ort
+     * (Favorit weiter als 25 km vom naechsten Diyanet-Standort, Netz weg)
+     * durch Schluessel 2 auf Platz 1 und frasse JEDEN Ausloeser — auch den
+     * des aktiven Orts, der dann selbst ohne amtliche Zeiten dastaende.
+     * Schluessel 4 faengt die zweite Haelfte: sind ALLE Kandidaten
+     * hoffnungslos (kein Netz, zehn Favoriten), rotiert die Auswahl, statt am
+     * ersten zu haengen.
+     *
+     * Ein hoffnungsloser Ort wird also weiter versucht — aber erst, wenn
+     * nichts anderes etwas braucht. Alle Gleichstands-Schluessel sind
+     * explizit (nicht der stabilen Sortierung ueberlassen), das Ergebnis also
+     * deterministisch.
      *
      * KEINE Sperrfristen — hier wird nur geordnet. Ob ein Ort tatsaechlich
-     * abgerufen wird, entscheidet der Aufrufer (`needsRefresh`): er geht die
-     * Liste von vorn durch und nimmt den ersten, der die Bremse passiert.
-     * Deshalb eine LISTE statt eines einzelnen Eintrags — waere es einer,
-     * wuerde ein Ort in Sperrfrist alle anderen blockieren.
+     * abgerufen wird, entscheidet der Aufrufer (`chooseTarget` ueber
+     * `needsRefresh`): er geht die Liste von vorn durch und nimmt den ersten,
+     * der die Bremse passiert. Deshalb eine LISTE statt eines einzelnen
+     * Eintrags — waere es einer, wuerde ein Ort in Sperrfrist alle anderen
+     * blockieren.
      *
      * Zuordnung Ort → Eintrag ueber [select], also der ERSTE Treffer.
      * `stampMatches` ist nicht transitiv: liegen zwei Favoriten dicht
@@ -264,12 +302,20 @@ object CacheStore {
      * Begruendung gerade nicht: die Koordinaten sind die aktiven, aber der
      * Nachschlag am Favoriten und der am aktiven Ort koennen VERSCHIEDENE
      * Eintraege finden — zwischen den beiden Punkten liegen bis zu 1,81 km.
-     * Der verschmolzene Kandidat bekommt deshalb den DRINGLICHEREN der
-     * beiden Nachschlaege, wobei `null` gewinnt (siehe [moreUrgent]). Sonst
-     * gilt einer der beiden Orte als versorgt, obwohl SEINE Zeiten fehlen —
-     * und das ist die eine gefaehrliche Richtung: der Nutzer sieht eine
-     * Berechnung statt amtlicher Zeiten, ohne dass die App je versucht
-     * haette, sie zu holen. Genau dagegen gibt es diese Funktion.
+     * Die beiden Nachschlaege verschmelzen deshalb FELDWEISE, und zwar
+     * Abdeckung und Versuchsprotokoll GETRENNT (siehe [dueLocationOf]):
+     *
+     * - `coveredUntil` = die KLEINERE der beiden, `null` gewinnt. Sonst gilt
+     *   einer der beiden Orte als versorgt, obwohl SEINE Zeiten fehlen — die
+     *   eine gefaehrliche Richtung: der Nutzer sieht eine Berechnung statt
+     *   amtlicher Zeiten, ohne dass die App je versucht haette, sie zu holen.
+     * - Versuchsprotokoll = das des JUENGEREN Versuchs, `lastAttemptEpochMs`
+     *   und `lastError` aus demselben Kopf. Ein Nachschlag, der null ist,
+     *   traegt keines bei. Wuerde das Protokoll mit der Abdeckung zusammen
+     *   weggeworfen, saehe der verschmolzene Kandidat fuer immer wie „noch nie
+     *   versucht" aus: er passierte jede Sperrfrist, und `recordAttempt` legte
+     *   den Versuch am gefundenen Eintrag ab, nicht an den
+     *   Kandidaten-Koordinaten — ein Versuch je Ausloeser, unbegrenzt.
      *
      * „Hole, wenn EINER der beiden es braucht" kostet keinen zusaetzlichen
      * Abruf: beide Punkte liegen unter 1 km von den Kandidaten-Koordinaten,
@@ -277,11 +323,15 @@ object CacheStore {
      * Kandidaten-Koordinaten legt einen Eintrag ab, der zu BEIDEN passt. Ein
      * Abruf bedient damit beide.
      *
-     * Eine Endlosschleife entsteht daraus nicht: mit `entry == null` hat der
-     * Kandidat kein Versuchsprotokoll und passiert jede Sperrfrist — aber nur
-     * bis zum ERSTEN Versuch. Danach liegt ein Eintrag an den
-     * Kandidaten-Koordinaten, und der passt zu beiden Punkten; ab dann greift
-     * die Sperre normal. Darauf kann sich der Aufrufer verlassen.
+     * Ein Sturm entsteht daraus nicht — aber NICHT, weil nach dem ersten
+     * Versuch ein Eintrag an den Kandidaten-Koordinaten laege: bei einem
+     * FEHLVERSUCH tut er das gerade nicht, `recordAttempt` findet ueber
+     * `indexOf` den vorhandenen Eintrag und aendert diesen an SEINEN
+     * Koordinaten. Was bremst, ist das getrennt verschmolzene Protokoll: der
+     * Kandidat erbt den Fehlversuch, bleibt ohne Abdeckung, ist damit
+     * `hopeless` und sortiert nach hinten. Gelingt der Abruf, legt `putAll`
+     * den Eintrag tatsaechlich an den Kandidaten-Koordinaten ab und er passt
+     * zu beiden Punkten — der Fall heilt sich also selbst.
      */
     fun dueOrder(
         entries: List<RawEntry>,
@@ -290,21 +340,33 @@ object CacheStore {
         today: LocalDate,
     ): List<DueLocation> {
         // Der Gleichstands-Vorrang haengt NICHT an der Aufbaureihenfolge: die
-        // Favoriten kommen zuerst in die Liste, der aktive Ort (Rang 0)
-        // danach. `tieRank` haelt den Vorrang fest, damit die Sortierung nicht
-        // von der Stabilitaet abhaengt.
+        // Favoriten kommen zuerst in die Liste, der aktive Ort danach.
+        // `activeRank`/`pinnedRank` halten den Vorrang fest, damit die
+        // Sortierung nicht von der Stabilitaet abhaengt.
         val candidates = mutableListOf<Candidate>()
 
-        // Der Eintrag kommt von aussen herein, statt hier nachgeschlagen zu
-        // werden: der verschmolzene Kandidat waehlt zwischen ZWEI
-        // Nachschlaegen (siehe unten).
-        fun candidateAt(lat: Double, lng: Double, pinned: Boolean, tieRank: Int, entry: RawEntry?) = Candidate(
-            location = DueLocation(latitude = lat, longitude = lng, pinned = pinned, entry = entry),
-            // Restabdeckung in Tagen; null = keine Zeiten, also unendlich
-            // dringend (kein Eintrag, oder ein Eintrag mit leerem Zeitplan).
-            remainingDays = entry?.header?.lastDate?.let { ChronoUnit.DAYS.between(today, it) },
-            tieRank = tieRank,
-        )
+        // Die Nachschlaege kommen von aussen herein, statt hier gemacht zu
+        // werden: der verschmolzene Kandidat verschmilzt ZWEI von ihnen
+        // (siehe unten).
+        fun candidateAt(
+            lat: Double,
+            lng: Double,
+            pinned: Boolean,
+            activeRank: Int,
+            pinnedRank: Int,
+            lookups: List<RawEntry?>,
+        ): Candidate {
+            val location = dueLocationOf(lat, lng, pinned, lookups)
+            return Candidate(
+                location = location,
+                // Restabdeckung in Tagen; null = keine Zeiten, also unendlich
+                // dringend (kein Eintrag, oder ein Eintrag mit leerem
+                // Zeitplan).
+                remainingDays = location.coveredUntil?.let { ChronoUnit.DAYS.between(today, it) },
+                activeRank = activeRank,
+                pinnedRank = pinnedRank,
+            )
+        }
 
         // ZUERST alle Favoriten, in ihrer Listenreihenfolge — so kann keiner
         // von ihnen verlorengehen. Die Entdopplung untereinander ist eine
@@ -319,8 +381,16 @@ object CacheStore {
                 stampMatches(it.location.latitude, it.location.longitude, pLat, pLng)
             }
             if (known) continue
-            val entry = select(entries, pLat, pLng)
-            candidates.add(candidateAt(pLat, pLng, pinned = true, tieRank = index + 1, entry = entry))
+            candidates.add(
+                candidateAt(
+                    pLat,
+                    pLng,
+                    pinned = true,
+                    activeRank = 1,
+                    pinnedRank = index,
+                    lookups = listOf(select(entries, pLat, pLng)),
+                ),
+            )
         }
 
         // DANN der aktive Ort — er VERSCHMILZT in den ersten passenden
@@ -333,41 +403,93 @@ object CacheStore {
                 stampMatches(it.location.latitude, it.location.longitude, aLat, aLng)
             }
             if (matchIndex >= 0) {
-                // Die Koordinaten sind die aktiven, der Eintrag aber der
-                // DRINGLICHERE der beiden Nachschlaege. Der Nachschlag mit
-                // den aktiven Koordinaten allein wuerde den Favoriten als
+                // Die Koordinaten sind die aktiven, die Kopffelder aber
+                // feldweise aus BEIDEN Nachschlaegen. Der Nachschlag mit den
+                // aktiven Koordinaten allein wuerde den Favoriten als
                 // versorgt melden, obwohl DESSEN Zeiten fehlen — die beiden
                 // Punkte koennen 1,81 km auseinanderliegen.
+                val merged = candidates[matchIndex]
                 candidates[matchIndex] = candidateAt(
                     aLat,
                     aLng,
                     pinned = true,
-                    tieRank = 0,
-                    entry = moreUrgent(candidates[matchIndex].location.entry, activeEntry),
+                    activeRank = 0,
+                    pinnedRank = merged.pinnedRank,
+                    lookups = listOf(
+                        select(entries, merged.location.latitude, merged.location.longitude),
+                        activeEntry,
+                    ),
                 )
             } else {
-                candidates.add(candidateAt(aLat, aLng, pinned = false, tieRank = 0, entry = activeEntry))
+                candidates.add(
+                    candidateAt(
+                        aLat,
+                        aLng,
+                        pinned = false,
+                        activeRank = 0,
+                        // Hinter allen Favoriten — der Rang wird hier nie
+                        // entscheidend, `activeRank` hat vorher schon
+                        // entschieden. Ein fester Wert haelt ihn trotzdem
+                        // deterministisch.
+                        pinnedRank = pinnedCoords.size,
+                        lookups = listOf(activeEntry),
+                    ),
+                )
             }
         }
 
         return candidates
-            .sortedWith(compareBy<Candidate, Long?>(nullsFirst()) { it.remainingDays }.thenBy { it.tieRank })
+            .sortedWith(
+                compareBy<Candidate> { if (it.location.hopeless) 1 else 0 }
+                    .thenBy(nullsFirst<Long>()) { it.remainingDays }
+                    .thenBy { it.activeRank }
+                    .thenBy(nullsFirst<Long>()) { it.location.lastAttemptEpochMs }
+                    .thenBy { it.pinnedRank },
+            )
             .map { it.location }
     }
 
-    /** Der DRINGLICHERE von zwei Eintragsnachschlaegen — `null` gewinnt:
-     *  kein Eintrag heisst keine Zeiten, also maximal dringend. Sonst
-     *  gewinnt die kleinere Restabdeckung; ein Eintrag ohne Zeitplan
-     *  (`lastDate == null`) ist nur ein Versuchsprotokoll und zaehlt
-     *  ebenfalls als keine Zeiten. Bei Gleichstand bleibt [a]. */
-    private fun moreUrgent(a: RawEntry?, b: RawEntry?): RawEntry? {
-        if (a == null || b == null) return null
-        val aLast = a.header.lastDate ?: return a
-        val bLast = b.header.lastDate ?: return b
-        return if (bLast.isBefore(aLast)) b else a
+    /** Die Kopffelder eines Kandidaten aus einem oder ZWEI
+     *  Eintragsnachschlaegen. Abdeckung und Versuchsprotokoll verschmelzen
+     *  GETRENNT — Begruendung und Regeln in [dueOrder]. */
+    private fun dueLocationOf(
+        lat: Double,
+        lng: Double,
+        pinned: Boolean,
+        lookups: List<RawEntry?>,
+    ): DueLocation {
+        // Abdeckung: die kleinere, `null` gewinnt. Ein fehlender Nachschlag
+        // und ein Eintrag mit leerem Zeitplan sind hier dasselbe — beide
+        // heissen „fuer diesen Punkt gibt es keine Zeiten".
+        val coveredUntil = if (lookups.any { it?.header?.lastDate == null }) {
+            null
+        } else {
+            lookups.mapNotNull { it?.header?.lastDate }.minOrNull()
+        }
+        // Protokoll: der JUENGERE Versuch, und `lastError` aus DEMSELBEN Kopf.
+        // Gemischt wuerde die Statuszeile spaeter einen Fehler zu einem
+        // Zeitpunkt behaupten, an dem er nicht auftrat. Ein Kopf ohne
+        // Versuchsstempel verliert (`nullsFirst`), ein fehlender Nachschlag
+        // traegt gar nichts bei; bei Gleichstand bleibt der erste.
+        val log = lookups.filterNotNull()
+            .map { it.header }
+            .maxWithOrNull(compareBy<CacheHeader, Long?>(nullsFirst()) { it.lastAttemptEpochMs })
+        return DueLocation(
+            latitude = lat,
+            longitude = lng,
+            pinned = pinned,
+            coveredUntil = coveredUntil,
+            lastAttemptEpochMs = log?.lastAttemptEpochMs,
+            lastError = log?.lastError,
+        )
     }
 
-    private data class Candidate(val location: DueLocation, val remainingDays: Long?, val tieRank: Int)
+    private data class Candidate(
+        val location: DueLocation,
+        val remainingDays: Long?,
+        val activeRank: Int,
+        val pinnedRank: Int,
+    )
 
     /** Alten Einzel-Cache in einen Eintrag ueberfuehren. Gibt eine leere
      *  Liste zurueck, wenn nichts Brauchbares da ist: kein Ortsstempel,

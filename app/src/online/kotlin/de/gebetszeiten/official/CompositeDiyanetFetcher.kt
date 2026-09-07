@@ -75,7 +75,17 @@ class CompositeDiyanetFetcher(
                         cachedId = OfficialTimesCache(context)
                             .cachedLocationId(settings.latitude, settings.longitude),
                         searchByName = {
-                            withContext(Dispatchers.IO) { proxyFetcher.resolveLocationId(settings.city) }
+                            // Ohne Ortsnamen gar nicht erst suchen: das waere
+                            // ein `GET /search?q=` — ein Netzaufruf, der
+                            // nichts finden kann. Der Name ist leer, wenn ein
+                            // Favorit als Ziel gewaehlt wurde, dessen Name
+                            // nicht auffindbar ist (`targetSettings`): ein
+                            // FALSCHER Name waere dort schlimmer als keiner.
+                            if (settings.city.isBlank()) {
+                                null
+                            } else {
+                                withContext(Dispatchers.IO) { proxyFetcher.resolveLocationId(settings.city) }
+                            }
                         },
                     )
                 },
