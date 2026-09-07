@@ -13,6 +13,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import de.gebetszeiten.core.prayertimes.officialtimes.CacheEntry
 import de.gebetszeiten.core.prayertimes.officialtimes.CacheHeader
 import de.gebetszeiten.core.prayertimes.officialtimes.CacheStore
+import de.gebetszeiten.core.prayertimes.officialtimes.DueLocation
 import de.gebetszeiten.core.prayertimes.officialtimes.RawEntry
 import de.gebetszeiten.core.prayertimes.officialtimes.ScheduleText
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
@@ -136,10 +137,14 @@ class OfficialTimesCache(private val context: Context) {
      *  Zeitplan. Er haelt die STATUSZEILE an einem Ort ohne Erfolg am Leben
      *  ("Letzter Abruf" / "Fehler", siehe `officialStatusText`) — genau das,
      *  was frueher die getrennten Versuchs-Stempel `attempt_lat`/`attempt_lng`
-     *  leisteten. Die Wiederholungs-Bremse in [needsRefresh] erreicht er
-     *  dagegen NICHT: ein leerer Eintrag hat `lastDate == null`, also
-     *  `stampOk == false`, und `needsRefresh` kehrt bei `!stampOk` zurueck,
-     *  bevor es `lastAttemptEpochMs` ueberhaupt ansieht.
+     *  leisteten.
+     *
+     *  Er traegt zugleich die Wiederholungs-Bremse: [needsRefresh] prueft die
+     *  Fehlschlag-Sperre VOR `!stampOk`, ein leerer Eintrag bremst also
+     *  wirklich. Ohne ihn wuerde ein Ort, an dem noch nie ein Abruf gelang,
+     *  bei jedem Ausloeser erneut versucht — und in [CacheStore.dueOrder]
+     *  stuende er dabei immer ganz oben und haette alle anderen Orte
+     *  ausgehungert.
      *
      *  [pinnedCoords] wie bei [putAll] uebergeben — Begruendung dort. */
     suspend fun recordAttempt(
@@ -234,15 +239,30 @@ class OfficialTimesCache(private val context: Context) {
      *  Zwei gleichzeitige Lesungen sind unkritisch: `edit{}` ist
      *  serialisiert, der zweite Durchgang findet `entries` bereits vor, und
      *  `update { it }` ist dann ein reiner No-op-Rewrite desselben Inhalts. */
-    private suspend fun entryFor(lat: Double, lng: Double): RawEntry? {
+    private suspend fun entryFor(lat: Double, lng: Double): RawEntry? =
+        CacheStore.select(allEntries(), lat, lng)
+
+    /** Alle Eintraege, inklusive der einmaligen Persistierung eines migrierten
+     *  Alt-Cache (siehe oben). */
+    private suspend fun allEntries(): List<RawEntry> {
         val prefs = context.officialStore.data.first()
-        prefs[entriesKey]?.let { return CacheStore.select(CacheStore.split(it), lat, lng) }
+        prefs[entriesKey]?.let { return CacheStore.split(it) }
         // Nichts zu migrieren (frische Installation, oder kein Ortsstempel):
         // dann auch nichts schreiben — die Pruefung selbst ist billig, sie
         // faellt ohne Koordinaten sofort durch.
-        if (migrateLegacy(prefs).isEmpty()) return null
-        return CacheStore.select(entriesOf(update { it }), lat, lng)
+        if (migrateLegacy(prefs).isEmpty()) return emptyList()
+        return entriesOf(update { it })
     }
+
+    /** Orte, die fuer einen Abruf in Frage kommen, dringlichstes zuerst
+     *  (Reihenfolge und Begruendung: [CacheStore.dueOrder]). Liest den
+     *  Speicher EINMAL und parst keine einzige Zeit — die Auswahl braucht nur
+     *  Kopfdaten. */
+    suspend fun dueOrder(
+        pinnedCoords: List<Pair<Double, Double>>,
+        activeCoords: Pair<Double, Double>,
+        today: LocalDate,
+    ): List<DueLocation> = CacheStore.dueOrder(allEntries(), pinnedCoords, activeCoords, today)
 
     /** Lesen, aendern, schreiben und aufraeumen in EINER DataStore-
      *  Transaktion. Wichtig fuer die Migration: entweder der migrierte Stand
@@ -318,11 +338,18 @@ class OfficialTimesCache(private val context: Context) {
     }
 }
 
-/** Momentaufnahme für die Statuszeile UND Eingabe für [needsRefresh]
- *  (Aufrufer: [PrayerProvider][de.gebetszeiten.prayer.PrayerProvider].refreshOfficial).
- *  [stampOk] default `true`, weil ihn nur `refreshOfficial` braucht — die
- *  Statuszeile (`officialStatusText`) ignoriert ihn und alle bestehenden
- *  Aufrufe dort bleiben unveraendert gueltig. */
+/** Momentaufnahme für die Statuszeile eines EINZELNEN Orts (Aufrufer:
+ *  `SettingsSheet`).
+ *
+ *  Die Auffrischung geht NICHT mehr hierueber: `refreshOfficial` waehlt seinen
+ *  Ort ueber [OfficialTimesCache.dueOrder] und liest die Bremsen-Eingaben
+ *  direkt aus dem Kopf des jeweiligen Kandidaten — es braucht ja Angaben zu
+ *  mehreren Orten, nicht nur zum aktiven.
+ *
+ *  [stampOk] hat deshalb keinen Produktionsaufrufer mehr und ist nur noch
+ *  Vertragsdokumentation („hat dieser Ort einen Zeitplan?"); der Default
+ *  `true` haelt die bestehenden Aufrufe in der Statuszeile gueltig, die ihn
+ *  ohnehin ignorieren. */
 data class OfficialStatus(
     val locationId: Int?,
     val coveredUntil: LocalDate?,
