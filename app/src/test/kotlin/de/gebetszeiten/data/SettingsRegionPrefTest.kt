@@ -21,6 +21,12 @@ class SettingsRegionPrefTest {
         assertEquals("BAYERN", regionFromPref(regionToPref("BAYERN")))
         // Sonderzeichen und Leerzeichen INNERHALB des Namens bleiben stehen.
         assertEquals("K. MARAŞ", regionFromPref(regionToPref("K. MARAŞ")))
+        // Gemischte Gross-/Kleinschreibung ist die ECHTE Form aus cities500
+        // (admin1, z. B. „Yalova"). Ohne einen solchen Wert bliebe ein
+        // versehentliches .uppercase() oder .trim() in der Naht unentdeckt —
+        // die Regionen oben sind ohnehin schon durchgaengig gross.
+        assertEquals("Yalova", regionFromPref(regionToPref("Yalova")))
+        assertEquals("Bad Kissingen", regionFromPref(regionToPref("Bad Kissingen")))
     }
 
     @Test fun `unbekannte Region wird als leerer String geschrieben und kommt als null zurueck`() {
