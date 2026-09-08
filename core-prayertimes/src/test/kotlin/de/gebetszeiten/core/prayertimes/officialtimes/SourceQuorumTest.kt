@@ -437,14 +437,29 @@ class SourceQuorumTest {
         assertTrue(outcome.verification.confirmedBy.isEmpty())
     }
 
-    @Test fun `bei doppeltem SourceId gewinnt der erste Eintrag`() {
-        // Der zweite PROXY_ABDUS-Eintrag verschwindet vollstaendig, mit
-        // seinen 35 Tagen — nicht der mit mehr Tagen gewinnt, sondern der
-        // erste.
+    @Test fun `bei doppeltem SourceId gewinnt der erste Eintrag, der geliefert hat`() {
+        // Unter zwei Eintraegen mit Zeitplan gewinnt der erste — nicht der mit
+        // mehr Tagen. Der zweite verschwindet vollstaendig.
         val outcome = resolve(proxy(plan(days = 31)), proxy(plan(days = 35)))
 
         assertEquals(VerificationNote.UNVERIFIED_SINGLE, outcome.verification.note)
         assertEquals(31, outcome.schedule.size)
+    }
+
+    @Test fun `ein leerer Fehlereintrag verdeckt keinen erfolgreichen Abruf derselben Quelle`() {
+        // Der leere Eintrag steht VORNE. Wuerde schlicht der erste gewinnen,
+        // gaelte der Direktabruf als gescheitert, obwohl er geliefert hat —
+        // die App wuerde einen ganzen Jahresplan wegwerfen und den 31-Tage-
+        // Stand nehmen, ohne dass ein Mensch es je erfaehrt.
+        val outcome = resolve(
+            SourceResult(SourceId.DIRECT, emptyMap(), error = "HTTP 503"),
+            SourceResult(SourceId.DIRECT, plan(days = 400)),
+            proxy(plan(days = 31)),
+        )
+
+        assertEquals(VerificationNote.VERIFIED, outcome.verification.note)
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+        assertEquals("der Jahresplan darf nicht verlorengehen", 400, outcome.schedule.size)
     }
 
     private fun QuorumOutcome.note() = verification.note

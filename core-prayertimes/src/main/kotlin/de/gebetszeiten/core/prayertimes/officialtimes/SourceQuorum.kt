@@ -58,10 +58,13 @@ private data class Decision(
 /**
  * Aus mehreren Quellenabrufen EINEN Zeitplan samt Prueferzeugnis machen.
  *
- * **Zuerst wird dedupliziert:** jeder [SourceId] zaehlt genau einmal, der
- * erste Eintrag gewinnt. Ohne das bestaetigte derselbe Eintrag, zweimal in
- * der Liste, sich selbst — und [Verification.confirmedBy] enthielte den
- * Gewinner.
+ * **Zuerst wird dedupliziert:** jeder [SourceId] zaehlt genau einmal. Ohne
+ * das bestaetigte derselbe Eintrag, zweimal in der Liste, sich selbst — und
+ * [Verification.confirmedBy] enthielte den Gewinner. Unter mehreren
+ * Eintraegen derselben Quelle gewinnt einer, der ETWAS GELIEFERT hat; bei
+ * gleichem Rang der erste. Ein leerer Fehlereintrag darf einen erfolgreichen
+ * Abruf derselben Quelle nicht verdecken — sonst wuerfe die App einen ganzen
+ * Jahresplan weg und naehme den 31-Tage-Stand, ohne dass es jemand erfaehrt.
  *
  * `direct` ist der Kandidat mit `source == DIRECT` und NICHT leerem
  * Zeitplan, sonst null: ein gescheiterter Direktabruf ist kein Zeuge. Alle
@@ -163,14 +166,22 @@ fun resolveQuorum(
     maxDriftDays: Int = 3,
     maxDriftMinutes: Int = 2,
 ): QuorumOutcome {
-    // ZUERST deduplizieren: ein `SourceId` zaehlt genau einmal, der erste
-    // Eintrag gewinnt. Steht derselbe Eintrag zweimal in der Liste, wuerde
-    // er sich sonst selbst bestaetigen — „bestaetigt durch 1 Quelle",
-    // obwohl nur EINE Quelle geantwortet hat — und damit die Zusicherung
-    // von [Verification.confirmedBy] brechen. Heute kann das nicht
-    // vorkommen; Task 11 setzt die Kandidatenliste aber nebenlaeufig
-    // zusammen, und dort waere es eine Falle.
-    val distinct = candidates.distinctBy { it.source }
+    // ZUERST deduplizieren: ein `SourceId` zaehlt genau einmal. Steht
+    // derselbe Eintrag zweimal in der Liste, wuerde er sich sonst selbst
+    // bestaetigen — „bestaetigt durch 1 Quelle", obwohl nur EINE Quelle
+    // geantwortet hat — und damit die Zusicherung von
+    // [Verification.confirmedBy] brechen. Heute kann das nicht vorkommen;
+    // Task 11 setzt die Kandidatenliste aber nebenlaeufig zusammen, und dort
+    // waere es eine Falle.
+    //
+    // Unter mehreren Eintraegen derselben Quelle gewinnt einer, der ETWAS
+    // GELIEFERT hat — nicht schlicht der erste. Ein leerer Fehlereintrag, der
+    // zufaellig vorne steht, wuerde sonst einen erfolgreichen Abruf derselben
+    // Quelle verdecken und die Quelle als gescheitert fuehren. Bei gleichem
+    // Rang bleibt die Eingabereihenfolge (`sortedBy` ist stabil).
+    val distinct = candidates
+        .sortedBy { if (it.schedule.isEmpty()) 1 else 0 }
+        .distinctBy { it.source }
     val direct = distinct.firstOrNull { it.source == SourceId.DIRECT && it.schedule.isNotEmpty() }
     // Identitaetsvergleich: „alle ANDEREN Kandidaten". Nach der
     // Deduplizierung gibt es hoechstens einen DIRECT-Eintrag, der Vergleich
