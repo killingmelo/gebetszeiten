@@ -1,0 +1,328 @@
+package de.gebetszeiten.core.prayertimes.officialtimes
+
+import java.time.LocalDate
+
+/** Wie gut die ausgelieferten Zeiten belegt sind. [NONE] = gar keine Quelle
+ *  hat geliefert; dann gibt es auch keine Zeiten. */
+enum class VerificationNote {
+    VERIFIED, DRIFT, UNVERIFIED_SINGLE, CONFLICT_OVERRIDDEN, CONFLICT_UNRESOLVED, NONE
+}
+
+/**
+ * Das Prueferzeugnis zu einem Zeitplan — reiner Datentyp, ohne Nutzertext.
+ * Die deutschen Worte dazu stehen in `VerificationText` im app-Modul; `core`
+ * bleibt frei von Oberflaechen-Sprache.
+ *
+ * Die Zahlen stammen aus GENAU EINEM Vergleich, naemlich dem, der [note]
+ * begruendet (siehe [resolveQuorum]) — nicht gemischt aus mehreren, sonst
+ * behauptete die Anzeige eine Abweichung von 14 Minuten am Tag eines
+ * anderen, milderen Vergleichs.
+ */
+data class Verification(
+    val note: VerificationNote,
+    val chosen: SourceId?,
+    /** Die Quellen, die den Gewinner BESTAETIGEN — der Gewinner selbst ist
+     *  nie darunter. „bestaetigt durch 1 Quelle" heisst also: eine ANDERE
+     *  Quelle sagt dasselbe. */
+    val confirmedBy: List<SourceId>,
+    val comparedDays: Int,
+    val differingDays: Int,
+    val maxAbsMinutes: Int,
+    val firstDiff: LocalDate?,
+    val checkedEpochMs: Long,
+)
+
+data class QuorumOutcome(
+    val schedule: Map<LocalDate, SixTimes>,
+    /** null NUR bei [VerificationNote.NONE] — dann gibt es keine Zeiten, zu
+     *  denen eine Standort-ID gehoeren koennte. */
+    val locationId: Int?,
+    val verification: Verification,
+)
+
+/** Zahlen fuer eine Note, die auf KEINEM Vergleich beruht
+ *  ([VerificationNote.UNVERIFIED_SINGLE], [VerificationNote.NONE]). Nur
+ *  Traeger der Nullen — das `verdict` darin wird nie ausgewertet. */
+private val NO_NUMBERS = CrossCheckResult(Verdict.NO_OVERLAP, 0, 0, 0, null)
+
+/** Zwischenergebnis: wer gewinnt, mit welcher Note, mit welchen Zahlen. Der
+ *  Zeitplan selbst wird erst danach vereinigt. */
+private data class Decision(
+    val winner: SourceResult?,
+    val note: VerificationNote,
+    val numbers: CrossCheckResult,
+    val confirmedBy: List<SourceId>,
+)
+
+/**
+ * Aus mehreren Quellenabrufen EINEN Zeitplan samt Prueferzeugnis machen.
+ *
+ * `direct` ist der Kandidat mit `source == DIRECT` und NICHT leerem
+ * Zeitplan, sonst null: ein gescheiterter Direktabruf ist kein Zeuge. Alle
+ * uebrigen Kandidaten mit nicht leerem Zeitplan sind die „Pruefer".
+ *
+ * **Fall A — der Direktabruf hat geliefert.** Er wird gegen jeden Pruefer
+ * verglichen und nach [Verdict] gruppiert:
+ *
+ * | Lage | Gewinner | Note |
+ * |---|---|---|
+ * | mindestens ein [Verdict.AGREE] | direct (volles Fenster) | [VerificationNote.VERIFIED] |
+ * | kein AGREE, aber mindestens ein [Verdict.MINOR_DRIFT] | direct | [VerificationNote.DRIFT] |
+ * | kein AGREE/MINOR_DRIFT, aber >= 2 Pruefer im [Verdict.CONFLICT] mit direct, die untereinander einig sind | die Pruefer | [VerificationNote.CONFLICT_OVERRIDDEN] |
+ * | mindestens ein CONFLICT, aber die Pruefer sind nicht untereinander einig (oder es ist nur einer) | direct | [VerificationNote.CONFLICT_UNRESOLVED] |
+ * | gar kein beurteilbarer Pruefer (keiner antwortete, oder nur [Verdict.NO_OVERLAP]) | direct | [VerificationNote.UNVERIFIED_SINGLE] |
+ *
+ * „Untereinander einig" heisst: der Vergleich zwischen den beiden Pruefern
+ * liefert AGREE ODER MINOR_DRIFT — also nicht CONFLICT und nicht
+ * NO_OVERLAP. Ohne Schnittmenge belegen zwei Quellen einander nicht.
+ *
+ * **Warum zwei einige Fremdquellen unseren Jahres-Parser schlagen**
+ * (Nutzerentscheidung): Zwei unabhaengig implementierte Quellen, die
+ * dasselbe sagen und beide unserem HTML-Parser widersprechen, sind der
+ * wahrscheinlichere Zeuge als der Parser allein. Der Preis ist eine
+ * kuerzere Abdeckung (~31 statt ~400 Tage), und den benennt die Statuszeile
+ * ausdruecklich.
+ *
+ * **Fall B — der Direktabruf hat nicht geliefert.** Gewinner ist immer der
+ * Pruefer mit mehr Tagen:
+ *
+ * | Lage | Note |
+ * |---|---|
+ * | >= 2 Pruefer, untereinander einig | [VerificationNote.VERIFIED] |
+ * | >= 2 Pruefer, uneinig | [VerificationNote.CONFLICT_UNRESOLVED] |
+ * | genau 1 Pruefer | [VerificationNote.UNVERIFIED_SINGLE] |
+ * | keiner | [VerificationNote.NONE], leerer Zeitplan, `locationId` null |
+ *
+ * In Fall B kann [VerificationNote.DRIFT] nicht entstehen: „einig" umfasst
+ * dort auch MINOR_DRIFT, also gilt eine Drift zwischen zwei Pruefern als
+ * Bestaetigung. Anders als in Fall A gibt es hier keinen Jahres-Parser, den
+ * eine Drift verdaechtig machen koennte — beide Quellen sind gleichrangig.
+ *
+ * **Welcher Pruefer gewinnt:** der mit MEHR Tagen; bei Gleichstand der mit
+ * dem kleineren `SourceId.ordinal`. Auch die Vergleiche werden in
+ * `SourceId`-Reihenfolge gebildet, damit bei gleichen Zahlen immer derselbe
+ * Vergleich die Zahlen stellt — das Ergebnis ist vollstaendig
+ * deterministisch, unabhaengig davon, in welcher Reihenfolge die Abrufe
+ * fertig wurden.
+ *
+ * **Vereinigung der Tage:** Tage, die dem Gewinner FEHLEN, werden aus
+ * ZUSTIMMENDEN Quellen ergaenzt (AGREE oder MINOR_DRIFT gegen den
+ * Gewinner). Bei Ueberschneidung gewinnt immer der Gewinner. Aus
+ * CONFLICT-Quellen wird NIE ergaenzt — sonst mischte die App genau die
+ * Zeiten hinein, die sie gerade als widersprechend erkannt hat; und aus
+ * NO_OVERLAP-Quellen auch nicht, denn eine Quelle ohne Schnittmenge ist
+ * ungeprueft, und ungepruefte Zeiten einzumischen ist genau die Luecke, die
+ * dieser Gegencheck schliesst.
+ *
+ * **Welche Zahlen in [Verification] stehen:** die des Vergleichs, der die
+ * Note BEGRUENDET — bei VERIFIED der zustimmende Vergleich mit den meisten
+ * `comparedDays`, bei DRIFT der Drift-Vergleich mit den meisten
+ * `differingDays`, bei beiden Konflikt-Noten der Vergleich mit dem
+ * groessten `maxAbsMinutes` (die Anzeige soll den schlimmsten Widerspruch
+ * nennen, nicht den mildesten), bei UNVERIFIED_SINGLE und NONE Nullen.
+ *
+ * [nowEpochMs] wird durchgereicht, nicht aus der Systemuhr geholt: reine
+ * Funktion, ohne Netz und ohne Uhr.
+ */
+fun resolveQuorum(
+    candidates: List<SourceResult>,
+    locationId: Int,
+    nowEpochMs: Long,
+    maxDriftDays: Int = 3,
+    maxDriftMinutes: Int = 2,
+): QuorumOutcome {
+    val direct = candidates.firstOrNull { it.source == SourceId.DIRECT && it.schedule.isNotEmpty() }
+    // Identitaetsvergleich: „alle ANDEREN Kandidaten". Ein zweiter
+    // DIRECT-Eintrag (den es nicht geben sollte) wuerde so zum Pruefer,
+    // statt stillschweigend zu verschwinden.
+    val checkers = candidates.filter { it !== direct && it.schedule.isNotEmpty() }
+        .sortedBy { it.source.ordinal }
+
+    val decision = if (direct != null) {
+        decideWithDirect(direct, checkers, maxDriftDays, maxDriftMinutes)
+    } else {
+        decideWithoutDirect(checkers, maxDriftDays, maxDriftMinutes)
+    }
+
+    val winner = decision.winner
+    return QuorumOutcome(
+        schedule = winner?.let { unionSchedule(it, candidates, maxDriftDays, maxDriftMinutes) } ?: emptyMap(),
+        // Nur bei NONE (kein Gewinner) gibt es keine Standort-ID.
+        locationId = winner?.let { locationId },
+        verification = Verification(
+            note = decision.note,
+            chosen = winner?.source,
+            confirmedBy = decision.confirmedBy,
+            comparedDays = decision.numbers.comparedDays,
+            differingDays = decision.numbers.differingDays,
+            maxAbsMinutes = decision.numbers.maxAbsMinutes,
+            firstDiff = decision.numbers.firstDiff,
+            checkedEpochMs = nowEpochMs,
+        ),
+    )
+}
+
+/** Fall A. Reihenfolge der Abfragen = Reihenfolge der Tabellenzeilen im
+ *  KDoc von [resolveQuorum]. */
+private fun decideWithDirect(
+    direct: SourceResult,
+    checkers: List<SourceResult>,
+    maxDriftDays: Int,
+    maxDriftMinutes: Int,
+): Decision {
+    val checks = checkers.map { it to crossCheck(direct.schedule, it.schedule, maxDriftDays, maxDriftMinutes) }
+    fun withVerdict(verdict: Verdict) = checks.filter { it.second.verdict == verdict }
+
+    val agreeing = withVerdict(Verdict.AGREE)
+    if (agreeing.isNotEmpty()) {
+        return Decision(
+            winner = direct,
+            note = VerificationNote.VERIFIED,
+            numbers = pick(agreeing) { it.comparedDays },
+            confirmedBy = sourcesOf(agreeing),
+        )
+    }
+
+    val drifting = withVerdict(Verdict.MINOR_DRIFT)
+    if (drifting.isNotEmpty()) {
+        return Decision(
+            winner = direct,
+            note = VerificationNote.DRIFT,
+            numbers = pick(drifting) { it.differingDays },
+            confirmedBy = sourcesOf(drifting),
+        )
+    }
+
+    val conflicting = withVerdict(Verdict.CONFLICT)
+    if (conflicting.isNotEmpty()) {
+        // Der schlimmste Widerspruch stellt in BEIDEN Konflikt-Faellen die
+        // Zahlen.
+        val worst = pick(conflicting) { it.maxAbsMinutes }
+        val agreeingPair = firstAgreeingPair(conflicting.map { it.first }, maxDriftDays, maxDriftMinutes)
+        if (agreeingPair != null) {
+            return Decision(
+                // Mehr Tage gewinnt; bei Gleichstand der kleinere ordinal.
+                winner = bestByDays(agreeingPair),
+                note = VerificationNote.CONFLICT_OVERRIDDEN,
+                numbers = worst,
+                confirmedBy = agreeingPair.map { it.source }.sortedBy { it.ordinal },
+            )
+        }
+        return Decision(direct, VerificationNote.CONFLICT_UNRESOLVED, worst, emptyList())
+    }
+
+    // Kein beurteilbarer Pruefer: keiner antwortete, oder alle ohne
+    // Schnittmenge.
+    return Decision(direct, VerificationNote.UNVERIFIED_SINGLE, NO_NUMBERS, emptyList())
+}
+
+/** Fall B. */
+private fun decideWithoutDirect(
+    checkers: List<SourceResult>,
+    maxDriftDays: Int,
+    maxDriftMinutes: Int,
+): Decision {
+    if (checkers.isEmpty()) {
+        return Decision(null, VerificationNote.NONE, NO_NUMBERS, emptyList())
+    }
+    val winner = bestByDays(checkers)
+    if (checkers.size == 1) {
+        return Decision(winner, VerificationNote.UNVERIFIED_SINGLE, NO_NUMBERS, emptyList())
+    }
+
+    // Gemessen wird gegen den GEWINNER, nicht paarweise ueber alle: belegt
+    // werden muessen die Zeiten, die tatsaechlich ausgeliefert werden. Bei
+    // genau zwei Pruefern — dem Regelfall — ist das dasselbe.
+    val checks = checkers.filter { it !== winner }
+        .map { it to crossCheck(winner.schedule, it.schedule, maxDriftDays, maxDriftMinutes) }
+    val concordant = checks.filter {
+        it.second.verdict == Verdict.AGREE || it.second.verdict == Verdict.MINOR_DRIFT
+    }
+    if (concordant.isNotEmpty()) {
+        return Decision(
+            winner = winner,
+            note = VerificationNote.VERIFIED,
+            numbers = pick(concordant) { it.comparedDays },
+            confirmedBy = sourcesOf(concordant),
+        )
+    }
+    // Uneinig — auch dann, wenn die Pruefer sich nur nicht ueberschneiden:
+    // ohne gemeinsame Tage bestaetigt keiner den anderen.
+    return Decision(
+        winner = winner,
+        note = VerificationNote.CONFLICT_UNRESOLVED,
+        numbers = pick(checks) { it.maxAbsMinutes },
+        confirmedBy = emptyList(),
+    )
+}
+
+/** Der Vergleich mit dem groessten [key]. Bei Gleichstand der erste — die
+ *  Liste ist nach `SourceId` sortiert, das Ergebnis also deterministisch.
+ *  Der Rueckfall auf [NO_NUMBERS] tritt nie ein (die Aufrufer pruefen
+ *  vorher auf „nicht leer"), er ersetzt nur ein `!!`. */
+private fun pick(
+    checks: List<Pair<SourceResult, CrossCheckResult>>,
+    key: (CrossCheckResult) -> Int,
+): CrossCheckResult = checks.map { it.second }.maxByOrNull(key) ?: NO_NUMBERS
+
+private fun sourcesOf(checks: List<Pair<SourceResult, CrossCheckResult>>): List<SourceId> =
+    checks.map { it.first.source }.sortedBy { it.ordinal }
+
+/** Mehr Tage gewinnt; bei Gleichstand der kleinere `SourceId.ordinal`
+ *  (Determinismus). [sources] ist immer nicht leer. */
+private fun bestByDays(sources: List<SourceResult>): SourceResult =
+    sources.reduce { best, next ->
+        val better = next.schedule.size > best.schedule.size ||
+            (next.schedule.size == best.schedule.size && next.source.ordinal < best.source.ordinal)
+        if (better) next else best
+    }
+
+/** Das erste Paar aus [sources] (in `SourceId`-Reihenfolge), das
+ *  untereinander einig ist — AGREE oder MINOR_DRIFT. null, wenn es keines
+ *  gibt. Bei genau zwei Fremdquellen ist das der einzige moegliche Fall;
+ *  paarweise gesucht wird trotzdem, damit eine dritte Kontrollquelle die
+ *  Funktion nicht stillschweigend entwertet. */
+private fun firstAgreeingPair(
+    sources: List<SourceResult>,
+    maxDriftDays: Int,
+    maxDriftMinutes: Int,
+): List<SourceResult>? {
+    val ordered = sources.sortedBy { it.source.ordinal }
+    for (i in ordered.indices) {
+        for (j in i + 1 until ordered.size) {
+            val verdict = crossCheck(
+                ordered[i].schedule,
+                ordered[j].schedule,
+                maxDriftDays,
+                maxDriftMinutes,
+            ).verdict
+            if (verdict == Verdict.AGREE || verdict == Verdict.MINOR_DRIFT) {
+                return listOf(ordered[i], ordered[j])
+            }
+        }
+    }
+    return null
+}
+
+/** Der Zeitplan des Gewinners, aufgefuellt aus zustimmenden Quellen. Regeln
+ *  und Begruendung in [resolveQuorum]. */
+private fun unionSchedule(
+    winner: SourceResult,
+    candidates: List<SourceResult>,
+    maxDriftDays: Int,
+    maxDriftMinutes: Int,
+): Map<LocalDate, SixTimes> {
+    val merged = LinkedHashMap<LocalDate, SixTimes>()
+    // Spender in `SourceId`-Reihenfolge: ueberschneiden sich zwei Spender an
+    // einem Tag, den der Gewinner nicht hat, gewinnt der spaetere — fest,
+    // nicht zufaellig.
+    for (donor in candidates.sortedBy { it.source.ordinal }) {
+        if (donor === winner || donor.schedule.isEmpty()) continue
+        val verdict = crossCheck(winner.schedule, donor.schedule, maxDriftDays, maxDriftMinutes).verdict
+        if (verdict != Verdict.AGREE && verdict != Verdict.MINOR_DRIFT) continue
+        merged.putAll(donor.schedule)
+    }
+    // Der Gewinner ZULETZT: bei Ueberschneidung gewinnt immer er.
+    merged.putAll(winner.schedule)
+    return merged
+}
