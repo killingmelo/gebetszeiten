@@ -4,6 +4,7 @@ package de.gebetszeiten.ui
 // herausgelöst (dort waren es 1.623 Zeilen), weil die Ortswahl mit den
 // Quellen-Badges weiter wächst.
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.horizontalScroll
@@ -29,7 +31,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -40,7 +41,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -85,7 +85,6 @@ import de.gebetszeiten.prayer.TimesSourceBadge
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.prayer.timesSourceBadge
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import java.time.LocalDate
@@ -173,6 +172,7 @@ private fun FavoritesRow(
     currentLng: Double,
     onToggle: () -> Unit,
     onPick: (City) -> Unit,
+    onRemove: (City) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -196,12 +196,16 @@ private fun FavoritesRow(
             )
         }
     }
-    // Zweite Anzeige der Obergrenze neben der Snackbar: das Blatt ist ein
-    // eigenes Fenster über dem Scaffold, die Snackbar liegt darunter und kann
-    // verdeckt sein. Stilles Scheitern war der Anlass dieses Umbaus.
+    // Die Anzeige der Obergrenze. Sie steht hier inline und nicht in einer
+    // Snackbar: das Blatt ist ein eigenes Fenster über dem Scaffold, dessen
+    // Snackbar wäre verdeckt. Und ihre Bedingung `full && !isFav` heißt: sie
+    // steht VOR dem Tipp da und erklärt den wirkungslosen Stern vorbeugend,
+    // statt erst auf ein Scheitern zu reagieren.
     if (full && !isFav) {
         Text(
-            stringResource(R.string.favorites_full),
+            // Die Zahl kommt aus FAVORITES_MAX, damit der Text nicht lügt,
+            // sobald jemand die Konstante anfasst.
+            stringResource(R.string.favorites_full, FAVORITES_MAX),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
         )
@@ -216,13 +220,35 @@ private fun FavoritesRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             cities.forEach { c ->
+                // Gleichnamige Orte (Esenköy in Yalova und in Aydın) bekommen
+                // die Region angehängt — dieselbe Funktion wie bei den zuletzt
+                // gewählten Orten, keine zweite. Einmal berechnet, weil auch
+                // die Sprachausgabe des Schließen-Symbols sie braucht.
+                val label = recentPlaceLabel(c, cities)
                 FilterChip(
                     selected = stampMatches(c.latitude, c.longitude, currentLat, currentLng),
                     onClick = { onPick(c) },
-                    // Gleichnamige Orte (Esenköy in Yalova und in Aydın)
-                    // bekommen die Region angehängt — dieselbe Funktion wie
-                    // bei den zuletzt gewählten Orten, keine zweite.
-                    label = { Text(recentPlaceLabel(c, cities)) },
+                    label = { Text(label) },
+                    // Schließen-Symbol je Chip: ohne es kostet das Entfernen
+                    // eines fremden Favoriten ZWEI komplette Ortswechsel (hin,
+                    // Stern aus, zurück) — und bei voller Liste ist es der
+                    // einzige Weg, überhaupt Platz zu machen.
+                    trailingIcon = {
+                        val removeLabel = stringResource(R.string.favorites_remove_named, label)
+                        Icon(
+                            painterResource(R.drawable.ic_close),
+                            // Der Ortsname steht mit drin, damit die
+                            // Sprachausgabe sagt, WAS entfernt wird.
+                            contentDescription = removeLabel,
+                            modifier = Modifier
+                                // Die Klickfläche liegt außen und ist damit
+                                // größer als das Symbol; mehr gibt die
+                                // 32-dp-Höhe eines Chips nicht her.
+                                .clickable(onClickLabel = removeLabel) { onRemove(c) }
+                                .padding(3.dp)
+                                .size(18.dp),
+                        )
+                    },
                 )
             }
         }
@@ -345,9 +371,6 @@ internal fun LocationSettings(
     onApply: (AppSettings) -> Unit,
     onRefresh: () -> Unit,
     refreshTick: Int,
-    // Derselbe Host, den auch HeuteContent benutzt — durchgereicht aus
-    // MainScreen. Braucht der Stern, um die erreichte Obergrenze zu melden.
-    snackbarHostState: SnackbarHostState,
 ) {
     // Location is the only draft state (typing half a coordinate must not
     // trigger a reschedule) — everything else applies instantly via commit().
@@ -372,12 +395,6 @@ internal fun LocationSettings(
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
-    val scope = rememberCoroutineScope()
-    // stringResource statt context.getString: Ressourcenzugriffe über
-    // LocalContext.current sind in Compose per Lint verboten
-    // (LocalContextGetResourceValueCall). Die Vorlage wird bei der
-    // Komposition geholt, verwendet wird sie erst im Klick.
-    val favoritesFullMessage = stringResource(R.string.favorites_full)
 
     // Named "commit" (not "apply") to avoid clashing with Kotlin's stdlib apply.
     val commit: (AppSettings.() -> AppSettings) -> Unit = { change -> onApply(settings.change()) }
@@ -490,11 +507,13 @@ internal fun LocationSettings(
             // Orten: während einer laufenden Ortssuche soll der Abschnitt
             // nicht im Weg stehen.
             if (city.text.isBlank()) {
-                // Der aktuelle Ort als City. Land und Region kennen die
-                // Einstellungen nicht (sie speichern nur Name + Koordinaten)
-                // — beides bleibt leer bzw. null. Für Identität (stampMatches)
-                // und Beschriftung zählen ohnehin nur Name und Koordinaten.
-                val currentPlace = City(settings.city, "", settings.latitude, settings.longitude, null)
+                // Der aktuelle Ort als City. Das Land kennen die Einstellungen
+                // nicht — es bleibt leer, `recentPlaceLabel` liest es nicht.
+                // Die Region dagegen wird mitgeführt: nur so kann die
+                // Beschriftung zwei gleichnamige Favoriten (Esenköy in Yalova
+                // und in Aydın) auseinanderhalten. Für die Identität
+                // (stampMatches) zählen ohnehin nur die Koordinaten.
+                val currentPlace = City(settings.city, "", settings.latitude, settings.longitude, settings.region)
                 val currentIsFavorite = isFavorite(settings.favorites, currentPlace)
                 FavoritesRow(
                     favorites = settings.favorites,
@@ -503,24 +522,25 @@ internal fun LocationSettings(
                     currentLat = settings.latitude,
                     currentLng = settings.longitude,
                     onToggle = {
-                        when {
-                            currentIsFavorite ->
-                                commit { copy(favorites = withoutFavorite(favorites, currentPlace)) }
-                            // withFavorite lehnt bei erreichter Obergrenze
-                            // STILL ab. Genau diese Klasse von stillem
-                            // Scheitern soll der Nutzer nie erleben — also
-                            // hier abfangen und melden, statt ein commit zu
-                            // schicken, das nichts ändert.
-                            settings.favorites.size >= FAVORITES_MAX ->
-                                scope.launch { snackbarHostState.showSnackbar(favoritesFullMessage) }
-                            // Kein eigener Abruf: commit → save() →
-                            // reschedule() → PrayerProvider.refreshOfficial,
-                            // und CacheStore.dueOrder stellt einen Ort ohne
-                            // Eintrag und ohne Fehler an die Spitze. Der neue
-                            // Favorit wird also von selbst sofort geholt; ein
-                            // Abruf-Aufruf hier wäre ein zweiter Mechanismus
-                            // für dieselbe Sache.
-                            else -> commit {
+                        if (currentIsFavorite) {
+                            commit { copy(favorites = withoutFavorite(favorites, currentPlace)) }
+                        } else {
+                            // Keine eigene Grenzprüfung: withFavorite lehnt
+                            // bei voller Liste selbst ab, und die rote Zeile
+                            // in FavoritesRow hat den Nutzer schon VOR dem
+                            // Tipp darauf hingewiesen. Eine zweite Prüfung
+                            // hier wäre dieselbe Grenze an zwei Stellen.
+                            //
+                            // Kein eigener Abruf: der Stern heftet nur den
+                            // AKTIVEN Ort an, und den versorgt commit →
+                            // save() → reschedule() → refreshOfficial ohnehin.
+                            // Ein Abruf-Aufruf hier wäre ein zweiter
+                            // Mechanismus für dieselbe Sache. (Beim WECHSEL zu
+                            // einem Favoriten ohne Zeiten greift zusätzlich
+                            // CacheStore.dueOrder, das einen Ort ohne Eintrag
+                            // an die Spitze stellt — das ist aber die Sache
+                            // von onPick, nicht des Sterns.)
+                            commit {
                                 copy(
                                     favorites = withFavorite(
                                         favorites,
@@ -535,9 +555,20 @@ internal fun LocationSettings(
                         // Kompletter Umzug wie bei „zuletzt gewählt", aber
                         // OHNE recentPlaces mitzuschreiben: ein
                         // Favoritenwechsel ist keine Suche, die beiden Listen
-                        // bleiben unabhängig.
-                        commit { copy(city = c.name, latitude = c.latitude, longitude = c.longitude) }
+                        // bleiben unabhängig. Die Region zieht mit, sonst
+                        // verlöre der Ort sie beim Speichern.
+                        commit {
+                            copy(
+                                city = c.name,
+                                latitude = c.latitude,
+                                longitude = c.longitude,
+                                region = c.region,
+                            )
+                        }
                     },
+                    // Entfernen ohne hinzureisen: kein Ortswechsel, nur die
+                    // Liste ändert sich.
+                    onRemove = { c -> commit { copy(favorites = withoutFavorite(favorites, c)) } },
                 )
             }
             if (city.text.isBlank() && settings.recentPlaces.isNotEmpty()) {
@@ -547,6 +578,7 @@ internal fun LocationSettings(
                             city = c.name,
                             latitude = c.latitude,
                             longitude = c.longitude,
+                            region = c.region,
                             recentPlaces = withRecentPlace(recentPlaces, c),
                         )
                     }
@@ -643,11 +675,14 @@ internal fun LocationSettings(
                                     keyboard?.hide()
                                     focusManager.clearFocus()
                                     // Picked from the list = complete data → applies directly.
+                                    // Die Region wird mitgespeichert, damit der
+                                    // Ort sie als Favorit nicht verliert.
                                     commit {
                                         copy(
                                             city = c.name,
                                             latitude = c.latitude,
                                             longitude = c.longitude,
+                                            region = c.region,
                                             recentPlaces = withRecentPlace(recentPlaces, c),
                                         )
                                     }
@@ -681,7 +716,20 @@ internal fun LocationSettings(
                         val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
                         val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
                         // Leeres Suchfeld = Name unverändert (nur Koordinaten angepasst).
-                        commit { copy(city = city.text.ifBlank { settings.city }, latitude = parsedLat, longitude = parsedLng) }
+                        // Die Region wird auf null gesetzt: manuelle Koordinaten
+                        // haben keine, und die des VORHERIGEN Orts würde sonst
+                        // an den neuen Koordinaten hängenbleiben — bei einem
+                        // Favoriten „Esenköy · Yalova" auf Koordinaten in Aydın
+                        // wäre das eine falsche Aussage. Keine Region ist nur
+                        // eine fehlende; eine falsche wäre irreführend.
+                        commit {
+                            copy(
+                                city = city.text.ifBlank { settings.city },
+                                latitude = parsedLat,
+                                longitude = parsedLng,
+                                region = null,
+                            )
+                        }
                     },
                 )
             }

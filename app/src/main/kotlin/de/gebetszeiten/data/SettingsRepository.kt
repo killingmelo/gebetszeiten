@@ -19,6 +19,11 @@ data class AppSettings(
     val latitude: Double,
     val longitude: Double,
     val city: String,
+    /** Region/Provinz des aktuellen Orts, sofern bekannt (`null` = unbekannt).
+     *  Nur zum Unterscheiden gleichnamiger Orte da: ohne dieses Feld verliert
+     *  ein Suchtreffer seine Region beim Speichern, und `recentPlaceLabel`
+     *  könnte zwei Favoriten „Esenköy" nie auseinanderhalten. */
+    val region: String? = null,
     val showCountdown: Boolean,
     /** Online flavor: use official Diyanet times fetched online (else offline calc).
      *  Im Online-Flavor ab Werk an — amtliche Zeiten sind der Zweck des Flavors;
@@ -88,6 +93,7 @@ data class AppSettings(
             latitude = 49.4521,
             longitude = 11.0767,
             city = "Nürnberg",
+            region = null,
             showCountdown = false,
             useOnline = de.gebetszeiten.official.OfficialTimesProvider.isOnline,
             useCalculated = false,
@@ -115,12 +121,25 @@ data class AppSettings(
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+/** DataStore kann keinen `null`-Wert ablegen, deshalb wird „unbekannte Region"
+ *  als leerer String geschrieben und beim Lesen wieder zu `null`. Ein FEHLENDER
+ *  Schlüssel (Bestandsnutzer, keine Migration) liefert `null` als Eingabe und
+ *  damit ebenfalls `null` — beides ist derselbe Zustand.
+ *
+ *  Ausgelagert, weil das Repository selbst einen Android-Context braucht und
+ *  ohne Robolectric nicht testbar ist: so hat der Rundlauf des Feldes doch eine
+ *  Naht, an der ein reiner JVM-Test greifen kann. */
+internal fun regionToPref(region: String?): String = region.orEmpty()
+
+internal fun regionFromPref(stored: String?): String? = stored?.ifBlank { null }
+
 class SettingsRepository(private val context: Context) {
 
     private object Keys {
         val LAT = doublePreferencesKey("latitude")
         val LNG = doublePreferencesKey("longitude")
         val CITY = stringPreferencesKey("city")
+        val REGION = stringPreferencesKey("region")
         val COUNTDOWN = booleanPreferencesKey("show_countdown")
         val USE_ONLINE = booleanPreferencesKey("use_online")
         val USE_ONLINE_MIGRATED = booleanPreferencesKey("use_online_migrated")
@@ -177,6 +196,7 @@ class SettingsRepository(private val context: Context) {
             latitude = prefs[Keys.LAT] ?: AppSettings.DEFAULT.latitude,
             longitude = prefs[Keys.LNG] ?: AppSettings.DEFAULT.longitude,
             city = prefs[Keys.CITY] ?: AppSettings.DEFAULT.city,
+            region = regionFromPref(prefs[Keys.REGION]),
             showCountdown = prefs[Keys.COUNTDOWN] ?: AppSettings.DEFAULT.showCountdown,
             useOnline = useOnline,
             useCalculated = prefs[Keys.USE_CALCULATED] ?: AppSettings.DEFAULT.useCalculated,
@@ -211,6 +231,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.LAT] = value.latitude
             prefs[Keys.LNG] = value.longitude
             prefs[Keys.CITY] = value.city
+            prefs[Keys.REGION] = regionToPref(value.region)
             prefs[Keys.COUNTDOWN] = value.showCountdown
             prefs[Keys.USE_ONLINE] = value.useOnline
             prefs[Keys.USE_CALCULATED] = value.useCalculated

@@ -132,7 +132,8 @@
     <string name="favorites_title">Favoriten</string>
     <string name="favorites_add">Als Favorit merken</string>
     <string name="favorites_remove">Favorit entfernen</string>
-    <string name="favorites_full">Favoriten voll — höchstens 10</string>
+    <string name="favorites_remove_named">%1$s als Favorit entfernen</string>
+    <string name="favorites_full">Favoriten voll — höchstens %1$d</string>
     <string name="favorites_switch">Favoriten-Ort wechseln</string>
     <string name="coords_show">Koordinaten manuell eingeben</string>
     <string name="coords_hide">Manuelle Eingabe schließen</string>
