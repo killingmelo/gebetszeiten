@@ -1,5 +1,6 @@
 package de.gebetszeiten.prayer
 
+import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceResult
 import de.gebetszeiten.core.prayertimes.officialtimes.Verification
@@ -8,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalTime
 
 class VerificationTextTest {
 
@@ -132,7 +134,29 @@ class VerificationTextTest {
 
         assertEquals(
             "Gegenprüfung: Jahresabruf widersprach beiden Kontrollquellen — " +
-                "geprüfter 31-Tage-Stand übernommen, Abdeckung daher kürzer",
+                "geprüfter Kontrollstand übernommen, Abdeckung daher kürzer",
+            line,
+        )
+    }
+
+    @Test fun `CONFLICT_OVERRIDDEN nennt keine Tageszahl - comparedDays ist das Konfliktfenster`() {
+        // `comparedDays` ist die Groesse der Schnittmenge, nicht die
+        // Abdeckung des uebernommenen Stands: real 31 verglichene Tage bei
+        // 51 ausgelieferten. Der Satz behauptet daher keine Zahl.
+        val line = verificationLine(
+            verification(
+                VerificationNote.CONFLICT_OVERRIDDEN,
+                chosen = SourceId.PROXY_ABDUS,
+                confirmedBy = listOf(SourceId.PROXY_ABDUS, SourceId.EZANVAKTI),
+                comparedDays = 1,
+                differingDays = 1,
+                maxAbsMinutes = 14,
+            ),
+        )
+
+        assertEquals(
+            "Gegenprüfung: Jahresabruf widersprach beiden Kontrollquellen — " +
+                "geprüfter Kontrollstand übernommen, Abdeckung daher kürzer",
             line,
         )
     }
@@ -148,6 +172,23 @@ class VerificationTextTest {
         )
 
         assertEquals("Gegenprüfung: Quellen uneinig (max. 14 Min) — Zeiten unbestätigt", line)
+    }
+
+    @Test fun `CONFLICT_UNRESOLVED ohne gemeinsame Tage sagt nicht max 0 Min`() {
+        // Zwei Pruefer mit disjunkten Datumsbereichen (Monatswechsel):
+        // „uneinig (max. 0 Min)" liest sich als „sie sind sich einig" und
+        // ist damit schlimmer als keine Meldung.
+        val line = verificationLine(
+            verification(
+                VerificationNote.CONFLICT_UNRESOLVED,
+                chosen = SourceId.PROXY_ABDUS,
+                comparedDays = 0,
+                differingDays = 0,
+                maxAbsMinutes = 0,
+            ),
+        )
+
+        assertEquals("Gegenprüfung: keine gemeinsamen Tage — Zeiten unbestätigt", line)
     }
 
     @Test fun `UNVERIFIED_SINGLE sagt, dass die Gegenpruefung nicht moeglich war`() {
@@ -198,4 +239,37 @@ class VerificationTextTest {
     @Test fun `eine leere Kandidatenliste ergibt keine Fehlerzeile`() {
         assertNull(fetchErrorSummary(emptyList()))
     }
+
+    @Test fun `wer geliefert hat, ist kein Fehlschlag - auch wenn unterwegs etwas schiefging`() {
+        // Leerer Zeitplan + error = gescheitert (KDoc von SourceResult). Ein
+        // Kandidat MIT Zeiten hat geliefert und womoeglich gewonnen; ihn als
+        // Fehlschlag zu melden waere falsch.
+        val summary = fetchErrorSummary(
+            listOf(
+                SourceResult(SourceId.DIRECT, someSchedule, error = "HTTP 503 auf Blatt 7"),
+                SourceResult(SourceId.PROXY_ABDUS, emptyMap(), error = "Zeitüberschreitung"),
+            ),
+        )
+
+        assertEquals("Proxy: Zeitüberschreitung", summary)
+    }
+
+    @Test fun `ein Teilerfolg allein ergibt keine Fehlerzeile`() {
+        val summary = fetchErrorSummary(
+            listOf(SourceResult(SourceId.DIRECT, someSchedule, error = "HTTP 503 auf Blatt 7")),
+        )
+
+        assertNull(summary)
+    }
+
+    private val someSchedule: Map<LocalDate, SixTimes> = mapOf(
+        LocalDate.of(2026, 9, 6) to SixTimes(
+            fajr = LocalTime.parse("04:54"),
+            sunrise = LocalTime.parse("06:23"),
+            dhuhr = LocalTime.parse("13:02"),
+            asr = LocalTime.parse("16:39"),
+            maghrib = LocalTime.parse("19:31"),
+            isha = LocalTime.parse("20:53"),
+        ),
+    )
 }

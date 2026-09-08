@@ -195,14 +195,15 @@ class ScheduleCrossCheckTest {
     }
 
     @Test fun `firstDiff ist der chronologisch fruehste abweichende Tag, nicht der zuerst eingefuegte`() {
-        val a = plan(days = 31)
-        // Bewusst in umgekehrter Reihenfolge aufgebaut: der spaetere Tag
-        // wird ZUERST eingefuegt.
-        val b = LinkedHashMap<LocalDate, SixTimes>().apply {
+        // Die Unordnung muss in `a` stehen: die Schnittmenge uebernimmt die
+        // Reihenfolge von `a`, die von `b` spielt keine Rolle. Der SPAETERE
+        // abweichende Tag wird zuerst eingefuegt.
+        val a = LinkedHashMap<LocalDate, SixTimes>().apply {
             put(day0.plusDays(9), six(asr = "16:40"))
             put(day0.plusDays(2), six(asr = "16:40"))
             for (i in 0 until 31) putIfAbsent(day0.plusDays(i.toLong()), six())
         }
+        val b = plan(days = 31)
 
         val result = crossCheck(a, b)
 

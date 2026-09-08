@@ -138,6 +138,47 @@ class SourceQuorumTest {
         assertTrue(outcome.verification.confirmedBy.isEmpty())
     }
 
+    @Test fun `A3c die Zahlen bei CONFLICT_OVERRIDDEN stammen vom SCHLIMMSTEN Vergleich`() {
+        // Ungleiche Abstaende, damit der Test „schlimmster" von „mildester"
+        // unterscheidet: der Jahresabruf liegt in den ersten 31 Tagen 7 Min
+        // daneben, danach 14 Min. Der Proxy sieht nur die ersten 31 Tage
+        // (7 Min), ezanvakti reicht in den zweiten Abschnitt (14 Min).
+        // Untereinander sind die beiden Pruefer auf ihren elf gemeinsamen
+        // Tagen einig.
+        val outcome = resolve(
+            direct(
+                plan(days = 31, from = day0, times = six(isha = "21:00")) +
+                    plan(days = 369, from = day0.plusDays(31), times = six(isha = "21:07")),
+            ),
+            proxy(plan(days = 31, from = day0)),
+            ezan(plan(days = 31, from = day0.plusDays(20))),
+        )
+
+        assertEquals(VerificationNote.CONFLICT_OVERRIDDEN, outcome.verification.note)
+        // Nicht 7 Min: die Anzeige soll den schlimmsten Widerspruch nennen.
+        assertEquals(14, outcome.verification.maxAbsMinutes)
+        // Aus DEMSELBEN Vergleich: der ezanvakti-Vergleich beginnt an
+        // day0+20, der mildere Proxy-Vergleich an day0.
+        assertEquals(day0.plusDays(20), outcome.verification.firstDiff)
+    }
+
+    @Test fun `A4d zwei widersprechende Pruefer ohne gemeinsame Tage schlagen den Jahresabruf NICHT`() {
+        // Der teuerste Fehlgriff dieser Datei: zwei Quellen, die einander
+        // nie beruehrt haben, gelten nicht als gegenseitige Bestaetigung
+        // und duerfen den Jahresabruf nicht verwerfen.
+        val outcome = resolve(
+            direct(plan(days = 400, times = six(isha = "21:07"))),
+            proxy(plan(days = 31, from = day0)),
+            ezan(plan(days = 31, from = day0.plusDays(60))),
+        )
+
+        assertEquals(VerificationNote.CONFLICT_UNRESOLVED, outcome.verification.note)
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+        assertTrue(outcome.verification.confirmedBy.isEmpty())
+        // Der Jahresabruf bleibt in voller Laenge stehen.
+        assertEquals(400, outcome.schedule.size)
+    }
+
     @Test fun `A4c die Zahlen bei CONFLICT_UNRESOLVED stammen vom SCHLIMMSTEN Vergleich`() {
         val outcome = resolve(
             direct(plan(days = 31)),
@@ -198,6 +239,40 @@ class SourceQuorumTest {
         assertEquals(31, outcome.verification.comparedDays)
         assertEquals(35, outcome.schedule.size)
         assertEquals(locationId, outcome.locationId)
+    }
+
+    @Test fun `B1b zwei Pruefer mit kleiner Abweichung - DRIFT, nicht VERIFIED`() {
+        // Die Drift steht in der Verification; „bestaetigt" zu melden waere
+        // eine Ueberbehauptung, obwohl die Quellen nachweislich abweichen.
+        val outcome = resolve(
+            proxy(plan(days = 31)),
+            ezan(planWithDrift(days = 35, driftFrom = day0.plusDays(2), driftDays = 2)),
+        )
+
+        assertEquals(VerificationNote.DRIFT, outcome.verification.note)
+        assertEquals(SourceId.EZANVAKTI, outcome.verification.chosen)
+        assertEquals(listOf(SourceId.PROXY_ABDUS), outcome.verification.confirmedBy)
+        assertEquals(31, outcome.verification.comparedDays)
+        assertEquals(2, outcome.verification.differingDays)
+        assertEquals(1, outcome.verification.maxAbsMinutes)
+        assertEquals(day0.plusDays(2), outcome.verification.firstDiff)
+    }
+
+    @Test fun `B2b zwei Pruefer ohne gemeinsame Tage bestaetigen einander nicht`() {
+        // Realfall Monatswechsel: der Proxy haengt noch im alten Monat.
+        // Ohne Schnittmenge belegt keine Quelle die andere.
+        val outcome = resolve(
+            proxy(plan(days = 31, from = day0)),
+            ezan(plan(days = 31, from = day0.plusDays(60))),
+        )
+
+        assertEquals(VerificationNote.CONFLICT_UNRESOLVED, outcome.verification.note)
+        assertEquals(SourceId.PROXY_ABDUS, outcome.verification.chosen)
+        assertTrue(outcome.verification.confirmedBy.isEmpty())
+        assertEquals(0, outcome.verification.comparedDays)
+        assertEquals(0, outcome.verification.maxAbsMinutes)
+        // Aus der nicht beurteilbaren Quelle wird nichts ergaenzt.
+        assertEquals(31, outcome.schedule.size)
     }
 
     @Test fun `B2 zwei uneinige Pruefer - CONFLICT_UNRESOLVED, der mit mehr Tagen gewinnt`() {
@@ -333,6 +408,43 @@ class SourceQuorumTest {
             VerificationNote.CONFLICT_UNRESOLVED,
             resolveQuorum(candidates, locationId, now, maxDriftDays = 0, maxDriftMinutes = 0).note(),
         )
+    }
+
+    // --- Deduplizierung: ein SourceId zaehlt genau einmal
+
+    @Test fun `ein doppelter Direktabruf bestaetigt sich nicht selbst`() {
+        // Task 11 setzt die Kandidatenliste nebenlaeufig zusammen. Ein
+        // zweimal eingetragener SourceId darf nicht zum eigenen Pruefer
+        // werden — sonst meldete die Zeile „bestaetigt durch 1 Quelle",
+        // obwohl nur eine Quelle geantwortet hat.
+        val schedule = plan(days = 31)
+
+        val outcome = resolve(direct(schedule), direct(schedule))
+
+        assertEquals(VerificationNote.UNVERIFIED_SINGLE, outcome.verification.note)
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+        assertTrue(outcome.verification.confirmedBy.isEmpty())
+        assertEquals(0, outcome.verification.comparedDays)
+    }
+
+    @Test fun `ein doppelter Pruefer bestaetigt sich nicht selbst`() {
+        val schedule = plan(days = 31)
+
+        val outcome = resolve(proxy(schedule), proxy(schedule))
+
+        assertEquals(VerificationNote.UNVERIFIED_SINGLE, outcome.verification.note)
+        assertEquals(SourceId.PROXY_ABDUS, outcome.verification.chosen)
+        assertTrue(outcome.verification.confirmedBy.isEmpty())
+    }
+
+    @Test fun `bei doppeltem SourceId gewinnt der erste Eintrag`() {
+        // Der zweite PROXY_ABDUS-Eintrag verschwindet vollstaendig, mit
+        // seinen 35 Tagen — nicht der mit mehr Tagen gewinnt, sondern der
+        // erste.
+        val outcome = resolve(proxy(plan(days = 31)), proxy(plan(days = 35)))
+
+        assertEquals(VerificationNote.UNVERIFIED_SINGLE, outcome.verification.note)
+        assertEquals(31, outcome.schedule.size)
     }
 
     private fun QuorumOutcome.note() = verification.note

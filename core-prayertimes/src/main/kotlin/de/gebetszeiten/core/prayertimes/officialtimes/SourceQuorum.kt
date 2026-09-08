@@ -42,7 +42,8 @@ data class QuorumOutcome(
 
 /** Zahlen fuer eine Note, die auf KEINEM Vergleich beruht
  *  ([VerificationNote.UNVERIFIED_SINGLE], [VerificationNote.NONE]). Nur
- *  Traeger der Nullen — das `verdict` darin wird nie ausgewertet. */
+ *  Traeger der Nullen — sein `verdict` beschreibt keinen Vergleich und
+ *  entscheidet nichts. */
 private val NO_NUMBERS = CrossCheckResult(Verdict.NO_OVERLAP, 0, 0, 0, null)
 
 /** Zwischenergebnis: wer gewinnt, mit welcher Note, mit welchen Zahlen. Der
@@ -56,6 +57,11 @@ private data class Decision(
 
 /**
  * Aus mehreren Quellenabrufen EINEN Zeitplan samt Prueferzeugnis machen.
+ *
+ * **Zuerst wird dedupliziert:** jeder [SourceId] zaehlt genau einmal, der
+ * erste Eintrag gewinnt. Ohne das bestaetigte derselbe Eintrag, zweimal in
+ * der Liste, sich selbst — und [Verification.confirmedBy] enthielte den
+ * Gewinner.
  *
  * `direct` ist der Kandidat mit `source == DIRECT` und NICHT leerem
  * Zeitplan, sonst null: ein gescheiterter Direktabruf ist kein Zeuge. Alle
@@ -88,15 +94,18 @@ private data class Decision(
  *
  * | Lage | Note |
  * |---|---|
- * | >= 2 Pruefer, untereinander einig | [VerificationNote.VERIFIED] |
+ * | >= 2 Pruefer, untereinander einig OHNE Abweichung (AGREE) | [VerificationNote.VERIFIED] |
+ * | >= 2 Pruefer, untereinander einig MIT kleiner Abweichung (MINOR_DRIFT) | [VerificationNote.DRIFT] |
  * | >= 2 Pruefer, uneinig | [VerificationNote.CONFLICT_UNRESOLVED] |
  * | genau 1 Pruefer | [VerificationNote.UNVERIFIED_SINGLE] |
  * | keiner | [VerificationNote.NONE], leerer Zeitplan, `locationId` null |
  *
- * In Fall B kann [VerificationNote.DRIFT] nicht entstehen: „einig" umfasst
- * dort auch MINOR_DRIFT, also gilt eine Drift zwischen zwei Pruefern als
- * Bestaetigung. Anders als in Fall A gibt es hier keinen Jahres-Parser, den
- * eine Drift verdaechtig machen koennte — beide Quellen sind gleichrangig.
+ * „Einig" umfasst in Fall B auch MINOR_DRIFT — der Gewinner bleibt also der
+ * Pruefer mit mehr Tagen, und die driftende Quelle steht in `confirmedBy`.
+ * Die NOTE aber kommt aus dem Verdikt desjenigen Vergleichs, der die Zahlen
+ * stellt: driftet er, ist die Note [VerificationNote.DRIFT] und nicht
+ * VERIFIED. Sonst behauptete die Statuszeile „bestaetigt", waehrend die
+ * [Verification] daneben `differingDays = 2` traegt.
  *
  * **Welcher Pruefer gewinnt:** der mit MEHR Tagen; bei Gleichstand der mit
  * dem kleineren `SourceId.ordinal`. Auch die Vergleiche werden in
@@ -106,20 +115,43 @@ private data class Decision(
  * fertig wurden.
  *
  * **Vereinigung der Tage:** Tage, die dem Gewinner FEHLEN, werden aus
- * ZUSTIMMENDEN Quellen ergaenzt (AGREE oder MINOR_DRIFT gegen den
- * Gewinner). Bei Ueberschneidung gewinnt immer der Gewinner. Aus
+ * Quellen ergaenzt, deren Vergleich mit dem Gewinner AGREE oder
+ * MINOR_DRIFT ergab. Bei Ueberschneidung gewinnt immer der Gewinner. Aus
  * CONFLICT-Quellen wird NIE ergaenzt — sonst mischte die App genau die
  * Zeiten hinein, die sie gerade als widersprechend erkannt hat; und aus
  * NO_OVERLAP-Quellen auch nicht, denn eine Quelle ohne Schnittmenge ist
- * ungeprueft, und ungepruefte Zeiten einzumischen ist genau die Luecke, die
- * dieser Gegencheck schliesst.
+ * ueberhaupt nicht beurteilt und damit kein Zeuge.
+ *
+ * Das heisst ausdruecklich NICHT, dass jeder eingemischte Tag geprueft
+ * waere: ein Spender mit teilweiser Ueberschneidung steuert auch seine
+ * RANDtage bei, die ausserhalb des Prueffensters liegen (real ~20 von 51
+ * Tagen). Geprueft ist der SPENDER, nicht jeder seiner Tage. Die Grenze
+ * liegt bewusst bei „ueberhaupt beurteilt": wer den Gewinner nirgends
+ * beruehrt, liefert keinen einzigen Tag.
+ *
+ * **„Zustimmend" heisst an zwei Stellen VERSCHIEDENES** — beides ist
+ * einzeln vertretbar, darum wird der Unterschied hier benannt statt mit
+ * demselben Wort verdeckt:
+ * - fuer [Verification.confirmedBy] bei [VerificationNote.VERIFIED] in
+ *   Fall A nur AGREE — „bestaetigt durch N Quellen" zaehlt nur Quellen,
+ *   die genau dasselbe sagen;
+ * - fuer die Vereinigung der Tage und fuer „einig" (in beiden Faellen)
+ *   AGREE ODER MINOR_DRIFT.
+ *
+ * Folge, die man kennen muss: eine um eine Minute driftende Quelle steuert
+ * in Fall A Tage zum ausgelieferten Zeitplan bei, wird in „bestaetigt durch
+ * N Quellen" aber nicht mitgezaehlt. In Fall B steht sie in `confirmedBy` —
+ * dort ist der Gewinner selbst keine besser gepruefte Quelle als sie, und
+ * die Note heisst dann DRIFT statt VERIFIED.
  *
  * **Welche Zahlen in [Verification] stehen:** die des Vergleichs, der die
- * Note BEGRUENDET — bei VERIFIED der zustimmende Vergleich mit den meisten
- * `comparedDays`, bei DRIFT der Drift-Vergleich mit den meisten
- * `differingDays`, bei beiden Konflikt-Noten der Vergleich mit dem
- * groessten `maxAbsMinutes` (die Anzeige soll den schlimmsten Widerspruch
- * nennen, nicht den mildesten), bei UNVERIFIED_SINGLE und NONE Nullen.
+ * Note BEGRUENDET — in Fall A bei VERIFIED der zustimmende Vergleich mit
+ * den meisten `comparedDays` und bei DRIFT der Drift-Vergleich mit den
+ * meisten `differingDays`; in Fall B der einige Vergleich mit den meisten
+ * `comparedDays`, dessen Verdikt zugleich die Note entscheidet; bei beiden
+ * Konflikt-Noten der Vergleich mit dem groessten `maxAbsMinutes` (die
+ * Anzeige soll den schlimmsten Widerspruch nennen, nicht den mildesten);
+ * bei UNVERIFIED_SINGLE und NONE Nullen.
  *
  * [nowEpochMs] wird durchgereicht, nicht aus der Systemuhr geholt: reine
  * Funktion, ohne Netz und ohne Uhr.
@@ -131,11 +163,19 @@ fun resolveQuorum(
     maxDriftDays: Int = 3,
     maxDriftMinutes: Int = 2,
 ): QuorumOutcome {
-    val direct = candidates.firstOrNull { it.source == SourceId.DIRECT && it.schedule.isNotEmpty() }
-    // Identitaetsvergleich: „alle ANDEREN Kandidaten". Ein zweiter
-    // DIRECT-Eintrag (den es nicht geben sollte) wuerde so zum Pruefer,
-    // statt stillschweigend zu verschwinden.
-    val checkers = candidates.filter { it !== direct && it.schedule.isNotEmpty() }
+    // ZUERST deduplizieren: ein `SourceId` zaehlt genau einmal, der erste
+    // Eintrag gewinnt. Steht derselbe Eintrag zweimal in der Liste, wuerde
+    // er sich sonst selbst bestaetigen — „bestaetigt durch 1 Quelle",
+    // obwohl nur EINE Quelle geantwortet hat — und damit die Zusicherung
+    // von [Verification.confirmedBy] brechen. Heute kann das nicht
+    // vorkommen; Task 11 setzt die Kandidatenliste aber nebenlaeufig
+    // zusammen, und dort waere es eine Falle.
+    val distinct = candidates.distinctBy { it.source }
+    val direct = distinct.firstOrNull { it.source == SourceId.DIRECT && it.schedule.isNotEmpty() }
+    // Identitaetsvergleich: „alle ANDEREN Kandidaten". Nach der
+    // Deduplizierung gibt es hoechstens einen DIRECT-Eintrag, der Vergleich
+    // trifft also genau ihn.
+    val checkers = distinct.filter { it !== direct && it.schedule.isNotEmpty() }
         .sortedBy { it.source.ordinal }
 
     val decision = if (direct != null) {
@@ -146,7 +186,7 @@ fun resolveQuorum(
 
     val winner = decision.winner
     return QuorumOutcome(
-        schedule = winner?.let { unionSchedule(it, candidates, maxDriftDays, maxDriftMinutes) } ?: emptyMap(),
+        schedule = winner?.let { unionSchedule(it, distinct, maxDriftDays, maxDriftMinutes) } ?: emptyMap(),
         // Nur bei NONE (kein Gewinner) gibt es keine Standort-ID.
         locationId = winner?.let { locationId },
         verification = Verification(
@@ -231,18 +271,29 @@ private fun decideWithoutDirect(
     }
 
     // Gemessen wird gegen den GEWINNER, nicht paarweise ueber alle: belegt
-    // werden muessen die Zeiten, die tatsaechlich ausgeliefert werden. Bei
-    // genau zwei Pruefern — dem Regelfall — ist das dasselbe.
+    // werden muessen die Zeiten, die tatsaechlich ausgeliefert werden. Das
+    // ist keine Vereinfachung, sondern eine Folge der Deduplizierung in
+    // [resolveQuorum]: es gibt drei `SourceId`s, einer davon ist DIRECT,
+    // also hoechstens zwei Pruefer — gegen den Gewinner zu messen ist damit
+    // dasselbe wie paarweise.
     val checks = checkers.filter { it !== winner }
         .map { it to crossCheck(winner.schedule, it.schedule, maxDriftDays, maxDriftMinutes) }
     val concordant = checks.filter {
         it.second.verdict == Verdict.AGREE || it.second.verdict == Verdict.MINOR_DRIFT
     }
     if (concordant.isNotEmpty()) {
+        val numbers = pick(concordant) { it.comparedDays }
         return Decision(
             winner = winner,
-            note = VerificationNote.VERIFIED,
-            numbers = pick(concordant) { it.comparedDays },
+            // Die Note kommt aus dem VERDIKT desselben Vergleichs, der die
+            // Zahlen stellt: driftet er, ist „bestaetigt" eine
+            // Ueberbehauptung — die Verification traegt die abweichenden
+            // Tage ja mit sich.
+            note = when (numbers.verdict) {
+                Verdict.MINOR_DRIFT -> VerificationNote.DRIFT
+                else -> VerificationNote.VERIFIED
+            },
+            numbers = numbers,
             confirmedBy = sourcesOf(concordant),
         )
     }
@@ -258,8 +309,11 @@ private fun decideWithoutDirect(
 
 /** Der Vergleich mit dem groessten [key]. Bei Gleichstand der erste — die
  *  Liste ist nach `SourceId` sortiert, das Ergebnis also deterministisch.
- *  Der Rueckfall auf [NO_NUMBERS] tritt nie ein (die Aufrufer pruefen
- *  vorher auf „nicht leer"), er ersetzt nur ein `!!`. */
+ *
+ *  Der Rueckfall auf [NO_NUMBERS] ersetzt nur ein `!!`: alle Aufrufer
+ *  pruefen vorher auf „nicht leer", und nach der Deduplizierung in
+ *  [resolveQuorum] kann [checks] auch nicht durch `it !== winner`
+ *  leerlaufen — dieselbe Instanz steht nicht mehr zweimal in der Liste. */
 private fun pick(
     checks: List<Pair<SourceResult, CrossCheckResult>>,
     key: (CrossCheckResult) -> Int,
