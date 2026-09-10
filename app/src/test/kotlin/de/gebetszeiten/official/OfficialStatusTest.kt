@@ -1,7 +1,12 @@
 package de.gebetszeiten.official
 
+import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
+import de.gebetszeiten.core.prayertimes.officialtimes.Verification
+import de.gebetszeiten.core.prayertimes.officialtimes.VerificationNote
 import de.gebetszeiten.prayer.TimesSourceBadge
 import de.gebetszeiten.prayer.officialStatusText
+import de.gebetszeiten.prayer.verificationLine
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -194,5 +199,87 @@ class OfficialStatusTest {
             canFetch = true,
         )
         assertTrue(officialText, officialText.contains("Abgedeckt bis: 31.12.2026"))
+    }
+
+    // --- Task 12: die Gegenpruefung wird sichtbar --------------------------
+
+    private fun verification(
+        note: VerificationNote,
+        confirmedBy: List<SourceId> = listOf(SourceId.PROXY_ABDUS),
+        comparedDays: Int = 31,
+    ) = Verification(
+        note = note,
+        chosen = SourceId.DIRECT,
+        confirmedBy = confirmedBy,
+        comparedDays = comparedDays,
+        differingDays = 0,
+        maxAbsMinutes = 0,
+        firstDiff = null,
+        checkedEpochMs = now,
+    )
+
+    @Test fun `Pruefnotiz steht zwischen Abdeckung und letztem Abruf`() {
+        val text = officialStatusText(
+            OfficialStatus(
+                9807,
+                LocalDate.of(2026, 12, 31),
+                now,
+                null,
+                verification(VerificationNote.VERIFIED),
+            ),
+            source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
+        )
+        val zeilen = text.lines()
+        val abdeckung = zeilen.indexOfFirst { it.startsWith("Abgedeckt bis") }
+        val pruefung = zeilen.indexOfFirst { it.startsWith("Gegenprüfung") }
+        val abruf = zeilen.indexOfFirst { it.startsWith("Letzter Abruf") }
+        assertTrue(text, abdeckung >= 0 && pruefung >= 0 && abruf >= 0)
+        assertTrue(text, abdeckung < pruefung && pruefung < abruf)
+        // Der Wortlaut kommt aus verificationLine (Task 8), nicht aus einem
+        // zweiten Text.
+        assertEquals(verificationLine(verification(VerificationNote.VERIFIED)), zeilen[pruefung])
+    }
+
+    @Test fun `ohne Pruefnotiz faellt die Zeile weg`() {
+        val text = officialStatusText(
+            OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
+            source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
+        )
+        assertTrue(text, !text.contains("Gegenprüfung"))
+    }
+
+    @Test fun `Note NONE ergibt keine Zeile`() {
+        val text = officialStatusText(
+            OfficialStatus(
+                9807,
+                LocalDate.of(2026, 12, 31),
+                now,
+                null,
+                verification(VerificationNote.NONE, confirmedBy = emptyList(), comparedDays = 0),
+            ),
+            source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
+        )
+        assertTrue(text, !text.contains("Gegenprüfung"))
+    }
+
+    @Test fun `Pruefnotiz erscheint weder bei Bundled noch bei Calculated`() {
+        // Dieselbe Begruendung wie fuer "Abgedeckt bis": beides beschreibt den
+        // ONLINE-CACHE. Traegt die gebuendelte Tabelle oder die Berechnung,
+        // laese sich die Pruefnotiz als Aussage ueber DIESE lesen.
+        val status = OfficialStatus(
+            9807,
+            LocalDate.of(2026, 12, 31),
+            now,
+            null,
+            verification(VerificationNote.VERIFIED),
+        )
+        val bundled = officialStatusText(status, TimesSourceBadge.Bundled("Nürnberg"), canFetch = true)
+        assertTrue(bundled, !bundled.contains("Gegenprüfung"))
+
+        val calculated = officialStatusText(status, TimesSourceBadge.Calculated, canFetch = true)
+        assertTrue(calculated, !calculated.contains("Gegenprüfung"))
     }
 }

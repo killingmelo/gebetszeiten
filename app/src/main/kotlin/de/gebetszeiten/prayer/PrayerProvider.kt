@@ -136,7 +136,15 @@ object PrayerProvider {
                     val result = fetcher.fetch(targetSettings(settings, targetLat, targetLng))
                     if (result.schedule.isEmpty()) {
                         cache.recordAttempt(
-                            "Keine amtlichen Zeiten erhalten (Standort oder Netz)",
+                            // `errorSummary` nennt jede gescheiterte Quelle
+                            // samt Grund ("Direktabruf: HTTP 503 · Proxy:
+                            // Zeitüberschreitung"). Es ist null, wenn KEINE
+                            // Quelle geworfen hat — dann hat schlicht keine
+                            // etwas geliefert (kein Standort aufloesbar, oder
+                            // leere Antworten), und dafuer bleibt das Literal
+                            // richtig.
+                            result.errorSummary
+                                ?: "Keine amtlichen Zeiten erhalten (Standort oder Netz)",
                             now,
                             targetLat,
                             targetLng,
@@ -147,7 +155,23 @@ object PrayerProvider {
                     // Koordinaten des GEWAEHLTEN Orts, nie die aktiven: sonst
                     // landete Istanbuls Zeitplan unter Nuernbergs Stempel —
                     // falsche Gebetszeiten, die richtig aussehen.
-                    cache.putAll(result.schedule, targetLat, targetLng, pinned, result.locationId)
+                    cache.putAll(
+                        result.schedule,
+                        targetLat,
+                        targetLng,
+                        pinned,
+                        result.locationId,
+                        result.verification,
+                    )
+                    // `error = null`, auch wenn EINE von drei Quellen
+                    // gescheitert ist (`result.errorSummary` waere dann
+                    // gesetzt): ein gelungener Abruf ist kein Fehler. Ein
+                    // `lastError` neben vorhandenen Zeiten wuerde die
+                    // Statuszeile "Fehler:" schreiben lassen und — an einem
+                    // Ort ohne Zeitplan — `DueLocation.hopeless` ausloesen,
+                    // also die Auswahl bremsen. Dass nur eine Quelle
+                    // erreichbar war, sagt ohnehin die Pruefnotiz
+                    // ("nicht möglich — nur eine Quelle erreichbar").
                     cache.recordAttempt(null, now, targetLat, targetLng, pinned)
                     if (stampMatches(active.first, active.second, targetLat, targetLng)) {
                         fetchedActive = result.schedule

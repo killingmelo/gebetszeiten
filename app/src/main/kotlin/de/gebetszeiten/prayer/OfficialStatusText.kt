@@ -1,12 +1,23 @@
 package de.gebetszeiten.prayer
 
+import de.gebetszeiten.core.prayertimes.officialtimes.Verification
+import de.gebetszeiten.core.prayertimes.officialtimes.VerificationNote
+import de.gebetszeiten.official.MIN_FUTURE_DAYS
 import de.gebetszeiten.official.OfficialStatus
+import de.gebetszeiten.official.needsRefresh
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 private val DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 private val STAMP = DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm")
+
+/** Ohne Jahr: die Favoritenzeile hat eine Zeile fuer Ort, Abdeckung UND
+ *  Versuch, und ein Fehlversuch, der noch der Rede wert ist, liegt Stunden
+ *  bis Tage zurueck. Der volle Stempel steht beim aktiven Ort. */
+private val SHORT_STAMP = DateTimeFormatter.ofPattern("dd.MM., HH:mm")
 
 /**
  * Mehrzeiliger Klartext für die Statuszeile im Einstellungs-Sheet.
@@ -54,6 +65,16 @@ fun officialStatusText(
     // Abdeckung der gebuendelten Tabelle bzw. der Berechnung gelesen werden.
     if (source is TimesSourceBadge.Official) {
         status.coveredUntil?.let { lines += "Abgedeckt bis: ${DATE.format(it)}" }
+        // Die Pruefnotiz haengt an DERSELBEN Bedingung wie "Abgedeckt bis"
+        // und aus demselben Grund: sie beschreibt den Abruf, der den
+        // Online-Cache gefuellt hat. Traegt gerade die gebuendelte Tabelle
+        // oder die Berechnung, laese sie sich als Aussage ueber DIESE lesen.
+        // Der Wortlaut kommt aus `verificationLine` (dieselbe Datei wie
+        // `fetchErrorSummary`) — ein zweiter Text fuer dieselbe Sache waere
+        // ein zweiter Ort, an dem er falsch werden kann. `null` liefert sie
+        // bei fehlender Notiz UND bei VerificationNote.NONE; dann faellt die
+        // Zeile weg.
+        verificationLine(status.verification)?.let { lines += it }
     }
     // Ohne Abrufmechanismus (offline-Flavor, oder online mit ausgeschaltetem
     // Abruf) waeren "Letzter Abruf"/"Fehler" Aussagen ueber ein Ereignis, das
@@ -78,4 +99,91 @@ fun officialStatusText(
         status.lastError?.let { lines += "Fehler: $it" }
     }
     return lines.joinToString("\n")
+}
+
+/**
+ * EINE Zeile fuer EINEN Favoriten — die Antwort auf „ist Istanbul versorgt?",
+ * ohne dass der Nutzer hinschalten muss.
+ *
+ * Sie steht in DIESER Datei und nicht in einer eigenen: sie macht aus
+ * demselben [OfficialStatus] denselben deutschen Klartext wie
+ * [officialStatusText], nur kurz — und teilt sich dessen Datumsformat. In
+ * einer Nachbardatei waeren die Formatter entweder doppelt oder von aussen
+ * geliehen.
+ *
+ * Drei Lagen, auf einen Blick unterscheidbar:
+ * - versorgt: `Nürnberg · bis 04.07.2027 · bestätigt`
+ * - keine Zeiten: `Istanbul · noch keine Zeiten · Kein Netz (06.08., 10:06)`
+ * - Abdeckung laeuft ab: `Regensburg · nur noch 12 Tage · unbestätigt`
+ *
+ * Die Schwelle fuer „laeuft ab" ist [MIN_FUTURE_DAYS] und damit GENAU die,
+ * an der die App selbst nachlaedt (dieselbe `isBefore`-Bedingung wie in
+ * [needsRefresh], nicht eine nachgebaute Tageszaehlung). Eine Zeile, die
+ * warnt, waehrend die App laengst von selbst nachlaedt, waere Laerm.
+ *
+ * Keine Zahl behauptet hier etwas anderes, als sie ist: die Restzeit kommt
+ * aus `coveredUntil`, und aus der [Verification] wird KEINE Zahl uebernommen
+ * — `comparedDays` ist das Konfliktfenster, nicht die Abdeckung (die Lehre
+ * aus Task 8). Fuer den Gegencheck genuegt ein Kurzwort; den vollen Satz
+ * (`verificationLine`) bekommt der aktive Ort, dort ist Platz dafuer.
+ *
+ * Reine Funktion, [today] und [zone] kommen von aussen — testbar ohne
+ * Systemuhr.
+ */
+fun favoriteStatusLine(
+    name: String,
+    status: OfficialStatus,
+    today: LocalDate,
+    zone: ZoneId = ZoneId.systemDefault(),
+): String {
+    val coveredUntil = status.coveredUntil
+    val coverage = when {
+        // Kein Zeitplan: dann interessiert nicht die Abdeckung, sondern was
+        // der letzte Versuch ergeben hat.
+        coveredUntil == null -> "noch keine Zeiten · ${attemptText(status, zone)}"
+        coveredUntil.isBefore(today) -> "Abdeckung abgelaufen"
+        // Dieselbe Bedingung wie in [needsRefresh]: duenn, sobald die
+        // Abdeckung VOR `today + MIN_FUTURE_DAYS` endet. Genau auf der
+        // Schwelle also noch nicht.
+        coveredUntil.isBefore(today.plusDays(MIN_FUTURE_DAYS)) -> remainingText(today, coveredUntil)
+        else -> "bis ${DATE.format(coveredUntil)}"
+    }
+    // Das Kurzwort nur, wo es sich auf vorhandene Zeiten beziehen kann.
+    val note = if (coveredUntil == null) null else verificationWord(status.verification)
+    return listOfNotNull(name, coverage, note).joinToString(" · ")
+}
+
+/** Was der letzte Abrufversuch an einem Ort OHNE Zeiten ergeben hat. Ein
+ *  Versuch ohne Fehler wird nicht zu einem Fehler umgedeutet — und wo es
+ *  keinen Versuch gab, wird auch keiner behauptet. */
+private fun attemptText(status: OfficialStatus, zone: ZoneId): String {
+    val attempt = status.lastAttemptEpochMs
+        ?: return "noch kein Versuch"
+    val stamp = SHORT_STAMP.format(Instant.ofEpochMilli(attempt).atZone(zone))
+    return status.lastError?.let { "$it ($stamp)" } ?: "letzter Versuch $stamp"
+}
+
+/** Restzeit in Tagen. Einzahl und „heute" im Code entschieden, nicht einem
+ *  `%d` ueberlassen: „nur noch 1 Tage" und „nur noch 0 Tage" waeren falsch
+ *  bzw. irrefuehrend — der letzte abgedeckte Tag IST heute. */
+private fun remainingText(today: LocalDate, coveredUntil: LocalDate): String =
+    when (val days = ChronoUnit.DAYS.between(today, coveredUntil)) {
+        0L -> "nur noch heute"
+        1L -> "nur noch 1 Tag"
+        else -> "nur noch $days Tage"
+    }
+
+/** Ein Wort statt eines Satzes — der Platz ist eine Zeile. Der volle
+ *  Wortlaut steht in [verificationLine] und bleibt dem aktiven Ort
+ *  vorbehalten; hier wird nicht gekuerzt, sondern eigens benannt, damit kein
+ *  halber Satz entsteht. `null` bei fehlender Notiz und bei
+ *  [VerificationNote.NONE] — genau wie [verificationLine], aus demselben
+ *  Grund: es gibt dann nichts zu berichten. */
+private fun verificationWord(verification: Verification?): String? = when (verification?.note) {
+    null, VerificationNote.NONE -> null
+    VerificationNote.VERIFIED -> "bestätigt"
+    VerificationNote.DRIFT -> "kleine Abweichung"
+    VerificationNote.CONFLICT_OVERRIDDEN -> "geprüfter Kontrollstand"
+    VerificationNote.CONFLICT_UNRESOLVED -> "Quellen uneinig"
+    VerificationNote.UNVERIFIED_SINGLE -> "unbestätigt"
 }

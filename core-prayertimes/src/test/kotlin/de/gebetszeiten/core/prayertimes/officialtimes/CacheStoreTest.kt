@@ -34,6 +34,7 @@ class CacheStoreTest {
         updatedEpochMs: Long = 1_000L,
         lastAttemptEpochMs: Long? = 1_000L,
         lastError: String? = null,
+        verification: Verification? = null,
     ) = CacheHeader(
         latitude = lat,
         longitude = lng,
@@ -43,6 +44,7 @@ class CacheStoreTest {
         updatedEpochMs = updatedEpochMs,
         lastAttemptEpochMs = lastAttemptEpochMs,
         lastError = lastError,
+        verification = verification,
     )
 
     @Test
@@ -1182,5 +1184,137 @@ class CacheStoreTest {
         // Vier Eintraege, Grenze drei: genau EINER faellt.
         assertEquals("genau einer der beiden wertgleichen Eintraege faellt", 3, result.size)
         assertEquals(1, result.count { it == doppelt })
+    }
+
+    // --- Task 12: das Prueferzeugnis als NEUNTES Kopffeld -------------------
+    //
+    // Der Kopf ist auf Erweiterung gebaut: unbekannte hintere Felder werden
+    // ignoriert, fehlende bekommen einen Standardwert. Beides wird hier fuer
+    // das neue Feld ausdruecklich nachgeprueft — ein Cache aus einer aelteren
+    // App-Version muss lesbar bleiben, und ein neuer Cache muss fuer eine
+    // aeltere App-Version lesbar sein.
+
+    private fun verification(
+        note: VerificationNote = VerificationNote.VERIFIED,
+        chosen: SourceId? = SourceId.DIRECT,
+        confirmedBy: List<SourceId> = listOf(SourceId.PROXY_ABDUS),
+        comparedDays: Int = 31,
+        differingDays: Int = 0,
+        maxAbsMinutes: Int = 0,
+        firstDiff: LocalDate? = null,
+        checkedEpochMs: Long = 1_700_000_000_000L,
+    ) = Verification(
+        note = note,
+        chosen = chosen,
+        confirmedBy = confirmedBy,
+        comparedDays = comparedDays,
+        differingDays = differingDays,
+        maxAbsMinutes = maxAbsMinutes,
+        firstDiff = firstDiff,
+        checkedEpochMs = checkedEpochMs,
+    )
+
+    @Test
+    fun `Verification - Rundreise fuer alle sechs Noten`() {
+        for (note in VerificationNote.values()) {
+            val v = verification(
+                note = note,
+                differingDays = 3,
+                maxAbsMinutes = 14,
+                firstDiff = LocalDate.of(2026, 9, 6),
+            )
+            val entry = RawEntry(header(verification = v), "")
+
+            val text = CacheStore.serializeRaw(listOf(entry))
+            val split = CacheStore.split(text)
+
+            assertEquals(note.name, 1, split.size)
+            assertEquals(note.name, v, split[0].header.verification)
+            // Die Trennzeichen im Verification-Feld duerfen die Kopfzeile
+            // nicht sprengen: eine Zeile, neun Felder.
+            assertEquals(note.name, 1, text.lineSequence().count())
+            assertEquals(note.name, 9, text.substring(1).split("|").size)
+        }
+    }
+
+    @Test
+    fun `Verification - null bleibt null, leere und mehrelementige confirmedBy ueberleben`() {
+        val faelle = listOf(
+            null,
+            verification(chosen = null, confirmedBy = emptyList(), comparedDays = 0),
+            verification(confirmedBy = listOf(SourceId.PROXY_ABDUS, SourceId.EZANVAKTI)),
+            verification(chosen = SourceId.EZANVAKTI, firstDiff = LocalDate.of(2027, 1, 31)),
+        )
+        for (v in faelle) {
+            val entry = RawEntry(header(verification = v), "")
+
+            val split = CacheStore.split(CacheStore.serializeRaw(listOf(entry)))
+
+            assertEquals(v.toString(), 1, split.size)
+            assertEquals(v.toString(), v, split[0].header.verification)
+        }
+    }
+
+    @Test
+    fun `alter Kopf ohne neuntes Feld ergibt verification null und verliert sonst nichts`() {
+        val body = "2026-09-06 04:54 06:23 13:02 16:39 19:31 20:53"
+        val line = "#49.4521|11.0767|42|2026-09-06|2026-12-31|1000|2000|Kein Netz"
+
+        val split = CacheStore.split("$line\n$body")
+
+        assertEquals(1, split.size)
+        val h = split[0].header
+        assertNull(h.verification)
+        assertEquals(42, h.locationId)
+        assertEquals(LocalDate.of(2026, 9, 6), h.firstDate)
+        assertEquals(LocalDate.of(2026, 12, 31), h.lastDate)
+        assertEquals(1000L, h.updatedEpochMs)
+        assertEquals(2000L, h.lastAttemptEpochMs)
+        assertEquals("Kein Netz", h.lastError)
+        assertEquals(body, split[0].body)
+    }
+
+    @Test
+    fun `kaputtes neuntes Feld verliert nur die Pruefnotiz, nicht den Eintrag`() {
+        val body = "2026-09-06 04:54 06:23 13:02 16:39 19:31 20:53"
+        val kaputte = listOf(
+            "kaputt",
+            // Zu wenige Unterfelder.
+            "VERIFIED~DIRECT~PROXY_ABDUS~31",
+            // Unbekannte Note.
+            "GIBTSNICHT~DIRECT~PROXY_ABDUS~31~0~0~-~1700000000000",
+            // Keine Zahl, wo eine Zahl stehen muss.
+            "VERIFIED~DIRECT~PROXY_ABDUS~drei~0~0~-~1700000000000",
+            // Unbekannte Quelle in confirmedBy.
+            "VERIFIED~DIRECT~MONDPHASE~31~0~0~-~1700000000000",
+            // Kein Datum, wo ein Datum stehen muss.
+            "VERIFIED~DIRECT~PROXY_ABDUS~31~1~2~gestern~1700000000000",
+        )
+        for (kaputt in kaputte) {
+            val line = "#49.4521|11.0767|42|2026-09-06|2026-12-31|1000|2000|Kein Netz|$kaputt"
+
+            val split = CacheStore.split("$line\n$body")
+
+            assertEquals(kaputt, 1, split.size)
+            assertNull(kaputt, split[0].header.verification)
+            assertEquals(kaputt, 42, split[0].header.locationId)
+            assertEquals(kaputt, LocalDate.of(2026, 12, 31), split[0].header.lastDate)
+            assertEquals(kaputt, "Kein Netz", split[0].header.lastError)
+            assertEquals(kaputt, body, split[0].body)
+        }
+    }
+
+    @Test
+    fun `unbekanntes zehntes Feld laesst die Pruefnotiz heil`() {
+        val line = "#49.4521|11.0767|42|2026-09-06|2026-12-31|1000|2000|-|" +
+            "VERIFIED~DIRECT~PROXY_ABDUS,EZANVAKTI~31~0~0~-~1700000000000|WAS-AUCH-IMMER"
+
+        val split = CacheStore.split(line)
+
+        assertEquals(1, split.size)
+        assertEquals(
+            verification(confirmedBy = listOf(SourceId.PROXY_ABDUS, SourceId.EZANVAKTI)),
+            split[0].header.verification,
+        )
     }
 }

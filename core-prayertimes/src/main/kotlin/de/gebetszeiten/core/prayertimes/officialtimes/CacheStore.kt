@@ -11,6 +11,13 @@ import java.time.temporal.ChronoUnit
  *
  * `lastAttemptFailed` ist bewusst kein eigenes Feld: es ist immer genau
  * `lastError != null`.
+ *
+ * [verification] ist das Prueferzeugnis des Abrufs, der DIESEN Zeitplan
+ * gebracht hat. Es liegt hier und nicht neben dem Cache, weil es sonst beim
+ * naechsten Oeffnen der Einstellungen weg waere: es gehoert zum Eintrag,
+ * genau wie seine Abdeckung. `null` heisst „nicht bekannt" — ein Eintrag aus
+ * einer aelteren App-Version, ein reines Versuchsprotokoll ohne Zeitplan,
+ * oder ein unlesbar gewordenes Feld.
  */
 data class CacheHeader(
     val latitude: Double,
@@ -21,6 +28,7 @@ data class CacheHeader(
     val updatedEpochMs: Long,
     val lastAttemptEpochMs: Long?,
     val lastError: String?,
+    val verification: Verification? = null,
 )
 
 /** Rumpf BEWUSST als ungeparster String — teuer zu parsen ist nur, was
@@ -66,7 +74,7 @@ data class DueLocation(
  * koennen also nie mit `#` verwechselt werden.
  *
  * ```
- * #<lat>|<lng>|<locationId|->|<firstDate|->|<lastDate|->|<updatedEpochMs>|<lastAttemptEpochMs|->|<lastError|->
+ * #<lat>|<lng>|<locationId|->|<firstDate|->|<lastDate|->|<updatedEpochMs>|<lastAttemptEpochMs|->|<lastError|->|<verification|->
  * 2026-09-06 04:54 06:23 13:02 16:39 19:31 20:53
  * ... weitere Tageszeilen ...
  * #<lat>|<lng>|...
@@ -79,6 +87,17 @@ object CacheStore {
 
     private const val FIELD_SEP = "|"
     private const val NULL_MARKER = "-"
+
+    /** Trennzeichen INNERHALB des Verification-Feldes, und das Trennzeichen
+     *  seiner Quellenliste. Beide sind sicher, weil kein einziger Wert dort
+     *  Freitext ist: Aufzaehlungswerte (`[A-Z_]`), nicht negative ganze
+     *  Zahlen, ein ISO-Datum (`[0-9-]`) und der Null-Marker `-`. Weder `~`
+     *  noch `,` kann in einem davon vorkommen; `-` waere als Trennzeichen
+     *  untauglich, es steckt in jedem Datum. Der einzige Freitext im ganzen
+     *  Kopf ist `lastError`, und der hat sein eigenes Feld samt Bereinigung
+     *  (siehe [formatHeader]). */
+    private const val SUB_SEP = "~"
+    private const val LIST_SEP = ","
 
     /** Billiger Scan: zerlegt in Eintraege, ohne eine einzige Zeit zu
      *  parsen. Der Rumpf wird als Teilstring uebernommen. Tolerant: eine
@@ -552,9 +571,11 @@ object CacheStore {
 
     /** Vorwaertskompatibel: zusaetzliche Felder am Ende werden ignoriert,
      *  fehlende hintere Felder bekommen Standardwerte (statt die Zeile zu
-     *  verwerfen) — ein spaeterer Task haengt ein weiteres Kopffeld an, und
-     *  das darf bestehende Caches beim Upgrade nicht zerstoeren. Nur die
-     *  ersten sechs Felder (bis `updatedEpochMs`) sind Pflicht. */
+     *  verwerfen). Genau davon lebt das neunte Feld (`verification`): ein
+     *  Cache aus einer aelteren App-Version hat es nicht und liest sich
+     *  trotzdem weiter, und ein neu geschriebener Cache bleibt fuer eine
+     *  aeltere App-Version lesbar. Nur die ersten sechs Felder (bis
+     *  `updatedEpochMs`) sind Pflicht. */
     private fun parseHeader(line: String): CacheHeader? {
         if (!line.startsWith("#")) return null
         val parts = line.substring(1).split(FIELD_SEP)
@@ -569,6 +590,52 @@ object CacheStore {
                 updatedEpochMs = parts[5].toLong(),
                 lastAttemptEpochMs = parts.getOrNull(6)?.orNullMarker()?.toLong(),
                 lastError = parts.getOrNull(7)?.orNullMarker(),
+                // Eigenes try/catch (in [parseVerification]): ein unlesbares
+                // Prueferzeugnis darf NUR dieses Feld verlieren, nicht den
+                // ganzen Eintrag — dieselbe Toleranz wie ueberall sonst in
+                // dieser Datei. Stuende der Aufruf ungeschuetzt hier, naehme
+                // das aeussere catch den Zeitplan gleich mit.
+                verification = parts.getOrNull(8)?.orNullMarker()?.let { parseVerification(it) },
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /** Das Prueferzeugnis in EIN Feld, Unterfelder mit [SUB_SEP], die
+     *  Quellenliste mit [LIST_SEP]. Eine leere Liste ergibt ein leeres
+     *  Unterfeld — nicht den Null-Marker: „keine bestaetigende Quelle" ist
+     *  ein Wert, kein fehlendes Feld. */
+    private fun formatVerification(v: Verification): String = listOf(
+        v.note.name,
+        v.chosen?.name ?: NULL_MARKER,
+        v.confirmedBy.joinToString(LIST_SEP) { it.name },
+        v.comparedDays.toString(),
+        v.differingDays.toString(),
+        v.maxAbsMinutes.toString(),
+        v.firstDiff?.toString() ?: NULL_MARKER,
+        v.checkedEpochMs.toString(),
+    ).joinToString(SUB_SEP)
+
+    /** Gegenstueck zu [formatVerification]. `null` bei allem, was sich nicht
+     *  lesen laesst — der Aufrufer behaelt dann den Rest des Eintrags.
+     *  Vorwaertskompatibel wie der Kopf selbst: zusaetzliche Unterfelder am
+     *  Ende werden ignoriert. */
+    private fun parseVerification(field: String): Verification? {
+        val parts = field.split(SUB_SEP)
+        if (parts.size < 8) return null
+        return try {
+            Verification(
+                note = VerificationNote.valueOf(parts[0]),
+                chosen = parts[1].orNullMarker()?.let { SourceId.valueOf(it) },
+                confirmedBy = parts[2].split(LIST_SEP)
+                    .filter { it.isNotEmpty() }
+                    .map { SourceId.valueOf(it) },
+                comparedDays = parts[3].toInt(),
+                differingDays = parts[4].toInt(),
+                maxAbsMinutes = parts[5].toInt(),
+                firstDiff = parts[6].orNullMarker()?.let { LocalDate.parse(it) },
+                checkedEpochMs = parts[7].toLong(),
             )
         } catch (e: Exception) {
             null
@@ -585,8 +652,10 @@ object CacheStore {
         // Fehlertexte sind unsere eigenen Literale — der Verlust ist
         // theoretisch.
         val error = header.lastError?.replace(FIELD_SEP, " ")?.replace("\n", " ")?.replace("\r", " ") ?: NULL_MARKER
+        val verification = header.verification?.let { formatVerification(it) } ?: NULL_MARKER
         return "#${header.latitude}$FIELD_SEP${header.longitude}$FIELD_SEP$locationId$FIELD_SEP" +
-            "$firstDate$FIELD_SEP$lastDate$FIELD_SEP${header.updatedEpochMs}$FIELD_SEP$lastAttempt$FIELD_SEP$error"
+            "$firstDate$FIELD_SEP$lastDate$FIELD_SEP${header.updatedEpochMs}$FIELD_SEP$lastAttempt$FIELD_SEP" +
+            "$error$FIELD_SEP$verification"
     }
 
     private fun String.orNullMarker(): String? = takeIf { it != NULL_MARKER }

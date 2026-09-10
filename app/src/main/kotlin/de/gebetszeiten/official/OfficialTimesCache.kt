@@ -17,6 +17,7 @@ import de.gebetszeiten.core.prayertimes.officialtimes.DueLocation
 import de.gebetszeiten.core.prayertimes.officialtimes.RawEntry
 import de.gebetszeiten.core.prayertimes.officialtimes.ScheduleText
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
+import de.gebetszeiten.core.prayertimes.officialtimes.Verification
 import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -79,15 +80,33 @@ class OfficialTimesCache(private val context: Context) {
      *  `coveredUntil == null` heisst: es gibt fuer diesen Ort keine Zeiten —
      *  entweder gar keinen Eintrag, oder einen, der nur einen Fehlversuch
      *  protokolliert (leerer Rumpf, also `lastDate == null`). */
-    suspend fun status(lat: Double, lng: Double): OfficialStatus {
-        val header = entryFor(lat, lng)?.header
-        return OfficialStatus(
-            locationId = header?.locationId,
-            coveredUntil = header?.lastDate,
-            lastAttemptEpochMs = header?.lastAttemptEpochMs,
-            lastError = header?.lastError,
-        )
+    suspend fun status(lat: Double, lng: Double): OfficialStatus =
+        statusOf(entryFor(lat, lng)?.header)
+
+    /** Der Stand MEHRERER Orte auf einmal — fuer die Favoritenliste im
+     *  Einstellungsblatt. EIN DataStore-Read und EIN [CacheStore.split] fuer
+     *  alle: zehnmal [status] zu rufen hiesse, den ~270-KB-String zehnmal zu
+     *  zerlegen, und das bei jeder Neuzeichnung des Blatts.
+     *
+     *  Die Reihenfolge des Ergebnisses entspricht [coords]; fuer einen Ort
+     *  ohne Eintrag kommt ein leerer Status (alles null), nicht etwa eine
+     *  Luecke — der Aufrufer zeichnet je Favorit eine Zeile und darf sich auf
+     *  die Zuordnung ueber den Index verlassen. */
+    suspend fun statusesFor(coords: List<Pair<Double, Double>>): List<OfficialStatus> {
+        if (coords.isEmpty()) return emptyList()
+        val entries = allEntries()
+        return coords.map { (lat, lng) -> statusOf(CacheStore.select(entries, lat, lng)?.header) }
     }
+
+    /** Kopf → Status, an EINER Stelle: [status] und [statusesFor] duerfen nie
+     *  verschiedene Antworten auf dieselbe Frage geben. */
+    private fun statusOf(header: CacheHeader?) = OfficialStatus(
+        locationId = header?.locationId,
+        coveredUntil = header?.lastDate,
+        lastAttemptEpochMs = header?.lastAttemptEpochMs,
+        lastError = header?.lastError,
+        verification = header?.verification,
+    )
 
     /** Erfolgreichen Abruf ablegen. Ein vorhandener Eintrag fuer denselben
      *  Ort wird ersetzt, sein Versuchsprotokoll aber uebernommen — frueher
@@ -105,6 +124,7 @@ class OfficialTimesCache(private val context: Context) {
         lng: Double,
         pinnedCoords: List<Pair<Double, Double>>,
         locationId: Int? = null,
+        verification: Verification? = null,
     ) {
         if (schedule.isEmpty()) return
         val now = System.currentTimeMillis()
@@ -118,6 +138,11 @@ class OfficialTimesCache(private val context: Context) {
                     updatedEpochMs = now,
                     lastAttemptEpochMs = existing?.header?.lastAttemptEpochMs,
                     lastError = existing?.header?.lastError,
+                    // Das Prueferzeugnis gehoert zu DIESEM Zeitplan. Es wird
+                    // deshalb ersetzt und nicht wie das Versuchsprotokoll aus
+                    // dem alten Eintrag uebernommen: das alte Zeugnis
+                    // beschreibt Zeiten, die es gerade nicht mehr gibt.
+                    verification = verification,
                 ),
                 schedule = schedule,
             )
@@ -212,6 +237,7 @@ class OfficialTimesCache(private val context: Context) {
         updatedEpochMs: Long,
         lastAttemptEpochMs: Long?,
         lastError: String?,
+        verification: Verification? = null,
     ) = CacheHeader(
         latitude = lat,
         longitude = lng,
@@ -221,6 +247,7 @@ class OfficialTimesCache(private val context: Context) {
         updatedEpochMs = updatedEpochMs,
         lastAttemptEpochMs = lastAttemptEpochMs,
         lastError = lastError,
+        verification = verification,
     )
 
     /** Ein Eintrag fuer diesen Ort, oder null.
@@ -350,4 +377,9 @@ data class OfficialStatus(
     val coveredUntil: LocalDate?,
     val lastAttemptEpochMs: Long?,
     val lastError: String?,
+    /** Das Prueferzeugnis des Abrufs, der die gespeicherten Zeiten brachte;
+     *  `null`, wenn keines vorliegt (Eintrag aus einer aelteren App-Version,
+     *  reines Versuchsprotokoll, oder gar kein Eintrag). Am Ende und mit
+     *  Standardwert, damit bestehende Aufrufer unveraendert bleiben. */
+    val verification: Verification? = null,
 )

@@ -49,6 +49,19 @@ private fun DueLocation.isDue(today: LocalDate, nowEpochMs: Long): Boolean =
         nowEpochMs = nowEpochMs,
     )
 
+/**
+ * Ab wie vielen abgedeckten Zukunftstagen die App zufrieden ist — die
+ * Schwelle, unterhalb derer [needsRefresh] von selbst nachlaedt (Begruendung
+ * der 60 dort).
+ *
+ * Sie steht als benannte Konstante da, weil sie eine ZWEITE Stelle hat: die
+ * Favoritenzeile im Einstellungsblatt (`favoriteStatusLine`) warnt genau
+ * dann „nur noch N Tage", wenn die App selbst nachlaedt. Eine dort
+ * wiederholte 60 waere ein zweiter Wahrheitsort — die Zeile warnte weiter,
+ * waehrend die App laengst nachlaedt, oder umgekehrt.
+ */
+const val MIN_FUTURE_DAYS: Long = 60
+
 /** Neu laden, wenn es fuer den Ort keine Zeiten gibt (`!stampOk`) oder weniger
  *  als [minFutureDays] Tage Zukunft ab [today] abgedeckt sind.
  *
@@ -108,7 +121,7 @@ fun needsRefresh(
     lastAttemptEpochMs: Long?,
     lastAttemptFailed: Boolean,
     nowEpochMs: Long,
-    minFutureDays: Long = 60,
+    minFutureDays: Long = MIN_FUTURE_DAYS,
     retryAfterFailureMs: Long = 30 * 60 * 1000,
     retryAfterShortResultMs: Long = 12 * 60 * 60 * 1000,
     force: Boolean = false,

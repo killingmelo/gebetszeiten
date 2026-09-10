@@ -162,6 +162,12 @@ private fun RecentPlacesRow(
  * Koordinatenfelder gesetzt wurde, darf den Stern nicht ausgehen lassen.
  * [RecentPlacesRow] bleibt bewusst beim exakten Vergleich — das ist eine
  * Historie, kein Schlüssel in den Cache.
+ *
+ * Unter den Chips steht EINE Zeile je Favorit (`favoriteStatusLine`): sie
+ * beantwortet „ist Istanbul versorgt?", ohne dass der Nutzer hinschalten
+ * muss. Der mehrzeilige Statusblock bleibt dem aktiven Ort vorbehalten.
+ * [refreshTick] ist derselbe Schlüssel wie bei [SourceStatusSection] — die
+ * Zeilen lesen nach einem abgeschlossenen Abruf neu, und sonst nicht.
  */
 @Composable
 private fun FavoritesRow(
@@ -170,10 +176,12 @@ private fun FavoritesRow(
     full: Boolean,
     currentLat: Double,
     currentLng: Double,
+    refreshTick: Int,
     onToggle: () -> Unit,
     onPick: (City) -> Unit,
     onRemove: (City) -> Unit,
 ) {
+    val context = LocalContext.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -251,6 +259,34 @@ private fun FavoritesRow(
                     },
                 )
             }
+        }
+        // EIN Cache-Lesevorgang fuer ALLE Favoriten (`statusesFor`), nicht
+        // einer je Zeile: zehnmal `status()` hiesse, den ~270-KB-String
+        // zehnmal zu zerlegen — bei jeder Neuzeichnung des Blatts.
+        val lines by produceState(emptyList<String>(), cities, refreshTick) {
+            // Wie in SourceStatusSection: beim Schluesselwechsel zuruecksetzen,
+            // sonst stuenden kurz die Zeilen der vorherigen Favoritenliste da.
+            value = emptyList()
+            val today = LocalDate.now()
+            val statuses = de.gebetszeiten.official.OfficialTimesCache(context)
+                .statusesFor(cities.map { it.latitude to it.longitude })
+            // `statusesFor` haelt die Reihenfolge der Eingabe ein und liefert
+            // fuer jeden Ort einen Eintrag — `zip` ist hier also kein
+            // Abschneiden, sondern die Paarung.
+            value = cities.zip(statuses) { c, status ->
+                de.gebetszeiten.prayer.favoriteStatusLine(
+                    name = recentPlaceLabel(c, cities),
+                    status = status,
+                    today = today,
+                )
+            }
+        }
+        lines.forEach { line ->
+            Text(
+                line,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -521,6 +557,7 @@ internal fun LocationSettings(
                     full = settings.favorites.size >= FAVORITES_MAX,
                     currentLat = settings.latitude,
                     currentLng = settings.longitude,
+                    refreshTick = refreshTick,
                     onToggle = {
                         if (currentIsFavorite) {
                             commit { copy(favorites = withoutFavorite(favorites, currentPlace)) }

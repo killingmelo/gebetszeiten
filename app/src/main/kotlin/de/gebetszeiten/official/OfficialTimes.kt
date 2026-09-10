@@ -19,10 +19,11 @@ interface OfficialTimesFetcher {
 /**
  * Was ein Abruf ergeben hat.
  *
- * [verification] und [errorSummary] werden seit Task 11 GEFUELLT, aber noch
- * von niemandem GELESEN — das Speichern im Cache-Kopf und die Statuszeile
- * sind Task 12. Sie sind also keine vergessene Verdrahtung, sondern eine
- * absichtlich vorbereitete.
+ * [verification] wandert in den Cache-Kopf (`OfficialTimesCache.putAll`) und
+ * von dort in die Statuszeile; [errorSummary] wird zum `lastError`, wenn
+ * KEINE Quelle etwas geliefert hat — auf dem Erfolgspfad ausdruecklich
+ * nicht, ein gelungener Abruf ist kein Fehler (siehe
+ * `PrayerProvider.refreshOfficial`).
  *
  * [Verification] ist ein reiner Datentyp aus `core-prayertimes` (kein Netz,
  * keine Uhr, kein Android) — deshalb darf er hier im geteilten Quellsatz

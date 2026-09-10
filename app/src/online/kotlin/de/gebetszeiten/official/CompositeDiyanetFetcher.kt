@@ -96,10 +96,10 @@ class CompositeDiyanetFetcher(
             ).awaitAll()
         }
         val outcome = resolveQuorum(candidates, id, now())
-        // `verification` und `errorSummary` werden hier GEFUELLT, aber noch
-        // von niemandem GELESEN: `refreshOfficial` speichert sie erst in
-        // Task 12 im Cache-Kopf und zeigt sie in der Statuszeile. Das ist
-        // keine vergessene Verdrahtung.
+        // `verification` legt `refreshOfficial` im Cache-Kopf ab (sie
+        // ueberlebt dort bis zum naechsten Abruf und traegt die
+        // Gegenpruefungs-Zeile der Statuszeile); `errorSummary` wird der
+        // Fehlergrund, wenn KEINE Quelle etwas geliefert hat.
         return FetchResult(
             schedule = outcome.schedule,
             // Kommt aus dem Quorum, nicht aus `id`: bei
