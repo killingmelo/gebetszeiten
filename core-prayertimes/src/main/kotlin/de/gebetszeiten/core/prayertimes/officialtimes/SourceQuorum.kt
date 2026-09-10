@@ -77,20 +77,46 @@ private data class Decision(
  * |---|---|---|
  * | mindestens ein [Verdict.AGREE] | direct (volles Fenster) | [VerificationNote.VERIFIED] |
  * | kein AGREE, aber mindestens ein [Verdict.MINOR_DRIFT] | direct | [VerificationNote.DRIFT] |
- * | kein AGREE/MINOR_DRIFT, aber >= 2 Pruefer im [Verdict.CONFLICT] mit direct, die untereinander einig sind | die Pruefer | [VerificationNote.CONFLICT_OVERRIDDEN] |
- * | mindestens ein CONFLICT, aber die Pruefer sind nicht untereinander einig (oder es ist nur einer) | direct | [VerificationNote.CONFLICT_UNRESOLVED] |
+ * | kein AGREE/MINOR_DRIFT, aber >= 2 Pruefer im [Verdict.CONFLICT] mit direct, die untereinander einig sind UND deren Widerspruch je SYSTEMATISCH ist | die Pruefer | [VerificationNote.CONFLICT_OVERRIDDEN] |
+ * | mindestens ein CONFLICT, aber die Pruefer sind nicht untereinander einig (oder es ist nur einer, oder der Widerspruch ist nicht systematisch) | direct | [VerificationNote.CONFLICT_UNRESOLVED] |
  * | gar kein beurteilbarer Pruefer (keiner antwortete, oder nur [Verdict.NO_OVERLAP]) | direct | [VerificationNote.UNVERIFIED_SINGLE] |
  *
  * „Untereinander einig" heisst: der Vergleich zwischen den beiden Pruefern
  * liefert AGREE ODER MINOR_DRIFT — also nicht CONFLICT und nicht
  * NO_OVERLAP. Ohne Schnittmenge belegen zwei Quellen einander nicht.
  *
- * **Warum zwei einige Fremdquellen unseren Jahres-Parser schlagen**
- * (Nutzerentscheidung): Zwei unabhaengig implementierte Quellen, die
- * dasselbe sagen und beide unserem HTML-Parser widersprechen, sind der
- * wahrscheinlichere Zeuge als der Parser allein. Der Preis ist eine
- * kuerzere Abdeckung (~31 statt ~400 Tage), und den benennt die Statuszeile
- * ausdruecklich.
+ * **„Systematisch" heisst:** der Vergleich des Pruefers MIT DIRECT erfuellt
+ * BEIDES —
+ * - `comparedDays >= minConflictDays`: das Prueffenster ist ueberhaupt
+ *   aussagekraeftig; ein Zwei-Tage-Ueberlapp darf kein Jahr kippen;
+ * - `differingDays * 2 >= comparedDays`: mindestens die HAELFTE der
+ *   verglichenen Tage weicht ab.
+ *
+ * Gefordert wird das von BEIDEN Pruefern des Paares, auf das sich das
+ * Ueberstimmen stuetzt — nicht nur von einem.
+ *
+ * **Warum zwei einige Fremdquellen unseren Jahres-Parser schlagen, aber nur
+ * bei systematischem Widerspruch** (Nutzerentscheidung): Zwei unabhaengig
+ * implementierte Quellen, die dasselbe sagen und beide unserem HTML-Parser
+ * widersprechen, sind der wahrscheinlichere Zeuge als der Parser allein.
+ *
+ * Das gilt aber nur fuer die Form „der Parser liegt daneben", und die sieht
+ * anders aus als „ein Tag wurde korrigiert". Ein kaputter Parser weicht an
+ * ALLEN Tagen ab, eine echte Diyanet-Korrektur an EINEM. Zwei Gruende, die
+ * feine Ausloesung teuer machen:
+ * - Die beiden Kontrollquellen sind moeglicherweise KORRELIERT: beide
+ *   spiegeln denselben Diyanet-Upstream. Ein Fehler dort — oder zwei
+ *   veraltete Zwischenspeicher — erschienen dem Quorum als zwei einige
+ *   Zeugen.
+ * - Der Preis des Ueberstimmens ist Datenverlust, nicht nur eine Anzeige:
+ *   die Abdeckung faellt von ~400 auf ~31 Tage. Fuer Orte AUSSERHALB
+ *   Deutschlands gibt es keine gebuendelte Reserve; dort sieht der Nutzer
+ *   nach dem Fenster eine BERECHNUNG statt amtlicher Zeiten.
+ *
+ * Ist der Widerspruch nicht systematisch, faellt die Entscheidung auf
+ * [VerificationNote.CONFLICT_UNRESOLVED] durch: der Direktabruf behaelt sein
+ * volles Fenster, und die Statuszeile meldet den Widerspruch trotzdem. Der
+ * Nutzer verliert also keine Abdeckung und erfaehrt dennoch davon.
  *
  * **Fall B — der Direktabruf hat nicht geliefert.** Gewinner ist immer der
  * Pruefer mit mehr Tagen:
@@ -156,6 +182,11 @@ private data class Decision(
  * Anzeige soll den schlimmsten Widerspruch nennen, nicht den mildesten);
  * bei UNVERIFIED_SINGLE und NONE Nullen.
  *
+ * [minConflictDays] ist die kleinste Fenstergroesse, ab der ein Widerspruch
+ * ueberhaupt systematisch heissen darf. Der Vorgabewert 7 liegt bewusst
+ * ueber [maxDriftDays]: ein Fenster, das nicht einmal die Drift-Schwelle
+ * ueberschreitet, kann die Form eines Widerspruchs nicht zeigen.
+ *
  * [nowEpochMs] wird durchgereicht, nicht aus der Systemuhr geholt: reine
  * Funktion, ohne Netz und ohne Uhr.
  */
@@ -165,6 +196,7 @@ fun resolveQuorum(
     nowEpochMs: Long,
     maxDriftDays: Int = 3,
     maxDriftMinutes: Int = 2,
+    minConflictDays: Int = 7,
 ): QuorumOutcome {
     // ZUERST deduplizieren: ein `SourceId` zaehlt genau einmal. Steht
     // derselbe Eintrag zweimal in der Liste, wuerde er sich sonst selbst
@@ -190,7 +222,7 @@ fun resolveQuorum(
         .sortedBy { it.source.ordinal }
 
     val decision = if (direct != null) {
-        decideWithDirect(direct, checkers, maxDriftDays, maxDriftMinutes)
+        decideWithDirect(direct, checkers, maxDriftDays, maxDriftMinutes, minConflictDays)
     } else {
         decideWithoutDirect(checkers, maxDriftDays, maxDriftMinutes)
     }
@@ -220,6 +252,7 @@ private fun decideWithDirect(
     checkers: List<SourceResult>,
     maxDriftDays: Int,
     maxDriftMinutes: Int,
+    minConflictDays: Int,
 ): Decision {
     val checks = checkers.map { it to crossCheck(direct.schedule, it.schedule, maxDriftDays, maxDriftMinutes) }
     fun withVerdict(verdict: Verdict) = checks.filter { it.second.verdict == verdict }
@@ -247,9 +280,15 @@ private fun decideWithDirect(
     val conflicting = withVerdict(Verdict.CONFLICT)
     if (conflicting.isNotEmpty()) {
         // Der schlimmste Widerspruch stellt in BEIDEN Konflikt-Faellen die
-        // Zahlen.
+        // Zahlen — auch wenn er selbst nicht systematisch ist: die Anzeige
+        // soll den groessten gemessenen Widerspruch nennen.
         val worst = pick(conflicting) { it.maxAbsMinutes }
-        val agreeingPair = firstAgreeingPair(conflicting.map { it.first }, maxDriftDays, maxDriftMinutes)
+        // Ueberstimmen darf nur ein SYSTEMATISCHER Widerspruch, und zwar von
+        // BEIDEN Pruefern des Paares — deshalb wird hier gefiltert, bevor das
+        // Paar ueberhaupt gesucht wird. Begruendung im KDoc von
+        // [resolveQuorum].
+        val systematic = conflicting.filter { isSystematic(it.second, minConflictDays) }
+        val agreeingPair = firstAgreeingPair(systematic.map { it.first }, maxDriftDays, maxDriftMinutes)
         if (agreeingPair != null) {
             return Decision(
                 // Mehr Tage gewinnt; bei Gleichstand der kleinere ordinal.
@@ -317,6 +356,19 @@ private fun decideWithoutDirect(
         confirmedBy = emptyList(),
     )
 }
+
+/**
+ * Hat dieser Konflikt die Form „der Parser liegt daneben" statt „ein Tag
+ * wurde korrigiert"? Beide Bedingungen muessen gelten, und beide fallen
+ * EINSCHLIESSLICH aus: genau [minConflictDays] verglichene Tage genuegen
+ * noch, und genau die Haelfte abweichender Tage genuegt auch.
+ *
+ * `differingDays * 2 >= comparedDays` statt einer Division: ganzzahlig
+ * geteilt waere „die Haelfte von 7" gleich 3, und der Test dazu haenge an
+ * einer Rundung statt an der Absicht.
+ */
+private fun isSystematic(result: CrossCheckResult, minConflictDays: Int): Boolean =
+    result.comparedDays >= minConflictDays && result.differingDays * 2 >= result.comparedDays
 
 /** Der Vergleich mit dem groessten [key]. Bei Gleichstand der erste — die
  *  Liste ist nach `SourceId` sortiert, das Ergebnis also deterministisch.

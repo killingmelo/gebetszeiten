@@ -46,6 +46,19 @@ class SourceQuorumTest {
             driftFrom.plusDays(it.toLong()) to six(asr = "16:40")
         }
 
+    /** Ein Zeitplan, der an [conflictDays] Tagen ab [from] um 14 Minuten
+     *  abweicht — weit ueber MINOR_DRIFT, der Vergleich ist also ein
+     *  CONFLICT. Damit laesst sich das VERHAELTNIS abweichender zu
+     *  verglichenen Tagen einstellen. */
+    private fun planWithConflict(
+        days: Int,
+        conflictDays: Int,
+        from: LocalDate = day0,
+    ): Map<LocalDate, SixTimes> =
+        plan(days, from) + (0 until conflictDays).associate {
+            from.plusDays(it.toLong()) to six(isha = "21:07")
+        }
+
     private fun direct(schedule: Map<LocalDate, SixTimes>) = SourceResult(SourceId.DIRECT, schedule)
     private fun proxy(schedule: Map<LocalDate, SixTimes>) = SourceResult(SourceId.PROXY_ABDUS, schedule)
     private fun ezan(schedule: Map<LocalDate, SixTimes>) = SourceResult(SourceId.EZANVAKTI, schedule)
@@ -188,6 +201,130 @@ class SourceQuorumTest {
 
         // Nicht 3 Min: die Anzeige soll den schlimmsten Widerspruch nennen.
         assertEquals(14, outcome.verification.maxAbsMinutes)
+    }
+
+    // --- Ueberstimmen NUR bei systematischem Widerspruch
+
+    @Test fun `A3d ein einziger abweichender Tag ueberstimmt den Jahresabruf NICHT`() {
+        // Der Fall, den der Nutzer entschieden hat: EIN Tag um drei Minuten
+        // ist die Form einer Diyanet-Korrektur, nicht die eines kaputten
+        // Parsers. Wuerde er ueberstimmen, verloere der Ort ~370 Tage
+        // Abdeckung — ausserhalb Deutschlands ohne gebuendelte Reserve.
+        val korrigiert = plan(days = 31) +
+            mapOf(day0.plusDays(10) to six(isha = "20:56")) // 3 Min -> CONFLICT
+
+        val outcome = resolve(direct(plan(days = 400)), proxy(korrigiert), ezan(korrigiert))
+
+        assertEquals(VerificationNote.CONFLICT_UNRESOLVED, outcome.verification.note)
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+        assertTrue(outcome.verification.confirmedBy.isEmpty())
+        assertEquals(31, outcome.verification.comparedDays)
+        assertEquals(1, outcome.verification.differingDays)
+        // Der Direktabruf behaelt sein VOLLES Fenster.
+        assertEquals(400, outcome.schedule.size)
+    }
+
+    @Test fun `A3e ein systematischer Widerspruch ueberstimmt weiterhin`() {
+        // Dieselben 31 Tage wie im Nutzerfall, aber ALLE weichen ab — das ist
+        // die Form „der Parser liegt daneben".
+        val abweichend = plan(days = 31, times = six(isha = "20:56"))
+
+        val outcome = resolve(direct(plan(days = 400)), proxy(abweichend), ezan(abweichend))
+
+        assertEquals(VerificationNote.CONFLICT_OVERRIDDEN, outcome.verification.note)
+        assertEquals(SourceId.PROXY_ABDUS, outcome.verification.chosen)
+        assertEquals(31, outcome.schedule.size)
+    }
+
+    @Test fun `A3f ein zu kleines Prueffenster kippt kein Jahr`() {
+        // Drei gemeinsame Tage sagen nichts ueber einen Jahresplan aus, auch
+        // wenn alle drei abweichen.
+        val abweichend = plan(days = 3, times = six(isha = "21:07"))
+
+        val outcome = resolve(direct(plan(days = 400)), proxy(abweichend), ezan(abweichend))
+
+        assertEquals(VerificationNote.CONFLICT_UNRESOLVED, outcome.verification.note)
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+        assertEquals(400, outcome.schedule.size)
+    }
+
+    @Test fun `A3g genau minConflictDays verglichene Tage genuegen noch`() {
+        // Die Fenster-Grenze, festgenagelt: sieben Tage sind gerade noch
+        // aussagekraeftig. Mutation `>=` -> `>` in `isSystematic` kippt das
+        // hier auf CONFLICT_UNRESOLVED.
+        val abweichend = plan(days = 7, times = six(isha = "21:07"))
+
+        val outcome = resolve(direct(plan(days = 400)), proxy(abweichend), ezan(abweichend))
+
+        assertEquals(VerificationNote.CONFLICT_OVERRIDDEN, outcome.verification.note)
+        assertEquals(SourceId.PROXY_ABDUS, outcome.verification.chosen)
+    }
+
+    @Test fun `A3h ein Tag unter minConflictDays genuegt nicht mehr`() {
+        val abweichend = plan(days = 6, times = six(isha = "21:07"))
+
+        val outcome = resolve(direct(plan(days = 400)), proxy(abweichend), ezan(abweichend))
+
+        assertEquals(VerificationNote.CONFLICT_UNRESOLVED, outcome.verification.note)
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+    }
+
+    @Test fun `A3i genau die Haelfte abweichender Tage genuegt noch`() {
+        // Die Haelfte-Grenze, festgenagelt: 4 von 8. Mutation
+        // `differingDays * 2 >= comparedDays` -> `>` kippt das hier.
+        val abweichend = planWithConflict(days = 8, conflictDays = 4)
+
+        val outcome = resolve(direct(plan(days = 400)), proxy(abweichend), ezan(abweichend))
+
+        assertEquals(VerificationNote.CONFLICT_OVERRIDDEN, outcome.verification.note)
+        assertEquals(8, outcome.verification.comparedDays)
+        assertEquals(4, outcome.verification.differingDays)
+    }
+
+    @Test fun `A3j knapp unter der Haelfte genuegt nicht mehr`() {
+        // 3 von 8 — noch immer ein CONFLICT (14 Min), aber nicht mehr die
+        // Form eines kaputten Parsers.
+        val abweichend = planWithConflict(days = 8, conflictDays = 3)
+
+        val outcome = resolve(direct(plan(days = 400)), proxy(abweichend), ezan(abweichend))
+
+        assertEquals(VerificationNote.CONFLICT_UNRESOLVED, outcome.verification.note)
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+        assertEquals(400, outcome.schedule.size)
+    }
+
+    @Test fun `A3k ein systematischer Pruefer allein ueberstimmt nicht`() {
+        // Beide Pruefer sind untereinander EINIG und widersprechen dem
+        // Direktabruf — aber nur der Proxy tut es systematisch: der
+        // Direktabruf liegt nur in den ersten zehn Tagen daneben. Der
+        // ezanvakti-Vergleich sieht 22 Tage und nur 10 abweichende.
+        val jahr = plan(days = 10, from = day0, times = six(isha = "21:07")) +
+            plan(days = 390, from = day0.plusDays(10))
+
+        val outcome = resolve(
+            direct(jahr),
+            proxy(plan(days = 10, from = day0)),
+            ezan(plan(days = 22, from = day0)),
+        )
+
+        assertEquals(VerificationNote.CONFLICT_UNRESOLVED, outcome.verification.note)
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+        assertTrue(outcome.verification.confirmedBy.isEmpty())
+        assertEquals(400, outcome.schedule.size)
+    }
+
+    @Test fun `eine eigene minConflictDays-Schwelle wirkt bis in das Quorum durch`() {
+        val abweichend = plan(days = 3, times = six(isha = "21:07"))
+        val candidates = listOf(direct(plan(days = 400)), proxy(abweichend), ezan(abweichend))
+
+        assertEquals(
+            VerificationNote.CONFLICT_UNRESOLVED,
+            resolveQuorum(candidates, locationId, now).note(),
+        )
+        assertEquals(
+            VerificationNote.CONFLICT_OVERRIDDEN,
+            resolveQuorum(candidates, locationId, now, minConflictDays = 3).note(),
+        )
     }
 
     @Test fun `A5 gar kein Pruefer - UNVERIFIED_SINGLE`() {

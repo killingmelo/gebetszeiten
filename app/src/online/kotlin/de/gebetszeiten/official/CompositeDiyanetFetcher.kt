@@ -13,9 +13,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.LocalDate
+import javax.net.ssl.SSLException
 
 /**
  * Amtliche Zeiten aus DREI Quellen, die IMMER UND NEBENLAEUFIG laufen:
@@ -42,7 +44,14 @@ import java.time.LocalDate
  *
  * **Zeitbudget:** nebenläufig ist die Wanduhr `max(direkt, proxy,
  * ezanvakti)` statt der Summe. `refreshOfficial` gibt weiterhin 25 s — drei
- * Quellen nacheinander hätten das gesprengt, nebeneinander nicht.
+ * Quellen nacheinander hätten das gesprengt. Nebeneinander sind die 25 s
+ * aber nur tragfähiger, nicht tragfähig: der Worst Case ist `max(30 s, 20 s,
+ * 20 s)`, weil `DiyanetDirectFetcher` den Lesetimeout auf 20 s anhebt und
+ * die 10 s `connectTimeout` aus `httpGet` davorliegen. 30 s über 25 s
+ * heißt: der Abbruch kommt vom Budget, nicht vom Socket — und ein
+ * blockierender Socket-Read reagiert nicht auf Cancellation. Keine
+ * Regression (vorher war die Kette bei bis zu ~50 s), aber auch keine
+ * Zusicherung, die man behaupten dürfte.
  *
  * [now] wird hineingereicht statt aus der Systemuhr geholt: der Wert landet
  * als `checkedEpochMs` in der `Verification` und muss testbar bleiben.
@@ -173,6 +182,62 @@ class CompositeDiyanetFetcher(
 }
 
 /**
+ * Aus einer Ausnahme ein kurzer Satz, den ein Mensch lesen kann — rein und
+ * testbar, ohne Netz und ohne Android.
+ *
+ * Der Text landet ueber `fetchErrorSummary` in der Statuszeile
+ * („Direktabruf: HTTP 503 · Proxy: Zeitüberschreitung"), deshalb: keine
+ * Stacktraces, keine Klassennamen mit Paket, und nichts, was die Zeile
+ * sprengt.
+ *
+ * Die Sonderfaelle haben einen Grund: `httpGet` wirft bereits
+ * `error("HTTP $code")`, also eine `IllegalStateException` mit brauchbarem
+ * `message`. Die haeufigen ECHTEN Netzfehler dagegen tragen Meldungen, die
+ * niemandem helfen:
+ * - [SocketTimeoutException]: „Read timed out" oder gar `null`;
+ * - [UnknownHostException]: nur der Hostname;
+ * - [SocketException] — davon erbt `ConnectException`, der haeufigste Fall
+ *   ueberhaupt: „failed to connect to ...gov.tr/93.184.x.x (port 443) from
+ *   /10.0.2.15 (port 45678) after 10000ms: isConnected failed: ECONNREFUSED
+ *   (Connection refused)". IP, Port und `ECONNREFUSED` in der Statuszeile;
+ * - [SSLException]: deren `message` verkettet die Ursache MIT
+ *   vollqualifiziertem Klassennamen („...java.security.cert.
+ *   CertPathValidatorException: Trust anchor ... not found"), was das
+ *   Versprechen „keine Klassennamen mit Paket" bereits bricht.
+ *
+ * Alle vier saehen in der Statuszeile aus wie ein Fehler der QUELLE, obwohl
+ * es das Geraet oder die Leitung ist.
+ *
+ * **Die Reihenfolge im `when` ist Teil der Aussage:** [SocketTimeoutException]
+ * steht vor [SocketException], damit ein Timeout „Zeitüberschreitung" bleibt
+ * und nicht als „Keine Verbindung" durchgeht. Heute erbt sie von
+ * `InterruptedIOException` und nicht von [SocketException], die Reihenfolge
+ * ist also eine Vorsichtsmassnahme und keine Notwendigkeit — sie kostet
+ * nichts und macht den Zweig unabhaengig davon, wo die JDK-Hierarchie ihn
+ * einhaengt. Ein Test nagelt sie fest.
+ */
+internal fun fetchErrorText(e: Exception): String = when (e) {
+    is SocketTimeoutException -> "Zeitüberschreitung"
+    is UnknownHostException -> "Kein Netz"
+    is SSLException -> "Verschlüsselung fehlgeschlagen"
+    is SocketException -> "Keine Verbindung"
+    // `isNotBlank`, nicht `isNotEmpty`: ein Leerzeichen als Fehlergrund
+    // waere eine leere Behauptung in der Statuszeile.
+    else -> shortenForStatusLine(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
+}
+
+/** Wie viele Zeichen eine FREMDE Meldung in der Statuszeile hoechstens
+ *  belegen darf. Die eigenen Texte oben sind kurz; gekappt wird nur, was von
+ *  aussen kommt. */
+private const val MAX_ERROR_CHARS = 80
+
+/** Kappt auf [MAX_ERROR_CHARS] EINSCHLIESSLICH des Auslassungszeichens: die
+ *  Zeile bleibt damit hoechstens so breit wie versprochen, statt um ein
+ *  Zeichen darueber. */
+private fun shortenForStatusLine(text: String): String =
+    if (text.length <= MAX_ERROR_CHARS) text else text.take(MAX_ERROR_CHARS - 1) + "…"
+
+/**
  * ID-Aufloesung als reine Funktion: Bundle -> Index -> Cache -> Namenssuche.
  *
  * Die Namenssuche war bis 2026-08 der Primaerweg. Sie scheiterte an jedem Ort,
@@ -184,30 +249,6 @@ class CompositeDiyanetFetcher(
  * lokal und in Millisekunden fertig. [searchByName] bleibt ein Lambda: der
  * einzige Netzaufruf der Kette darf nur laufen, wenn er gebraucht wird.
  */
-/**
- * Aus einer Ausnahme ein kurzer Satz, den ein Mensch lesen kann — rein und
- * testbar, ohne Netz und ohne Android.
- *
- * Der Text landet ueber `fetchErrorSummary` in der Statuszeile
- * („Direktabruf: HTTP 503 · Proxy: Zeitüberschreitung"), deshalb: keine
- * Stacktraces, keine Klassennamen mit Paket.
- *
- * Die beiden Sonderfaelle haben einen Grund: `httpGet` wirft bereits
- * `error("HTTP $code")`, also eine `IllegalStateException` mit brauchbarem
- * `message`. Ein Timeout dagegen kommt als [SocketTimeoutException] mit
- * „Read timed out" oder gar `null` an, und ein Netzausfall als
- * [UnknownHostException], deren `message` nur der Hostname ist — beides
- * saehe in der Statuszeile aus wie ein Fehler der Quelle, obwohl es das
- * Geraet ist.
- */
-internal fun fetchErrorText(e: Exception): String = when (e) {
-    is SocketTimeoutException -> "Zeitüberschreitung"
-    is UnknownHostException -> "Kein Netz"
-    // `isNotBlank`, nicht `isNotEmpty`: ein Leerzeichen als Fehlergrund
-    // waere eine leere Behauptung in der Statuszeile.
-    else -> e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName
-}
-
 internal suspend fun resolveLocationIdChain(
     bundledId: Int?,
     indexPlace: de.gebetszeiten.core.prayertimes.officialtimes.DiyanetPlace?,

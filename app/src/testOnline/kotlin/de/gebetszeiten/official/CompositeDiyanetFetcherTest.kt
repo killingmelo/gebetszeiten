@@ -14,11 +14,14 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
+import java.net.ConnectException
+import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Collections
+import javax.net.ssl.SSLHandshakeException
 
 class CompositeDiyanetFetcherTest {
 
@@ -121,8 +124,20 @@ class CompositeDiyanetFetcherTest {
         // Der Test, der den Double-Fail-Safe beweist: der Direktabruf
         // liefert, wird aber verworfen, weil BEIDE Kontrollquellen ihm einig
         // widersprechen. Mit der alten Kette waere er nie ueberprueft worden.
-        val abweichend = window(3, 30) // 22 Minuten frueher — weit ueber MINOR_DRIFT
-        val result = fetcher(proxy = { abweichend }, ezanvakti = { abweichend }).fetch(settings)
+        //
+        // Das Fenster ist bewusst ACHT Tage lang und weicht an ALLEN acht
+        // Tagen ab: ueberstimmt wird nur ein SYSTEMATISCHER Widerspruch
+        // (`resolveQuorum`, `minConflictDays`). Die frueheren drei Tage
+        // waeren heute CONFLICT_UNRESOLVED — nicht weil dieser Test
+        // schwaecher geworden waere, sondern weil drei gemeinsame Tage einen
+        // Jahresplan nicht kippen duerfen.
+        val jahr = window(20, 52)
+        val abweichend = window(8, 30) // 22 Minuten frueher — weit ueber MINOR_DRIFT
+        val result = fetcher(
+            direct = { jahr },
+            proxy = { abweichend },
+            ezanvakti = { abweichend },
+        ).fetch(settings)
         assertEquals(abweichend, result.schedule)
         assertEquals(VerificationNote.CONFLICT_OVERRIDDEN, result.verification?.note)
         assertEquals(11024, result.locationId)
@@ -169,6 +184,10 @@ class CompositeDiyanetFetcherTest {
         assertEquals(emptyMap<LocalDate, SixTimes>(), result.schedule)
         assertNull(result.locationId)
         assertEquals(VerificationNote.NONE, result.verification?.note)
+        // Und es wird auch GESAGT, dass alle drei scheiterten: „nichts
+        // erhalten" ohne Grund waere genau die Statuszeile, die diese Runde
+        // abschaffen soll.
+        assertEquals("Direktabruf: down · Proxy: down · ezanvakti: down", result.errorSummary)
     }
 
     @Test
@@ -193,6 +212,51 @@ class CompositeDiyanetFetcherTest {
         assertEquals("HTTP 503", fetchErrorText(IllegalStateException("HTTP 503")))
         assertEquals("IllegalStateException", fetchErrorText(IllegalStateException()))
         assertEquals("IllegalStateException", fetchErrorText(IllegalStateException("   ")))
+    }
+
+    @Test
+    fun `fetchErrorText faengt die zwei haeufigsten echten Netzfehler ab`() {
+        // Androids Meldung fuer einen abgelehnten Verbindungsaufbau — IP,
+        // Port und ECONNREFUSED, ueber 150 Zeichen. Sie stand bisher roh in
+        // der Statuszeile.
+        val abgelehnt = ConnectException(
+            "failed to connect to namazvakitleri.diyanet.gov.tr/93.184.216.34 (port 443) " +
+                "from /10.0.2.15 (port 45678) after 10000ms: isConnected failed: " +
+                "ECONNREFUSED (Connection refused)",
+        )
+        assertEquals("Keine Verbindung", fetchErrorText(abgelehnt))
+        // Die verkettete Ursache traegt einen vollqualifizierten
+        // Klassennamen — genau das, was das KDoc ausschliesst.
+        val zertifikat = SSLHandshakeException(
+            "java.security.cert.CertPathValidatorException: " +
+                "Trust anchor for certification path not found.",
+        )
+        assertEquals("Verschlüsselung fehlgeschlagen", fetchErrorText(zertifikat))
+    }
+
+    @Test
+    fun `ein Timeout bleibt Zeitueberschreitung - die Reihenfolge im when haelt`() {
+        // Stuende der SocketException-Zweig VOR dem Timeout-Zweig, saehe der
+        // Nutzer bei jedem Timeout „Keine Verbindung" — eine falsche
+        // Diagnose, die zur falschen Abhilfe fuehrt.
+        assertEquals("Zeitüberschreitung", fetchErrorText(SocketTimeoutException("Read timed out")))
+        // Und die Gegenprobe: eine ANDERE SocketException ist keine
+        // Zeitueberschreitung.
+        assertEquals("Keine Verbindung", fetchErrorText(SocketException("Software caused connection abort")))
+    }
+
+    @Test
+    fun `eine lange Fremdmeldung sprengt die Statuszeile nicht`() {
+        val lang = "x".repeat(300)
+
+        val text = fetchErrorText(IllegalStateException(lang))
+
+        assertEquals("gekappt auf 80 Zeichen einschliesslich des Auslassungszeichens", 80, text.length)
+        assertTrue("kein Auslassungszeichen am Ende: $text", text.endsWith("…"))
+        // Genau 80 Zeichen bleiben unangetastet — die Grenze faellt
+        // einschliesslich aus.
+        val genau = "y".repeat(80)
+        assertEquals(genau, fetchErrorText(IllegalStateException(genau)))
     }
 
     @Test

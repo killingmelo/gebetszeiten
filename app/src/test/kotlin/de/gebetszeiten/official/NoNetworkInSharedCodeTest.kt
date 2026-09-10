@@ -31,6 +31,11 @@ class NoNetworkInSharedCodeTest {
      *  Projekt zu Recht in vielen Kommentaren. */
     private val verboten = listOf(
         "java.net.",
+        // NICHT von „java.net." mitgefangen: nach „java" folgt ein „x".
+        // `javax.net.ssl.SSLException` und Verwandte sind Netzcode wie jeder
+        // andere — seit `fetchErrorText` sie behandelt, ist die Luecke keine
+        // theoretische mehr.
+        "javax.net.ssl",
         "HttpURLConnection",
         "URLConnection",
         "openConnection",
