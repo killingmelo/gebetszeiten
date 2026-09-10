@@ -1,8 +1,8 @@
 package de.gebetszeiten.official
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.json.JSONException
 import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalTime
@@ -40,16 +40,12 @@ class EzanVaktiParseTest {
     fun `Gunes ist der Sonnenaufgang - nicht GunesDogus`() {
         val tag = parse("[$echtesElement]").values.single()
         assertEquals(LocalTime.of(6, 22), tag.sunrise)
-        // Der Fehler, der hier nicht durchkommen darf: 06:29 statt 06:22.
-        assertNotEquals(LocalTime.of(6, 29), tag.sunrise)
     }
 
     @Test
     fun `Aksam ist der Sonnenuntergang - nicht GunesBatis`() {
         val tag = parse("[$echtesElement]").values.single()
         assertEquals(LocalTime.of(19, 33), tag.maghrib)
-        // Der Fehler, der hier nicht durchkommen darf: 19:26 statt 19:33.
-        assertNotEquals(LocalTime.of(19, 26), tag.maghrib)
     }
 
     @Test
@@ -177,16 +173,69 @@ class EzanVaktiParseTest {
         assertTrue(parse("[$kaputt]").isEmpty())
     }
 
-    @Test(expected = Exception::class)
+    @Test(expected = JSONException::class)
     fun `ein Koerper der kein Array ist wirft`() {
         // Absichtlich KEIN Auffangen der JSONException im Parser: "leer" und
         // "kaputt" sind zwei verschiedene Zustaende, das Quorum unterscheidet sie.
+        // JSONException statt Exception: sonst waere der Test auch mit einer
+        // unbeteiligten NullPointerException gruen.
         parse("""{"vakitler":[]}""")
     }
 
-    @Test(expected = Exception::class)
+    @Test(expected = JSONException::class)
     fun `eine HTML-Fehlerseite wirft`() {
         parse("<html><body>502 Bad Gateway</body></html>")
+    }
+
+    @Test
+    fun `ein Element das kein Objekt ist wird verworfen, die Nachbarn ueberleben`() {
+        // Bewusst verwerfen statt werfen — dieselbe Zeilen-Robustheit wie bei
+        // einem kaputten Datum. Ohne diesen Test dreht die Entscheidung beim
+        // naechsten Aufraeumen unbemerkt um.
+        val tage = parse("""[${element(tarih = "05.09.2026")},42,"x",null,${element(tarih = "07.09.2026")}]""")
+        assertEquals(
+            listOf(LocalDate.of(2026, 9, 5), LocalDate.of(2026, 9, 7)),
+            tage.keys.toList(),
+        )
+    }
+
+    // ---- Was der STRICT-Resolver abfaengt ----------------------------------
+
+    @Test
+    fun `ein unmoegliches Datum wird verworfen, nicht still verschoben`() {
+        // Der Grund fuer `uuuu` + STRICT: der Standard-Resolver rueckt
+        // "31.02.2026" klammheimlich auf den 28.02. Richtige Zeiten lagen dann
+        // auf dem falschen Tag — und wuerden in der LinkedHashMap womoeglich
+        // einen echten Eintrag ueberschreiben.
+        // Reihenfolge ist hier entscheidend: der ECHTE 28.02. steht vorn, das
+        // unmoegliche Datum dahinter. Wuerde es still auf den 28.02. gerueckt,
+        // ueberschriebe es in der LinkedHashMap den echten Eintrag — und
+        // niemand saehe es. Mit unterscheidbaren Zeiten faellt genau das auf.
+        val tage = parse(
+            """[${element(tarih = "28.02.2026", imsak = "04:53")},${element(tarih = "31.02.2026", imsak = "01:11")}]""",
+        )
+        assertEquals(listOf(LocalDate.of(2026, 2, 28)), tage.keys.toList())
+        assertEquals("der echte Eintrag darf nicht ueberschrieben werden", LocalTime.of(4, 53), tage.values.single().fajr)
+    }
+
+    @Test
+    fun `ein Schalttag im Nichtschaltjahr wird verworfen`() {
+        assertTrue(parse("""[${element(tarih = "29.02.2026")}]""").isEmpty())
+        // Im Schaltjahr bleibt er gueltig — STRICT lehnt nichts Echtes ab.
+        assertEquals(
+            listOf(LocalDate.of(2024, 2, 29)),
+            parse("""[${element(tarih = "29.02.2024")}]""").keys.toList(),
+        )
+    }
+
+    @Test
+    fun `24 Uhr wird verworfen statt zu Mitternacht desselben Tages zu werden`() {
+        // Ohne STRICT auf der Uhrzeit macht der Resolver aus "24:00" ein
+        // "00:00" — Isha laege dann VOR Fajr, ohne dass irgendetwas wirft.
+        assertTrue(parse("""[${element(yatsi = "24:00")}]""").isEmpty())
+        // Die echten Randwerte bleiben gueltig.
+        assertEquals(LocalTime.of(23, 59), parse("""[${element(yatsi = "23:59")}]""").values.single().isha)
+        assertEquals(LocalTime.of(0, 0), parse("""[${element(imsak = "0:00")}]""").values.single().fajr)
     }
 
     // ---- Uhrzeit-Toleranz --------------------------------------------------

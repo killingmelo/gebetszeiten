@@ -107,11 +107,18 @@ class EzanVaktiFetcher {
             .ofPattern("dd.MM.uuuu")
             .withResolverStyle(ResolverStyle.STRICT)
 
-        /** `H:mm` nimmt "06:22" wie "6:22". Die echte Antwort füllt immer auf
-         *  (30 von 30 Elementen am 09.09.2026 in HH:mm), das ist also reine
-         *  Vorsorge: die Form bleibt eindeutig, und ein Formatierungs-
-         *  Schluckauf der Quelle soll den dritten Zeugen des Quorums nicht
-         *  stumm machen. Werte außerhalb 0..23 bzw. 0..59 werfen weiterhin. */
-        val UHRZEIT: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm")
+        /** `H:mm` nimmt "06:22" wie "6:22". Die echte Antwort füllt immer auf,
+         *  das ist also reine Vorsorge: die Form bleibt eindeutig (Trennzeichen
+         *  `:`, Minute fest zweistellig), und ein Formatierungs-Schluckauf der
+         *  Quelle soll den dritten Zeugen des Quorums nicht stumm machen.
+         *
+         *  STRICT auch hier, und das ist NICHT bloß Symmetrie zu [DATUM]: der
+         *  Standard-Resolver lässt `"24:00"` durch und macht daraus `00:00` —
+         *  ein `"Yatsi":"24:00"` läge damit auf Mitternacht DESSELBEN Tages,
+         *  also Isha vor Fajr, ohne dass irgendetwas wirft. Mit STRICT fällt
+         *  der Tag heraus, statt eine unmögliche Reihenfolge zu erzeugen. */
+        val UHRZEIT: DateTimeFormatter = DateTimeFormatter
+            .ofPattern("H:mm")
+            .withResolverStyle(ResolverStyle.STRICT)
     }
 }
