@@ -1,6 +1,7 @@
 package de.gebetszeiten.official
 
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
+import de.gebetszeiten.core.prayertimes.officialtimes.Verification
 import de.gebetszeiten.data.AppSettings
 import java.time.LocalDate
 
@@ -15,7 +16,24 @@ interface OfficialTimesFetcher {
     suspend fun fetch(settings: AppSettings): FetchResult
 }
 
+/**
+ * Was ein Abruf ergeben hat.
+ *
+ * [verification] und [errorSummary] werden seit Task 11 GEFUELLT, aber noch
+ * von niemandem GELESEN — das Speichern im Cache-Kopf und die Statuszeile
+ * sind Task 12. Sie sind also keine vergessene Verdrahtung, sondern eine
+ * absichtlich vorbereitete.
+ *
+ * [Verification] ist ein reiner Datentyp aus `core-prayertimes` (kein Netz,
+ * keine Uhr, kein Android) — deshalb darf er hier im geteilten Quellsatz
+ * stehen, ohne den `NoNetworkInSharedCodeTest` zu verletzen.
+ */
 data class FetchResult(
     val schedule: Map<LocalDate, SixTimes>,
     val locationId: Int?,
+    /** Das Prueferzeugnis zum gelieferten Zeitplan; `null`, wenn gar nicht
+     *  erst abgerufen wurde (kein aufloesbarer Standort). */
+    val verification: Verification? = null,
+    /** Was schiefging, Quelle fuer Quelle; `null`, wenn keine scheiterte. */
+    val errorSummary: String? = null,
 )
