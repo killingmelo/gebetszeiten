@@ -14,8 +14,8 @@ import java.time.temporal.ChronoUnit
 private val DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 private val STAMP = DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm")
 
-/** Ohne Jahr: die Favoritenzeile hat eine Zeile fuer Ort, Abdeckung UND
- *  Versuch, und ein Fehlversuch, der noch der Rede wert ist, liegt Stunden
+/** Ohne Jahr: die Favoritenzeile traegt Ort, Abdeckung UND Versuch
+ *  zusammen, und ein Fehlversuch, der noch der Rede wert ist, liegt Stunden
  *  bis Tage zurueck. Der volle Stempel steht beim aktiven Ort. */
 private val SHORT_STAMP = DateTimeFormatter.ofPattern("dd.MM., HH:mm")
 
@@ -121,6 +121,16 @@ fun officialStatusText(
  * [needsRefresh], nicht eine nachgebaute Tageszaehlung). Eine Zeile, die
  * warnt, waehrend die App laengst von selbst nachlaedt, waere Laerm.
  *
+ * **Sie ist EIN Eintrag je Favorit, aber nicht auf eine Bildschirmzeile
+ * festgelegt** — und bekommt bewusst kein `maxLines`. Mit einem Fehlergrund
+ * wird sie lang (im Flugmodus rund 110 Zeichen: „Istanbul · noch keine
+ * Zeiten · Direktabruf: Kein Netz · Proxy: Kein Netz · ezanvakti: Kein Netz
+ * (06.08., 10:06)"), in `bodySmall` also zwei bis drei umgebrochene Zeilen.
+ * Das ist die richtige Richtung: einen Fehlergrund halb zu verstecken ist
+ * schlechter als zwei Zeilen zu belegen. Die frueher hier behauptete
+ * Vorgabe „der Platz ist eine Zeile" war falsch und ist der Grund fuer
+ * diesen Absatz.
+ *
  * Keine Zahl behauptet hier etwas anderes, als sie ist: die Restzeit kommt
  * aus `coveredUntil`, und aus der [Verification] wird KEINE Zahl uebernommen
  * — `comparedDays` ist das Konfliktfenster, nicht die Abdeckung (die Lehre
@@ -148,8 +158,17 @@ fun favoriteStatusLine(
         coveredUntil.isBefore(today.plusDays(MIN_FUTURE_DAYS)) -> remainingText(today, coveredUntil)
         else -> "bis ${DATE.format(coveredUntil)}"
     }
-    // Das Kurzwort nur, wo es sich auf vorhandene Zeiten beziehen kann.
-    val note = if (coveredUntil == null) null else verificationWord(status.verification)
+    // Das Kurzwort nur, wo es sich auf Zeiten beziehen kann, die es
+    // tatsaechlich noch gibt. „Bestätigt" hinter einer ABGELAUFENEN
+    // Abdeckung waere ein Guetewort ueber Zeiten, die nichts mehr abdecken —
+    // dieselbe Klasse von Falschaussage wie die vier, die Task 8 korrigieren
+    // musste. Die Notiz selbst bleibt im Kopf; sie wird hier nur nicht mehr
+    // behauptet.
+    val note = if (coveredUntil == null || coveredUntil.isBefore(today)) {
+        null
+    } else {
+        verificationWord(status.verification)
+    }
     return listOfNotNull(name, coverage, note).joinToString(" · ")
 }
 
@@ -173,10 +192,11 @@ private fun remainingText(today: LocalDate, coveredUntil: LocalDate): String =
         else -> "nur noch $days Tage"
     }
 
-/** Ein Wort statt eines Satzes — der Platz ist eine Zeile. Der volle
- *  Wortlaut steht in [verificationLine] und bleibt dem aktiven Ort
- *  vorbehalten; hier wird nicht gekuerzt, sondern eigens benannt, damit kein
- *  halber Satz entsteht. `null` bei fehlender Notiz und bei
+/** Ein Wort statt eines Satzes — je Favorit EIN Eintrag, nicht der
+ *  mehrzeilige Statusblock des aktiven Orts. Der volle Wortlaut steht in
+ *  [verificationLine] und bleibt dem aktiven Ort vorbehalten; hier wird
+ *  nicht gekuerzt, sondern eigens benannt, damit kein halber Satz entsteht.
+ *  `null` bei fehlender Notiz und bei
  *  [VerificationNote.NONE] — genau wie [verificationLine], aus demselben
  *  Grund: es gibt dann nichts zu berichten. */
 private fun verificationWord(verification: Verification?): String? = when (verification?.note) {

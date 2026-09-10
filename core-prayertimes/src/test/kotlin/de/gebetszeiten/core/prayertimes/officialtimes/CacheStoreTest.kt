@@ -1317,4 +1317,98 @@ class CacheStoreTest {
             split[0].header.verification,
         )
     }
+
+    // --- headersFor: die Koepfe mehrerer Orte, in der Reihenfolge der Frage --
+    //
+    // Das ist die reine Haelfte von `OfficialTimesCache.statusesFor`. Sie
+    // liegt hier, weil die Zuordnung Ort → Kopf der Punkt ist, an dem ein
+    // Fehler Istanbuls Stand unter Nuernbergs Namen zeigen wuerde — und weil
+    // sie im Adapter (DataStore, Context) ohne Robolectric nicht pruefbar
+    // waere.
+
+    private val nuernberg = 49.4521 to 11.0767
+    private val istanbul = 41.0082 to 28.9784
+    private val regensburg = 49.0134 to 12.1016
+
+    @Test
+    fun `headersFor - die Reihenfolge ist die der Frage, nicht die des Speichers`() {
+        // Im Speicher liegen die Eintraege in einer ANDEREN Reihenfolge als
+        // gefragt wird, und keine der beiden ist die umgekehrte der anderen:
+        // so faellt sowohl „nimmt die Speicherreihenfolge" als auch „dreht
+        // die Frage um" auf.
+        val entries = listOf(
+            rawCovering(istanbul.first, istanbul.second, LocalDate.of(2027, 1, 31)),
+            rawCovering(regensburg.first, regensburg.second, LocalDate.of(2027, 2, 28)),
+            rawCovering(nuernberg.first, nuernberg.second, LocalDate.of(2027, 7, 4)),
+        )
+
+        val headers = CacheStore.headersFor(entries, listOf(nuernberg, istanbul, regensburg))
+
+        assertEquals(3, headers.size)
+        // Jeder Kopf steht an der Stelle SEINES Ortes — an den Koordinaten
+        // geprueft, nicht nur an der Abdeckung.
+        assertEquals(nuernberg.first, headers[0]?.latitude)
+        assertEquals(istanbul.first, headers[1]?.latitude)
+        assertEquals(regensburg.first, headers[2]?.latitude)
+        assertEquals(LocalDate.of(2027, 7, 4), headers[0]?.lastDate)
+        assertEquals(LocalDate.of(2027, 1, 31), headers[1]?.lastDate)
+        assertEquals(LocalDate.of(2027, 2, 28), headers[2]?.lastDate)
+    }
+
+    @Test
+    fun `headersFor - ein Ort ohne Eintrag ergibt null AN SEINER STELLE, keine Luecke`() {
+        val entries = listOf(
+            rawCovering(nuernberg.first, nuernberg.second, LocalDate.of(2027, 7, 4)),
+            rawCovering(regensburg.first, regensburg.second, LocalDate.of(2027, 2, 28)),
+        )
+
+        val headers = CacheStore.headersFor(entries, listOf(nuernberg, istanbul, regensburg))
+
+        // Wuerde der fehlende Ort uebersprungen, ruecke Regensburg auf
+        // Istanbuls Platz — der Aufrufer paart ueber den Index.
+        assertEquals(3, headers.size)
+        assertEquals(nuernberg.first, headers[0]?.latitude)
+        assertNull(headers[1])
+        assertEquals(regensburg.first, headers[2]?.latitude)
+    }
+
+    @Test
+    fun `headersFor - derselbe Ort einzeln und in der Liste ergibt denselben Kopf`() {
+        val entries = listOf(
+            rawCovering(istanbul.first, istanbul.second, LocalDate.of(2027, 1, 31)),
+            rawCovering(nuernberg.first, nuernberg.second, LocalDate.of(2027, 7, 4)),
+        )
+        val coords = listOf(nuernberg, istanbul, regensburg)
+
+        val headers = CacheStore.headersFor(entries, coords)
+
+        // `status()` fragt ueber `select`, `statusesFor()` ueber
+        // `headersFor` — sie duerfen nie verschiedene Antworten auf dieselbe
+        // Frage geben, auch nicht fuer den Ort ohne Eintrag.
+        for ((index, coord) in coords.withIndex()) {
+            val einzeln = CacheStore.select(entries, coord.first, coord.second)?.header
+            assertEquals(coord.toString(), einzeln, headers[index])
+        }
+    }
+
+    @Test
+    fun `headersFor - die Pruefnotiz kommt durch`() {
+        val notiz = verification(note = VerificationNote.CONFLICT_OVERRIDDEN)
+        val entries = listOf(
+            RawEntry(
+                header(
+                    lat = nuernberg.first,
+                    lng = nuernberg.second,
+                    firstDate = LocalDate.of(2026, 9, 6),
+                    lastDate = LocalDate.of(2027, 7, 4),
+                    verification = notiz,
+                ),
+                "",
+            ),
+        )
+
+        val headers = CacheStore.headersFor(entries, listOf(nuernberg))
+
+        assertEquals(notiz, headers[0]?.verification)
+    }
 }

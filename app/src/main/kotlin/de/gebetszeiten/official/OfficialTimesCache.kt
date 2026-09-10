@@ -91,22 +91,16 @@ class OfficialTimesCache(private val context: Context) {
      *  Die Reihenfolge des Ergebnisses entspricht [coords]; fuer einen Ort
      *  ohne Eintrag kommt ein leerer Status (alles null), nicht etwa eine
      *  Luecke — der Aufrufer zeichnet je Favorit eine Zeile und darf sich auf
-     *  die Zuordnung ueber den Index verlassen. */
+     *  die Zuordnung ueber den Index verlassen.
+     *
+     *  Beide Zusicherungen liegen in [CacheStore.headersFor] und sind dort
+     *  ohne Android gepruefte reine Funktion; hier bleibt nur der
+     *  DataStore-Read und die Umformung Kopf → Status ([statusOf], ebenfalls
+     *  rein und geprueft). Dieselbe Naht wie bei `split`/`select`/`put`. */
     suspend fun statusesFor(coords: List<Pair<Double, Double>>): List<OfficialStatus> {
         if (coords.isEmpty()) return emptyList()
-        val entries = allEntries()
-        return coords.map { (lat, lng) -> statusOf(CacheStore.select(entries, lat, lng)?.header) }
+        return CacheStore.headersFor(allEntries(), coords).map { statusOf(it) }
     }
-
-    /** Kopf → Status, an EINER Stelle: [status] und [statusesFor] duerfen nie
-     *  verschiedene Antworten auf dieselbe Frage geben. */
-    private fun statusOf(header: CacheHeader?) = OfficialStatus(
-        locationId = header?.locationId,
-        coveredUntil = header?.lastDate,
-        lastAttemptEpochMs = header?.lastAttemptEpochMs,
-        lastError = header?.lastError,
-        verification = header?.verification,
-    )
 
     /** Erfolgreichen Abruf ablegen. Ein vorhandener Eintrag fuer denselben
      *  Ort wird ersetzt, sein Versuchsprotokoll aber uebernommen — frueher
@@ -129,19 +123,13 @@ class OfficialTimesCache(private val context: Context) {
         if (schedule.isEmpty()) return
         val now = System.currentTimeMillis()
         update { entries ->
-            val existing = CacheStore.select(entries, lat, lng)
             val added = CacheEntry(
-                header = newHeader(
+                header = refreshedHeader(
+                    existing = CacheStore.select(entries, lat, lng)?.header,
                     lat = lat,
                     lng = lng,
                     locationId = locationId,
                     updatedEpochMs = now,
-                    lastAttemptEpochMs = existing?.header?.lastAttemptEpochMs,
-                    lastError = existing?.header?.lastError,
-                    // Das Prueferzeugnis gehoert zu DIESEM Zeitplan. Es wird
-                    // deshalb ersetzt und nicht wie das Versuchsprotokoll aus
-                    // dem alten Eintrag uebernommen: das alte Zeugnis
-                    // beschreibt Zeiten, die es gerade nicht mehr gibt.
                     verification = verification,
                 ),
                 schedule = schedule,
@@ -227,28 +215,6 @@ class OfficialTimesCache(private val context: Context) {
             }
         }
     }
-
-    /** firstDate/lastDate werden von [CacheStore] aus dem Zeitplan
-     *  abgeleitet — hier bewusst null, damit sie nie doppelt gefuehrt sind. */
-    private fun newHeader(
-        lat: Double,
-        lng: Double,
-        locationId: Int?,
-        updatedEpochMs: Long,
-        lastAttemptEpochMs: Long?,
-        lastError: String?,
-        verification: Verification? = null,
-    ) = CacheHeader(
-        latitude = lat,
-        longitude = lng,
-        locationId = locationId,
-        firstDate = null,
-        lastDate = null,
-        updatedEpochMs = updatedEpochMs,
-        lastAttemptEpochMs = lastAttemptEpochMs,
-        lastError = lastError,
-        verification = verification,
-    )
 
     /** Ein Eintrag fuer diesen Ort, oder null.
      *
@@ -364,6 +330,86 @@ class OfficialTimesCache(private val context: Context) {
         const val MAX_ENTRIES = 5
     }
 }
+
+/**
+ * Kopf → Status, an EINER Stelle: [OfficialTimesCache.status] und
+ * [OfficialTimesCache.statusesFor] duerfen nie verschiedene Antworten auf
+ * dieselbe Frage geben.
+ *
+ * Steht ABSICHTLICH ausserhalb der Klasse: als Methode braeuchte sie einen
+ * `Context` und waere ohne Robolectric nicht pruefbar — genau die Luecke, in
+ * der ein weggelassenes Feld (etwa das Prueferzeugnis) unbemerkt blieb. Als
+ * reine Funktion faellt jede solche Aenderung im JVM-Test auf.
+ *
+ * `coveredUntil` kommt aus `lastDate`: die Abdeckung ist der LETZTE Tag, den
+ * der gespeicherte Zeitplan traegt.
+ */
+internal fun statusOf(header: CacheHeader?) = OfficialStatus(
+    locationId = header?.locationId,
+    coveredUntil = header?.lastDate,
+    lastAttemptEpochMs = header?.lastAttemptEpochMs,
+    lastError = header?.lastError,
+    verification = header?.verification,
+)
+
+/**
+ * Der Kopf fuer einen GELUNGENEN Abruf an einem Ort, an dem [existing]
+ * schon liegen kann (`null`, wenn nicht).
+ *
+ * Was zum ORT gehoert, wird uebernommen: das Versuchsprotokoll
+ * (`lastAttemptEpochMs`, `lastError`) — frueher fasste `putAll` die
+ * Versuchs-Schluessel ebenfalls nicht an, und `recordAttempt` schreibt es
+ * unmittelbar danach ohnehin neu.
+ *
+ * Was zum ZEITPLAN gehoert, kommt vom neuen Abruf und wird ERSETZT: das
+ * Prueferzeugnis. Es beschreibt den Abruf, der DIESE Zeiten brachte —
+ * uebernaehme man das alte, klebte eine Pruefnotiz an einem Zeitplan, den
+ * sie nie gesehen hat („bestätigt" ueber ungeprueft ersetzte Zeiten). Ein
+ * Abruf ohne Zeugnis setzt es folgerichtig auf `null`.
+ *
+ * Reine Funktion und ausserhalb der Klasse, damit genau diese Unterscheidung
+ * im Test steht und nicht nur im Kommentar.
+ */
+internal fun refreshedHeader(
+    existing: CacheHeader?,
+    lat: Double,
+    lng: Double,
+    locationId: Int?,
+    updatedEpochMs: Long,
+    verification: Verification?,
+) = newHeader(
+    lat = lat,
+    lng = lng,
+    locationId = locationId,
+    updatedEpochMs = updatedEpochMs,
+    lastAttemptEpochMs = existing?.lastAttemptEpochMs,
+    lastError = existing?.lastError,
+    verification = verification,
+)
+
+/** firstDate/lastDate werden von [CacheStore] aus dem Zeitplan
+ *  abgeleitet — hier bewusst null, damit sie nie doppelt gefuehrt sind.
+ *  Dateiprivat: gepruefte Naht ist [refreshedHeader], nicht dieser
+ *  Bausatz. */
+private fun newHeader(
+    lat: Double,
+    lng: Double,
+    locationId: Int?,
+    updatedEpochMs: Long,
+    lastAttemptEpochMs: Long?,
+    lastError: String?,
+    verification: Verification? = null,
+) = CacheHeader(
+    latitude = lat,
+    longitude = lng,
+    locationId = locationId,
+    firstDate = null,
+    lastDate = null,
+    updatedEpochMs = updatedEpochMs,
+    lastAttemptEpochMs = lastAttemptEpochMs,
+    lastError = lastError,
+    verification = verification,
+)
 
 /** Momentaufnahme für die Statuszeile eines EINZELNEN Orts (Aufrufer:
  *  `SettingsSheet`).

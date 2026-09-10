@@ -97,6 +97,25 @@ fun fetchErrorSummary(candidates: List<SourceResult>): String? =
         .joinToString(" · ") { "${sourceLabel(it.source)}: ${it.error}" }
         .takeIf { it.isNotEmpty() }
 
+/**
+ * Der Fehlertext fuer einen Abruf, der KEINE Zeiten gebracht hat — das, was
+ * `refreshOfficial` in diesem Fall als `lastError` ablegt.
+ *
+ * Hat mindestens eine Quelle geworfen, steht deren Zusammenfassung dort
+ * ([fetchErrorSummary], „Direktabruf: HTTP 503 · Proxy:
+ * Zeitüberschreitung"): sie sagt, WAS schiefging, statt nur dass etwas
+ * schiefging. Ist sie `null`, hat KEINE Quelle geworfen — dann hat schlicht
+ * keine etwas geliefert (kein Diyanet-Standort aufloesbar, oder leere
+ * Antworten), und dafuer ist das Literal die richtige Auskunft.
+ *
+ * Zwei Zeilen, und trotzdem eine eigene Funktion: im `suspend`-Rumpf von
+ * `refreshOfficial` (Context, Netz, DataStore) laesst sich der Rueckfall
+ * ohne Robolectric nicht pruefen — hier schon, und genau das Weglassen des
+ * `?:`-Zweiges hat eine Pruefrunde ueberlebt.
+ */
+fun emptyResultError(errorSummary: String?): String =
+    errorSummary ?: "Keine amtlichen Zeiten erhalten (Standort oder Netz)"
+
 /** Klartextnamen der Quellen — kurz, weil sie in einer Zeile mit ihrem
  *  Fehlergrund stehen. */
 private fun sourceLabel(source: SourceId): String = when (source) {

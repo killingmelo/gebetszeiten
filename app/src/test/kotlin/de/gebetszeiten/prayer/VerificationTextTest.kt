@@ -262,6 +262,27 @@ class VerificationTextTest {
         assertNull(summary)
     }
 
+    @Test fun `hat eine Quelle geworfen, steht ihr Grund im Kopf - nicht das Literal`() {
+        // Der Fehlertext eines leer ausgegangenen Abrufs. Ohne diesen Zweig
+        // schriebe die App wieder "Keine amtlichen Zeiten erhalten", obwohl
+        // sie den Grund kennt — und das Blatt sagte nur, DASS etwas
+        // schiefging.
+        assertEquals(
+            "Direktabruf: HTTP 503 · Proxy: Zeitüberschreitung",
+            emptyResultError("Direktabruf: HTTP 503 · Proxy: Zeitüberschreitung"),
+        )
+    }
+
+    @Test fun `hat keine Quelle geworfen, bleibt das Literal richtig`() {
+        // `null` heisst: keine Quelle ist gescheitert, es kam nur nichts an
+        // (kein Diyanet-Standort aufloesbar, oder leere Antworten). Ein
+        // leerer Text waere hier eine Statuszeile ohne Auskunft.
+        assertEquals(
+            "Keine amtlichen Zeiten erhalten (Standort oder Netz)",
+            emptyResultError(null),
+        )
+    }
+
     private val someSchedule: Map<LocalDate, SixTimes> = mapOf(
         LocalDate.of(2026, 9, 6) to SixTimes(
             fajr = LocalTime.parse("04:54"),

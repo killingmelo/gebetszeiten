@@ -163,9 +163,15 @@ private fun RecentPlacesRow(
  * [RecentPlacesRow] bleibt bewusst beim exakten Vergleich — das ist eine
  * Historie, kein Schlüssel in den Cache.
  *
- * Unter den Chips steht EINE Zeile je Favorit (`favoriteStatusLine`): sie
+ * Unter den Chips steht EIN Eintrag je Favorit (`favoriteStatusLine`): er
  * beantwortet „ist Istanbul versorgt?", ohne dass der Nutzer hinschalten
  * muss. Der mehrzeilige Statusblock bleibt dem aktiven Ort vorbehalten.
+ *
+ * Kein `maxLines`, und das ist Absicht: mit einem Fehlergrund wird der Text
+ * lang (im Flugmodus ~110 Zeichen) und bricht in `bodySmall` auf zwei bis
+ * drei Zeilen um. Einen Fehlergrund halb zu verstecken waere schlechter als
+ * die zweite Zeile.
+ *
  * [refreshTick] ist derselbe Schlüssel wie bei [SourceStatusSection] — die
  * Zeilen lesen nach einem abgeschlossenen Abruf neu, und sonst nicht.
  */

@@ -113,7 +113,28 @@ class FavoriteStatusLineTest {
         // Eine negative Tageszahl waere eine Zahl, die etwas anderes
         // behauptet, als sie ist.
         val status = OfficialStatus(9807, today.minusDays(3), attempt, null, verification(VerificationNote.VERIFIED))
-        assertEquals("Nürnberg · Abdeckung abgelaufen · bestätigt", line(status))
+        assertEquals("Nürnberg · Abdeckung abgelaufen", line(status))
+    }
+
+    @Test fun `bei abgelaufener Abdeckung faellt das Guetewort weg`() {
+        // „Bestätigt" beschriebe Zeiten, die es nicht mehr gibt. Am letzten
+        // abgedeckten Tag gilt es noch, einen Tag spaeter nicht mehr — die
+        // Notiz im Kopf bleibt davon unberuehrt, sie wird nur nicht mehr
+        // behauptet.
+        for (note in VerificationNote.values()) {
+            val v = verification(note)
+            val heute = OfficialStatus(9807, today, attempt, null, v)
+            val gestern = OfficialStatus(9807, today.minusDays(1), attempt, null, v)
+
+            assertEquals(note.name, "Nürnberg · Abdeckung abgelaufen", line(gestern))
+            // Gegenprobe: am letzten abgedeckten Tag steht das Kurzwort noch
+            // da (bei NONE nie) — sonst bliebe dieser Test auch dann gruen,
+            // wenn das Kurzwort ueberall verschwunden waere.
+            val amLetztenTag = line(heute)
+            val kurzwort = amLetztenTag.removePrefix("Nürnberg · nur noch heute")
+            assertEquals(note.name, note == VerificationNote.NONE, kurzwort.isEmpty())
+            assertEquals(note.name, "Nürnberg · nur noch heute$kurzwort", amLetztenTag)
+        }
     }
 
     @Test fun `jede Note bekommt ihr Kurzwort, NONE und null keines`() {

@@ -162,6 +162,28 @@ object CacheStore {
     fun select(entries: List<RawEntry>, lat: Double, lng: Double): RawEntry? =
         entries.getOrNull(indexOf(entries, lat, lng))
 
+    /**
+     * Die Koepfe zu MEHREREN Orten auf einmal — fuer die Favoritenliste im
+     * Einstellungsblatt (`OfficialTimesCache.statusesFor`). Ein einziger
+     * [split] speist alle Nachschlaege, statt den ~270-KB-String je Favorit
+     * neu zu zerlegen.
+     *
+     * **Die Reihenfolge ist die von [coords], nicht die des Speichers**, und
+     * ein Ort ohne Eintrag ergibt `null` AN SEINER STELLE, keine Luecke: der
+     * Aufrufer zeichnet je Favorit eine Zeile und paart ueber den Index.
+     * Verruecken sich die beiden Listen gegeneinander, stuende Istanbuls
+     * Stand unter Nuernbergs Namen — amtlich aussehende Zeiten am falschen
+     * Ort, genau die Fehlerklasse, die dieser Cache verhindern soll. Deshalb
+     * liegt die Zuordnung hier, in der reinen Schicht, und nicht im Adapter.
+     *
+     * Rueckgabe sind [CacheHeader], nicht ein fertiger Anzeigestatus: was
+     * eine Statuszeile braucht, ist ein Begriff der App, und `core` soll ihn
+     * nicht kennen. Der Nachschlag je Ort geht ueber [select], hat also
+     * dieselbe Ortsidentitaet wie jeder andere Zugriff.
+     */
+    fun headersFor(entries: List<RawEntry>, coords: List<Pair<Double, Double>>): List<CacheHeader?> =
+        coords.map { (lat, lng) -> select(entries, lat, lng)?.header }
+
     /** [added] einfuegen oder den passenden Eintrag ersetzen (Identitaet
      *  ueber `stampMatches` — eine Ortsverschiebung um ~1 km aktualisiert
      *  den bestehenden Eintrag, statt einen Platz zu verbrauchen).
@@ -648,9 +670,13 @@ object CacheStore {
         val lastDate = header.lastDate?.toString() ?: NULL_MARKER
         val lastAttempt = header.lastAttemptEpochMs?.toString() ?: NULL_MARKER
         // `|` darf im Fehlertext nicht vorkommen (Trennzeichen), ein
-        // Zeilenumbruch wuerde eine zweite "Kopfzeile" vortaeuschen.
-        // Fehlertexte sind unsere eigenen Literale — der Verlust ist
-        // theoretisch.
+        // Zeilenumbruch wuerde eine zweite "Kopfzeile" vortaeuschen. Diese
+        // Bereinigung ist TRAGEND, nicht theoretisch: seit Task 12 steht in
+        // `lastError` die Fehlerzusammenfassung des Abrufs, und deren
+        // Bausteine fallen auf `e.message` zurueck — fremder Text aus einer
+        // Netzbibliothek, bis 80 Zeichen je Quelle. Was dort steht, wissen
+        // wir nicht; dass es die Zeile nicht sprengt, sichert erst diese
+        // Ersetzung.
         val error = header.lastError?.replace(FIELD_SEP, " ")?.replace("\n", " ")?.replace("\r", " ") ?: NULL_MARKER
         val verification = header.verification?.let { formatVerification(it) } ?: NULL_MARKER
         return "#${header.latitude}$FIELD_SEP${header.longitude}$FIELD_SEP$locationId$FIELD_SEP" +

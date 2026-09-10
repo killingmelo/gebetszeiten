@@ -136,15 +136,11 @@ object PrayerProvider {
                     val result = fetcher.fetch(targetSettings(settings, targetLat, targetLng))
                     if (result.schedule.isEmpty()) {
                         cache.recordAttempt(
-                            // `errorSummary` nennt jede gescheiterte Quelle
-                            // samt Grund ("Direktabruf: HTTP 503 · Proxy:
-                            // Zeitüberschreitung"). Es ist null, wenn KEINE
-                            // Quelle geworfen hat — dann hat schlicht keine
-                            // etwas geliefert (kein Standort aufloesbar, oder
-                            // leere Antworten), und dafuer bleibt das Literal
-                            // richtig.
-                            result.errorSummary
-                                ?: "Keine amtlichen Zeiten erhalten (Standort oder Netz)",
+                            // Wortlaut und Rueckfall in `emptyResultError`,
+                            // einer reinen Funktion: hier drinnen — Context,
+                            // Netz, DataStore — waeren sie ohne Robolectric
+                            // nicht pruefbar, dort sind sie es.
+                            emptyResultError(result.errorSummary),
                             now,
                             targetLat,
                             targetLng,
