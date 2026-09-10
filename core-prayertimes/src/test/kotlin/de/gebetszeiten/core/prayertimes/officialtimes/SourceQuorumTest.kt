@@ -599,5 +599,61 @@ class SourceQuorumTest {
         assertEquals("der Jahresplan darf nicht verlorengehen", 400, outcome.schedule.size)
     }
 
+    @Test fun `minConflictDays und maxDriftDays haengen zusammen - wer eines anhebt, muss das andere nachziehen`() {
+        // Die beiden Vorgabewerte stehen in verschiedenen Funktionen und
+        // koennen im Code nicht gekoppelt werden. Dieser Test ist die
+        // Kopplung: der Vorgabewert von minConflictDays muss so gross sein,
+        // dass die HAELFTE davon mehr Tage verlangt, als maxDriftDays
+        // durchgehen laesst.
+        //
+        // Sonst entsteht eine Lage, die je nach Fenstergroesse einmal
+        // "moegliche Korrektur" und einmal "kaputter Parser" heisst: bei
+        // minConflictDays = 6 waeren "3 von 6 abweichend" systematisch,
+        // obwohl drei abweichende Tage der Zahl nach noch innerhalb der
+        // Drift-Toleranz liegen.
+        val minConflictDays = defaultMinConflictDays()
+        val maxDriftDays = defaultMaxDriftDays()
+
+        // ceil(minConflictDays / 2) — die kleinste Zahl abweichender Tage,
+        // die im kleinsten erlaubten Fenster als systematisch durchgeht.
+        val kleinsteSystematischeAbweichung = (minConflictDays + 1) / 2
+        assertTrue(
+            "minConflictDays=$minConflictDays ist zu klein fuer maxDriftDays=$maxDriftDays: " +
+                "$kleinsteSystematischeAbweichung abweichende Tage gaelten als systematisch, " +
+                "liegen aber noch in der Drift-Toleranz. Erwartet: minConflictDays >= ${2 * maxDriftDays + 1}",
+            kleinsteSystematischeAbweichung > maxDriftDays,
+        )
+    }
+
+    /** Liest den Vorgabewert, statt die 7 hier zu wiederholen — sonst pruefte
+     *  der Test seine eigene Kopie und nicht den echten Wert. */
+    private fun defaultMinConflictDays(): Int {
+        // Binaere Suche waere Uebertreibung: die Grenze wird direkt gemessen.
+        // Bei genau `n` verglichenen, alle abweichenden Tagen ueberstimmt das
+        // Quorum genau dann, wenn n >= minConflictDays.
+        for (n in 1..64) {
+            val outcome = resolve(
+                direct(plan(days = 400, times = six(isha = "21:07"))),
+                proxy(plan(days = n)),
+                ezan(plan(days = n)),
+            )
+            if (outcome.verification.note == VerificationNote.CONFLICT_OVERRIDDEN) return n
+        }
+        error("kein Fenster bis 64 Tage ueberstimmt — minConflictDays unplausibel gross")
+    }
+
+    /** Analog gemessen: bei genau `n` abweichenden Tagen in einem grossen
+     *  Fenster kippt MINOR_DRIFT nach CONFLICT, sobald n > maxDriftDays. */
+    private fun defaultMaxDriftDays(): Int {
+        for (n in 1..64) {
+            val outcome = resolve(
+                direct(plan(days = 31)),
+                proxy(planWithDrift(days = 31, driftFrom = day0, driftDays = n)),
+            )
+            if (outcome.verification.note != VerificationNote.DRIFT) return n - 1
+        }
+        error("keine Drift-Grenze bis 64 Tage gefunden — maxDriftDays unplausibel gross")
+    }
+
     private fun QuorumOutcome.note() = verification.note
 }

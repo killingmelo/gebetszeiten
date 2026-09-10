@@ -208,13 +208,15 @@ class CompositeDiyanetFetcher(
  * Alle vier saehen in der Statuszeile aus wie ein Fehler der QUELLE, obwohl
  * es das Geraet oder die Leitung ist.
  *
- * **Die Reihenfolge im `when` ist Teil der Aussage:** [SocketTimeoutException]
- * steht vor [SocketException], damit ein Timeout „Zeitüberschreitung" bleibt
- * und nicht als „Keine Verbindung" durchgeht. Heute erbt sie von
- * `InterruptedIOException` und nicht von [SocketException], die Reihenfolge
- * ist also eine Vorsichtsmassnahme und keine Notwendigkeit — sie kostet
- * nichts und macht den Zweig unabhaengig davon, wo die JDK-Hierarchie ihn
- * einhaengt. Ein Test nagelt sie fest.
+ * **Zur Reihenfolge im `when`:** [SocketTimeoutException] steht vor
+ * [SocketException]. Das ist heute wirkungslos — sie erbt von
+ * `InterruptedIOException`, nicht von [SocketException] —, kostet aber nichts
+ * und macht den Zweig unabhaengig davon, wo die Hierarchie ihn einhaengt.
+ *
+ * **Kein Test haelt diese Reihenfolge fest**, und das laesst sich mit den
+ * echten Typen auch nicht: ein Vertauschen aendert bei keiner existierenden
+ * Ausnahme etwas. Wer hier umsortiert, bekommt also kein rotes Signal —
+ * dieser Absatz ist das einzige Signal.
  */
 internal fun fetchErrorText(e: Exception): String = when (e) {
     is SocketTimeoutException -> "Zeitüberschreitung"

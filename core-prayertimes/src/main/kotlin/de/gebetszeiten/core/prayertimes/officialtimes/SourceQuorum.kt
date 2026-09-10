@@ -183,9 +183,18 @@ private data class Decision(
  * bei UNVERIFIED_SINGLE und NONE Nullen.
  *
  * [minConflictDays] ist die kleinste Fenstergroesse, ab der ein Widerspruch
- * ueberhaupt systematisch heissen darf. Der Vorgabewert 7 liegt bewusst
- * ueber [maxDriftDays]: ein Fenster, das nicht einmal die Drift-Schwelle
- * ueberschreitet, kann die Form eines Widerspruchs nicht zeigen.
+ * ueberhaupt systematisch heissen darf. Der Vorgabewert 7 ist nicht
+ * irgendeine Zahl ueber [maxDriftDays], sondern genau `2 * maxDriftDays + 1`
+ * — der kleinste Wert, fuer den die Haelfte-Bedingung mehr Tage verlangt,
+ * als die Drift-Schwelle durchgehen laesst. Bei 6 waeren „3 von 6
+ * abweichend" systematisch, obwohl drei abweichende Tage der Zahl nach noch
+ * INNERHALB der Drift-Toleranz liegen — dieselbe Lage waere je nach
+ * Fenstergroesse einmal „moegliche Korrektur" und einmal „kaputter Parser".
+ *
+ * Die beiden Vorgabewerte haengen also zusammen, ohne dass der Code sie
+ * koppeln koennte (sie sind Parameter zweier verschiedener Funktionen). Ein
+ * Test in `SourceQuorumTest` haelt die Beziehung fest: wer [maxDriftDays]
+ * anhebt, ohne [minConflictDays] nachzuziehen, bekommt ihn rot.
  *
  * [nowEpochMs] wird durchgereicht, nicht aus der Systemuhr geholt: reine
  * Funktion, ohne Netz und ohne Uhr.

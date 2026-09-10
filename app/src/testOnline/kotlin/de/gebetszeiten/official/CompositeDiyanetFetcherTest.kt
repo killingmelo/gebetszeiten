@@ -235,13 +235,16 @@ class CompositeDiyanetFetcherTest {
     }
 
     @Test
-    fun `ein Timeout bleibt Zeitueberschreitung - die Reihenfolge im when haelt`() {
-        // Stuende der SocketException-Zweig VOR dem Timeout-Zweig, saehe der
-        // Nutzer bei jedem Timeout „Keine Verbindung" — eine falsche
-        // Diagnose, die zur falschen Abhilfe fuehrt.
+    fun `Timeout und Verbindungsabbruch sind zwei verschiedene Diagnosen`() {
+        // Beide sind Netzfehler, fuehren aber zu verschiedener Abhilfe —
+        // deshalb duerfen sie nicht denselben Text bekommen.
+        //
+        // Dieser Test haelt NICHT die Reihenfolge im `when` fest: ein
+        // Vertauschen der beiden Zweige aendert nichts, weil
+        // SocketTimeoutException von InterruptedIOException erbt und nicht
+        // von SocketException. Mit den echten Typen ist die Reihenfolge nicht
+        // pruefbar — sie steht nur als Vorsichtsmassnahme dort.
         assertEquals("Zeitüberschreitung", fetchErrorText(SocketTimeoutException("Read timed out")))
-        // Und die Gegenprobe: eine ANDERE SocketException ist keine
-        // Zeitueberschreitung.
         assertEquals("Keine Verbindung", fetchErrorText(SocketException("Software caused connection abort")))
     }
 
