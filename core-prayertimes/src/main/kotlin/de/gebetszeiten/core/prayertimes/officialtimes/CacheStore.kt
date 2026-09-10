@@ -164,9 +164,13 @@ object CacheStore {
 
     /**
      * Die Koepfe zu MEHREREN Orten auf einmal — fuer die Favoritenliste im
-     * Einstellungsblatt (`OfficialTimesCache.statusesFor`). Ein einziger
-     * [split] speist alle Nachschlaege, statt den ~270-KB-String je Favorit
-     * neu zu zerlegen.
+     * Einstellungsblatt (`OfficialTimesCache.statusesFor`).
+     *
+     * Sie nimmt bereits zerlegte [entries] statt eines Strings, damit der
+     * Aufrufer EINMAL [split] und alle Nachschlaege darauf machen kann,
+     * statt den ~270-KB-String je Favorit neu zu zerlegen. Diese Funktion
+     * ruft [split] also nicht selbst — sie ist der Grund, warum es genuegt,
+     * es einmal zu tun.
      *
      * **Die Reihenfolge ist die von [coords], nicht die des Speichers**, und
      * ein Ort ohne Eintrag ergibt `null` AN SEINER STELLE, keine Luecke: der
