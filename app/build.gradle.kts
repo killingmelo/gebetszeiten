@@ -90,6 +90,51 @@ android {
     }
 }
 
+// Vier Unit-Tests oeffnen zur Laufzeit Dateien direkt im Arbeitsbaum, statt
+// sie ueber den Klassenpfad zu beziehen:
+//
+//   CountdownIconAssetsTest, CountdownGlyphShapeTest  -> die Drawables und
+//       tools/notification-icons/icons.sha256
+//   OfficialAssetsIntegrityTest                       -> shared-assets/official
+//   NoNetworkInSharedCodeTest                         -> die vier Manifeste
+//       und den geteilten Quellsatz
+//
+// Diese Pfade sind fuer Gradle keine Task-Eingaben: die Kotlin-Quellen von
+// app/src/main und core-prayertimes sind es mittelbar ueber die Uebersetzung,
+// aber die Drawables, die Assets, die Manifeste, wear/ (haengt an keiner
+// Uebersetzung dieses Moduls) und app/src/offline (nur im offline-Flavor
+// uebersetzt) nicht.
+//
+// Ohne Deklaration gilt der Test genau dann als UP-TO-DATE, wenn eingetreten
+// ist, wogegen er verteidigt: jemand hat eine dieser Dateien von Hand
+// nachgebessert. Er biss erst mit `--rerun-tasks`, und das steht in keiner
+// Definition of Done durchgaengig. Also stehen die gelesenen Pfade hier.
+tasks.withType<Test>().configureEach {
+    inputs.dir(file("src/main/res/drawable"))
+        .withPropertyName("countdownDrawables")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.file("tools/notification-icons/icons.sha256"))
+        .withPropertyName("countdownIconManifest")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.file("shared-assets/official"))
+        .withPropertyName("officialAssets")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(
+        file("src/main/AndroidManifest.xml"),
+        file("src/offline/AndroidManifest.xml"),
+        file("src/online/AndroidManifest.xml"),
+        rootProject.file("wear/src/main/AndroidManifest.xml"),
+    )
+        .withPropertyName("flavorManifeste")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(file("src/offline"))
+        .withPropertyName("offlineQuellsatz")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.file("wear/src/main"))
+        .withPropertyName("wearQuellsatz")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 dependencies {
     implementation(project(":core-prayertimes"))
 

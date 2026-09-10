@@ -7,5 +7,5 @@
     <!-- Erzeugt von tools/notification-icons/build_icons.py; nicht von Hand aendern. -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M10.3,2.5H13.7V13.7H10.3Z M10.3,10.3H13.7V21.5H10.3Z" />
+        android:pathData="M10.3,2.5H13.7V13.7H10.3Z M10.3,10.3H13.7V21.5H10.3Z M7.5,18.1H16.5V21.5H7.5Z M7.5,2.5H13.7V5.9H7.5Z" />
 </vector>

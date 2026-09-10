@@ -13,6 +13,10 @@ Quelltext niemand sieht. Hier stehen die Ziffern genau einmal.
 Warum keine Schriftart: keine Font-Abhaengigkeit, keine Lizenzfrage, und bei
 24 dp sind Rechteck-Segmente eindeutiger als extrahierte Schriftumrisse.
 
+Eine Ausnahme von der reinen Sieben-Segment-Form gibt es: die alleinstehende
+`1` bekommt Fuss und Fahne, sonst waere sie in der Statusleiste ein blosser
+Strich (siehe SINGLE_SEGMENTS).
+
 Wiederholbar: zweimal laufen lassen ergibt byte-gleiche Dateien.
 Eingebaute Pruefungen (Skript bricht hart ab): genau 23 Symbole, jedes Zeichen
 definiert, alle Koordinaten im Viewport, kein Symbol pfadgleich mit einem
@@ -55,10 +59,18 @@ PAIR_STROKE = 2.6
 SINGLE_WIDTH = 13.0
 SINGLE_STROKE = 3.4
 
+# Breite der alleinstehenden `1` (siehe SINGLE_SEGMENTS weiter unten). Sie ist
+# schmaler als SINGLE_WIDTH, weil ein 13 dp breiter Fuss unter einem 3.4 dp
+# schmalen Stamm wie ein Sockel aussieht und nicht wie eine Ziffer.
+ONE_WIDTH = 9.0
+
 # --- Die elf Zeichen ---------------------------------------------------------
 # Sieben-Segment-Belegung. Buchstaben wie auf jedem Datenblatt:
 #   a = oben, b = rechts oben, c = rechts unten, d = unten,
 #   e = links unten, f = links oben, g = Mitte.
+# Dazu drei Felder, die kein Datenblatt kennt und die nur die alleinstehende
+# `1` benutzt (siehe SINGLE_SEGMENTS):
+#   i = Stamm oben (Mitte), j = Stamm unten (Mitte), k = Fahne oben links.
 SEGMENTS = {
     "0": "abcdef",
     "1": "bc",
@@ -79,9 +91,25 @@ SEGMENTS = {
 # eine Luecke, die wie ein Leerzeichen aussieht.
 NARROW = "1"
 
+# Belegung, die NUR fuer ein alleinstehendes Zeichen gilt.
+#
+# Die Sieben-Segment-`1` ist ein einzelner senkrechter Balken. Auf einem
+# Display steht sie in einer bekannten Ziffernzelle neben ihresgleichen; in
+# der Statusleiste steht sie allein zwischen Systemsymbolen, und dort ist ein
+# 3.4 x 19 dp Strich eher ein Trennstrich oder ein Renderfehler als eine Eins.
+# Ausgerechnet dieses Symbol steht in der letzten Minute vor dem Gebet, wird
+# also am haeufigsten angesehen. Es bekommt darum Fuss und Fahne.
+#
+# In `1h` und `10` bleibt es beim blossen Balken: dort liest der Nachbar mit,
+# und Fuss plus Fahne machten die ohnehin engen Doppelsymbole nur voller.
+SINGLE_SEGMENTS = {
+    "1": "ijdk",
+}
+
 
 def _boxes(x0: float, width: float, stroke: float) -> dict:
-    """Die sieben Segmente eines Zeichens als (x, y, breite, hoehe)."""
+    """Die Felder eines Zeichens als (x, y, breite, hoehe) — die sieben
+    Segmente plus die drei Sonderfelder der alleinstehenden `1`."""
     y0 = GLYPH_TOP
     h = GLYPH_HEIGHT
     t = stroke
@@ -95,10 +123,28 @@ def _boxes(x0: float, width: float, stroke: float) -> dict:
         "e": (x0, mid, t, half),
         "f": (x0, y0, t, half),
         "g": (x0, mid, width, t),
+        # Nur fuer die alleinstehende `1`: Stamm in der Mitte statt rechts,
+        # dazu die Fahne links oben, die bis an den Stamm heranreicht.
+        "i": (x0 + (width - t) / 2.0, y0, t, half),
+        "j": (x0 + (width - t) / 2.0, mid, t, half),
+        # Die Fahne reicht bis an die rechte Kante des Stamms heran und
+        # ueberlappt ihn: als Balken (breiter als hoch) ist sie eindeutig ein
+        # waagerechtes Feld, und das Bild ist dasselbe wie bei einem Stummel,
+        # der am Stamm endet.
+        "k": (x0, y0, (width - t) / 2.0 + t, t),
     }
 
 
-def _advance(char: str, width: float, stroke: float) -> float:
+def _segments(char: str, single: bool) -> str:
+    """Belegung eines Zeichens; alleinstehend gilt SINGLE_SEGMENTS zuerst."""
+    if single and char in SINGLE_SEGMENTS:
+        return SINGLE_SEGMENTS[char]
+    return SEGMENTS[char]
+
+
+def _advance(char: str, single: bool, width: float, stroke: float) -> float:
+    if single and char in SINGLE_SEGMENTS:
+        return ONE_WIDTH
     return stroke if char in NARROW else width
 
 
@@ -123,14 +169,14 @@ def rects_for(text: str) -> list:
     stroke = SINGLE_STROKE if single else PAIR_STROKE
     gap = 0.0 if single else PAIR_GAP
 
-    advances = [_advance(c, width, stroke) for c in text]
+    advances = [_advance(c, single, width, stroke) for c in text]
     total = sum(advances) + gap * (len(text) - 1)
     x = (VIEWPORT - total) / 2.0
 
     out = []
     for char, advance in zip(text, advances):
         boxes = _boxes(x, advance, stroke)
-        for name in SEGMENTS[char]:
+        for name in _segments(char, single):
             out.append(boxes[name])
         x += advance + gap
     return out
