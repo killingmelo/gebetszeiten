@@ -112,12 +112,25 @@ Phone und Wear teilen sich die applicationId `de.gebetszeiten` — Play verlangt
 
 ### 8. Jaehrliches Zeiten-Update (amtliche Diyanet-Tabellen)
 Die gebuendelten amtlichen Zeiten (shared-assets/official/) gelten je ein
-Kalenderjahr. Sobald Diyanet das Folgejahr publiziert (erfahrungsgemaess Ende
-Dezember, Jahresansicht auf namazvakitleri.diyanet.gov.tr pruefen):
+Kalenderjahr. **Du musst dir den Termin nicht merken:** der Unit-Test
+`OfficialAssetsIntegrityTest.bundledYearCoversTheNextTwoMonths` liest
+`shared-assets/official/coverage.tsv` und wird in jedem lokalen Build rot,
+sobald die Abdeckung in weniger als zwei Monaten endet. Seine Meldung
+wiederholt die Schritte unten.
+
+Sobald Diyanet das Folgejahr publiziert (erfahrungsgemaess Ende Dezember,
+Jahresansicht auf namazvakitleri.diyanet.gov.tr pruefen):
 1. `tools/diyanet-fetch/cache/` loeschen (sonst wird das alte Jahr re-emittiert),
-2. `python tools/diyanet-fetch/fetch_diyanet.py` laufen lassen (~30-60 min),
-3. Report pruefen (>=500 Standorte, < 4 MB), `git add shared-assets/official`,
-4. Integritaetstest: `gradlew :app:testOfflineDebugUnitTest`,
+2. `python tools/diyanet-fetch/fetch_diyanet.py --year <jahr>` laufen lassen
+   (~30-60 min). `--year` ist Pflicht: die Jahresseite ist ein rollierendes
+   ~16-Monats-Fenster, das Skript schreibt nur Zeilen dieses Jahres und bricht
+   hart ab, wenn ein Standort das Jahr nicht lueckenlos abdeckt,
+3. Report pruefen (>=500 Standorte, < 4 MB); Tabellen des Vorjahrs entfernen
+   (`git rm shared-assets/official/tables/t*-<altjahr>.tsv`, das Skript warnt
+   danach), dann `git add shared-assets/official` — dazu gehoert das vom
+   Skript neu geschriebene `coverage.tsv`,
+4. Integritaetstest: `gradlew :app:testOfflineDebugUnitTest` (jetzt wieder
+   gruen, inklusive des Stolperdrahts oben),
 5. App- UND Wear-Update mit erhoehtem versionCode veroeffentlichen (beide
    Module buendeln dieselben Assets).
 

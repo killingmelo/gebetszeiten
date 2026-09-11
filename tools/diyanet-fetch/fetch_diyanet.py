@@ -3,10 +3,23 @@
 
 Ablauf: Standortliste vom Community-Proxy -> pro Standort Jahresseite von
 namazvakitleri.diyanet.gov.tr (Rate-Limit 1s, Roh-HTML gecacht/resumierbar)
--> Koordinaten via cities.tsv + city-aliases.tsv -> Dedupe identischer
-Tabellen -> TSV-Assets. Einmal pro Jahr manuell ausfuehren (siehe README).
+-> Koordinaten via cities.tsv + city-aliases.tsv -> nur die Zeilen von
+--year behalten -> Dedupe identischer Tabellen -> TSV-Assets + coverage.tsv.
+Einmal pro Jahr manuell ausfuehren (siehe README).
+
+Warum --year Pflicht ist: die Jahresseite ist ein rollierendes ~16-Monats-
+Fenster. Im September liefert sie den Rest des laufenden Jahres UND das
+ganze Folgejahr. Frueher nahm das Skript einfach max(Jahr) aus den Daten
+und schrieb Dateien namens `-2027.tsv`, in denen 2026er Tage standen, ohne
+zu pruefen, ob 2027 ueberhaupt vollstaendig war.
+
+Eingebaute Pruefung (Skript bricht hart ab): jeder Standort muss das
+gewaehlte Jahr LUECKENLOS abdecken (365 Tage, im Schaltjahr 366). Ein halbes
+Jahr im Bundle waere schlimmer als ein altes, weil es niemandem auffaellt.
 """
 import argparse
+import calendar
+import datetime
 import html as html_module
 import json
 import re
@@ -20,7 +33,6 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 ASSETS = REPO / "app" / "src" / "main" / "assets"
 OUT_DIR = REPO / "shared-assets" / "official"
-TABLES_DIR = OUT_DIR / "tables"
 CACHE = Path(__file__).resolve().parent / "cache"
 
 LOCATIONS_URL = "https://prayertimes.api.abdus.dev/api/diyanet/locations?country=ALMANYA"
@@ -125,10 +137,32 @@ def parse_year_table(html: str) -> list[tuple[str, list[str]]]:
     return rows
 
 
+def days_of_year(year: int) -> set[str]:
+    """{'2026-01-01', ...} — alle Kalendertage des Jahres als ISO-Datum."""
+    start = datetime.date(year, 1, 1)
+    return {(start + datetime.timedelta(days=i)).isoformat()
+            for i in range(366 if calendar.isleap(year) else 365)}
+
+
 def main() -> None:
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    # Pflicht, kein Default: ein Default waere ab Herbst die Haelfte des Jahres
+    # falsch (rollierendes Fenster), und genau diese stille Annahme war der
+    # Fehler, den dieses Argument beseitigt. Wer das Bundle baut, sagt wofuer.
+    ap.add_argument("--year", type=int, required=True,
+                    help="Kalenderjahr, das gebuendelt wird (Pflicht, z.B. 2027)")
     ap.add_argument("--limit", type=int, default=0, help="nur N Standorte (Smoke-Test)")
+    ap.add_argument("--out-dir", type=Path, default=OUT_DIR,
+                    help="Ausgabeverzeichnis (Default: shared-assets/official); "
+                         "fuer Rauchtests auf ein temporaeres Verzeichnis zeigen")
     args = ap.parse_args()
+
+    year = args.year
+    out_dir: Path = args.out_dir
+    tables_dir = out_dir / "tables"
+    wanted_days = days_of_year(year)
+    print(f"Zieljahr {year}: {len(wanted_days)} Tage erwartet -> {out_dir}")
 
     locations = load_locations()
     print(f"{len(locations)} Diyanet-Standorte (ALMANYA)")
@@ -148,38 +182,75 @@ def main() -> None:
     # Scrape + Dedupe: identischer Tabelleninhalt -> eine Datei.
     content_to_ref: dict[str, str] = {}
     index_rows: list[tuple[int, str, float, float, str]] = []
-    year_seen: set[int] = set()
     skipped: list[str] = []
     for n, (loc, (name, lat, lng)) in enumerate(sorted(matched, key=lambda m: m[0]["id"]), 1):
         print(f"[{n}/{len(matched)}] {name} (id={loc['id']})")
         try:
-            rows = parse_year_table(year_page(loc["id"]))
-            year_seen.update(int(d[:4]) for d, _ in rows)
-            content = "".join(f"{d}\t" + "\t".join(t) + "\n" for d, t in rows)
-            ref = content_to_ref.setdefault(content, f"t{len(content_to_ref):03d}")
-            index_rows.append((loc["id"], name, lat, lng, ref))
+            page_rows = parse_year_table(year_page(loc["id"]))
         except Exception as e:
             print(f"  SKIP {name} (id={loc['id']}): {e}", file=sys.stderr)
             skipped.append(name)
+            continue
 
-    TABLES_DIR.mkdir(parents=True, exist_ok=True)
-    year = max(year_seen)
+        # Nur Zeilen des Zieljahres; alles aus dem Nachbarjahr faellt weg.
+        rows = [(d, t) for d, t in page_rows if d.startswith(f"{year}-")]
+        missing = sorted(wanted_days - {d for d, _ in rows})
+        if missing or len(rows) != len(wanted_days):
+            # Harter Abbruch (Muster: build_cities.py). Ein lueckenhaftes Jahr
+            # im Bundle merkt niemand — ein abgebrochener Lauf schon.
+            sys.exit(
+                f"FEHLER: {name} (Diyanet-id {loc['id']}) deckt {year} nicht vollstaendig ab: "
+                f"{len(rows)} Zeilen fuer {len(wanted_days)} erwartete Tage, "
+                f"{len(missing)} Tage fehlen"
+                + (f" (erster {missing[0]}, letzter {missing[-1]})" if missing else "")
+                + f".\n  Die Jahresseite ist ein rollierendes Fenster - ist {year} bei Diyanet "
+                f"schon vollstaendig publiziert? Falls der Cache noch das alte Fenster haelt: "
+                f"{CACHE} loeschen und neu holen."
+            )
+
+        content = "".join(f"{d}\t" + "\t".join(t) + "\n" for d, t in rows)
+        ref = content_to_ref.setdefault(content, f"t{len(content_to_ref):03d}")
+        index_rows.append((loc["id"], name, lat, lng, ref))
+
+    if not index_rows:
+        sys.exit("FEHLER: kein einziger Standort lieferte eine Tabelle - nichts geschrieben.")
+
+    tables_dir.mkdir(parents=True, exist_ok=True)
     total = 0
     for content, ref in content_to_ref.items():
-        p = TABLES_DIR / f"{ref}-{year}.tsv"
+        p = tables_dir / f"{ref}-{year}.tsv"
         p.write_text(content, encoding="utf-8", newline="\n")
         total += len(zlib.compress(content.encode("utf-8"), 9))
     index_text = "".join(f"{i}\t{n}\t{lat}\t{lng}\t{r}\n" for i, n, lat, lng, r in index_rows)
-    (OUT_DIR / "locations-de.tsv").write_text(index_text, encoding="utf-8", newline="\n")
+    (out_dir / "locations-de.tsv").write_text(index_text, encoding="utf-8", newline="\n")
 
-    print(f"\nJahr(e): {sorted(year_seen)} | eindeutige Tabellen: {len(content_to_ref)} "
-          f"von {len(index_rows)} Standorten")
+    # coverage.tsv: erster und letzter abgedeckter Tag, eine Zeile, Tab-getrennt,
+    # kein Header — im Ton von locations-de.tsv. Gelesen vom Integritaetstest
+    # (Stolperdraht) und von der App. Die Vollstaendigkeitspruefung oben hat
+    # fuer JEDEN Standort bewiesen, dass genau diese Tage geschrieben wurden —
+    # deshalb darf die Abdeckung hier aus wanted_days kommen.
+    covered = sorted(wanted_days)
+    (out_dir / "coverage.tsv").write_text(
+        f"{covered[0]}\t{covered[-1]}\n", encoding="utf-8", newline="\n")
+
+    print(f"\nJahr {year} ({covered[0]} bis {covered[-1]}) | eindeutige Tabellen: "
+          f"{len(content_to_ref)} von {len(index_rows)} Standorten")
     print(f"Groesse komprimiert (zlib-9-Schaetzung): {total / 1024 / 1024:.2f} MB "
           f"(Ziel < 4 MB) + Index {len(index_text) / 1024:.0f} KB")
     if skipped:
         print(f"Uebersprungen wegen Fehlern: {len(skipped)}")
         for name in skipped[:20]:
             print(f"  {name}")
+
+    # Tabellen frueherer Jahrgaenge werden NICHT geloescht (Loeschen gehoert in
+    # den Commit, nicht in ein Skript), aber sie sollen auffallen: sonst
+    # buendelt die App zwei Jahrgaenge und waechst jedes Jahr weiter.
+    stale = sorted(p.name for p in tables_dir.glob("t*.tsv")
+                   if not p.name.endswith(f"-{year}.tsv"))
+    if stale:
+        print(f"\nACHTUNG: {len(stale)} Tabellen frueherer Jahrgaenge liegen noch in "
+              f"{tables_dir} (z.B. {stale[0]}). Vor dem Commit entfernen:")
+        print(f"  git rm shared-assets/official/tables/t*-{stale[0][5:9]}.tsv")
 
 
 if __name__ == "__main__":
