@@ -9,7 +9,9 @@ import de.gebetszeiten.core.prayertimes.officialtimes.parseOfficialTimes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
+import java.io.IOException
 import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
 /**
  * Amtliche Diyanet-Zeiten aus gebündelten Offline-Tabellen (assets/official/).
@@ -19,9 +21,17 @@ import java.time.LocalDate
 object BundledOfficialSource {
 
     private const val LOCATIONS_ASSET = "official/locations-de.tsv"
+    private const val COVERAGE_ASSET = "official/coverage.tsv"
 
     @Volatile private var locations: List<OfficialLocation>? = null
     @Volatile private var tables: Map<String, Map<LocalDate, SixTimes>> = emptyMap()
+
+    /** Die anderen beiden Caches hier erkennen „schon geladen" am Wert selbst
+     *  (Liste/Map ungleich null). Beim Abdeckungsende ist `null` ein
+     *  gueltiges Ergebnis — ohne dieses Flag wuerde eine fehlende Datei bei
+     *  jedem Aufruf erneut geoeffnet. */
+    @Volatile private var coverageRead = false
+    @Volatile private var cachedCoverageEnd: LocalDate? = null
 
     /** Vorab laden (beim Öffnen der Einstellungen), damit die erste
      *  Badge-Berechnung nicht an der TSV-Parse-Latenz hängt — analog
@@ -37,6 +47,33 @@ object BundledOfficialSource {
     /** Anzeigename des Diyanet-Standorts, dessen amtliche Tabelle (Datum!) greift. */
     suspend fun locationNameFor(context: Context, lat: Double, lng: Double, date: LocalDate): String? =
         nearestCovering(context, lat, lng, date)?.first?.name
+
+    /**
+     * Letzter Tag, den die gebündelten Tabellen abdecken — aus
+     * `official/coverage.tsv`, geschrieben von `fetch_diyanet.py`, nicht von
+     * Hand gepflegt. Gilt für ALLE gebündelten Standorte: die Pipeline
+     * emittiert genau einen Jahrgang (siehe `OfficialAssetsIntegrityTest`).
+     *
+     * `null`, wenn die Datei fehlt oder unlesbar ist — eine fehlende Warnung
+     * ist besser als eine App, die nicht startet.
+     */
+    suspend fun coverageEnd(context: Context): LocalDate? {
+        if (coverageRead) return cachedCoverageEnd
+        return withContext(Dispatchers.IO) {
+            if (coverageRead) {
+                cachedCoverageEnd
+            } else {
+                loadCoverageEnd(context).also { cachedCoverageEnd = it; coverageRead = true }
+            }
+        }
+    }
+
+    private fun loadCoverageEnd(context: Context): LocalDate? = try {
+        context.assets.open(COVERAGE_ASSET).bufferedReader(Charsets.UTF_8)
+            .useLines { parseCoverageEnd(it) }
+    } catch (e: IOException) {
+        null
+    }
 
     /** Nächstgelegener gebündelter Diyanet-Standort ≤ 25 km, oder null.
      *  Auch vom Online-Fetcher genutzt (liefert die exakte diyanetId). */
@@ -80,5 +117,30 @@ object BundledOfficialSource {
         context.assets.open(path).bufferedReader(Charsets.UTF_8).useLines { parseOfficialTimes(it) }
     } catch (e: FileNotFoundException) {
         emptyMap()
+    }
+}
+
+/**
+ * Zerlegt `coverage.tsv`: eine Zeile, zwei Spalten (erster TAB letzter
+ * abgedeckter Tag). Geliefert wird der LETZTE — nur der sagt etwas darueber,
+ * wie lange die Reserve noch traegt.
+ *
+ * Steht ausserhalb von [BundledOfficialSource] und nimmt keinen `Context`,
+ * damit das Versprechen „unlesbar ergibt null, kein Absturz" ohne Android
+ * pruefbar ist (`CoverageAssetTest`) — analog zu `parseOfficialLocations`
+ * und `parseOfficialTimes`, die aus demselben Grund im geteilten Modul
+ * liegen. Dorthin gehoert dieser Parser nicht: die Wear-App liest keine
+ * Abdeckung.
+ */
+internal fun parseCoverageEnd(lines: Sequence<String>): LocalDate? {
+    val ende = lines.firstOrNull { it.isNotBlank() }
+        ?.split('\t')
+        ?.getOrNull(1)
+        ?.trim()
+        ?: return null
+    return try {
+        LocalDate.parse(ende)
+    } catch (e: DateTimeParseException) {
+        null
     }
 }

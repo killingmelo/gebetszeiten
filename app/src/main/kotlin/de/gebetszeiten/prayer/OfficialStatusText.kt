@@ -41,12 +41,25 @@ private val SHORT_STAMP = DateTimeFormatter.ofPattern("dd.MM., HH:mm")
  * aktualisieren" (das an derselben Bedingung haengt) ein Knopf ohne
  * sichtbare Wirkung. Am Aufrufort identisch mit der Knopf-Sichtbarkeit:
  * `settings.useOnline && !settings.useCalculated`.
+ *
+ * [bundledCoverageEnd] ist der letzte Tag, den die GEBUENDELTEN Tabellen
+ * abdecken — und den uebergibt der Aufrufer nur, wenn es fuer diesen Ort
+ * ueberhaupt eine gebuendelte Tabelle gibt, sonst `null`. Fuer einen
+ * Favoriten in Istanbul waere die Warnung Laerm: das Bundle deckt nur
+ * Deutschland ab, dort war nie eine Reserve. Nicht zu verwechseln mit
+ * `status.coveredUntil` — das ist die Abdeckung des ONLINE-CACHES.
+ *
+ * [today] wird ausschliesslich fuer [bundledCoverageEnd] gebraucht. Der
+ * Vorgabewert liest die Systemuhr (wie [zone] die Systemzeitzone) — wer die
+ * Warnzeile prueft, MUSS [today] setzen, sonst haengt der Test am Kalender.
  */
 fun officialStatusText(
     status: OfficialStatus,
     source: TimesSourceBadge,
     canFetch: Boolean,
     zone: ZoneId = ZoneId.systemDefault(),
+    bundledCoverageEnd: LocalDate? = null,
+    today: LocalDate = LocalDate.now(zone),
 ): String {
     val lines = mutableListOf<String>()
     when (source) {
@@ -98,7 +111,63 @@ fun officialStatusText(
         }
         status.lastError?.let { lines += "Fehler: $it" }
     }
+    // Ganz unten, und zwar unabhaengig von [source]: die Zeile beschreibt die
+    // RESERVE, nicht die aktive Quelle. Zwischen "Quelle:" und "Abgedeckt
+    // bis" gelesen, waere sie eine Aussage ueber das, was gerade traegt —
+    // dieselbe Verwechslung, gegen die "Abgedeckt bis" und die Pruefnotiz
+    // oben an `source is Official` haengen. Als letzte Zeile, hinter allem
+    // zur aktiven Quelle, ist sie erkennbar eine Anmerkung fuer danach.
+    coverageWarning(bundledCoverageEnd, today)?.let { lines += it }
     return lines.joinToString("\n")
+}
+
+/**
+ * Die eine Zeile, wenn die gebuendelte Reserve zur Neige geht — sonst `null`.
+ *
+ * Seit „online zuerst" sind die gebuendelten Tabellen nur noch Reserve: was
+ * der Nutzer davon hat, merkt er erst ohne Netz. Genau das sagt der Satz —
+ * nicht „ein Asset laeuft ab", sondern was danach passiert.
+ *
+ * [coverageEnd] ist der LETZTE abgedeckte Tag. `null` heisst „fuer diesen Ort
+ * gibt es gar keine gebuendelte Tabelle" (das Bundle deckt nur Deutschland
+ * ab) — dann gibt es nichts zu warnen. Ueber diese Anwendbarkeit entscheidet
+ * der Aufrufer, ueber den Wortlaut diese Funktion.
+ *
+ * **Die Schwelle faellt IN die Warnung:** `null` gibt es nur, wenn MEHR als
+ * [warnWithinDays] Tage abgedeckt sind. Genau auf der Schwelle wird gewarnt.
+ *
+ * **45 Tage und nicht 60 wie beim Online-Cache** ([MIN_FUTURE_DAYS]): die
+ * 60 dort sind die Schwelle, ab der die App von selbst nachlaedt — dort ist
+ * Handeln noch ohne Zutun des Nutzers moeglich. Die Reserve dagegen ist
+ * nicht dringend, solange Netz da ist; sie traegt nur den Ausnahmefall.
+ * Eine frueher gezeigte Zeile waere sechs Wochen lang Laerm ueber etwas, das
+ * der Nutzer ohnehin nicht bemerkt. [warnWithinDays] ist benannt, damit der
+ * Wert im Test nicht wiederholt werden muss.
+ *
+ * Keine Zahl behauptet hier etwas anderes, als sie ist: die einzige Zahl im
+ * Satz ist das Abdeckungsende selbst. Eine Restlaufzeit in Tagen wird
+ * bewusst NICHT genannt — sie waere eine zweite, staendig nachzurechnende
+ * Zahl neben einem Datum, das dasselbe schon exakt sagt.
+ *
+ * Reine Funktion, [today] kommt von aussen — testbar ohne Systemuhr.
+ */
+fun coverageWarning(
+    coverageEnd: LocalDate?,
+    today: LocalDate,
+    warnWithinDays: Long = 45,
+): String? {
+    if (coverageEnd == null) return null
+    if (coverageEnd.isAfter(today.plusDays(warnWithinDays))) return null
+    val ende = DATE.format(coverageEnd)
+    // `isBefore(today)` und nicht `<=`: der letzte abgedeckte Tag IST noch
+    // abgedeckt. „Endeten am heute" waere am letzten Tag eine Falschaussage.
+    return if (coverageEnd.isBefore(today)) {
+        "Offline-Reserve: gebündelte amtliche Zeiten endeten am $ende — " +
+            "ohne Netz gibt es jetzt nur die eigene Berechnung."
+    } else {
+        "Offline-Reserve: gebündelte amtliche Zeiten nur noch bis $ende — " +
+            "danach gibt es ohne Netz nur die eigene Berechnung."
+    }
 }
 
 /**

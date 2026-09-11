@@ -388,7 +388,28 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, re
             // unten — Knopf sichtbar ⟺ Abruf-Zeilen sichtbar, kann nicht mehr
             // auseinanderlaufen (Fix-Runde 3).
             val canFetch = settings.useOnline && !settings.useCalculated
-            value = de.gebetszeiten.prayer.officialStatusText(status, source, canFetch)
+            // Anwendbarkeit der Reservewarnung — der Wortlaut kommt aus
+            // coverageWarning. Massgeblich ist, ob es fuer diesen Ort
+            // ueberhaupt eine gebuendelte Tabelle GIBT, nicht ob sie heute
+            // noch greift: `bundledName` (locationNameFor) ist datumsabhaengig
+            // und faellt am Tag nach dem Abdeckungsende auf null — genau dann,
+            // wenn die Zeile "bereits abgelaufen" sagen muss. `nearestLocation`
+            // fragt nur nach dem Standort (≤ 25 km) und nutzt dieselbe bereits
+            // geladene Liste. Im Ausland: null, dort war nie eine Reserve.
+            val bundledCoverageEnd = if (
+                de.gebetszeiten.official.BundledOfficialSource.nearestLocation(context, lat, lng) != null
+            ) {
+                de.gebetszeiten.official.BundledOfficialSource.coverageEnd(context)
+            } else {
+                null
+            }
+            value = de.gebetszeiten.prayer.officialStatusText(
+                status,
+                source,
+                canFetch,
+                bundledCoverageEnd = bundledCoverageEnd,
+                today = today,
+            )
         }
         Text(
             statusText ?: stringResource(R.string.status_loading),

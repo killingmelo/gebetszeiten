@@ -4,6 +4,7 @@ import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
 import de.gebetszeiten.core.prayertimes.officialtimes.Verification
 import de.gebetszeiten.core.prayertimes.officialtimes.VerificationNote
 import de.gebetszeiten.prayer.TimesSourceBadge
+import de.gebetszeiten.prayer.coverageWarning
 import de.gebetszeiten.prayer.officialStatusText
 import de.gebetszeiten.prayer.verificationLine
 import org.junit.Assert.assertEquals
@@ -281,5 +282,76 @@ class OfficialStatusTest {
 
         val calculated = officialStatusText(status, TimesSourceBadge.Calculated, canFetch = true)
         assertTrue(calculated, !calculated.contains("Gegenprüfung"))
+    }
+
+    // --- Task 19: die Reserve laeuft ab -----------------------------------
+    // Der Aufrufer entscheidet die ANWENDBARKEIT (gibt es fuer diesen Ort
+    // ueberhaupt eine gebuendelte Tabelle?) und uebergibt sonst `null`; der
+    // WORTLAUT kommt aus `coverageWarning`.
+
+    private val heute = LocalDate.of(2026, 11, 20)
+
+    @Test fun `die Reservewarnung erscheint als letzte Zeile`() {
+        val text = officialStatusText(
+            OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
+            source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
+            bundledCoverageEnd = LocalDate.of(2026, 12, 31),
+            today = heute,
+        )
+        // Kein zweiter Wortlaut fuer dieselbe Sache.
+        assertEquals(coverageWarning(LocalDate.of(2026, 12, 31), heute), text.lines().last())
+    }
+
+    @Test fun `ohne gebuendelte Tabelle fuer diesen Ort bleibt der Text unveraendert`() {
+        // Ein Favorit in Istanbul: das Bundle deckt nur Deutschland ab, dort
+        // war nie eine Reserve. Der Aufrufer uebergibt deshalb null.
+        val status = OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null)
+        val ohne = officialStatusText(status, TimesSourceBadge.Official("Istanbul", 2), canFetch = true)
+        val mitNull = officialStatusText(
+            status,
+            source = TimesSourceBadge.Official("Istanbul", 2),
+            canFetch = true,
+            bundledCoverageEnd = null,
+            today = heute,
+        )
+        assertEquals(ohne, mitNull)
+        assertTrue(ohne, !ohne.contains("Offline-Reserve"))
+    }
+
+    @Test fun `ausserhalb der Frist bleibt der Text unveraendert`() {
+        val status = OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null)
+        val ohne = officialStatusText(status, TimesSourceBadge.Official("Sakarya", 2), canFetch = true)
+        val frueh = officialStatusText(
+            status,
+            source = TimesSourceBadge.Official("Sakarya", 2),
+            canFetch = true,
+            bundledCoverageEnd = LocalDate.of(2026, 12, 31),
+            today = LocalDate.of(2026, 9, 11), // 111 Tage Rest
+        )
+        assertEquals(ohne, frueh)
+    }
+
+    @Test fun `die Warnung haengt an der Reserve, nicht an der aktiven Quelle`() {
+        // Auch wenn gerade der Online-Cache traegt (Official) oder gerechnet
+        // wird (Calculated): die Reserve ist dieselbe, und genau sie geht zur
+        // Neige. Die bestehenden Zeilen bleiben dabei, wie sie waren.
+        val status = OfficialStatus(null, null, null, null)
+        listOf(
+            TimesSourceBadge.Official("Nürnberg", 1),
+            TimesSourceBadge.Bundled("Nürnberg"),
+            TimesSourceBadge.Calculated,
+        ).forEach { source ->
+            val ohne = officialStatusText(status, source, canFetch = false)
+            val mit = officialStatusText(
+                status,
+                source = source,
+                canFetch = false,
+                bundledCoverageEnd = LocalDate.of(2026, 12, 31),
+                today = heute,
+            )
+            assertEquals(ohne, mit.lines().dropLast(1).joinToString("\n"))
+            assertTrue(mit, mit.lines().last().contains("31.12.2026"))
+        }
     }
 }
