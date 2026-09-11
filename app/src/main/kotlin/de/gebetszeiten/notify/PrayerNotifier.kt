@@ -110,7 +110,9 @@ object PrayerNotifier {
      * the lock screen is visible; the step text is static and refreshed by the
      * display-step alarm chain. While enabled it REPLACES the per-prayer entry
      * notification (one combined line instead of two redundant ones);
-     * [activeSince] carries the entry info ("Asr seit 17:37").
+     * [activeSince] carries the entry info ("aktuell: Asr" — `ongoing_since`,
+     * ohne Uhrzeit seit `3b3191f`; die frueher hier zitierte Form
+     * "Asr seit 17:37" gibt es nicht mehr).
      *
      * Mit [countdown] traegt ausserdem das Statusleisten-Symbol die Restzeit
      * („2h", „20") statt des Monds — in BEIDEN Modi, denn der Systemzaehler
@@ -119,10 +121,18 @@ object PrayerNotifier {
      * uebersprungen), also dasselbe Ziel wie im Titel daneben.
      *
      * Beim Herunterziehen zeigt die Anzeige mehr als eingeklappt: [city] steht
-     * als Untertitel in der Kopfzeile, und der `BigTextStyle`-Text
-     * ([ongoingBigText]) traegt die genaue Uhrzeit in BEIDEN Countdown-Modi,
-     * dazu laufendes Gebet, dessen Ende und die Karaha-Zeile, soweit
-     * vorhanden. Der Titel und die eingeklappte Zeile bleiben unveraendert.
+     * als Untertitel in der Kopfzeile, und der `BigTextStyle`-Text traegt die
+     * genaue Uhrzeit in BEIDEN Countdown-Modi, dazu laufendes Gebet, dessen
+     * Ende und die Karaha-Zeile, soweit vorhanden. Der Titel und die
+     * eingeklappte Zeile bleiben unveraendert.
+     *
+     * WELCHER Text wo steht, entscheidet diese Funktion nicht mehr selbst:
+     * [ongoingMode] und [ongoingTexts] tun es, ohne `Context` und damit im
+     * Test ausfuehrbar. Hier wird nur noch verdrahtet — Titel, Inhaltszeile,
+     * aufgeklappter Text und Untertitel kommen unveraendert aus
+     * [OngoingTexts]. Vorher war die Zusage „Uhrzeit im Aufgeklappten" eine
+     * Verzweigung mitten in dieser Funktion und liess sich lautlos
+     * entfernen, ohne dass ein Test fiel.
      */
     // notify() requires POST_NOTIFICATIONS; every path here is guarded by
     // canPost() above, which lint's data-flow doesn't track through the helper.
@@ -171,11 +181,33 @@ object PrayerNotifier {
             java.time.Instant.ofEpochMilli(whenMillis),
         )
         val stepShort = if (countdown && !exact) remainingStepShort(remaining) else ""
-        val title = if (stepShort.isNotEmpty()) {
-            context.getString(R.string.ongoing_title_remaining, stepShort, name)
-        } else {
-            context.getString(R.string.ongoing_title, name, timeStr)
+        // Dieselben Bausteine tragen die eingeklappte Zeile UND den
+        // aufgeklappten Text — einmal aufgeloest, mehrfach benutzt.
+        val atLine = context.getString(R.string.ongoing_at, timeStr)
+        // Only ONE clock time on the lock screen (the next prayer in the
+        // title); the running prayer is named without its time.
+        val sinceLine = activeSince?.let {
+            context.getString(R.string.ongoing_since, context.getString(it.prayer.labelRes()))
         }
+        // Exception: Fajr's window end is actionable (prayer becomes
+        // invalid at sunrise), so that one keeps its time.
+        val untilLine = activeUntil?.let {
+            context.getString(R.string.ongoing_until, it.format(timeFormat))
+        }
+        // Die EINE Entscheidung liegt in [ongoingMode]/[ongoingTexts] — ohne
+        // Context, also ausfuehrbar im Test. Hier wird nur noch
+        // zusammengesetzt, was sie liefern.
+        val mode = ongoingMode(countdown, exact, stepShort)
+        val texts = ongoingTexts(
+            mode = mode,
+            titleWithStep = context.getString(R.string.ongoing_title_remaining, stepShort, name),
+            titleWithTime = context.getString(R.string.ongoing_title, name, timeStr),
+            timeLine = atLine,
+            activeLine = sinceLine,
+            untilLine = untilLine,
+            karahaText = karahaLine?.text,
+            city = city,
+        )
         val notification = NotificationCompat.Builder(context, ONGOING_CHANNEL_ID)
             // Die Restzeit in der Statusleiste statt des statischen Monds.
             // Ist [countdown] aus, liefert countdownGlyph None und
@@ -185,7 +217,17 @@ object PrayerNotifier {
             // wird von der Anzeige-Weckkette weitergestellt
             // (AppSettings.needsDisplayStepAlarms).
             .setSmallIcon(countdownIconRes(countdownGlyph(remaining, countdown)))
-            .setContentTitle(title)
+            .setContentTitle(texts.title)
+            // `null` heisst „gar keine Zeile" — genau wie frueher das
+            // uebersprungene `setContentText`; die Vorgabe des Builders IST
+            // null.
+            .setContentText(texts.contentText)
+            // Aufgeklappt („runterziehen"): die genaue Uhrzeit steht IMMER
+            // dabei — im Stufen-Modus ist sie aus dem Titel verdraengt, und
+            // genau die verlangt der Nutzer. Entschieden in [ongoingTexts].
+            .setStyle(NotificationCompat.BigTextStyle().bigText(texts.bigText))
+            // Der Ort in der Kopfzeile, ohne die Inhaltszeile zu belegen.
+            .setSubText(texts.subText)
             .setContentIntent(contentIntent(context))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -193,7 +235,7 @@ object PrayerNotifier {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSilent(true)
             .apply {
-                if (countdown && exact) {
+                if (mode == OngoingMode.EXACT) {
                     // Live countdown rendered by the system — no app wake-ups.
                     setWhen(whenMillis)
                     setUsesChronometer(true)
@@ -202,39 +244,6 @@ object PrayerNotifier {
                 } else {
                     setShowWhen(false)
                 }
-                // Dieselben Bausteine tragen die eingeklappte Zeile UND den
-                // aufgeklappten Text — einmal aufgeloest, zweimal benutzt.
-                val atLine = context.getString(R.string.ongoing_at, timeStr)
-                // Only ONE clock time on the lock screen (the next prayer in
-                // the title); the running prayer is named without its time.
-                val sinceLine = activeSince?.let {
-                    context.getString(R.string.ongoing_since, context.getString(it.prayer.labelRes()))
-                }
-                // Exception: Fajr's window end is actionable (prayer becomes
-                // invalid at sunrise), so that one keeps its time.
-                val untilLine = activeUntil?.let {
-                    context.getString(R.string.ongoing_until, it.format(timeFormat))
-                }
-                val lines = mutableListOf<String>()
-                if (stepShort.isNotEmpty()) {
-                    // Remaining is in the title → the clock time becomes detail.
-                    lines += atLine
-                }
-                sinceLine?.let { lines += it }
-                untilLine?.let { lines += it }
-                karahaLine?.let { lines += it.text }
-                // Die eingeklappte Zeile bleibt Wort fuer Wort, wie sie war.
-                if (lines.isNotEmpty()) setContentText(lines.joinToString(" · "))
-                // Aufgeklappt („runterziehen"): die genaue Uhrzeit steht IMMER
-                // dabei — im Stufen-Modus ist sie aus dem Titel verdraengt,
-                // und genau die verlangt der Nutzer. Wortlaut in
-                // [ongoingBigText], damit er ohne Geraet pruefbar ist.
-                setStyle(
-                    NotificationCompat.BigTextStyle()
-                        .bigText(ongoingBigText(atLine, sinceLine, untilLine, karahaLine?.text)),
-                )
-                // Der Ort in der Kopfzeile, ohne die Inhaltszeile zu belegen.
-                ongoingSubText(city)?.let { setSubText(it) }
             }
             .build()
         manager.notify(ONGOING_ID, notification)

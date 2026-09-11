@@ -90,7 +90,7 @@ android {
     }
 }
 
-// Vier Unit-Tests oeffnen zur Laufzeit Dateien direkt im Arbeitsbaum, statt
+// Fuenf Unit-Tests oeffnen zur Laufzeit Dateien direkt im Arbeitsbaum, statt
 // sie ueber den Klassenpfad zu beziehen:
 //
 //   CountdownIconAssetsTest, CountdownGlyphShapeTest  -> die Drawables und
@@ -98,12 +98,19 @@ android {
 //   OfficialAssetsIntegrityTest                       -> shared-assets/official
 //   NoNetworkInSharedCodeTest                         -> die vier Manifeste
 //       und den geteilten Quellsatz
+//   OngoingWiringTest                                 -> app/src/main/kotlin
 //
 // Diese Pfade sind fuer Gradle keine Task-Eingaben: die Kotlin-Quellen von
 // app/src/main und core-prayertimes sind es mittelbar ueber die Uebersetzung,
 // aber die Drawables, die Assets, die Manifeste, wear/ (haengt an keiner
 // Uebersetzung dieses Moduls) und app/src/offline (nur im offline-Flavor
 // uebersetzt) nicht.
+//
+// Bei app/src/main/kotlin reicht das Mittelbare NICHT: ueber die Uebersetzung
+// haengt der Test nur an Aenderungen, die den Bytecode veraendern. Genau die
+// Aenderungen, gegen die `OngoingWiringTest` verteidigt, koennen aber
+// bytecode-gleich sein — eine Umformatierung der Aufrufliste etwa. Also steht
+// der Quellsatz hier ausdruecklich.
 //
 // Ohne Deklaration gilt der Test genau dann als UP-TO-DATE, wenn eingetreten
 // ist, wogegen er verteidigt: jemand hat eine dieser Dateien von Hand
@@ -129,6 +136,9 @@ tasks.withType<Test>().configureEach {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(file("src/offline"))
         .withPropertyName("offlineQuellsatz")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(file("src/main/kotlin"))
+        .withPropertyName("mainQuellsatz")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(rootProject.file("wear/src/main"))
         .withPropertyName("wearQuellsatz")

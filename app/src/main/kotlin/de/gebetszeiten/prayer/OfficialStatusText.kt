@@ -20,9 +20,15 @@ private val STAMP = DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm")
 private val SHORT_STAMP = DateTimeFormatter.ofPattern("dd.MM., HH:mm")
 
 /**
- * Mehrzeiliger Klartext für die Statuszeile im Einstellungs-Sheet.
- * Reine Funktion (keine versteckte Systemuhr-/Zeitzonen-Abhaengigkeit) —
- * deshalb ohne Android testbar.
+ * Mehrzeiliger Klartext für die Statuszeile im Einstellungs-Sheet. Ohne
+ * Android testbar.
+ *
+ * **Rein ist sie nur, wenn der Aufrufer [zone] UND [today] setzt.** Beide
+ * haben einen Vorgabewert, der die Systemuhr bzw. die Systemzeitzone liest,
+ * und Kotlin wertet ihn bei JEDEM argumentlosen Aufruf neu aus. Die frueher
+ * hier stehende Zusage „keine versteckte Systemuhr-Abhaengigkeit" stimmt
+ * seit [today] nicht mehr. Wer die Reservewarnung prueft, MUSS [today]
+ * uebergeben — sonst haengt der Test am Kalender des Testrechners.
  *
  * [source] ist die vom Aufrufer (dem Einstellungs-Sheet) bereits
  * klassifizierte, tatsaechlich aktive Quelle (spiegelt `PrayerProvider.daily`)
@@ -49,9 +55,8 @@ private val SHORT_STAMP = DateTimeFormatter.ofPattern("dd.MM., HH:mm")
  * Deutschland ab, dort war nie eine Reserve. Nicht zu verwechseln mit
  * `status.coveredUntil` — das ist die Abdeckung des ONLINE-CACHES.
  *
- * [today] wird ausschliesslich fuer [bundledCoverageEnd] gebraucht. Der
- * Vorgabewert liest die Systemuhr (wie [zone] die Systemzeitzone) — wer die
- * Warnzeile prueft, MUSS [today] setzen, sonst haengt der Test am Kalender.
+ * [today] wird ausschliesslich fuer [bundledCoverageEnd] gebraucht — siehe
+ * oben, warum es im Test gesetzt werden MUSS.
  */
 fun officialStatusText(
     status: OfficialStatus,
@@ -128,6 +133,19 @@ fun officialStatusText(
  * der Nutzer davon hat, merkt er erst ohne Netz. Genau das sagt der Satz —
  * nicht „ein Asset laeuft ab", sondern was danach passiert.
  *
+ * **Und was danach passiert, ist NICHT sofort die eigene Berechnung.**
+ * `PrayerProvider.daily` liest in dieser Reihenfolge: persistierter
+ * Online-Cache (`OfficialTimesCache`, im DataStore, ohne Netz lesbar) →
+ * gebuendelte Tabelle → eigene Berechnung. Mit `useOnline` (ab Werk an) und
+ * der 60-Tage-Schwelle hat der Nutzer also auch nach dem Ende der Reserve
+ * weiter amtliche Zeiten, solange der Cache reicht. Der frueher hier
+ * stehende Satz „ohne Netz gibt es danach nur die eigene Berechnung" war
+ * deshalb falsch — und konnte direkt unter einem „Abgedeckt bis: 04.07.2027"
+ * stehen und ihm widersprechen. Der Satz nennt jetzt beide Stufen und
+ * behauptet keine von ihnen: „die zuvor geladenen amtlichen Zeiten, und wo
+ * keine vorliegen, die eigene Berechnung" bleibt auch im offline-Flavor
+ * wahr, wo es nie einen Cache gab.
+ *
  * [coverageEnd] ist der LETZTE abgedeckte Tag. `null` heisst „fuer diesen Ort
  * gibt es gar keine gebuendelte Tabelle" (das Bundle deckt nur Deutschland
  * ab) — dann gibt es nichts zu warnen. Ueber diese Anwendbarkeit entscheidet
@@ -163,10 +181,12 @@ fun coverageWarning(
     // abgedeckt. „Endeten am heute" waere am letzten Tag eine Falschaussage.
     return if (coverageEnd.isBefore(today)) {
         "Offline-Reserve: gebündelte amtliche Zeiten endeten am $ende — " +
-            "ohne Netz gibt es jetzt nur die eigene Berechnung."
+            "ohne Netz tragen jetzt die zuvor geladenen amtlichen Zeiten, " +
+            "und wo keine vorliegen, die eigene Berechnung."
     } else {
         "Offline-Reserve: gebündelte amtliche Zeiten nur noch bis $ende — " +
-            "danach gibt es ohne Netz nur die eigene Berechnung."
+            "danach tragen ohne Netz die zuvor geladenen amtlichen Zeiten, " +
+            "und wo keine vorliegen, die eigene Berechnung."
     }
 }
 

@@ -57,6 +57,24 @@ class CoverageWarningTest {
         assertTrue(text, !text.contains("nur noch bis"))
     }
 
+    @Test fun `der Satz nennt den Online-Cache VOR der eigenen Berechnung`() {
+        // Der Befund aus der Pruefung: „ohne Netz gibt es danach nur die
+        // eigene Berechnung" uebergeht den persistierten Online-Cache, den
+        // `PrayerProvider.daily` VOR dem Bundle und OHNE Netz liest. Fuer
+        // einen Nutzer mit `useOnline` (ab Werk an) ist die Reserve die
+        // DRITTE Stufe, nicht die letzte — der Satz darf ihm nicht mehr
+        // Verlust ankuendigen, als eintritt.
+        listOf(coverageWarning(heute.plusDays(10), heute)!!, coverageWarning(heute.minusDays(10), heute)!!)
+            .forEach { text ->
+                val cache = text.indexOf("zuvor geladenen amtlichen Zeiten")
+                val berechnung = text.indexOf("eigene Berechnung")
+                assertTrue(text, cache >= 0)
+                assertTrue("die Reihenfolge stimmt nicht: $text", cache < berechnung)
+                // Die alte, falsche Zuspitzung darf nicht zurueckkommen.
+                assertTrue(text, !text.contains("nur die eigene Berechnung"))
+            }
+    }
+
     @Test fun `beide Faelle nennen die Folge fuer den Nutzer, nicht das Asset`() {
         val bald = coverageWarning(heute.plusDays(10), heute)!!
         val abgelaufen = coverageWarning(heute.minusDays(10), heute)!!

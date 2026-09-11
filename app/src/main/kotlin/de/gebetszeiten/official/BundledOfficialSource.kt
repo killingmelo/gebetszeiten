@@ -21,7 +21,12 @@ import java.time.format.DateTimeParseException
 object BundledOfficialSource {
 
     private const val LOCATIONS_ASSET = "official/locations-de.tsv"
-    private const val COVERAGE_ASSET = "official/coverage.tsv"
+
+    /** `internal`, nicht `private`: `CoverageAssetTest` liest die
+     *  ausgelieferte Datei gegen und soll den Pfad nicht ein zweites Mal
+     *  hinschreiben muessen — eine zweite Schreibweise waere ein zweiter
+     *  Ort, an dem ein Tippfehler unbemerkt bleibt. */
+    internal const val COVERAGE_ASSET = "official/coverage.tsv"
 
     @Volatile private var locations: List<OfficialLocation>? = null
     @Volatile private var tables: Map<String, Map<LocalDate, SixTimes>> = emptyMap()
