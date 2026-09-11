@@ -101,15 +101,48 @@ class RemainingLabelTest {
         assertTrue(isUrgent(Duration.ZERO))
     }
 
-    @Test fun urgentUndShortFallenBeiNegativerDauerAuseinander() {
-        // Bestandsverhalten, absichtlich dokumentiert statt geaendert:
-        // remainingStepShort klemmt Negatives auf ZERO und liefert deshalb
-        // leer ("jetzt"), waehrend isUrgent wegen des !isNegative-Guards
-        // false liefert — die Oberflaeche zeigt "jetzt" dann OHNE Dringlich-
-        // keitsfarbe. Aendern waere eine eigene Entscheidung (vier Aufrufer).
+    // --- Task 15, Teil 4: "jetzt" ist dringend, auch nach dem Gebetseintritt ---
+
+    @Test fun urgentUndShortStimmenBeiNegativerDauerUeberein() {
+        // Ersetzt urgentUndShortFallenBeiNegativerDauerAuseinander: dort war
+        // festgehalten, dass isUrgent bei negativer Dauer false liefert,
+        // waehrend remainingStepShort auf ZERO klemmt und "jetzt" ergibt.
+        // Sichtbare Folge war ein Ausblinken der Dringlichkeitsfarbe genau im
+        // Moment des Gebets — eine Sekunde davor "jetzt" in Rot, eine Sekunde
+        // danach "jetzt" in Normalfarbe. isUrgent klemmt jetzt genauso.
         val negativ = Duration.ofSeconds(-30)
         assertEquals("", remainingStepShort(negativ))
         assertEquals("jetzt", remainingStepLabel(negativ))
-        assertFalse(isUrgent(negativ))
+        assertTrue(isUrgent(negativ))
+    }
+
+    @Test fun urgentBleibtUeberDenGebetseintrittHinwegStehen() {
+        // Kein Wechsel an der Null-Grenze, in keine Richtung.
+        assertTrue(isUrgent(Duration.ofSeconds(1)))
+        assertTrue(isUrgent(Duration.ZERO))
+        assertTrue(isUrgent(Duration.ofSeconds(-1)))
+        assertTrue(isUrgent(Duration.ofMinutes(-5)))
+        // Auch weit hinter dem Gebet: dort steht ohnehin schon das naechste
+        // Gebet an, aber falsch waere hier ein Umschlagen auf false.
+        assertTrue(isUrgent(Duration.ofHours(-3)))
+    }
+
+    @Test fun urgentIstGenauDannWahrWennDasLabelHoechstensNeunMinutenZeigt() {
+        val proben = listOf(
+            Duration.ofHours(14),
+            Duration.ofHours(1),
+            Duration.ofMinutes(10),
+            Duration.ofMinutes(9),
+            Duration.ofMinutes(1),
+            Duration.ofSeconds(59),
+            Duration.ZERO,
+            Duration.ofSeconds(-30),
+            Duration.ofMinutes(-5),
+        )
+        proben.forEach { d ->
+            val kurzfristig = remainingStepShort(d)
+                .let { it.isEmpty() || (it.endsWith(" Min") && !it.contains("+")) }
+            assertEquals("bei $d", kurzfristig, isUrgent(d))
+        }
     }
 }

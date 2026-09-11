@@ -111,6 +111,12 @@ object PrayerNotifier {
      * display-step alarm chain. While enabled it REPLACES the per-prayer entry
      * notification (one combined line instead of two redundant ones);
      * [activeSince] carries the entry info ("Asr seit 17:37").
+     *
+     * Mit [countdown] traegt ausserdem das Statusleisten-Symbol die Restzeit
+     * („2h", „20") statt des Monds — in BEIDEN Modi, denn der Systemzaehler
+     * von EXACT zeichnet nur den Text. Gezaehlt wird gegen [next], und das
+     * ist bei allen drei Aufrufern `PrayerProvider.nextPrayer` (Sonnenaufgang
+     * uebersprungen), also dasselbe Ziel wie im Titel daneben.
      */
     // notify() requires POST_NOTIFICATIONS; every path here is guarded by
     // canPost() above, which lint's data-flow doesn't track through the helper.
@@ -147,18 +153,28 @@ object PrayerNotifier {
         // STEPS countdown: the remaining time IS the headline ("Noch 20+ Min
         // bis Isha"); clock time moves to the detail line. Otherwise the
         // classic "Isha um 22:48" title (EXACT mode ticks via chronometer).
-        val stepShort = if (countdown && !exact) {
-            remainingStepShort(java.time.Duration.between(java.time.Instant.now(), java.time.Instant.ofEpochMilli(whenMillis)))
-        } else {
-            ""
-        }
+        // EINMAL gerechnet, fuer Text UND Symbol: zwei getrennte Aufrufe von
+        // Instant.now() koennten ueber eine Sekundengrenze fallen und Titel
+        // und Statusleiste auf verschiedene Stufen setzen.
+        val remaining = java.time.Duration.between(
+            java.time.Instant.now(),
+            java.time.Instant.ofEpochMilli(whenMillis),
+        )
+        val stepShort = if (countdown && !exact) remainingStepShort(remaining) else ""
         val title = if (stepShort.isNotEmpty()) {
             context.getString(R.string.ongoing_title_remaining, stepShort, name)
         } else {
             context.getString(R.string.ongoing_title, name, timeStr)
         }
         val notification = NotificationCompat.Builder(context, ONGOING_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            // Die Restzeit in der Statusleiste statt des statischen Monds.
+            // Ist [countdown] aus, liefert countdownGlyph None und
+            // countdownIconRes wieder ic_notification — dann sieht die
+            // Anzeige genauso aus wie bisher. Gilt auch fuer EXACT: der
+            // Systemzaehler zeichnet den Text, das Symbol kommt von hier und
+            // wird von der Anzeige-Weckkette weitergestellt
+            // (AppSettings.needsDisplayStepAlarms).
+            .setSmallIcon(countdownIconRes(countdownGlyph(remaining, countdown)))
             .setContentTitle(title)
             .setContentIntent(contentIntent(context))
             .setOngoing(true)

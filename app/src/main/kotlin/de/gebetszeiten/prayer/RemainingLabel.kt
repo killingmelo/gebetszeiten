@@ -31,7 +31,17 @@ fun remainingStepShort(remaining: Duration): String {
     }
 }
 
-/** True in the final minutes before the prayer — surfaces switch to their
- *  urgency colour. */
-fun isUrgent(remaining: Duration): Boolean =
-    !remaining.isNegative && remaining.toMinutes() < 10
+/**
+ * True in the final minutes before the prayer — surfaces switch to their
+ * urgency colour.
+ *
+ * Negative Restzeit wird wie null behandelt, genau wie in
+ * [remainingStepShort]: „jetzt" ist dringend. Ein `!isNegative`-Guard liess
+ * die Farbe genau im Moment des Gebets ausblinken — eine Sekunde davor stand
+ * „jetzt" in der Dringlichkeitsfarbe, eine Sekunde danach weiter „jetzt",
+ * aber in Normalfarbe.
+ */
+fun isUrgent(remaining: Duration): Boolean {
+    val safe = if (remaining.isNegative) Duration.ZERO else remaining
+    return safe.toMinutes() < 10
+}

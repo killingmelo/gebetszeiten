@@ -36,12 +36,20 @@ object PrayerAlarmScheduler {
 
     /**
      * One alarm at the next display boundary — the moment the widget's or the
-     * persistent notification's static text would change:
+     * persistent notification's static text or icon would change:
      *  - STEPS countdown: floor-step boundaries (full hours, 10-minute marks,
-     *    minute marks in the final 10) of either surface's target. EXACT mode
-     *    renders via system chronometer and needs none of these.
+     *    minute marks in the final 10) of either surface's target.
      *  - Karaha indicator: warning start, window start and window end of each
      *    makruh window (+6 ms-scale wake-ups/day while enabled).
+     *
+     * Die Dauerbenachrichtigung ist seit dem Statusleisten-Symbol AUCH im
+     * EXACT-Modus dabei, und das kostet: EXACT verliert seine Eigenschaft,
+     * ganz ohne Weckvorgaenge auszukommen (der Systemzaehler zeichnete sich
+     * selbst). Es kommen die Stufengrenzen dazu — volle Stunden,
+     * Zehnminuten-Marken, die letzten zehn Minuten einzeln, also rund 19 bis
+     * 24 Weckvorgaenge je Gebetsintervall. Der Preis dafuer, dass das Symbol
+     * auch dort lebt statt einzufrieren; der Plan hat ihn ausdruecklich
+     * akzeptiert. Das Widget bleibt bei STEPS — es hat kein Symbol.
      */
     private suspend fun scheduleDisplayStep(
         context: Context,
@@ -54,37 +62,25 @@ object PrayerAlarmScheduler {
         val nowMs = System.currentTimeMillis()
         val boundaries = mutableListOf<Long>()
 
-        if (settings.anyStepsCountdown()) {
+        if (settings.needsDisplayStepAlarms()) {
             // Surfaces' targets: widget = next transition, notification = next
             // actual prayer (sunrise skipped). Boundaries of either count.
             val targets = buildList {
                 if (settings.widgetCountdown == de.gebetszeiten.data.AppSettings.PRECISION_STEPS) {
                     add(PrayerProvider.next(context, settings, zone, now).time)
                 }
+                // Auch EXACT: das Symbol der Benachrichtigung zaehlt gegen
+                // nextPrayer und wird nur von diesen Alarmen weitergestellt.
                 if (settings.persistentNotification &&
-                    settings.notificationCountdown == de.gebetszeiten.data.AppSettings.PRECISION_STEPS
+                    settings.notificationCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF
                 ) {
                     add(PrayerProvider.nextPrayer(context, settings, zone, now).time)
                 }
             }
             targets.forEach { target ->
-                val targetMs = target.toInstant().toEpochMilli()
-                // Minute steps through the final 10 minutes (urgency: exact
-                // count), then 10-minute steps through the final hour —
-                // matching remainingStepLabel's resolution.
-                for (minute in 1..9) {
-                    boundaries += targetMs - minute * 60_000L
-                }
-                for (tenMin in 1..5) {
-                    boundaries += targetMs - tenMin * 10 * 60_000L
-                }
-                var hour = 1L
-                while (true) {
-                    val boundary = targetMs - hour * 3_600_000L
-                    if (boundary <= nowMs) break
-                    boundaries += boundary
-                    hour++
-                }
+                // Die Rechnung selbst steht als reine Funktion in
+                // DisplayStepBoundaries.kt — hier gaebe es keinen Test dafuer.
+                boundaries += displayStepBoundaries(target.toInstant().toEpochMilli(), nowMs)
             }
         }
 
@@ -92,11 +88,15 @@ object PrayerAlarmScheduler {
             // Karaha lines on widget + notification change at these moments.
             val today = PrayerProvider.daily(context, settings, now.toLocalDate(), zone)
             val tomorrow = PrayerProvider.daily(context, settings, now.toLocalDate().plusDays(1), zone)
+            // Derselbe Zuschlag wie bei den Stufengrenzen. Karaha.status()
+            // vergleicht zwar einschliessend (`!now.isBefore(start)`) und
+            // waere auch exakt auf der Grenze richtig — aber eine Grenze ohne
+            // Zuschlag waere hier die Ausnahme, und Ausnahmen kosten spaeter.
             (Karaha.boundaries(Karaha.windows(today)) + Karaha.boundaries(Karaha.windows(tomorrow)))
-                .forEach { boundaries += it.toInstant().toEpochMilli() }
+                .forEach { boundaries += it.toInstant().toEpochMilli() + BOUNDARY_SETTLE_MS }
         }
 
-        val nextBoundary = boundaries.filter { it > nowMs + 1_000 }.minOrNull()
+        val nextBoundary = nextDisplayBoundary(boundaries, nowMs)
         if (nextBoundary != null) {
             setAlarm(alarmManager, nextBoundary, pending)
         } else {

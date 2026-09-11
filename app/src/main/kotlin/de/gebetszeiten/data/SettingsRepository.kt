@@ -71,10 +71,23 @@ data class AppSettings(
      *  von [recentPlaces]: manuell und dauerhaft statt automatisch und flüchtig. */
     val favorites: List<Favorite> = emptyList(),
 ) {
-    /** True if any surface still needs the STEPS display-alarm chain. */
-    fun anyStepsCountdown(): Boolean =
+    /**
+     * True, wenn irgendeine Oberflaeche die Anzeige-Weckkette braucht
+     * (`PrayerAlarmScheduler.scheduleDisplayStep`).
+     *
+     * Frueher hiess das `anyStepsCountdown()` und fragte nur nach
+     * `PRECISION_STEPS`. Der Name luegt seit dem Statusleisten-Symbol: die
+     * Dauerbenachrichtigung braucht die Kette auch im EXACT-Modus. Dort
+     * zeichnet zwar der Systemzaehler den Text, aber das Symbol stellt nur
+     * die App weiter — ohne Weckvorgaenge bliebe es zwischen zwei Gebeten
+     * auf „1h" stehen.
+     *
+     * Das Widget bleibt bei `PRECISION_STEPS`: es hat kein Symbol, und
+     * seine EXACT-Anzeige kommt ohne die App aus.
+     */
+    fun needsDisplayStepAlarms(): Boolean =
         widgetCountdown == PRECISION_STEPS ||
-            (persistentNotification && notificationCountdown == PRECISION_STEPS)
+            (persistentNotification && notificationCountdown != COUNTDOWN_OFF)
 
     companion object {
         val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")
