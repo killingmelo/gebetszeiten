@@ -40,6 +40,11 @@ fun remainingStepShort(remaining: Duration): String {
  * die Farbe genau im Moment des Gebets ausblinken — eine Sekunde davor stand
  * „jetzt" in der Dringlichkeitsfarbe, eine Sekunde danach weiter „jetzt",
  * aber in Normalfarbe.
+ *
+ * Einziger Aufrufer ist das Widget ([de.gebetszeiten.widget.NextPrayerWidget]);
+ * die Dauerbenachrichtigung liest es nicht. Das Ausblinken betraf also nur
+ * die Widget-Farbe — die Commit-Nachricht zu f8eca75 nennt faelschlich auch
+ * die Benachrichtigung.
  */
 fun isUrgent(remaining: Duration): Boolean {
     val safe = if (remaining.isNegative) Duration.ZERO else remaining

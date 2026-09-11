@@ -65,15 +65,19 @@ object PrayerAlarmScheduler {
         if (settings.needsDisplayStepAlarms()) {
             // Surfaces' targets: widget = next transition, notification = next
             // actual prayer (sunrise skipped). Boundaries of either count.
+            // DIESELBEN Praedikate wie in `needsDisplayStepAlarms()`, nicht
+            // ihre Bedingungen noch einmal ausgeschrieben: sonst entschiede
+            // die eine Stelle, OB die Kette laeuft, und die andere, WELCHE
+            // Ziele Grenzen bekommen — laufen sie auseinander, bleibt
+            // `boundaries` leer, der Alarm wird abbestellt und das Symbol
+            // friert ein.
             val targets = buildList {
-                if (settings.widgetCountdown == de.gebetszeiten.data.AppSettings.PRECISION_STEPS) {
+                if (settings.widgetNeedsStepAlarms()) {
                     add(PrayerProvider.next(context, settings, zone, now).time)
                 }
                 // Auch EXACT: das Symbol der Benachrichtigung zaehlt gegen
                 // nextPrayer und wird nur von diesen Alarmen weitergestellt.
-                if (settings.persistentNotification &&
-                    settings.notificationCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF
-                ) {
+                if (settings.notificationNeedsStepAlarms()) {
                     add(PrayerProvider.nextPrayer(context, settings, zone, now).time)
                 }
             }

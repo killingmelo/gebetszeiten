@@ -86,8 +86,25 @@ data class AppSettings(
      * seine EXACT-Anzeige kommt ohne die App aus.
      */
     fun needsDisplayStepAlarms(): Boolean =
-        widgetCountdown == PRECISION_STEPS ||
-            (persistentNotification && notificationCountdown != COUNTDOWN_OFF)
+        widgetNeedsStepAlarms() || notificationNeedsStepAlarms()
+
+    /** Das Widget braucht die Kette nur fuer STEPS — es hat kein Symbol, und
+     *  seine EXACT-Anzeige zeichnet der Systemzaehler ohne die App. */
+    fun widgetNeedsStepAlarms(): Boolean = widgetCountdown == PRECISION_STEPS
+
+    /** Die Dauerbenachrichtigung braucht sie in BEIDEN Modi: im EXACT-Modus
+     *  zeichnet der Systemzaehler zwar den Text, das Statusleisten-Symbol
+     *  stellt aber nur die App weiter.
+     *
+     *  Getrennt von [needsDisplayStepAlarms], weil der Alarm-Planer nicht nur
+     *  wissen muss OB die Kette laeuft, sondern auch WELCHE Ziele Grenzen
+     *  bekommen. Stuende die Bedingung dort ein zweites Mal, koennten die
+     *  beiden auseinanderlaufen: die Kette liefe, das Ziel der
+     *  Benachrichtigung fehlte, `boundaries` bliebe leer, der Alarm wuerde
+     *  abbestellt — und das Symbol froere zwischen zwei Gebeten ein, ohne
+     *  dass ein Test es merkt. */
+    fun notificationNeedsStepAlarms(): Boolean =
+        persistentNotification && notificationCountdown != COUNTDOWN_OFF
 
     companion object {
         val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")

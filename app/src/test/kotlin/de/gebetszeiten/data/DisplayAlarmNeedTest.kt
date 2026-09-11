@@ -67,4 +67,50 @@ class DisplayAlarmNeedTest {
             ).needsDisplayStepAlarms(),
         )
     }
+
+    @Test fun benachrichtigungOhneCountdownBrauchtKeineKette() {
+        // Der Werkszustand, sobald jemand nur die Dauerbenachrichtigung
+        // einschaltet: beide Countdowns stehen ab Werk auf OFF. Ohne diesen
+        // Test bliebe eine Bedingung, die schlicht `persistentNotification`
+        // prueft, unentdeckt — und der Nutzer bekaeme ~20 Weckvorgaenge je
+        // Gebetsintervall fuer eine voellig statische Zeile.
+        assertFalse(
+            aus.copy(
+                persistentNotification = true,
+                notificationCountdown = AppSettings.COUNTDOWN_OFF,
+            ).needsDisplayStepAlarms(),
+        )
+    }
+
+    // --- Die beiden Teil-Praedikate einzeln ---
+    //
+    // `scheduleDisplayStep` fragt nicht nur, OB die Kette laeuft, sondern
+    // auch, WELCHE Ziele Grenzen bekommen — und benutzt dafuer genau diese
+    // zwei. Waeren sie dort noch einmal ausgeschrieben, koennten die beiden
+    // Stellen auseinanderlaufen: die Kette liefe, das Ziel fehlte,
+    // `boundaries` bliebe leer, der Alarm wuerde abbestellt, und das Symbol
+    // froere zwischen zwei Gebeten ein — ohne dass ein Test es merkt.
+
+    @Test fun dasWidgetBrauchtDieKetteNurFuerStufen() {
+        assertTrue(aus.copy(widgetCountdown = AppSettings.PRECISION_STEPS).widgetNeedsStepAlarms())
+        // EXACT zeichnet der Systemzaehler; das Widget hat kein Symbol.
+        assertFalse(aus.copy(widgetCountdown = AppSettings.PRECISION_EXACT).widgetNeedsStepAlarms())
+        assertFalse(aus.widgetNeedsStepAlarms())
+    }
+
+    @Test fun dieBenachrichtigungBrauchtSieInBeidenModi() {
+        val an = aus.copy(persistentNotification = true)
+        assertTrue(an.copy(notificationCountdown = AppSettings.PRECISION_STEPS).notificationNeedsStepAlarms())
+        // Der Unterschied zum Widget: hier haengt das Symbol dran.
+        assertTrue(an.copy(notificationCountdown = AppSettings.PRECISION_EXACT).notificationNeedsStepAlarms())
+        assertFalse(an.copy(notificationCountdown = AppSettings.COUNTDOWN_OFF).notificationNeedsStepAlarms())
+        // Ohne Dauerbenachrichtigung gibt es kein Symbol, das stehenbleiben
+        // koennte.
+        assertFalse(
+            aus.copy(
+                persistentNotification = false,
+                notificationCountdown = AppSettings.PRECISION_EXACT,
+            ).notificationNeedsStepAlarms(),
+        )
+    }
 }

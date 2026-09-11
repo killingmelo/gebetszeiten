@@ -115,7 +115,7 @@ object PrayerNotifier {
      * Mit [countdown] traegt ausserdem das Statusleisten-Symbol die Restzeit
      * („2h", „20") statt des Monds — in BEIDEN Modi, denn der Systemzaehler
      * von EXACT zeichnet nur den Text. Gezaehlt wird gegen [next], und das
-     * ist bei allen drei Aufrufern `PrayerProvider.nextPrayer` (Sonnenaufgang
+     * ist bei allen VIER Aufrufern `PrayerProvider.nextPrayer` (Sonnenaufgang
      * uebersprungen), also dasselbe Ziel wie im Titel daneben.
      */
     // notify() requires POST_NOTIFICATIONS; every path here is guarded by
