@@ -105,15 +105,50 @@ def load_city_index() -> dict[str, tuple[str, float, float]]:
     return index
 
 
+# Eine Jahresseite traegt ein rollierendes Fenster von reichlich 365 Tagen.
+# Deutlich weniger heisst: die Antwort kam unvollstaendig an.
+MIN_PLAUSIBLE_ROWS = 300
+
+
+def _plausible(html: str) -> bool:
+    """Ist das eine ganze Jahresseite — oder ein abgebrochener Download?
+
+    Am 11.09.2026 kam eine Seite mit 166 KB statt der ueblichen 424 KB an,
+    mit HTTP 200 und ohne Ausnahme. Sie landete im Cache, und JEDER weitere
+    Lauf scheiterte danach an ihr ("0 Zeilen fuer 365 erwartete Tage"), bis
+    jemand die Datei von Hand loeschte. Deshalb wird hier geprueft, bevor
+    gecacht wird — und ein schon vorhandener Schrott-Cache heilt sich selbst.
+    """
+    try:
+        return len(parse_year_table(html)) >= MIN_PLAUSIBLE_ROWS
+    except Exception:  # noqa: BLE001 - jeder Parse-Fehler heisst "unbrauchbar"
+        return False
+
+
 def year_page(location_id: int) -> str:
     CACHE.mkdir(exist_ok=True)
     cached = CACHE / f"{location_id}.html"
     if cached.exists():
-        return cached.read_text(encoding="utf-8")
-    html = fetch(PAGE_URL.format(id=location_id)).decode("utf-8")
-    cached.write_text(html, encoding="utf-8")
-    time.sleep(1.0)  # Rate-Limit gegenueber diyanet.gov.tr
-    return html
+        html = cached.read_text(encoding="utf-8")
+        if _plausible(html):
+            return html
+        print(f"  Cache unbrauchbar ({len(html)} Zeichen), hole neu: {cached.name}", file=sys.stderr)
+        cached.unlink()
+    # Eigene Wiederholung: `fetch` faengt nur Ausnahmen, ein abgeschnittener
+    # Koerper kommt als sauberes HTTP 200 zurueck.
+    for attempt in range(3):
+        html = fetch(PAGE_URL.format(id=location_id)).decode("utf-8")
+        time.sleep(1.0)  # Rate-Limit gegenueber diyanet.gov.tr
+        if _plausible(html):
+            cached.write_text(html, encoding="utf-8")
+            return html
+        print(f"  Unvollstaendige Seite ({len(html)} Zeichen) fuer id={location_id}, "
+              f"Versuch {attempt + 1}/3", file=sys.stderr)
+        time.sleep(5 * (attempt + 1))
+    raise ValueError(
+        f"Seite fuer id={location_id} kam dreimal unvollstaendig an "
+        f"(< {MIN_PLAUSIBLE_ROWS} Zeilen). Nicht gecacht."
+    )
 
 
 def parse_year_table(html: str) -> list[tuple[str, list[str]]]:
