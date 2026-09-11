@@ -834,6 +834,17 @@ internal fun LocationSettings(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Der Hinweis, der mit den vier alten Reglern verschwand: er
+            // erklaert, warum "Stufen" auf dem Sperrbildschirm nichts
+            // bewirkt, solange die dauerhafte Anzeige aus ist. Nur zeigen,
+            // wenn die Lage tatsaechlich eintritt — sonst ist es Laerm.
+            if (settings.countdownMode != AppSettings.COUNTDOWN_OFF && !settings.persistentNotification) {
+                Text(
+                    stringResource(R.string.settings_lockscreen_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Text(
                 stringResource(R.string.settings_wear_hint),
                 style = MaterialTheme.typography.bodySmall,

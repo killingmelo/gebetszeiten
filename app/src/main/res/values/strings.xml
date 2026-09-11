@@ -158,7 +158,8 @@
     <string name="settings_remaining">Restzeit</string>
     <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit — eine Einstellung für alles: App, Widget, Sperrbildschirm und das Symbol in der Statusleiste. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
     <string name="settings_remaining_all">Überall</string>
-    <string name="settings_remaining_cost">Stufen und Genau kosten rund 19 bis 24 Weckvorgänge je Gebetsintervall, solange das Widget oder die dauerhafte Anzeige sie weiterstellen müssen. Aus kostet keine.</string>
+    <string name="settings_remaining_cost">Stufen kostet rund 19 bis 24 Weckvorgänge je Gebetsintervall. Genau kostet dieselben, sobald die dauerhafte Anzeige läuft — sonst keine, weil das System dann selbst zählt. Aus kostet nie welche.</string>
+    <string name="settings_lockscreen_hint">Auf dem Sperrbildschirm erscheint die Restzeit erst, wenn unten die dauerhafte Anzeige eingeschaltet ist.</string>
     <string name="settings_wear_hint">Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).</string>
     <string name="settings_official_online">Offizielle Diyanet-Zeiten (online)</string>
     <string name="settings_high_contrast">Hoher Kontrast</string>

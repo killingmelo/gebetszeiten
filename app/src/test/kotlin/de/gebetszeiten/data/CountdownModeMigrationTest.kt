@@ -171,4 +171,44 @@ class CountdownModeMigrationTest {
             ),
         )
     }
+
+    // --- Zwei Luecken, die eine Pruefung per Mutation aufgedeckt hat ---
+
+    @Test fun `das Widget schlaegt den alten Globalwert`() {
+        // Beide Mutationen der Reihenfolge liessen bisher alle Tests gruen,
+        // weil kein Fall Widget und Globalwert WIDERSPRECHEN liess. Hier tun
+        // sie es: das Widget steht auf Stufen, der alte Globalwert auf Genau,
+        // die Benachrichtigung ist ungesetzt. Die dokumentierte Reihenfolge
+        // (Benachrichtigung, Widget, Globalwert) muss Stufen liefern.
+        assertEquals(
+            AppSettings.PRECISION_STEPS,
+            countdownModeFromPrefs(
+                migrated = false,
+                stored = null,
+                notificationCountdown = null,
+                widgetCountdown = AppSettings.PRECISION_STEPS,
+                showCountdown = true,
+                remainingPrecision = AppSettings.PRECISION_EXACT,
+            ),
+        )
+    }
+
+    @Test fun `ein fehlendes showCountdown zaehlt nicht als eingeschaltet`() {
+        // `showCountdown == true` und nicht `!= false`: ein FEHLENDER
+        // Schluessel ist kein eingeschalteter Schalter. Sonst bekaeme ein
+        // Stand ohne `show_countdown`, aber mit dem ab Werk gesetzten
+        // `remaining_precision`, nach dem Update eine Anzeige, die nie
+        // gewaehlt wurde.
+        assertEquals(
+            AppSettings.COUNTDOWN_OFF,
+            countdownModeFromPrefs(
+                migrated = false,
+                stored = null,
+                notificationCountdown = null,
+                widgetCountdown = null,
+                showCountdown = null,
+                remainingPrecision = AppSettings.PRECISION_STEPS,
+            ),
+        )
+    }
 }
