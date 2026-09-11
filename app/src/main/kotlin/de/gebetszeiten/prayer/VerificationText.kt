@@ -70,6 +70,18 @@ fun verificationLine(verification: Verification?): String? {
                 PREFIX + "Quellen uneinig (max. ${v.maxAbsMinutes} Min) — Zeiten unbestätigt"
             }
 
+        // KEINE Zahl fuer die gefuellten Tage, aus demselben Grund wie bei
+        // CONFLICT_OVERRIDDEN: `comparedDays` ist die Schnittmenge der
+        // beiden Kontrollquellen UNTEREINANDER, nicht die Zahl der
+        // beigesteuerten Tage. Ein Spender bringt auch seine Randtage mit,
+        // die ausserhalb dieses Fensters liegen. „31 Tage aus zwei Quellen"
+        // waere also eine Zahl, die etwas anderes behauptet, als sie ist —
+        // „(31 Tage verglichen)" ist wahr.
+        VerificationNote.GAP_FILLED ->
+            PREFIX + "Jahresabruf deckt die aktuellen Tage nicht ab — " +
+                "Zeiten dafür aus zwei übereinstimmenden Kontrollquellen " +
+                "(${daysNominative(v.comparedDays)} verglichen)"
+
         VerificationNote.UNVERIFIED_SINGLE ->
             PREFIX + "nicht möglich — nur eine Quelle erreichbar"
 

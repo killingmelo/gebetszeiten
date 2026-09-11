@@ -2,10 +2,16 @@ package de.gebetszeiten.core.prayertimes.officialtimes
 
 import java.time.LocalDate
 
-/** Wie gut die ausgelieferten Zeiten belegt sind. [NONE] = gar keine Quelle
- *  hat geliefert; dann gibt es auch keine Zeiten. */
+/**
+ * Wie gut die ausgelieferten Zeiten belegt sind. [NONE] = gar keine Quelle
+ * hat geliefert; dann gibt es auch keine Zeiten.
+ *
+ * [GAP_FILLED] ist bewusst KEINE Abstufung von [VERIFIED]: es sagt nichts
+ * ueber den Gewinner, sondern darueber, dass Tage AUSSERHALB seines Fensters
+ * aus zwei einander bestaetigenden Kontrollquellen stammen.
+ */
 enum class VerificationNote {
-    VERIFIED, DRIFT, UNVERIFIED_SINGLE, CONFLICT_OVERRIDDEN, CONFLICT_UNRESOLVED, NONE
+    VERIFIED, DRIFT, GAP_FILLED, UNVERIFIED_SINGLE, CONFLICT_OVERRIDDEN, CONFLICT_UNRESOLVED, NONE
 }
 
 /**
@@ -79,7 +85,8 @@ private data class Decision(
  * | kein AGREE, aber mindestens ein [Verdict.MINOR_DRIFT] | direct | [VerificationNote.DRIFT] |
  * | kein AGREE/MINOR_DRIFT, aber >= 2 Pruefer im [Verdict.CONFLICT] mit direct, die untereinander einig sind UND deren Widerspruch je SYSTEMATISCH ist | die Pruefer | [VerificationNote.CONFLICT_OVERRIDDEN] |
  * | mindestens ein CONFLICT, aber die Pruefer sind nicht untereinander einig (oder es ist nur einer, oder der Widerspruch ist nicht systematisch) | direct | [VerificationNote.CONFLICT_UNRESOLVED] |
- * | gar kein beurteilbarer Pruefer (keiner antwortete, oder nur [Verdict.NO_OVERLAP]) | direct | [VerificationNote.UNVERIFIED_SINGLE] |
+ * | gar kein beurteilbarer Pruefer (nur [Verdict.NO_OVERLAP]), aber zwei solche Pruefer sind UNTEREINANDER einig | direct, aufgefuellt aus ihnen | [VerificationNote.GAP_FILLED] |
+ * | gar kein beurteilbarer Pruefer (keiner antwortete, oder nur [Verdict.NO_OVERLAP] ohne solches Paar) | direct | [VerificationNote.UNVERIFIED_SINGLE] |
  *
  * „Untereinander einig" heisst: der Vergleich zwischen den beiden Pruefern
  * liefert AGREE ODER MINOR_DRIFT — also nicht CONFLICT und nicht
@@ -147,16 +154,32 @@ private data class Decision(
  * Quellen ergaenzt, deren Vergleich mit dem Gewinner AGREE oder
  * MINOR_DRIFT ergab. Bei Ueberschneidung gewinnt immer der Gewinner. Aus
  * CONFLICT-Quellen wird NIE ergaenzt — sonst mischte die App genau die
- * Zeiten hinein, die sie gerade als widersprechend erkannt hat; und aus
- * NO_OVERLAP-Quellen auch nicht, denn eine Quelle ohne Schnittmenge ist
- * ueberhaupt nicht beurteilt und damit kein Zeuge.
+ * Zeiten hinein, die sie gerade als widersprechend erkannt hat.
  *
  * Das heisst ausdruecklich NICHT, dass jeder eingemischte Tag geprueft
  * waere: ein Spender mit teilweiser Ueberschneidung steuert auch seine
  * RANDtage bei, die ausserhalb des Prueffensters liegen (real ~20 von 51
- * Tagen). Geprueft ist der SPENDER, nicht jeder seiner Tage. Die Grenze
- * liegt bewusst bei „ueberhaupt beurteilt": wer den Gewinner nirgends
- * beruehrt, liefert keinen einzigen Tag.
+ * Tagen). Geprueft ist der SPENDER, nicht jeder seiner Tage.
+ *
+ * **Quellen ohne jede Schnittmenge** (NO_OVERLAP) spenden nur unter einer
+ * zusaetzlichen Bedingung: wenn eine ANDERE Quelle, die ebenfalls nicht
+ * der Gewinner ist, ihnen zustimmt (siehe [gapFill]). Der Grundsatz bleibt
+ * damit derselbe — keine einzelne ungepruefte Quelle liefert Gebetszeiten
+ * —, nur der Zeuge ist ein anderer: nicht der Gewinner, sondern die
+ * zweite Kontrollquelle.
+ *
+ * Diese Regel ist nicht theoretisch. Am 11.09.2026 auf dem Geraet
+ * gemessen: die Jahresseite von Diyanet lieferte nur noch das FOLGEjahr,
+ * die beiden Kontrollquellen 31 Tage ab heute. Ohne sie fiel jeder Tag der
+ * Gegenwart weg — die App hielt die amtlichen Zeiten im Speicher und
+ * zeigte berechnete an. Ohne Bedingung waere es der gegenteilige Fehler
+ * gewesen: eine einzelne, von niemandem gegengepruefte Quelle haette
+ * Gebetszeiten bestimmt.
+ *
+ * Das Fuellen aendert die Note nur dann, wenn sonst nichts zu sagen waere
+ * ([VerificationNote.UNVERIFIED_SINGLE] wird zu
+ * [VerificationNote.GAP_FILLED]). Hat ein Pruefer den Gewinner wirklich
+ * beurteilt, bleibt SEIN Urteil die Nachricht.
  *
  * **„Zustimmend" heisst an zwei Stellen VERSCHIEDENES** — beides ist
  * einzeln vertretbar, darum wird der Unterschied hier benannt statt mit
@@ -237,18 +260,34 @@ fun resolveQuorum(
     }
 
     val winner = decision.winner
+    val gap = winner?.let { gapFill(it, distinct, maxDriftDays, maxDriftMinutes) }
+    // Die Note wird NUR ersetzt, wenn sonst nichts zu sagen waere. Hat ein
+    // Pruefer den Gewinner tatsaechlich beurteilt, ist SEIN Urteil die
+    // Nachricht — das Fuellen eines Randfensters darf es nicht verdecken.
+    //
+    // EHRLICH GESAGT: mit den heutigen DREI `SourceId`s ist die zweite
+    // Bedingung nicht erreichbar und daher von keinem Test gedeckt. Fuellen
+    // braucht ZWEI Quellen ohne Schnittmenge zum Gewinner; neben DIRECT gibt
+    // es aber nur zwei Pruefer, und sind beide ohne Schnittmenge, ist die
+    // Note zwangslaeufig UNVERIFIED_SINGLE. Sie steht hier fuer eine vierte
+    // Quelle — dieselbe Vorsorge wie in [firstAgreeingPair], das paarweise
+    // sucht, obwohl heute nur ein Paar moeglich ist.
+    val gapDecidesNote = gap != null && decision.note == VerificationNote.UNVERIFIED_SINGLE
+    val numbers = if (gapDecidesNote) gap.second else decision.numbers
     return QuorumOutcome(
-        schedule = winner?.let { unionSchedule(it, distinct, maxDriftDays, maxDriftMinutes) } ?: emptyMap(),
+        schedule = winner?.let {
+            unionSchedule(it, distinct, gap?.first.orEmpty(), maxDriftDays, maxDriftMinutes)
+        } ?: emptyMap(),
         // Nur bei NONE (kein Gewinner) gibt es keine Standort-ID.
         locationId = winner?.let { locationId },
         verification = Verification(
-            note = decision.note,
+            note = if (gapDecidesNote) VerificationNote.GAP_FILLED else decision.note,
             chosen = winner?.source,
             confirmedBy = decision.confirmedBy,
-            comparedDays = decision.numbers.comparedDays,
-            differingDays = decision.numbers.differingDays,
-            maxAbsMinutes = decision.numbers.maxAbsMinutes,
-            firstDiff = decision.numbers.firstDiff,
+            comparedDays = numbers.comparedDays,
+            differingDays = numbers.differingDays,
+            maxAbsMinutes = numbers.maxAbsMinutes,
+            firstDiff = numbers.firstDiff,
             checkedEpochMs = nowEpochMs,
         ),
     )
@@ -430,11 +469,45 @@ private fun firstAgreeingPair(
     return null
 }
 
-/** Der Zeitplan des Gewinners, aufgefuellt aus zustimmenden Quellen. Regeln
- *  und Begruendung in [resolveQuorum]. */
+/**
+ * Quellen, die den Gewinner NIRGENDS beruehren, sich dafuer aber
+ * UNTEREINANDER bestaetigen — samt dem Vergleich, der das belegt.
+ *
+ * Am 11.09.2026 auf dem Geraet gemessen: die Jahresseite von Diyanet
+ * lieferte fuer jeden geprueften Standort nur noch das Folgejahr
+ * (01.01.-31.12.2027), die beiden Kontrollquellen 31 Tage ab heute. Ohne
+ * diesen Weg fiel damit JEDER Tag der Gegenwart weg, obwohl zwei amtliche
+ * Quellen ihn minutengleich lieferten — die App hielt die richtigen Zeiten
+ * im Speicher und zeigte berechnete an.
+ *
+ * `null`, solange weniger als zwei solche Quellen da sind: eine einzelne
+ * ungepruefte Quelle darf keine Gebetszeiten beisteuern. Das ist derselbe
+ * Grundsatz wie sonst, nur auf ein Fenster angewandt, das der Gewinner
+ * ueberhaupt nicht abdeckt.
+ */
+private fun gapFill(
+    winner: SourceResult,
+    candidates: List<SourceResult>,
+    maxDriftDays: Int,
+    maxDriftMinutes: Int,
+): Pair<List<SourceResult>, CrossCheckResult>? {
+    val strangers = candidates
+        .filter { it !== winner && it.schedule.isNotEmpty() }
+        .filter {
+            crossCheck(winner.schedule, it.schedule, maxDriftDays, maxDriftMinutes)
+                .verdict == Verdict.NO_OVERLAP
+        }
+        .sortedBy { it.source.ordinal }
+    val pair = firstAgreeingPair(strangers, maxDriftDays, maxDriftMinutes) ?: return null
+    return pair to crossCheck(pair[0].schedule, pair[1].schedule, maxDriftDays, maxDriftMinutes)
+}
+
+/** Der Zeitplan des Gewinners, aufgefuellt aus zustimmenden Quellen und aus
+ *  [gapDonors]. Regeln und Begruendung in [resolveQuorum]. */
 private fun unionSchedule(
     winner: SourceResult,
     candidates: List<SourceResult>,
+    gapDonors: List<SourceResult>,
     maxDriftDays: Int,
     maxDriftMinutes: Int,
 ): Map<LocalDate, SixTimes> {
@@ -445,7 +518,10 @@ private fun unionSchedule(
     for (donor in candidates.sortedBy { it.source.ordinal }) {
         if (donor === winner || donor.schedule.isEmpty()) continue
         val verdict = crossCheck(winner.schedule, donor.schedule, maxDriftDays, maxDriftMinutes).verdict
-        if (verdict != Verdict.AGREE && verdict != Verdict.MINOR_DRIFT) continue
+        val concordant = verdict == Verdict.AGREE || verdict == Verdict.MINOR_DRIFT
+        // Identitaetsvergleich wie ueberall hier: [gapDonors] stammt aus
+        // derselben Liste.
+        if (!concordant && gapDonors.none { it === donor }) continue
         merged.putAll(donor.schedule)
     }
     // Der Gewinner ZULETZT: bei Ueberschneidung gewinnt immer er.

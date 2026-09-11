@@ -655,5 +655,83 @@ class SourceQuorumTest {
         error("keine Drift-Grenze bis 64 Tage gefunden — maxDriftDays unplausibel gross")
     }
 
+    // --- Fall E: der Gewinner deckt die Gegenwart nicht ab
+    //
+    // Am 11.09.2026 auf dem Geraet gemessen: die Jahresseite von Diyanet
+    // liefert NUR das Folgejahr (365 Zeilen, 01.01.-31.12.2027), die beiden
+    // Kontrollquellen liefern 31 Tage ab heute. Die Schnittmenge ist leer,
+    // also bestaetigt niemand niemanden - und bis dahin fielen die einzigen
+    // Tage, die HEUTE abdecken, ersatzlos weg. Die App hielt die amtlichen
+    // Zeiten im Speicher und lieferte berechnete aus.
+
+    @Test fun `E1 einige Pruefer fuellen Tage, die der Jahresabruf nicht abdeckt`() {
+        val heute = LocalDate.of(2026, 9, 11)
+        val folgejahr = LocalDate.of(2027, 1, 1)
+        val outcome = resolve(
+            direct(plan(days = 365, from = folgejahr)),
+            proxy(plan(days = 31, from = heute)),
+            ezan(plan(days = 31, from = heute)),
+        )
+
+        assertTrue(
+            "Heute fehlt im ausgelieferten Zeitplan, obwohl zwei einige Quellen ihn haben",
+            outcome.schedule.containsKey(heute),
+        )
+        assertEquals(365 + 31, outcome.schedule.size)
+        // Der Gewinner bleibt der Jahresabruf - gefuellt wird nur, was ihm fehlt.
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+    }
+
+    @Test fun `E2 die Note sagt, dass gefuellt wurde - nicht, dass bestaetigt wurde`() {
+        val heute = LocalDate.of(2026, 9, 11)
+        val outcome = resolve(
+            direct(plan(days = 365, from = LocalDate.of(2027, 1, 1))),
+            proxy(plan(days = 31, from = heute)),
+            ezan(plan(days = 31, from = heute)),
+        )
+
+        assertEquals(VerificationNote.GAP_FILLED, outcome.verification.note)
+        // Die Pruefer bestaetigen EINANDER, nicht den Gewinner - deshalb
+        // bleibt confirmedBy leer (Zusicherung des Datentyps).
+        assertEquals(emptyList<SourceId>(), outcome.verification.confirmedBy)
+        // Die Zahlen stammen aus dem Vergleich, der die Note begruendet:
+        // dem der beiden Pruefer untereinander.
+        assertEquals(31, outcome.verification.comparedDays)
+        assertEquals(0, outcome.verification.differingDays)
+    }
+
+    @Test fun `E3 eine EINZELNE Quelle ohne Schnittmenge fuellt nichts`() {
+        val heute = LocalDate.of(2026, 9, 11)
+        val outcome = resolve(
+            direct(plan(days = 365, from = LocalDate.of(2027, 1, 1))),
+            proxy(plan(days = 31, from = heute)),
+        )
+
+        assertEquals(VerificationNote.UNVERIFIED_SINGLE, outcome.verification.note)
+        assertEquals(365, outcome.schedule.size)
+        assertTrue(
+            "Eine ungepruefte Einzelquelle darf keine Gebetszeiten beisteuern",
+            !outcome.schedule.containsKey(heute),
+        )
+    }
+
+    @Test fun `E4 uneinige Quellen ohne Schnittmenge fuellen nichts`() {
+        val heute = LocalDate.of(2026, 9, 11)
+        val outcome = resolve(
+            direct(plan(days = 365, from = LocalDate.of(2027, 1, 1))),
+            proxy(plan(days = 31, from = heute)),
+            // 14 Minuten daneben an JEDEM der 31 Tage: die beiden Pruefer
+            // widersprechen einander, also belegt keiner den anderen.
+            ezan(planWithConflict(days = 31, conflictDays = 31, from = heute)),
+        )
+
+        assertEquals(VerificationNote.UNVERIFIED_SINGLE, outcome.verification.note)
+        assertEquals(365, outcome.schedule.size)
+        assertTrue(
+            "Zwei einander widersprechende Quellen duerfen keine Zeiten beisteuern",
+            !outcome.schedule.containsKey(heute),
+        )
+    }
+
     private fun QuorumOutcome.note() = verification.note
 }

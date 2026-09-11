@@ -33,6 +33,22 @@ class VerificationTextTest {
         checkedEpochMs = checkedEpochMs,
     )
 
+    @Test fun `GAP_FILLED sagt, dass gefuellt wurde - und nennt keine Zahl, die etwas anderes meint`() {
+        assertEquals(
+            "Gegenprüfung: Jahresabruf deckt die aktuellen Tage nicht ab — " +
+                "Zeiten dafür aus zwei übereinstimmenden Kontrollquellen (31 Tage verglichen)",
+            verificationLine(verification(VerificationNote.GAP_FILLED, comparedDays = 31)),
+        )
+    }
+
+    @Test fun `GAP_FILLED bei genau einem verglichenen Tag bleibt richtiges Deutsch`() {
+        assertEquals(
+            "Gegenprüfung: Jahresabruf deckt die aktuellen Tage nicht ab — " +
+                "Zeiten dafür aus zwei übereinstimmenden Kontrollquellen (1 Tag verglichen)",
+            verificationLine(verification(VerificationNote.GAP_FILLED, comparedDays = 1)),
+        )
+    }
+
     @Test fun `ohne Verification gibt es keine Zeile`() {
         assertNull(verificationLine(null))
     }

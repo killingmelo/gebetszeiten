@@ -145,6 +145,7 @@ class FavoriteStatusLineTest {
         }
         assertEquals(" · bestätigt", kurzwort(VerificationNote.VERIFIED))
         assertEquals(" · kleine Abweichung", kurzwort(VerificationNote.DRIFT))
+        assertEquals(" · aus Kontrollquellen", kurzwort(VerificationNote.GAP_FILLED))
         assertEquals(" · geprüfter Kontrollstand", kurzwort(VerificationNote.CONFLICT_OVERRIDDEN))
         assertEquals(" · Quellen uneinig", kurzwort(VerificationNote.CONFLICT_UNRESOLVED))
         assertEquals(" · unbestätigt", kurzwort(VerificationNote.UNVERIFIED_SINGLE))

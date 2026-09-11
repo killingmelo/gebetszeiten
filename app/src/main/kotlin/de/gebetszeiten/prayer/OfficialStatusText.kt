@@ -292,6 +292,7 @@ private fun verificationWord(verification: Verification?): String? = when (verif
     null, VerificationNote.NONE -> null
     VerificationNote.VERIFIED -> "bestätigt"
     VerificationNote.DRIFT -> "kleine Abweichung"
+    VerificationNote.GAP_FILLED -> "aus Kontrollquellen"
     VerificationNote.CONFLICT_OVERRIDDEN -> "geprüfter Kontrollstand"
     VerificationNote.CONFLICT_UNRESOLVED -> "Quellen uneinig"
     VerificationNote.UNVERIFIED_SINGLE -> "unbestätigt"
