@@ -77,6 +77,10 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
             activeUntil = PrayerProvider.activeUntil(app, value, zone, now, active),
             exact = value.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
             karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(app, value, zone, now),
+            // Der aktive Ort aus den gerade gespeicherten Einstellungen —
+            // nach einem Ortswechsel also sofort der neue, passend zu den
+            // Zeiten daneben.
+            city = value.city,
         )
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)

@@ -117,6 +117,12 @@ object PrayerNotifier {
      * von EXACT zeichnet nur den Text. Gezaehlt wird gegen [next], und das
      * ist bei allen VIER Aufrufern `PrayerProvider.nextPrayer` (Sonnenaufgang
      * uebersprungen), also dasselbe Ziel wie im Titel daneben.
+     *
+     * Beim Herunterziehen zeigt die Anzeige mehr als eingeklappt: [city] steht
+     * als Untertitel in der Kopfzeile, und der `BigTextStyle`-Text
+     * ([ongoingBigText]) traegt die genaue Uhrzeit in BEIDEN Countdown-Modi,
+     * dazu laufendes Gebet, dessen Ende und die Karaha-Zeile, soweit
+     * vorhanden. Der Titel und die eingeklappte Zeile bleiben unveraendert.
      */
     // notify() requires POST_NOTIFICATIONS; every path here is guarded by
     // canPost() above, which lint's data-flow doesn't track through the helper.
@@ -135,6 +141,10 @@ object PrayerNotifier {
         exact: Boolean = false,
         // "⚠️ Karaha bis/ab HH:MM" — static, refreshed at window boundaries.
         karahaLine: de.gebetszeiten.prayer.KarahaLine? = null,
+        // Der AKTIVE Ort (`settings.city`) als Untertitel in der Kopfzeile.
+        // Nicht das Abrufziel aus `PrayerProvider.refreshOfficial` — das ist
+        // seit Task 6 ein anderer Ort, und die Zeiten hier kommen vom aktiven.
+        city: String? = null,
     ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
@@ -192,23 +202,39 @@ object PrayerNotifier {
                 } else {
                     setShowWhen(false)
                 }
-                val lines = mutableListOf<String>()
-                if (stepShort.isNotEmpty()) {
-                    // Remaining is in the title → the clock time becomes detail.
-                    lines += context.getString(R.string.ongoing_at, timeStr)
-                }
+                // Dieselben Bausteine tragen die eingeklappte Zeile UND den
+                // aufgeklappten Text — einmal aufgeloest, zweimal benutzt.
+                val atLine = context.getString(R.string.ongoing_at, timeStr)
                 // Only ONE clock time on the lock screen (the next prayer in
                 // the title); the running prayer is named without its time.
-                activeSince?.let {
-                    lines += context.getString(R.string.ongoing_since, context.getString(it.prayer.labelRes()))
+                val sinceLine = activeSince?.let {
+                    context.getString(R.string.ongoing_since, context.getString(it.prayer.labelRes()))
                 }
                 // Exception: Fajr's window end is actionable (prayer becomes
                 // invalid at sunrise), so that one keeps its time.
-                activeUntil?.let {
-                    lines += context.getString(R.string.ongoing_until, it.format(timeFormat))
+                val untilLine = activeUntil?.let {
+                    context.getString(R.string.ongoing_until, it.format(timeFormat))
                 }
+                val lines = mutableListOf<String>()
+                if (stepShort.isNotEmpty()) {
+                    // Remaining is in the title → the clock time becomes detail.
+                    lines += atLine
+                }
+                sinceLine?.let { lines += it }
+                untilLine?.let { lines += it }
                 karahaLine?.let { lines += it.text }
+                // Die eingeklappte Zeile bleibt Wort fuer Wort, wie sie war.
                 if (lines.isNotEmpty()) setContentText(lines.joinToString(" · "))
+                // Aufgeklappt („runterziehen"): die genaue Uhrzeit steht IMMER
+                // dabei — im Stufen-Modus ist sie aus dem Titel verdraengt,
+                // und genau die verlangt der Nutzer. Wortlaut in
+                // [ongoingBigText], damit er ohne Geraet pruefbar ist.
+                setStyle(
+                    NotificationCompat.BigTextStyle()
+                        .bigText(ongoingBigText(atLine, sinceLine, untilLine, karahaLine?.text)),
+                )
+                // Der Ort in der Kopfzeile, ohne die Inhaltszeile zu belegen.
+                ongoingSubText(city)?.let { setSubText(it) }
             }
             .build()
         manager.notify(ONGOING_ID, notification)

@@ -38,6 +38,9 @@ class BootReceiver : BroadcastReceiver() {
                     activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, active),
                     exact = settings.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
                     karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
+                    // Der aktive Ort — dieselben `settings`, aus denen auch
+                    // die Zeiten oben kommen.
+                    city = settings.city,
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)

@@ -60,6 +60,9 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, stepActive),
                         exact = settings.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
                         karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
+                        // Der aktive Ort aus `settings` — nicht das Abrufziel
+                        // von `refreshOfficial`, das ein anderer sein kann.
+                        city = settings.city,
                     )
                     NextPrayerWidget().updateAll(context)
                     PrayerAlarmScheduler.scheduleNext(context, settings, zone)
@@ -113,6 +116,10 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, active),
                     exact = settings.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
                     karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
+                    // Der aktive Ort aus `settings`. Der Abruf weiter unten
+                    // (`refreshOfficial`) frischt seit Task 6 unter Umstaenden
+                    // einen ANDEREN Ort auf — der gehoert nicht hierher.
+                    city = settings.city,
                 )
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)
