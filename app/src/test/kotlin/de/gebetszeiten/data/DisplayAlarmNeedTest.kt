@@ -12,33 +12,37 @@ import org.junit.Test
  * weiterstellen". Die Dauerbenachrichtigung gehoert deshalb auch im
  * EXACT-Modus dazu: der Systemzaehler zeichnet zwar den Text, aber nicht das
  * Symbol.
+ *
+ * Seit Task 16 stellt EINE Einstellung (`countdownMode`) alle Flaechen. Die
+ * Asymmetrie zwischen Widget und Benachrichtigung bleibt trotzdem — sie kam
+ * nie von der Einstellung, sondern vom Symbol.
  */
 class DisplayAlarmNeedTest {
 
     private val aus = AppSettings.DEFAULT.copy(
         persistentNotification = false,
-        widgetCountdown = AppSettings.COUNTDOWN_OFF,
-        notificationCountdown = AppSettings.COUNTDOWN_OFF,
+        countdownMode = AppSettings.COUNTDOWN_OFF,
     )
 
     @Test fun ohneJedeRestzeitanzeigeKeineKette() {
         assertFalse(aus.needsDisplayStepAlarms())
     }
 
-    @Test fun widgetMitStufenBrauchtDieKette() {
-        assertTrue(aus.copy(widgetCountdown = AppSettings.PRECISION_STEPS).needsDisplayStepAlarms())
+    @Test fun stufenBrauchenDieKetteSchonWegenDesWidgets() {
+        assertTrue(aus.copy(countdownMode = AppSettings.PRECISION_STEPS).needsDisplayStepAlarms())
     }
 
-    @Test fun widgetMitGenauerAnzeigeBrauchtSieNicht() {
-        // Das Widget zeichnet EXACT ohne Zutun der App; ein Symbol hat es nicht.
-        assertFalse(aus.copy(widgetCountdown = AppSettings.PRECISION_EXACT).needsDisplayStepAlarms())
+    @Test fun genauOhneDauerbenachrichtigungBrauchtSieNicht() {
+        // Das Widget zeichnet EXACT ohne Zutun der App; ein Symbol hat es
+        // nicht, und ohne Dauerbenachrichtigung gibt es auch sonst keins.
+        assertFalse(aus.copy(countdownMode = AppSettings.PRECISION_EXACT).needsDisplayStepAlarms())
     }
 
     @Test fun benachrichtigungMitStufenBrauchtDieKette() {
         assertTrue(
             aus.copy(
                 persistentNotification = true,
-                notificationCountdown = AppSettings.PRECISION_STEPS,
+                countdownMode = AppSettings.PRECISION_STEPS,
             ).needsDisplayStepAlarms(),
         )
     }
@@ -48,36 +52,44 @@ class DisplayAlarmNeedTest {
         assertTrue(
             aus.copy(
                 persistentNotification = true,
-                notificationCountdown = AppSettings.PRECISION_EXACT,
+                countdownMode = AppSettings.PRECISION_EXACT,
             ).needsDisplayStepAlarms(),
         )
     }
 
     @Test fun abgeschalteteBenachrichtigungZaehltNichtMit() {
+        // EXACT kostet ohne Dauerbenachrichtigung nichts: das Widget kommt
+        // damit allein zurecht.
         assertFalse(
             aus.copy(
                 persistentNotification = false,
-                notificationCountdown = AppSettings.PRECISION_EXACT,
+                countdownMode = AppSettings.PRECISION_EXACT,
             ).needsDisplayStepAlarms(),
         )
         assertFalse(
             aus.copy(
                 persistentNotification = false,
-                notificationCountdown = AppSettings.PRECISION_STEPS,
-            ).needsDisplayStepAlarms(),
+                countdownMode = AppSettings.PRECISION_EXACT,
+            ).notificationNeedsStepAlarms(),
+        )
+        assertFalse(
+            aus.copy(
+                persistentNotification = false,
+                countdownMode = AppSettings.PRECISION_STEPS,
+            ).notificationNeedsStepAlarms(),
         )
     }
 
     @Test fun benachrichtigungOhneCountdownBrauchtKeineKette() {
         // Der Werkszustand, sobald jemand nur die Dauerbenachrichtigung
-        // einschaltet: beide Countdowns stehen ab Werk auf OFF. Ohne diesen
+        // einschaltet: der Countdown steht ab Werk auf OFF. Ohne diesen
         // Test bliebe eine Bedingung, die schlicht `persistentNotification`
         // prueft, unentdeckt — und der Nutzer bekaeme ~20 Weckvorgaenge je
         // Gebetsintervall fuer eine voellig statische Zeile.
         assertFalse(
             aus.copy(
                 persistentNotification = true,
-                notificationCountdown = AppSettings.COUNTDOWN_OFF,
+                countdownMode = AppSettings.COUNTDOWN_OFF,
             ).needsDisplayStepAlarms(),
         )
     }
@@ -92,24 +104,31 @@ class DisplayAlarmNeedTest {
     // froere zwischen zwei Gebeten ein — ohne dass ein Test es merkt.
 
     @Test fun dasWidgetBrauchtDieKetteNurFuerStufen() {
-        assertTrue(aus.copy(widgetCountdown = AppSettings.PRECISION_STEPS).widgetNeedsStepAlarms())
+        assertTrue(aus.copy(countdownMode = AppSettings.PRECISION_STEPS).widgetNeedsStepAlarms())
         // EXACT zeichnet der Systemzaehler; das Widget hat kein Symbol.
-        assertFalse(aus.copy(widgetCountdown = AppSettings.PRECISION_EXACT).widgetNeedsStepAlarms())
+        assertFalse(aus.copy(countdownMode = AppSettings.PRECISION_EXACT).widgetNeedsStepAlarms())
         assertFalse(aus.widgetNeedsStepAlarms())
+        // Die Dauerbenachrichtigung aendert am Widget nichts.
+        assertFalse(
+            aus.copy(
+                persistentNotification = true,
+                countdownMode = AppSettings.PRECISION_EXACT,
+            ).widgetNeedsStepAlarms(),
+        )
     }
 
     @Test fun dieBenachrichtigungBrauchtSieInBeidenModi() {
         val an = aus.copy(persistentNotification = true)
-        assertTrue(an.copy(notificationCountdown = AppSettings.PRECISION_STEPS).notificationNeedsStepAlarms())
+        assertTrue(an.copy(countdownMode = AppSettings.PRECISION_STEPS).notificationNeedsStepAlarms())
         // Der Unterschied zum Widget: hier haengt das Symbol dran.
-        assertTrue(an.copy(notificationCountdown = AppSettings.PRECISION_EXACT).notificationNeedsStepAlarms())
-        assertFalse(an.copy(notificationCountdown = AppSettings.COUNTDOWN_OFF).notificationNeedsStepAlarms())
+        assertTrue(an.copy(countdownMode = AppSettings.PRECISION_EXACT).notificationNeedsStepAlarms())
+        assertFalse(an.copy(countdownMode = AppSettings.COUNTDOWN_OFF).notificationNeedsStepAlarms())
         // Ohne Dauerbenachrichtigung gibt es kein Symbol, das stehenbleiben
         // koennte.
         assertFalse(
             aus.copy(
                 persistentNotification = false,
-                notificationCountdown = AppSettings.PRECISION_EXACT,
+                countdownMode = AppSettings.PRECISION_EXACT,
             ).notificationNeedsStepAlarms(),
         )
     }

@@ -450,7 +450,10 @@ private fun HeuteContent(
                 showKaraha = settings.showKaraha,
                 showCemaat = settings.showCemaat,
                 cemaatOffsetMinutes = settings.cemaatOffsetMinutes,
-                showRemaining = settings.showCountdown,
+                // Derselbe Regler wie Widget und Benachrichtigung; die Karte
+                // kennt nur an/aus, die Stufen-/Genau-Unterscheidung greift
+                // erst dort, wo die App die Anzeige selbst weiterstellen muss.
+                showRemaining = settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                 onKaraha = { karahaInfo = it },
             )
         }

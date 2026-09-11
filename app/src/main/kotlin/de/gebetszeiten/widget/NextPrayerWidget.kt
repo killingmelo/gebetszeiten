@@ -68,9 +68,11 @@ class NextPrayerWidget : GlanceAppWidget() {
         val next = PrayerProvider.next(context, settings, zone, now)
         val name = context.getString(next.prayer.labelRes())
         val time = next.time.format(timeFormat)
-        // Per-surface remaining-time mode: the widget has its own OFF/STEPS/EXACT.
-        val showCountdown = settings.widgetCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF
-        val exact = settings.widgetCountdown == de.gebetszeiten.data.AppSettings.PRECISION_EXACT
+        // Ein Regler fuer alle Flaechen (AppSettings.countdownMode); das
+        // Widget liest denselben OFF/STEPS/EXACT-Wert wie App und
+        // Benachrichtigung.
+        val showCountdown = settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF
+        val exact = settings.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT
         val karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now)
         // Floor-rounded remaining step ("noch 2+ Std") — static between the
         // display-step alarms; EXACT mode uses the system chronometer instead.

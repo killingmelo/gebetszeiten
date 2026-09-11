@@ -824,18 +824,16 @@ internal fun LocationSettings(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            ToggleRow(stringResource(R.string.settings_in_app), settings.showCountdown) { commit { copy(showCountdown = it) } }
-            CountdownModeSelector(stringResource(R.string.settings_widget), settings.widgetCountdown) { commit { copy(widgetCountdown = it) } }
-            CountdownModeSelector(stringResource(R.string.settings_lockscreen), settings.notificationCountdown) {
-                commit { copy(notificationCountdown = it) }
+            // Ein Regler statt vier: App, Widget, Sperrbildschirm und Symbol
+            // folgen ihm gemeinsam.
+            CountdownModeSelector(stringResource(R.string.settings_remaining_all), settings.countdownMode) {
+                commit { copy(countdownMode = it) }
             }
-            if (!settings.persistentNotification) {
-                Text(
-                    stringResource(R.string.settings_lockscreen_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Text(
+                stringResource(R.string.settings_remaining_cost),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Text(
                 stringResource(R.string.settings_wear_hint),
                 style = MaterialTheme.typography.bodySmall,
@@ -948,7 +946,7 @@ internal fun LocationSettings(
     }
 }
 
-/** Aus / Stufen / Genau chips for one remaining-time surface. */
+/** Aus / Stufen / Genau — der eine Restzeit-Regler fuer alle Flaechen. */
 @Composable
 private fun CountdownModeSelector(label: String, value: String, onChange: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

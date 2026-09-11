@@ -14,7 +14,6 @@
     <string name="latitude_label">Breitengrad</string>
     <string name="longitude_label">Längengrad</string>
     <string name="save">Speichern</string>
-    <string name="show_countdown">Restzeit im Widget anzeigen</string>
     <string name="next_prayer">Nächstes Gebet</string>
     <string name="notification_channel_name">Gebetszeiten (still)</string>
     <string name="notification_channel_desc">Erinnerung zur Gebetszeit</string>
@@ -157,11 +156,9 @@
     <string name="settings_use_calculated">Eigene Berechnung verwenden</string>
     <string name="settings_use_calculated_hint">Statt amtlicher Diyanet-Tabellen die lokale astronomische Berechnung nutzen. Amtliche Zeiten sind Standard, wo verfügbar.</string>
     <string name="settings_remaining">Restzeit</string>
-    <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit — je Fläche einzeln einstellbar. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet — am akkuschonendsten, da die App dafür nicht aufwacht.</string>
-    <string name="settings_in_app">In der App</string>
-    <string name="settings_widget">Widget</string>
-    <string name="settings_lockscreen">Sperrbildschirm</string>
-    <string name="settings_lockscreen_hint">Sperrbildschirm-Restzeit erscheint, sobald unten die dauerhafte Anzeige aktiviert ist.</string>
+    <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit — eine Einstellung für alles: App, Widget, Sperrbildschirm und das Symbol in der Statusleiste. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
+    <string name="settings_remaining_all">Überall</string>
+    <string name="settings_remaining_cost">Stufen und Genau kosten rund 19 bis 24 Weckvorgänge je Gebetsintervall, solange das Widget oder die dauerhafte Anzeige sie weiterstellen müssen. Aus kostet keine.</string>
     <string name="settings_wear_hint">Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).</string>
     <string name="settings_official_online">Offizielle Diyanet-Zeiten (online)</string>
     <string name="settings_high_contrast">Hoher Kontrast</string>

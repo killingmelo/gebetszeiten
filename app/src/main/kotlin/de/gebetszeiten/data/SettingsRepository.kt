@@ -24,7 +24,6 @@ data class AppSettings(
      *  ein Suchtreffer seine Region beim Speichern, und `recentPlaceLabel`
      *  könnte zwei Favoriten „Esenköy" nie auseinanderhalten. */
     val region: String? = null,
-    val showCountdown: Boolean,
     /** Online flavor: use official Diyanet times fetched online (else offline calc).
      *  Im Online-Flavor ab Werk an — amtliche Zeiten sind der Zweck des Flavors;
      *  der Settings-Schalter bleibt das Opt-out. Offline immer false. */
@@ -57,14 +56,19 @@ data class AppSettings(
     val hijriOffsetDays: Int = 0,
     /** Semi-transparent widget background. */
     val widgetTransparent: Boolean = false,
-    /** Remaining-time rendering: STEPS (static floor steps, most frugal) or
-     *  EXACT (system-rendered live countdown). Legacy global value — feeds the
-     *  per-surface defaults below on first read after the update. */
-    val remainingPrecision: String = PRECISION_STEPS,
-    /** Widget remaining-time mode: OFF, STEPS or EXACT — per-surface. */
-    val widgetCountdown: String = COUNTDOWN_OFF,
-    /** Lock-screen (persistent notification) remaining-time mode. */
-    val notificationCountdown: String = COUNTDOWN_OFF,
+    /** Restzeit-Darstellung fuer ALLE Flaechen: OFF, PRECISION_STEPS
+     *  (abgerundete Stufen, die die App selbst weiterstellt) oder
+     *  PRECISION_EXACT (Live-Countdown, vom System gezeichnet).
+     *
+     *  Der eine Regler, der die vier alten (`show_countdown`,
+     *  `remaining_precision`, `widget_countdown`, `notification_countdown`)
+     *  ersetzt: Hauptbildschirm, Widget, Dauerbenachrichtigung und
+     *  Statusleisten-Symbol folgen ihm gemeinsam. Bestandsstaende werden in
+     *  [countdownModeFromPrefs] einmalig zusammengefuehrt.
+     *
+     *  [persistentNotification] bleibt daneben eigenstaendig — es entscheidet,
+     *  OB es eine Benachrichtigung gibt, nicht wie sie aussieht. */
+    val countdownMode: String = COUNTDOWN_OFF,
     /** Zuletzt gewählte Orte (neuester zuerst), für schnellen Ortswechsel ohne Suche. */
     val recentPlaces: List<City> = emptyList(),
     /** Bewusst gemerkte Orte (in der Reihenfolge des Hinzufügens). Unabhängig
@@ -90,7 +94,7 @@ data class AppSettings(
 
     /** Das Widget braucht die Kette nur fuer STEPS — es hat kein Symbol, und
      *  seine EXACT-Anzeige zeichnet der Systemzaehler ohne die App. */
-    fun widgetNeedsStepAlarms(): Boolean = widgetCountdown == PRECISION_STEPS
+    fun widgetNeedsStepAlarms(): Boolean = countdownMode == PRECISION_STEPS
 
     /** Die Dauerbenachrichtigung braucht sie in BEIDEN Modi: im EXACT-Modus
      *  zeichnet der Systemzaehler zwar den Text, das Statusleisten-Symbol
@@ -102,9 +106,13 @@ data class AppSettings(
      *  beiden auseinanderlaufen: die Kette liefe, das Ziel der
      *  Benachrichtigung fehlte, `boundaries` bliebe leer, der Alarm wuerde
      *  abbestellt — und das Symbol froere zwischen zwei Gebeten ein, ohne
-     *  dass ein Test es merkt. */
+     *  dass ein Test es merkt.
+     *
+     *  Seit Task 16 fragen beide Praedikate dieselbe Einstellung
+     *  [countdownMode]; die Asymmetrie bleibt trotzdem, denn sie kam nie von
+     *  der Einstellung, sondern vom Symbol. */
     fun notificationNeedsStepAlarms(): Boolean =
-        persistentNotification && notificationCountdown != COUNTDOWN_OFF
+        persistentNotification && countdownMode != COUNTDOWN_OFF
 
     companion object {
         val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")
@@ -124,7 +132,6 @@ data class AppSettings(
             longitude = 11.0767,
             city = "Nürnberg",
             region = null,
-            showCountdown = false,
             useOnline = de.gebetszeiten.official.OfficialTimesProvider.isOnline,
             useCalculated = false,
             showNafl = false,
@@ -140,9 +147,7 @@ data class AppSettings(
             themeMode = THEME_SYSTEM,
             hijriOffsetDays = 0,
             widgetTransparent = false,
-            remainingPrecision = PRECISION_STEPS,
-            widgetCountdown = COUNTDOWN_OFF,
-            notificationCountdown = COUNTDOWN_OFF,
+            countdownMode = COUNTDOWN_OFF,
             recentPlaces = emptyList(),
             favorites = emptyList(),
         )
@@ -162,6 +167,43 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 internal fun regionToPref(region: String?): String = region.orEmpty()
 
 internal fun regionFromPref(stored: String?): String? = stored?.ifBlank { null }
+
+/**
+ * Der gespeicherte Restzeit-Modus — einschliesslich der einmaligen
+ * Zusammenfuehrung der vier alten Regler zu [AppSettings.countdownMode].
+ *
+ * Reine Funktion aus demselben Grund wie [regionToPref]: sie fasst
+ * NUTZERDATEN an, und im DataStore-Flow kaeme ohne Robolectric kein Test an
+ * sie heran. Wer heute die genaue Anzeige hat, muss sie danach haben; wer nie
+ * eine Restzeit wollte, darf nach dem Update keine bekommen.
+ *
+ * Regel: der erste nicht-`OFF`-Wert gewinnt, sonst `OFF`. Reihenfolge:
+ *  1. `notification_countdown` — die Dauerbenachrichtigung ist die
+ *     sichtbarste Flaeche, ihr Modus wurde am ehesten bewusst gewaehlt.
+ *  2. `widget_countdown`.
+ *  3. `remaining_precision`, **nur wenn `show_countdown` an war**: der Wert
+ *     stand ab Werk auf `STEPS` und war damit auch bei jedem gesetzt, der die
+ *     Restzeit nie eingeschaltet hat. Allein ausgewertet schaltete er jedem
+ *     Bestandsnutzer die Anzeige ein — samt ihrer Weckvorgaenge.
+ *
+ * Ist [migrated] gesetzt, entscheidet ausschliesslich [stored]: ein
+ * liegengebliebener alter Schluessel darf die Wahl nach dem Update nicht mehr
+ * ueberschreiben.
+ */
+internal fun countdownModeFromPrefs(
+    migrated: Boolean,
+    stored: String?,
+    notificationCountdown: String?,
+    widgetCountdown: String?,
+    showCountdown: Boolean?,
+    remainingPrecision: String?,
+): String {
+    if (migrated) return stored ?: AppSettings.COUNTDOWN_OFF
+    val legacyGlobal = if (showCountdown == true) remainingPrecision else null
+    return listOf(notificationCountdown, widgetCountdown, legacyGlobal)
+        .firstOrNull { it != null && it != AppSettings.COUNTDOWN_OFF }
+        ?: AppSettings.COUNTDOWN_OFF
+}
 
 class SettingsRepository(private val context: Context) {
 
@@ -187,6 +229,11 @@ class SettingsRepository(private val context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HIJRI_OFFSET = intPreferencesKey("hijri_offset_days")
         val WIDGET_TRANSPARENT = booleanPreferencesKey("widget_transparent")
+        val COUNTDOWN_MODE = stringPreferencesKey("countdown_mode")
+        val COUNTDOWN_MIGRATED = booleanPreferencesKey("countdown_migrated")
+
+        // Nur noch fuer die einmalige Zusammenfuehrung da (Task 16): gelesen,
+        // uebersetzt, geloescht. COUNTDOWN gehoert auch dazu.
         val REMAINING_PRECISION = stringPreferencesKey("remaining_precision")
         val WIDGET_COUNTDOWN = stringPreferencesKey("widget_countdown")
         val NOTIFICATION_COUNTDOWN = stringPreferencesKey("notification_countdown")
@@ -195,13 +242,28 @@ class SettingsRepository(private val context: Context) {
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
-        // Migration: surfaces that predate the per-surface split inherit the
-        // old global "Restzeit anzeigen" + precision combination.
-        val legacyCountdown = prefs[Keys.COUNTDOWN] ?: AppSettings.DEFAULT.showCountdown
-        val legacyMode = if (legacyCountdown) {
-            prefs[Keys.REMAINING_PRECISION] ?: AppSettings.DEFAULT.remainingPrecision
-        } else {
-            AppSettings.COUNTDOWN_OFF
+        // Migration: aus den vier alten Reglern wird einer. Die Rechnung
+        // steht als reine Funktion oben — hier gaebe es keinen Test dafuer.
+        val countdownMigrated = prefs[Keys.COUNTDOWN_MIGRATED] ?: false
+        val countdownMode = countdownModeFromPrefs(
+            migrated = countdownMigrated,
+            stored = prefs[Keys.COUNTDOWN_MODE],
+            notificationCountdown = prefs[Keys.NOTIFICATION_COUNTDOWN],
+            widgetCountdown = prefs[Keys.WIDGET_COUNTDOWN],
+            showCountdown = prefs[Keys.COUNTDOWN],
+            remainingPrecision = prefs[Keys.REMAINING_PRECISION],
+        )
+        if (!countdownMigrated) {
+            context.dataStore.edit { migrated ->
+                migrated[Keys.COUNTDOWN_MODE] = countdownMode
+                migrated[Keys.COUNTDOWN_MIGRATED] = true
+                // Weg damit, sonst aufersteht der alte Stand beim naechsten
+                // Update, das aus Versehen wieder danach fragt.
+                migrated.remove(Keys.COUNTDOWN)
+                migrated.remove(Keys.REMAINING_PRECISION)
+                migrated.remove(Keys.WIDGET_COUNTDOWN)
+                migrated.remove(Keys.NOTIFICATION_COUNTDOWN)
+            }
         }
         // Migration: vor dem Flavor-Wechsel wurde use_online im Offline-Build
         // blind mitgespeichert (Schalter war nie sichtbar, siehe
@@ -227,7 +289,6 @@ class SettingsRepository(private val context: Context) {
             longitude = prefs[Keys.LNG] ?: AppSettings.DEFAULT.longitude,
             city = prefs[Keys.CITY] ?: AppSettings.DEFAULT.city,
             region = regionFromPref(prefs[Keys.REGION]),
-            showCountdown = prefs[Keys.COUNTDOWN] ?: AppSettings.DEFAULT.showCountdown,
             useOnline = useOnline,
             useCalculated = prefs[Keys.USE_CALCULATED] ?: AppSettings.DEFAULT.useCalculated,
             showNafl = prefs[Keys.SHOW_NAFL] ?: AppSettings.DEFAULT.showNafl,
@@ -244,9 +305,7 @@ class SettingsRepository(private val context: Context) {
             themeMode = prefs[Keys.THEME_MODE] ?: AppSettings.DEFAULT.themeMode,
             hijriOffsetDays = prefs[Keys.HIJRI_OFFSET] ?: AppSettings.DEFAULT.hijriOffsetDays,
             widgetTransparent = prefs[Keys.WIDGET_TRANSPARENT] ?: AppSettings.DEFAULT.widgetTransparent,
-            remainingPrecision = prefs[Keys.REMAINING_PRECISION] ?: AppSettings.DEFAULT.remainingPrecision,
-            widgetCountdown = prefs[Keys.WIDGET_COUNTDOWN] ?: legacyMode,
-            notificationCountdown = prefs[Keys.NOTIFICATION_COUNTDOWN] ?: legacyMode,
+            countdownMode = countdownMode,
             recentPlaces = parseRecentPlaces(prefs[Keys.RECENT_PLACES]),
             // Kein Vorgängerschlüssel, keine Migration: fehlt der Schlüssel,
             // ist die Liste leer — der richtige Startzustand.
@@ -262,7 +321,6 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.LNG] = value.longitude
             prefs[Keys.CITY] = value.city
             prefs[Keys.REGION] = regionToPref(value.region)
-            prefs[Keys.COUNTDOWN] = value.showCountdown
             prefs[Keys.USE_ONLINE] = value.useOnline
             prefs[Keys.USE_CALCULATED] = value.useCalculated
             prefs[Keys.SHOW_NAFL] = value.showNafl
@@ -278,9 +336,11 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.THEME_MODE] = value.themeMode
             prefs[Keys.HIJRI_OFFSET] = value.hijriOffsetDays
             prefs[Keys.WIDGET_TRANSPARENT] = value.widgetTransparent
-            prefs[Keys.REMAINING_PRECISION] = value.remainingPrecision
-            prefs[Keys.WIDGET_COUNTDOWN] = value.widgetCountdown
-            prefs[Keys.NOTIFICATION_COUNTDOWN] = value.notificationCountdown
+            prefs[Keys.COUNTDOWN_MODE] = value.countdownMode
+            // Auch hier gesetzt, nicht nur beim Lesen: wer speichert, hat
+            // gewaehlt. Ohne das Flag koennte eine Migration, die noch nicht
+            // durch war, die frische Wahl gleich wieder ueberschreiben.
+            prefs[Keys.COUNTDOWN_MIGRATED] = true
             prefs[Keys.RECENT_PLACES] = serializeRecentPlaces(value.recentPlaces)
             prefs[Keys.FAVORITES] = serializeFavorites(value.favorites)
         }

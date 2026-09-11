@@ -71,11 +71,11 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
             app,
             PrayerProvider.nextPrayer(app, value, zone, now),
             value.persistentNotification,
-            value.notificationCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
+            value.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
             active,
             replacesEntry = value.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT,
             activeUntil = PrayerProvider.activeUntil(app, value, zone, now, active),
-            exact = value.notificationCountdown == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
+            exact = value.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
             karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(app, value, zone, now),
         )
         PrayerAlarmScheduler.scheduleNext(app, value)

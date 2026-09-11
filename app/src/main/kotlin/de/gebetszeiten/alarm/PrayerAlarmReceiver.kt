@@ -54,11 +54,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         context,
                         PrayerProvider.nextPrayer(context, settings, zone, now),
                         settings.persistentNotification,
-                        settings.notificationCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
+                        settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                         stepActive,
                         replacesEntry = false, // step ticks never clear the entry alert
                         activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, stepActive),
-                        exact = settings.notificationCountdown == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
+                        exact = settings.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
                         karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
                     )
                     NextPrayerWidget().updateAll(context)
@@ -107,11 +107,11 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     context,
                     PrayerProvider.nextPrayer(context, settings, zone, now),
                     settings.persistentNotification,
-                    settings.notificationCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
+                    settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                     active,
                     replacesEntry = styleSilent,
                     activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, active),
-                    exact = settings.notificationCountdown == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
+                    exact = settings.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
                     karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
                 )
                 NextPrayerWidget().updateAll(context)

@@ -32,11 +32,11 @@ class BootReceiver : BroadcastReceiver() {
                     context,
                     PrayerProvider.nextPrayer(context, settings, zone, now),
                     settings.persistentNotification,
-                    settings.notificationCountdown != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
+                    settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                     active,
                     replacesEntry = settings.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT,
                     activeUntil = PrayerProvider.activeUntil(context, settings, zone, now, active),
-                    exact = settings.notificationCountdown == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
+                    exact = settings.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
                     karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
                 )
                 NextPrayerWidget().updateAll(context)
