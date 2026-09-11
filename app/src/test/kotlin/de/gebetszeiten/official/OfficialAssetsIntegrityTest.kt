@@ -102,16 +102,29 @@ class OfficialAssetsIntegrityTest {
         }
     }
 
-    @Test fun nuernbergReproducesPhase1Reference() {
+    /**
+     * Die eine Zeile, die nicht aus der Pipeline stammt, sondern von Hand gegen
+     * die Quelle geprüft wurde. Alle anderen Tests hier prüfen die Ausgabe
+     * gegen sich selbst — dieser prüft sie gegen die Wirklichkeit.
+     *
+     * Stand 11.09.2026 abgelesen auf `namazvakitleri.diyanet.gov.tr/tr-TR/11024`
+     * (Nürnberg), Jahrestabelle, Zeile `07 Haziran 2027 Pazartesi`:
+     * `03:33 05:04 13:20 17:36 21:25 22:46`.
+     *
+     * **Nach jedem Pipeline-Lauf neu ablesen und hier eintragen** — Datum,
+     * Jahrgang und Werte. Eine Referenz, die man mitwandern lässt, ohne sie
+     * nachzuschlagen, prüft nichts mehr.
+     */
+    @Test fun nuernbergReproducesTheHandCheckedReference() {
         val nbg = locations.first { it.name == "Nürnberg" }
-        val table = File(assets, "tables/${nbg.tableRef}-2026.tsv").useLines { parseOfficialTimes(it) }
-        val t = table.getValue(LocalDate.of(2026, 6, 7))
-        assertEquals(LocalTime.of(3, 35), t.fajr)
+        val table = File(assets, "tables/${nbg.tableRef}-2027.tsv").useLines { parseOfficialTimes(it) }
+        val t = table.getValue(LocalDate.of(2027, 6, 7))
+        assertEquals(LocalTime.of(3, 33), t.fajr)
         assertEquals(LocalTime.of(5, 4), t.sunrise)
         assertEquals(LocalTime.of(13, 20), t.dhuhr)
         assertEquals(LocalTime.of(17, 36), t.asr)
         assertEquals(LocalTime.of(21, 25), t.maghrib)
-        assertEquals(LocalTime.of(22, 45), t.isha)
+        assertEquals(LocalTime.of(22, 46), t.isha)
     }
 
     /**
