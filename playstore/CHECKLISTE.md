@@ -125,13 +125,31 @@ Jahresansicht auf namazvakitleri.diyanet.gov.tr pruefen):
    (~30-60 min). `--year` ist Pflicht: die Jahresseite ist ein rollierendes
    ~16-Monats-Fenster, das Skript schreibt nur Zeilen dieses Jahres und bricht
    hart ab, wenn ein Standort das Jahr nicht lueckenlos abdeckt,
-3. Report pruefen (>=500 Standorte, < 4 MB); Tabellen des Vorjahrs entfernen
+3. Report pruefen: >=500 Standorte und **~4.6 KB je Standort**. Nicht die
+   Gesamtgroesse ist der Massstab — sie waechst mit der Zahl der Orte (2026:
+   621 Orte / 2.71 MB, 2027: 947 Orte / 4.28 MB). Auffaellig waere nur, wenn
+   der Wert JE STANDORT steigt; davor warnt das Skript,
+4. Tabellen des Vorjahrs entfernen
    (`git rm shared-assets/official/tables/t*-<altjahr>.tsv`, das Skript warnt
    danach), dann `git add shared-assets/official` — dazu gehoert das vom
    Skript neu geschriebene `coverage.tsv`,
-4. Integritaetstest: `gradlew :app:testOfflineDebugUnitTest` (jetzt wieder
-   gruen, inklusive des Stolperdrahts oben),
-5. App- UND Wear-Update mit erhoehtem versionCode veroeffentlichen (beide
+5. **Die handgepruefte Referenz neu ablesen.**
+   `OfficialAssetsIntegrityTest.nuernbergReproducesTheHandCheckedReference`
+   vergleicht sechs Zeiten eines Tages gegen einen Wert, den ein Mensch auf
+   `namazvakitleri.diyanet.gov.tr/tr-TR/11024` abgelesen hat. Alle anderen
+   Tests pruefen die Pipeline-Ausgabe gegen sich selbst; nur dieser prueft sie
+   gegen die Quelle. Datum, Jahrgang und Werte im Test **nachschlagen**, nicht
+   aus der neuen Tabelle uebernehmen — sonst prueft er nichts mehr.
+   Vorsicht bei Zusammenfassungen durch Werkzeuge: Akscham steigt im Juni um
+   eine Minute pro Tag, ein Zeilenversatz sieht dort aus wie ein Parser-Fehler
+   (schon einmal passiert, 11.09.2026),
+6. Integritaetstest: `gradlew :app:testOfflineDebugUnitTest` (jetzt wieder
+   gruen, inklusive des Stolperdrahts oben). Achte auf
+   `onlyOneVintageIsBundled`: er faellt, wenn Schritt 4 vergessen wurde — und
+   das waere schlimm, weil die Kennungen (`t000`, `t001`, …) bei jedem Lauf
+   neu vergeben werden und ein liegengebliebener Jahrgang die Zeiten eines
+   FREMDEN Orts ausliefert (Nuernberg wanderte 2026→2027 von `t507` auf `t809`),
+7. App- UND Wear-Update mit erhoehtem versionCode veroeffentlichen (beide
    Module buendeln dieselben Assets).
 
 Das Bundle bleibt dabei DE-Fallback und Quelle fuer die Wear-App; die

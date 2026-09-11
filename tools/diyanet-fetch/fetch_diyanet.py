@@ -270,8 +270,17 @@ def main() -> None:
 
     print(f"\nJahr {year} ({covered[0]} bis {covered[-1]}) | eindeutige Tabellen: "
           f"{len(content_to_ref)} von {len(index_rows)} Standorten")
+    # Die Gesamtgroesse allein sagt nichts: sie waechst mit der Zahl der
+    # Standorte, und mehr Standorte sind erwuenscht. Aussagekraeftig ist die
+    # Groesse JE STANDORT — bleibt sie stabil, ist ein Zuwachs Abdeckung und
+    # kein Ballast. Erfahrungswerte: 2026 = 621 Orte / 2.71 MB / 4.5 KB je Ort,
+    # 2027 = 947 Orte / 4.28 MB / 4.6 KB je Ort.
+    per_loc = total / len(index_rows) / 1024 if index_rows else 0.0
     print(f"Groesse komprimiert (zlib-9-Schaetzung): {total / 1024 / 1024:.2f} MB "
-          f"(Ziel < 4 MB) + Index {len(index_text) / 1024:.0f} KB")
+          f"= {per_loc:.1f} KB je Standort + Index {len(index_text) / 1024:.0f} KB")
+    if per_loc > 6.0:
+        print(f"  ACHTUNG: {per_loc:.1f} KB je Standort statt der ueblichen ~4.6 — "
+              f"das waere Ballast, nicht Abdeckung. Tabellenformat pruefen.")
     if skipped:
         print(f"Uebersprungen wegen Fehlern: {len(skipped)}")
         for name in skipped[:20]:
