@@ -49,6 +49,45 @@ class OfficialAssetsIntegrityTest {
         assertEquals("letzter Tag laut coverage.tsv fehlt in $ref", last, table.keys.maxOrNull())
     }
 
+    /**
+     * Nur EIN Jahrgang darf in `tables/` liegen — sonst zeigt die App falsche
+     * Gebetszeiten, die richtig aussehen.
+     *
+     * `fetch_diyanet.py` vergibt die Kennungen (`t000`, `t001`, …) bei jedem
+     * Lauf NEU, nach Inhalt und in Fundreihenfolge, und schreibt
+     * `locations-de.tsv` komplett neu. Nach einem Lauf fuer ein neues Jahr
+     * bedeutet `t005` also im Zweifel einen anderen Ort als vorher.
+     *
+     * `BundledOfficialSource` baut den Dateinamen aus dem Jahr des GESUCHTEN
+     * Datums (`tables/${'$'}{loc.tableRef}-${'$'}{date.year}.tsv`). Bleibt ein alter
+     * Jahrgang liegen, findet eine Suche fuer ein Datum jenes Jahres unter der
+     * NEUEN Kennung die Tabelle eines FREMDEN Orts — und liefert sie aus.
+     *
+     * Das Skript warnt davor am Ende seines Laufs. Eine Warnung im Terminal
+     * ist aber kein Schutz: sie liest, wer sie ohnehin beachtet haette.
+     * Deshalb hier ein Build-Fehler.
+     */
+    @Test fun onlyOneVintageIsBundled() {
+        val vintages = File(assets, "tables").listFiles()
+            .orEmpty()
+            .mapNotNull { Regex("""^t\d{3}-(\d{4})\.tsv$""").find(it.name)?.groupValues?.get(1) }
+            .distinct()
+            .sorted()
+        assertEquals(
+            "Mehr als ein Jahrgang in shared-assets/official/tables: $vintages. " +
+                "Die Kennungen werden bei jedem Pipeline-Lauf neu vergeben — ein " +
+                "liegengebliebener Jahrgang liefert die Zeiten eines FREMDEN Orts. " +
+                "Zu tun: git rm shared-assets/official/tables/t*-<altes Jahr>.tsv",
+            1,
+            vintages.size,
+        )
+        assertEquals(
+            "Der gebuendelte Jahrgang passt nicht zu coverage.tsv",
+            coverage.first.year.toString(),
+            vintages.single(),
+        )
+    }
+
     @Test fun everyReferencedTableExistsCompleteAndOrdered() {
         val year = coverage.first.year
         locations.map { it.tableRef }.distinct().forEach { ref ->
