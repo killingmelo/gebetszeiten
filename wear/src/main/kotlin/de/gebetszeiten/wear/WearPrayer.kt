@@ -11,10 +11,13 @@ import java.time.ZonedDateTime
 
 /**
  * Shared prayer-time helpers for the watch. Prioritätskette wie am Phone:
- * vom Handy gesyncte amtliche Zeiten (WearOfficialCache) → gebündelte
- * Diyanet-Tabellen (nearest ≤ 25 km) → Berechnung. Die Uhr geht selbst
- * nie ins Netz und läuft ohne Handy voll weiter; der Sync ist rein
- * empfangend (Play-Services Data Layer).
+ * amtliche Zeiten (WearOfficialCache) → gebündelte Diyanet-Tabellen
+ * (nearest ≤ 25 km) → Berechnung. Im offline-Flavor bleibt es dabei: die
+ * Uhr geht selbst nie ins Netz, der Sync vom Handy ist rein empfangend
+ * (Play-Services Data Layer). Im ONLINE-Flavor traegt WearOfficialCache
+ * seit Aufgabe 6 zusaetzlich, was [refreshWearOfficial] selbst abgerufen
+ * hat — der Sync bleibt zwar weiterhin empfangend, ist aber nicht mehr der
+ * einzige Weg, wie amtliche Zeiten in den Cache kommen.
  */
 object WearPrayer {
 

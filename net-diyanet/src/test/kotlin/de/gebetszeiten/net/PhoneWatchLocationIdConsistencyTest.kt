@@ -74,15 +74,20 @@ class PhoneWatchLocationIdConsistencyTest {
                 "${de.name}: Telefon-ID ${de.diyanetId} vs. Weltindex-ID ${weltTreffer.diyanetId} " +
                     "(Weltindex-Treffer: ${weltTreffer.name}/${weltTreffer.province})"
             }
-            de.diyanetId to beschreibung
+            // Schluessel ist ID UND Name zusammen, nicht nur die ID: sonst
+            // bliebe die Ausnahmeliste gruen, wenn dieselbe ID kuenftig zu
+            // einem VOELLIG ANDEREN Ort gehoert (Pipeline-Neuvergabe) — die
+            // Koordinaten wuerden nicht mehr passen, aber ein reiner
+            // ID-Abgleich saehe das nicht.
+            Pair(de.diyanetId, de.name) to beschreibung
         }
-        val gefundeneIds = gefunden.map { it.first }.toSet()
-        val bekannteIds = BEKANNTE_WELTINDEX_ABWEICHUNGEN.map { it.deDiyanetId }.toSet()
+        val gefundeneSchluessel = gefunden.map { it.first }.toSet()
+        val bekannteSchluessel = BEKANNTE_WELTINDEX_ABWEICHUNGEN.map { it.deDiyanetId to it.deName }.toSet()
 
         // Fall 1: ein NEUER, nicht dokumentierter Ort weicht ab — die
         // Ausnahmeliste ist zu klein geworden (oder ein bekannter Fehler hat
         // sich einen zusaetzlichen Ort "eingefangen").
-        val unbekannt = gefunden.filter { (id, _) -> id !in bekannteIds }
+        val unbekannt = gefunden.filter { (schluessel, _) -> schluessel !in bekannteSchluessel }
         assertEquals(
             "Neue, nicht in BEKANNTE_WELTINDEX_ABWEICHUNGEN dokumentierte Abweichung(en) " +
                 "zwischen locations-de.tsv und dem Weltindex:\n" +
@@ -92,14 +97,17 @@ class PhoneWatchLocationIdConsistencyTest {
         )
 
         // Fall 2: ein bekannter Fehler tritt NICHT MEHR auf (Pipeline
-        // korrigiert, oder der Ort ist aus locations-de.tsv verschwunden) —
-        // die Ausnahmeliste ist zu gross geworden und muss verkleinert
+        // korrigiert, der Ort ist aus locations-de.tsv verschwunden, oder
+        // dieselbe ID gehoert jetzt zu einem anderen Namen) — die
+        // Ausnahmeliste ist zu gross/veraltet geworden und muss verkleinert
         // werden, sonst wuerde sie eine kuenftige, wirklich neue Abweichung
         // mit demselben Namensglueck verschleiern.
-        val nichtMehrAbweichend = BEKANNTE_WELTINDEX_ABWEICHUNGEN.filter { it.deDiyanetId !in gefundeneIds }
+        val nichtMehrAbweichend = BEKANNTE_WELTINDEX_ABWEICHUNGEN
+            .filter { (it.deDiyanetId to it.deName) !in gefundeneSchluessel }
         assertEquals(
             "BEKANNTE_WELTINDEX_ABWEICHUNGEN ist veraltet, diese Eintraege weichen nicht mehr " +
-                "ab und muessen entfernt werden:\n" +
+                "ab (oder gehoeren nicht mehr zum genannten Ort) und muessen entfernt/korrigiert " +
+                "werden:\n" +
                 nichtMehrAbweichend.joinToString("\n") { "${it.deName} (${it.deDiyanetId}): ${it.ursache}" },
             emptyList<BekannteWeltindexAbweichung>(),
             nichtMehrAbweichend,

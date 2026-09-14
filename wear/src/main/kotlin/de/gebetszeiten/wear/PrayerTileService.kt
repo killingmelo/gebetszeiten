@@ -15,6 +15,11 @@ import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import androidx.concurrent.futures.ResolvableFuture
 import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -35,20 +40,35 @@ class PrayerTileService : TileService() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
+    // Eigener Hintergrund-Scope fuer den Netzabruf (Fix-Runde 2): das System
+    // ruft `onTileRequest` auf dem HAUPT-THREAD auf (ANR-Schwelle 5 s), ein
+    // Diyanet-Timeout in `refreshWearOfficial` kann aber bis zu 25 s dauern.
+    // Der Abruf darf die Kachel-Antwort deshalb nicht blockieren — er laeuft
+    // nebenher, `SupervisorJob` haelt einen Fehlschlag vom naechsten Aufruf
+    // fern.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onTileRequest(
         requestParams: RequestBuilders.TileRequest,
     ): ListenableFuture<TileBuilders.Tile> {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
+        // Sofort aus dem Cache zeichnen — reiner DataStore-Read,
+        // Millisekunden, unbedenklich im `runBlocking` auf dem Haupt-Thread.
         // One extra entry so every shown prayer knows its successor ("danach").
         val upcoming = runBlocking {
-            // Seit Aufgabe 6 ruft die Uhr amtliche Zeiten selbst ab; die
-            // Wiederholungs-Bremse in `refreshWearOfficial` (`needsRefresh`)
-            // haelt das ausser am faelligen Ort billig — kein Netz bei jedem
-            // Kachel-Zeichnen.
-            refreshWearOfficial(applicationContext)
             val location = WearSettings.location(applicationContext)
             WearPrayer.upcoming(applicationContext, location, zone, now, count = 7)
+        }
+        // Amtliche Zeiten NEBENHER auffrischen (siehe KDoc an
+        // `refreshWearOfficial`, "Muss NICHT-BLOCKIEREND aufgerufen
+        // werden"), nicht Teil der Kachel-Antwort. Die Wiederholungs-Bremse
+        // darin haelt das ausser am faelligen Ort billig. Nur bei einem
+        // ECHTEN neuen Zeitplan (Rueckgabe `true`) lohnt eine Neuzeichnung.
+        scope.launch {
+            if (refreshWearOfficial(applicationContext)) {
+                TileService.getUpdater(applicationContext).requestUpdate(PrayerTileService::class.java)
+            }
         }
 
         val timeline = TimelineBuilders.Timeline.Builder()
@@ -88,6 +108,11 @@ class PrayerTileService : TileService() {
         ResolvableFuture.create<ResourceBuilders.Resources>().apply {
             set(ResourceBuilders.Resources.Builder().setVersion(RESOURCES_VERSION).build())
         }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
+    }
 
     private fun layout(
         device: DeviceParametersBuilders.DeviceParameters,

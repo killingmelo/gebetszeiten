@@ -1,6 +1,7 @@
 package de.gebetszeiten.wear
 
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Intent
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationText
@@ -11,11 +12,17 @@ import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
 import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import androidx.wear.watchface.complications.data.TimeRange
+import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import androidx.wear.watchface.complications.datasource.ComplicationDataTimeline
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.ComplicationDataSourceService
 import androidx.wear.watchface.complications.datasource.TimeInterval
 import androidx.wear.watchface.complications.datasource.TimelineEntry
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.Duration
 import java.time.ZoneId
@@ -41,6 +48,12 @@ class PrayerComplicationService : ComplicationDataSourceService() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
+    // Eigener Hintergrund-Scope fuer den Netzabruf (Fix-Runde 2) — dieselbe
+    // Begruendung wie in `PrayerTileService`: `onComplicationRequest` laeuft
+    // auf dem Haupt-Thread, `refreshWearOfficial` darf ihn nicht bis zu 25 s
+    // blockieren.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT) return null
         return data("Asr", PlainComplicationText.Builder("17:36").build(), "17:36", null)
@@ -52,12 +65,20 @@ class PrayerComplicationService : ComplicationDataSourceService() {
     ) {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
+        // Sofort aus dem Cache zeichnen — reiner DataStore-Read.
         val (showRemaining, next) = runBlocking {
-            // Seit Aufgabe 6 ruft die Uhr amtliche Zeiten selbst ab; siehe
-            // Kommentar in `PrayerTileService.onTileRequest`.
-            refreshWearOfficial(applicationContext)
             val location = WearSettings.location(applicationContext)
             WearSettings.showRemaining(applicationContext) to WearPrayer.next(applicationContext, location, zone, now)
+        }
+        // Amtliche Zeiten NEBENHER auffrischen, nicht Teil dieser Antwort —
+        // siehe Kommentar in `PrayerTileService.onTileRequest`. Nur bei
+        // echtem neuen Zeitplan (Rueckgabe `true`) neu anfordern.
+        scope.launch {
+            if (refreshWearOfficial(applicationContext)) {
+                ComplicationDataSourceUpdateRequester
+                    .create(applicationContext, ComponentName(applicationContext, PrayerComplicationService::class.java))
+                    .requestUpdateAll()
+            }
         }
         val title = next.first.label()
         val timeStr = next.second.format(timeFormat)
@@ -98,6 +119,11 @@ class PrayerComplicationService : ComplicationDataSourceService() {
                 entries,
             ),
         )
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
     }
 
     private fun data(
