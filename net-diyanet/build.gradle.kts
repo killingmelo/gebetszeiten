@@ -23,9 +23,16 @@ android {
 // Deklaration in app/build.gradle.kts fuer CompositeFetcherContractTest &
 // Verwandte). Ohne diese Eingabe gilt der Test als UP-TO-DATE, auch wenn sich
 // die Datei geaendert hat.
+//
+// `PhoneWatchLocationIdConsistencyTest` liest zusaetzlich `locations-de.tsv`
+// aus `shared-assets/official` (Telefon-Seite des Abgleichs) — dieselbe
+// Falle, deshalb dieselbe Eingabe-Deklaration.
 tasks.withType<Test>().configureEach {
     inputs.file(file("src/main/assets/official/locations-world.tsv"))
         .withPropertyName("worldIndexAsset")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.file("shared-assets/official/locations-de.tsv"))
+        .withPropertyName("deLocationsAsset")
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
