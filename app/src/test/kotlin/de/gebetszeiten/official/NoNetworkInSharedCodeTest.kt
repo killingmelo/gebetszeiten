@@ -84,6 +84,10 @@ class NoNetworkInSharedCodeTest {
             File("src/offline/AndroidManifest.xml"),
             File("src/online/AndroidManifest.xml"),
             File("../wear/src/main/AndroidManifest.xml"),
+            // :net-diyanet traegt die Berechtigung jetzt selbst (Modulschnitt
+            // Aufgabe 2) - src/online/AndroidManifest.xml hat sie nicht mehr,
+            // sie kommt ueber die Modulabhaengigkeit `onlineImplementation`.
+            File("../net-diyanet/src/main/AndroidManifest.xml"),
         ).filter { it.isFile }
             .filter { manifest ->
                 ohneXmlKommentare(manifest.readText())
@@ -92,8 +96,10 @@ class NoNetworkInSharedCodeTest {
             .map { it.path }
 
         assertTrue(
-            "INTERNET darf ausschliesslich im online-Flavor stehen, gefunden in: $mitBerechtigung",
-            mitBerechtigung.size == 1 && mitBerechtigung.single().contains("online"),
+            "INTERNET darf ausschliesslich im online-Flavor bzw. dem Modul stehen, " +
+                "das nur er einbindet, gefunden in: $mitBerechtigung",
+            mitBerechtigung.size == 1 &&
+                mitBerechtigung.single().let { it.contains("online") || it.contains("net-diyanet") },
         )
     }
 

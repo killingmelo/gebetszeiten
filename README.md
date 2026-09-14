@@ -70,7 +70,8 @@ nachbildbar ist).
 ```
 
 Produkt-Flavors: `offline` (Standard, keine INTERNET-Berechtigung) und `online`
-(`de.gebetszeiten.online`, INTERNET nur in `app/src/online/AndroidManifest.xml`).
+(`de.gebetszeiten.online`, INTERNET kommt aus `net-diyanet/src/main/AndroidManifest.xml`,
+eingebunden nur von diesem Flavor).
 
 ## Lizenz
 

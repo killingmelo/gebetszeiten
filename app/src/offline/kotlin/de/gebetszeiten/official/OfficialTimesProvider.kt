@@ -1,6 +1,7 @@
 package de.gebetszeiten.official
 
 import android.content.Context
+import de.gebetszeiten.core.prayertimes.officialtimes.OfficialTimesFetcher
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.data.AppSettings
 import java.time.LocalDate

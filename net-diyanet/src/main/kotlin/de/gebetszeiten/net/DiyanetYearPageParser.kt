@@ -1,4 +1,4 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.net
 
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import java.time.LocalDate

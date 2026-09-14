@@ -1,14 +1,11 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.core.prayertimes.officialtimes
 
-import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
-import de.gebetszeiten.core.prayertimes.officialtimes.SourceResult
-import de.gebetszeiten.core.prayertimes.officialtimes.Verification
 import java.time.LocalDate
 
 /**
  * Fetches exact official Diyanet times for a location. Only the `online`
  * product flavor provides a real implementation; the `offline` flavor supplies
- * none (see the flavor-specific [OfficialTimesProvider]).
+ * none (see the flavor-specific `OfficialTimesProvider` in the `app` module).
  */
 interface OfficialTimesFetcher {
     /** Zeiten für so viele Tage, wie die Quelle hergibt, plus die Diyanet-ID,

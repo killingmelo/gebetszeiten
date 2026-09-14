@@ -1,4 +1,4 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.net
 
 import de.gebetszeiten.core.prayertimes.TextNormalize
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes

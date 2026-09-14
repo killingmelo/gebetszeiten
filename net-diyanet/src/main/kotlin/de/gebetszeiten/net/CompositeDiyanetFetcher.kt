@@ -1,6 +1,8 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.net
 
 import android.content.Context
+import de.gebetszeiten.core.prayertimes.officialtimes.FetchResult
+import de.gebetszeiten.core.prayertimes.officialtimes.OfficialTimesFetcher
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceResult
@@ -150,14 +152,23 @@ class CompositeDiyanetFetcher(
     }
 
     companion object {
-        fun create(context: Context): CompositeDiyanetFetcher {
+        /**
+         * [bundledLocationId] kommt vom Aufrufer, nicht aus einer eigenen
+         * Referenz auf `BundledOfficialSource` hier: dieses Modul haengt nur
+         * an `:core-prayertimes`, nicht an `:app` — das DE-Bundle liegt aber
+         * im `app`-Modul (geteilt zwischen beiden Flavors). Dieselbe
+         * Modulgrenze, aus demselben Grund, wie `cachedId` schon vorher
+         * (`OfficialTimesCache` ist App-seitig) ausserhalb blieb.
+         */
+        fun create(
+            context: Context,
+            bundledLocationId: suspend (lat: Double, lng: Double) -> Int?,
+        ): CompositeDiyanetFetcher {
             val proxyFetcher = DiyanetProxyFetcher()
             return CompositeDiyanetFetcher(
                 resolveId = { lat, lng, city, preferredLocationId ->
                     resolveLocationIdChain(
-                        bundledId = BundledOfficialSource
-                            .nearestLocation(context, lat, lng)
-                            ?.diyanetId,
+                        bundledId = bundledLocationId(lat, lng),
                         indexPlace = DiyanetPlaceIndex
                             .nearest(context, lat, lng),
                         // Kommt vom Aufrufer statt aus einem eigenen

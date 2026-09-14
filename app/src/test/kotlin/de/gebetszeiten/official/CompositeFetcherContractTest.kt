@@ -19,7 +19,7 @@ class CompositeFetcherContractTest {
         "EzanVaktiFetcher.kt",
         "DiyanetHttp.kt",
         "DiyanetYearPageParser.kt",
-    ).map { File("src/online/kotlin/de/gebetszeiten/official/$it") }
+    ).map { File("../net-diyanet/src/main/kotlin/de/gebetszeiten/net/$it") }
 
     private val verboten = listOf("de.gebetszeiten.data.", "de.gebetszeiten.prayer.", "de.gebetszeiten.ui.")
 
@@ -66,7 +66,6 @@ class CompositeFetcherContractTest {
         val erwartet = setOf(
             "BundledOfficialSource.kt",
             "CacheFreshness.kt",
-            "OfficialTimes.kt",
             "OfficialTimesCache.kt",
         )
         val tatsaechlich = mainOfficialDir.listFiles { kandidat -> kandidat.extension == "kt" }

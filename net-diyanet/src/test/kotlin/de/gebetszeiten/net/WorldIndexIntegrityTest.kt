@@ -1,4 +1,4 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.net
 
 import de.gebetszeiten.core.prayertimes.officialtimes.DiyanetPlaces
 import de.gebetszeiten.core.prayertimes.officialtimes.parseDiyanetPlaces
@@ -13,7 +13,7 @@ import java.io.File
 class WorldIndexIntegrityTest {
 
     private val places by lazy {
-        File("src/online/assets/official/locations-world.tsv")
+        File("src/main/assets/official/locations-world.tsv")
             .useLines { parseDiyanetPlaces(it) }
     }
 

@@ -23,7 +23,9 @@ sys.path.insert(0, str(REPO / "tools" / "diyanet-fetch"))
 from fetch_diyanet import fetch, normalize  # noqa: E402  (Pfad-Setup muss vorher laufen)
 
 ASSETS = REPO / "app" / "src" / "main" / "assets"
-OUT = REPO / "app" / "src" / "online" / "assets" / "official" / "locations-world.tsv"
+# Seit Aufgabe 2 ("Modul :net-diyanet") liegt das Asset im Netzmodul, nicht
+# mehr im online-Flavor von :app.
+OUT = REPO / "net-diyanet" / "src" / "main" / "assets" / "official" / "locations-world.tsv"
 CACHE = Path(__file__).resolve().parent / "cache"
 
 BASE = "https://prayertimes.api.abdus.dev/api/diyanet"

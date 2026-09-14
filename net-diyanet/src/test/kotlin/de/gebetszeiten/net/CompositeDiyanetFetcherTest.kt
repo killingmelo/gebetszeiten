@@ -1,10 +1,9 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.net
 
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
+import de.gebetszeiten.core.prayertimes.officialtimes.SourceResult
 import de.gebetszeiten.core.prayertimes.officialtimes.VerificationNote
-import de.gebetszeiten.data.AppSettings
-import de.gebetszeiten.prayer.fetchErrorSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -26,7 +25,10 @@ import javax.net.ssl.SSLHandshakeException
 
 class CompositeDiyanetFetcherTest {
 
-    private val settings = AppSettings.DEFAULT
+    /** Nuernberg, ausgeschrieben statt aus `AppSettings.DEFAULT` (app-seitig,
+     *  fuer diese Netzschicht nicht sichtbar): dieselben drei Werte. */
+    private class Settings(val latitude: Double, val longitude: Double, val city: String)
+    private val settings = Settings(latitude = 49.4521, longitude = 11.0767, city = "Nürnberg")
     private val day = LocalDate.of(2026, 7, 29)
     private fun six(fajrMinute: Int) = SixTimes(
         fajr = LocalTime.of(3, fajrMinute), sunrise = LocalTime.of(5, 36),
@@ -51,6 +53,15 @@ class CompositeDiyanetFetcherTest {
         ezanvakti: suspend (Int) -> Map<LocalDate, SixTimes> = { ezanData },
         now: () -> Long = { 1_700_000_000_000L },
     ) = CompositeDiyanetFetcher({ _, _, _, _ -> id }, direct, proxy, ezanvakti, now, log = { _, _ -> })
+
+    /** Ersatz fuer `fetchErrorSummary` (app-seitig, `de.gebetszeiten.prayer`,
+     *  bereits eigenstaendig von `VerificationTextTest` abgedeckt): hier
+     *  interessiert nur, WELCHE Quelle mit WELCHEM Fehler in `candidates`
+     *  steht, nicht die deutsche Statuszeile daraus. */
+    private fun failedSources(candidates: List<SourceResult>): List<Pair<SourceId, String?>> =
+        candidates.filter { it.schedule.isEmpty() && it.error != null }
+            .sortedBy { it.source.ordinal }
+            .map { it.source to it.error }
 
     @Test
     fun `alle drei Quellen werden immer gefragt`() = runBlocking {
@@ -117,7 +128,7 @@ class CompositeDiyanetFetcherTest {
         // Die Uhr wird hineingereicht, nicht aus dem System geholt — sonst
         // waere `checkedEpochMs` nicht pruefbar.
         assertEquals(1_700_000_000_000L, v.checkedEpochMs)
-        assertNull(fetchErrorSummary(result.candidates))
+        assertTrue(failedSources(result.candidates).isEmpty())
     }
 
     @Test
@@ -153,7 +164,7 @@ class CompositeDiyanetFetcherTest {
             .fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(yearData, result.schedule)
         assertEquals(VerificationNote.VERIFIED, result.verification?.note)
-        assertEquals("ezanvakti: Verbindung weg", fetchErrorSummary(result.candidates))
+        assertEquals(listOf(SourceId.EZANVAKTI to "Verbindung weg"), failedSources(result.candidates))
     }
 
     @Test
@@ -175,7 +186,7 @@ class CompositeDiyanetFetcherTest {
             .fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(proxyData, result.schedule)
         // Leer ohne Ausnahme ist KEIN Fehlschlag: es gibt nichts zu melden.
-        assertNull(fetchErrorSummary(result.candidates))
+        assertTrue(failedSources(result.candidates).isEmpty())
     }
 
     @Test
@@ -188,19 +199,26 @@ class CompositeDiyanetFetcherTest {
         assertEquals(emptyMap<LocalDate, SixTimes>(), result.schedule)
         assertNull(result.locationId)
         assertEquals(VerificationNote.NONE, result.verification?.note)
-        // Und es wird auch GESAGT, dass alle drei scheiterten: „nichts
-        // erhalten" ohne Grund waere genau die Statuszeile, die diese Runde
-        // abschaffen soll.
-        assertEquals("Direktabruf: down · Proxy: down · ezanvakti: down", fetchErrorSummary(result.candidates))
+        // Und es wird auch fuer JEDE Quelle vermerkt, dass sie scheiterte —
+        // „nichts erhalten" ohne Grund waere genau das, was
+        // `fetchErrorSummary` (app-seitig, `VerificationTextTest`) daraus
+        // NICHT machen duerfte.
+        assertEquals(
+            listOf(SourceId.DIRECT to "down", SourceId.PROXY_ABDUS to "down", SourceId.EZANVAKTI to "down"),
+            failedSources(result.candidates),
+        )
     }
 
     @Test
-    fun `errorSummary nennt jede gescheiterte Quelle in Quellen-Reihenfolge`() = runBlocking {
+    fun `candidates nennen jede gescheiterte Quelle in Quellen-Reihenfolge`() = runBlocking {
         val result = fetcher(
             direct = { error("HTTP 503") },
             ezanvakti = { throw SocketTimeoutException("Read timed out") },
         ).fetch(settings.latitude, settings.longitude, settings.city, null)
-        assertEquals("Direktabruf: HTTP 503 · ezanvakti: Zeitüberschreitung", fetchErrorSummary(result.candidates))
+        assertEquals(
+            listOf(SourceId.DIRECT to "HTTP 503", SourceId.EZANVAKTI to "Zeitüberschreitung"),
+            failedSources(result.candidates),
+        )
         // Der Proxy allein bleibt uebrig — eine Quelle belegt sich nicht selbst.
         assertEquals(proxyData, result.schedule)
         assertEquals(VerificationNote.UNVERIFIED_SINGLE, result.verification?.note)
@@ -281,7 +299,7 @@ class CompositeDiyanetFetcherTest {
         // Ohne Abruf gibt es nichts zu pruefen und nichts zu melden.
         assertNull(result.verification)
         assertTrue(result.candidates.isEmpty())
-        assertNull(fetchErrorSummary(result.candidates))
+        assertTrue(failedSources(result.candidates).isEmpty())
     }
 
     @Test

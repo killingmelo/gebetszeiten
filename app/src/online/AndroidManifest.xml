@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Only the 'online' flavor gets INTERNET. The base/offline app stays
-     provably network-free. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET" />
-</manifest>
+<!-- Die INTERNET-Berechtigung steht nicht mehr hier: sie lebt jetzt im
+     Manifest von :net-diyanet (net-diyanet/src/main/AndroidManifest.xml).
+     Der online-Flavor erbt sie ueber die Modulabhaengigkeit
+     `onlineImplementation(project(":net-diyanet"))`; der offline-Flavor
+     bindet das Modul nicht ein und bleibt provably network-free. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

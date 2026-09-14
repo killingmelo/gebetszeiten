@@ -39,6 +39,12 @@ android {
         // on demand, DE-Bundle + Berechnung als Offline-Fallback.
         create("online") {
             dimension = "connectivity"
+            // :net-diyanet (Aufgabe 2) setzt minSdk 30. Nur DIESER Flavor
+            // bindet das Modul ein, deshalb hebt nur er seine Untergrenze an
+            // — der offline-Flavor bleibt bei 26. Ohne diese Zeile bricht
+            // der Manifest-Merger: "minSdkVersion 26 cannot be smaller than
+            // version 30 declared in library [:net-diyanet]".
+            minSdk = 30
         }
     }
 
@@ -96,10 +102,11 @@ android {
 //   CountdownIconAssetsTest, CountdownGlyphShapeTest  -> die Drawables und
 //       tools/notification-icons/icons.sha256
 //   OfficialAssetsIntegrityTest                       -> shared-assets/official
-//   NoNetworkInSharedCodeTest                         -> die vier Manifeste
-//       und den geteilten Quellsatz
+//   NoNetworkInSharedCodeTest                         -> die fuenf Manifeste
+//       (inkl. net-diyanet) und den geteilten Quellsatz
 //   OngoingWiringTest                                 -> app/src/main/kotlin
-//   CompositeFetcherContractTest                      -> src/online/kotlin
+//   CompositeFetcherContractTest                      -> ../net-diyanet/src/main/kotlin
+//       (die sechs Abrufer-Dateien zogen dort in Aufgabe 2 hin)
 //
 // Diese Pfade sind fuer Gradle keine Task-Eingaben: die Kotlin-Quellen von
 // app/src/main und core-prayertimes sind es mittelbar ueber die Uebersetzung,
@@ -132,6 +139,7 @@ tasks.withType<Test>().configureEach {
         file("src/offline/AndroidManifest.xml"),
         file("src/online/AndroidManifest.xml"),
         rootProject.file("wear/src/main/AndroidManifest.xml"),
+        rootProject.file("net-diyanet/src/main/AndroidManifest.xml"),
     )
         .withPropertyName("flavorManifeste")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -146,6 +154,11 @@ tasks.withType<Test>().configureEach {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(rootProject.file("wear/src/main"))
         .withPropertyName("wearQuellsatz")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // CompositeFetcherContractTest liest die sechs Abrufer-Dateien seit
+    // Aufgabe 2 direkt aus :net-diyanet statt aus src/online.
+    inputs.dir(rootProject.file("net-diyanet/src/main/kotlin"))
+        .withPropertyName("netDiyanetQuellsatz")
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
@@ -172,6 +185,10 @@ dependencies {
     // Wear-Sync: nur der online-Flavor pusht den amtlichen Cache zur Uhr —
     // der offline-Flavor bleibt gms-frei.
     "onlineImplementation"(libs.play.services.wearable)
+
+    // Die Diyanet-Abrufer samt INTERNET-Berechtigung: nur der online-Flavor
+    // bindet sie ein, der offline-Flavor sieht das Modul gar nicht.
+    "onlineImplementation"(project(":net-diyanet"))
 
     testImplementation(libs.junit)
     // Echte org.json-Implementierung für JVM-Tests (im mockable android.jar

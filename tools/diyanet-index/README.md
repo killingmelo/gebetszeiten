@@ -1,6 +1,6 @@
 # Diyanet-Standortindex-Pipeline
 
-Erzeugt `app/src/online/assets/official/locations-world.tsv` — den weltweiten
+Erzeugt `net-diyanet/src/main/assets/official/locations-world.tsv` — den weltweiten
 Index (Diyanet-ID → Koordinaten), über den die App amtliche Zeiten auch für
 Orte auflöst, die Diyanet nicht als eigenen Standort führt (z. B. Serdivan →
 Adapazarı/SAKARYA).

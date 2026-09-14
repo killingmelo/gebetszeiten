@@ -1,4 +1,4 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.net
 
 import java.net.HttpURLConnection
 import java.net.URL

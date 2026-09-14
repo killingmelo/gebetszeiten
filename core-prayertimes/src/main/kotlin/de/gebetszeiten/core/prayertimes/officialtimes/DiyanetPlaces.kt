@@ -4,7 +4,7 @@ import java.util.Locale
 
 /**
  * Ein Diyanet-Standort aus dem weltweiten Index
- * (`app/src/online/assets/official/locations-world.tsv`).
+ * (`net-diyanet/src/main/assets/official/locations-world.tsv`).
  *
  * Abgrenzung zu [OfficialLocation]: jenes beantwortet „welche gebündelte
  * Jahrestabelle gilt" (Feld `tableRef`, auch offline und auf der Uhr), dieses
