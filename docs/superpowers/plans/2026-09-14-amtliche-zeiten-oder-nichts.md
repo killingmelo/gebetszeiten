@@ -184,8 +184,40 @@ MSG
 - Aendern: `settings.gradle.kts`, `app/build.gradle.kts`, `app/src/online/AndroidManifest.xml`
 - Verschieben: die zugehoerigen Tests von `app/src/test/` nach `net-diyanet/src/test/`
 
+**Ebenfalls verschieben — der Plan hatte das zuerst falsch:**
+- `app/src/online/assets/official/locations-world.tsv` (318 KB) nach
+  `net-diyanet/src/main/assets/official/`. Ohne ihn kann die Uhr in Aufgabe 6 fuer einen
+  beliebigen Ort keine Diyanet-ID aufloesen — der Istanbul-Fall fiele weg. Der Index wird
+  ausschliesslich gebraucht, um zu entscheiden, WAS abgerufen wird, und gehoert damit zur
+  Netzschicht. Assets eines Bibliotheksmoduls werden in die einbindende App gemischt; der
+  Aufruf `context.assets.open("official/locations-world.tsv")` funktioniert unveraendert.
+- `app/src/online/kotlin/de/gebetszeiten/official/DiyanetPlaceIndex.kt` nach
+  `net-diyanet/src/main/kotlin/de/gebetszeiten/net/DiyanetPlaceIndex.kt`.
+  `CompositeDiyanetFetcher` benutzt ihn in Zeile 157 — er kann nicht in `app` bleiben.
+  An der alten Stelle bleibt ein delegierendes Objekt stehen, damit die rund sechs
+  Aufrufstellen in `MainActivity` und `SettingsSheet` unveraendert bleiben:
+
+  ```kotlin
+  package de.gebetszeiten.official
+
+  import android.content.Context
+  import de.gebetszeiten.core.prayertimes.officialtimes.DiyanetPlace
+
+  /** Online-Flavor: der echte Index liegt in :net-diyanet, zusammen mit dem
+   *  Asset, das nur zum Abrufen gebraucht wird. Dieses Objekt haelt bloss den
+   *  gewohnten Namen fuer die Oberflaeche. */
+  object DiyanetPlaceIndex {
+      suspend fun preload(context: Context) = de.gebetszeiten.net.DiyanetPlaceIndex.preload(context)
+      suspend fun nearest(context: Context, lat: Double, lng: Double): DiyanetPlace? =
+          de.gebetszeiten.net.DiyanetPlaceIndex.nearest(context, lat, lng)
+      fun distanceKm(place: DiyanetPlace, lat: Double, lng: Double): Double =
+          de.gebetszeiten.net.DiyanetPlaceIndex.distanceKm(place, lat, lng)
+  }
+  ```
+
 **NICHT verschieben:** `OfficialTimesProvider.kt` (Flavor-Naht, app-spezifisch),
-`DiyanetPlaceIndex.kt` (existiert in beiden Flavors), `WearCacheSync.kt` (Telefon zur Uhr).
+`app/src/offline/.../DiyanetPlaceIndex.kt` (der Stub bleibt, wie er ist),
+`WearCacheSync.kt` (Telefon zur Uhr).
 
 **Schnittstellen:**
 - Erzeugt: Gradle-Projekt `:net-diyanet`, Namensraum `de.gebetszeiten.net`.
