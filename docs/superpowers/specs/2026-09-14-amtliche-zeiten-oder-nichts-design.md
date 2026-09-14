@@ -112,12 +112,74 @@ abschaffen):
 > astronomische Berechnung verwenden. Amtliche Zeiten haben immer Vorrang.
 > Ist dies aus, zeigt die App fuer solche Tage gar keine Zeiten.
 
-## Wear
+## Wear wird eigenstaendig
 
-`WearPrayer.daily` benutzt dieselbe `daySourceOrder` aus `core-prayertimes`;
-`WearSettings.useCalculated` bekommt dieselbe neue Bedeutung. Die Uhr kann NICHT
-selbst abrufen — sie lebt vom Sync des Telefons und der gebuendelten Tabelle.
-Ohne beides zeigt sie den Hinweis.
+Die Uhr behauptet im Manifest seit je `com.google.android.wearable.standalone =
+true`. Das traegt heute nur, solange die gebuendelte Tabelle greift, und waere
+nach diesem Umbau schlicht falsch.
+
+**Der Ausloeser ist nicht die 2027-Luecke, sondern der Ortswaehler.**
+`WearOfficialCache.get` liefert nur Zeiten, wenn der Sync-Stempel zum gewaehlten
+Uhr-Ort passt — im KDoc ausdruecklich: „nach einem Uhr-Override greift
+automatisch wieder Bundle/Berechnung." Die Uhr hat aber einen eigenen
+Ortswaehler. Heute faellt sie nach so einem Wechsel still auf die Berechnung
+zurueck; nach dem Umbau waere sie **leer**. Der Ortswaehler waere ein Knopf, der
+die App unbrauchbar macht.
+
+Deshalb bekommt die Uhr einen eigenen Abruf.
+
+### Was dafuer umzieht
+
+Das Schwierige liegt bereits netzfrei und getestet in `core-prayertimes`
+(Parser, `crossCheck`, `resolveQuorum`, `CacheStore`). Es fehlt allein die
+Netzschicht, und die liegt heute in `app/src/online`:
+
+```
+neues Gradle-Modul  net-diyanet
+  DirectDiyanetFetcher, ProxyDiyanetFetcher, EzanVaktiFetcher,
+  CompositeDiyanetFetcher   (aus app/src/online verschoben)
+
+app  (onlineImplementation)  ->  net-diyanet
+wear (onlineImplementation)  ->  net-diyanet
+```
+
+Ein gemeinsames Modul, keine zweite Kopie: sonst gibt es die Quorum-Verdrahtung
+zweimal, und die zweite ist die ungetestete. Diese Lehre steht schon zweimal im
+Protokoll.
+
+### Netzfreiheit bleibt beweisbar
+
+`wear` bekommt dieselben zwei Flavors wie `app` (`online`, `offline`).
+`NoNetworkInSharedCodeTest` durchsucht weiterhin `wear/src/main` und prueft
+zusaetzlich, dass `net-diyanet` in beiden Modulen **nur** als
+`onlineImplementation` eingebunden ist und `INTERNET` nur im
+Online-Manifest steht. Der Nachweis wird dadurch staerker, nicht schwaecher.
+
+### Auf Wear OS heisst standalone nicht „die Uhr braucht WLAN"
+
+Mit `INTERNET` leitet das System die Anfrage ueber Bluetooth durch das
+gekoppelte Telefon, wenn die Uhr selbst kein Netz hat. Die Uhr braucht das
+Telefon also in Reichweite, aber nicht mehr die Telefon-**App**. Kosten: ein
+Abruf je Ort und Jahr.
+
+### Drei Entscheidungen, hier getroffen
+
+1. **Kein Favoriten-Bildschirm auf der Uhr.** Sie behaelt ihren einen gewaehlten
+   Ort. `WearOfficialCache` (ein Eintrag) weicht aber dem `CacheStore` (mehrere),
+   damit ein Ortswechsel den vorigen Stand nicht wegwirft — das ist der Nutzen
+   ohne die Oberflaeche.
+2. **Dasselbe Quorum wie am Telefon**, nicht nur der Direktabruf. Der Code ist
+   rein und kostet nichts; eine Uhr mit schwaecherer Pruefung als das Telefon
+   waere schwer zu begruenden.
+3. **Der Sync bleibt.** Er ist schneller als ein eigener Abruf und spart der Uhr
+   Arbeit. Neu ist nur, dass die Uhr nicht mehr davon abhaengt.
+
+### Folge fuer die Auslieferung
+
+Das Wear-Bundle aendert seinen Pfad (Flavors) und braucht einen erhoehten
+`versionCode`. `playstore/CHECKLISTE.md` Abschnitt 5 sagt heute, das
+Wear-Modul sei unveraendert und muesse nicht hochgeladen werden — das stimmt
+danach nicht mehr.
 
 ## Tests
 
@@ -139,9 +201,10 @@ Ohne beides zeigt sie den Hinweis.
    er hat keinen Online-Pfad). Er wird nicht ausgeliefert — er ist der Nachweis
    der Netzfreiheit —, aber sein Integritaetstest und jede Handpruefung sehen
    eine leere App. Das ist richtig so und kein Defekt.
-2. **Die Wear-App ohne Sync ist bis 2027 ebenfalls leer.** Sie wird
-   ausgeliefert. Wer die Uhr nutzt, ohne das Telefon einmal synchronisieren zu
-   lassen, sieht bis Jahresende nur den Hinweis.
+2. **Die Wear-App versorgt sich kuenftig selbst** — damit entfaellt die Lage
+   „Uhr ohne Sync ist leer". Ohne jede Netzverbindung UND ohne Sync bleibt sie
+   bis 2027 leer; das ist dann aber dieselbe Lage wie beim Telefon im Flugmodus
+   nach frischer Installation.
 3. **Orte ohne amtliche Abdeckung zeigen nie Zeiten**, solange der Notausgang
    aus ist. Das ist die Absicht, aber es trifft jeden Ort, den Diyanet nicht
    fuehrt.
