@@ -3,6 +3,7 @@ package de.gebetszeiten.wear
 import android.content.Context
 import de.gebetszeiten.core.prayertimes.officialtimes.chooseTarget
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -10,6 +11,19 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import java.time.LocalDate
+
+/**
+ * Letzte Rettungsleine des [refreshScope]. Sie sollte nie greifen — jeder
+ * Pfad in [doRefresh] und [launchWearRefresh] faengt seine Ausnahmen selbst
+ * ab. Aber ein unbehandelter Fehler in einer Coroutine geht auf Android an
+ * den Default-Handler, und der beendet den PROZESS: eine `IOException` aus
+ * dem DataStore duerfte die Uhr nicht abstuerzen lassen, nur weil niemand
+ * hinsieht. `SupervisorJob` leistet das ausdruecklich NICHT — es haelt nur
+ * Geschwister-Coroutines am Leben, faengt aber keine Ausnahme ab.
+ */
+private val refreshExceptionHandler = CoroutineExceptionHandler { _, e ->
+    android.util.Log.e("WearRefresh", "unbehandelter Fehler im Auffrisch-Scope", e)
+}
 
 /**
  * Eigener, langlebiger Scope fuer den Netzabruf — unabhaengig vom Scope des
@@ -20,12 +34,12 @@ import java.time.LocalDate
  * kurzlebig (Fix-Runde 3, Important: ohne diesen datei-eigenen Scope stirbt
  * die Neuzeichnung mit dem Service, bevor `await()` je zurueckkehrt — siehe
  * [launchWearRefresh]). `SupervisorJob`, damit ein Fehlschlag EINES Abrufs
- * nicht den Scope fuer alle folgenden Aufrufe mit umbringt — schuetzt aber
- * NICHT davor, dass eine unbehandelte Ausnahme in `doRefresh` den Aufrufer
- * (bzw. hier: [launchWearRefresh]s `launch`-Coroutine) abstuerzen laesst;
- * das leistet allein das `catch` dort.
+ * nicht den Scope fuer alle folgenden Aufrufe mit umbringt;
+ * [refreshExceptionHandler] als zusaetzliche Rettungsleine fuer den Fall,
+ * dass doch einmal etwas an allen `catch`-Zweigen vorbeikommt.
  */
-private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+private val refreshScope =
+    CoroutineScope(SupervisorJob() + Dispatchers.IO + refreshExceptionHandler)
 
 /**
  * Buendelt gleichzeitige Aufrufe von [refreshWearOfficial] — die Uhr hat
@@ -45,7 +59,7 @@ private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
  * die Uhr hat ohnehin nur den einen aktiven Ort ([WearSettings.location]),
  * ein zweiter Aufruf waehrend eines laufenden waere fuer denselben Ort
  * gedacht. Trifft ein `force`-Aufruf auf einen bereits laufenden
- * unforcierten, wird trotzdem nur der laufende abgewartet — [force] ist
+ * unforcierten, wird trotzdem nur der laufende abgewartet — `force` ist
  * (Stand dieser Aufgabe) an keinem Uhr-Knopf verdrahtet, dieser Fall also
  * praktisch nicht erreichbar; sollte er es werden, verdient er eine eigene
  * Entscheidung, kein stillschweigendes Downgrade hier.
@@ -63,6 +77,15 @@ private val refreshSingleFlight = SingleFlight<Boolean>(refreshScope)
  * [chooseTarget]) verhindert, dass Kachel und Komplikation bei jedem
  * Zeichnen erneut abrufen.
  *
+ * **Wirft nie.** Jeder Fehlerpfad in [doRefresh] endet in `false` — auch
+ * eine `IOException` aus dem DataStore oder aus dem Einlesen der
+ * Ortstabellen. Das ist keine Kosmetik: alle drei Aufrufer starten diese
+ * Funktion in einem `launch` ohne eigenen Aufrufer-`try`, und durch die
+ * Buendelung ([refreshSingleFlight]) traefe EINE entkommene Ausnahme
+ * gleich ALLE wartenden Aufrufer. Einzige Ausnahme ist
+ * `CancellationException` — ein echter Abbruch ist kein Fehler und muss
+ * weiterlaufen duerfen.
+ *
  * **Muss NICHT-BLOCKIEREND aufgerufen werden.** `withTimeout(25_000)` unten
  * kann einen echten Netzabruf bis zu 25 s laufen lassen. `PrayerTileService`
  * und `PrayerComplicationService` werden vom System auf dem HAUPT-THREAD
@@ -78,11 +101,12 @@ private val refreshSingleFlight = SingleFlight<Boolean>(refreshScope)
  * unbeeinflusst im geteilten [refreshScope] weiter (siehe [SingleFlight]).
  *
  * Offline-Flavor: [WearFetchProvider.isOnline] ist `false` — sofortige
- * Rueckkehr, ohne dass hier auch nur die Cache-DataStore geoeffnet wird.
+ * Rueckkehr, ohne dass hier auch nur eine DataStore geoeffnet wird.
  * Genauso, wenn der Nutzer auf der Uhr die eigene Berechnung gewaehlt hat
- * ([WearSettings.useCalculated]): `WearPrayer.daily` liest den amtlichen
- * Cache dann ohnehin nicht — ein Abruf waere reiner Akkuverbrauch ohne
- * Wirkung (dieselbe erste Zeile wie in `PrayerProvider.refreshOfficial`).
+ * ([WearSettings.useCalculated], geprueft als erstes in [doRefresh]):
+ * `WearPrayer.daily` liest den amtlichen Cache dann ohnehin nicht — ein
+ * Abruf waere reiner Akkuverbrauch ohne Wirkung (dieselbe erste Zeile wie
+ * in `PrayerProvider.refreshOfficial`).
  *
  * [force] (der "Jetzt aktualisieren"-Knopf, falls die Uhr einen bekommt)
  * durchbricht die Bremse fuer den aktiven Ort — dieselbe Semantik wie am
@@ -94,8 +118,12 @@ private val refreshSingleFlight = SingleFlight<Boolean>(refreshScope)
  *   unterlag.
  */
 suspend fun refreshWearOfficial(context: Context, force: Boolean = false): Boolean {
+    // Reine Konstante des Flavors, kein DataStore, kein Asset — das einzige,
+    // was hier VOR der Buendelungs-Huelle stehen darf, ohne einen eigenen
+    // `try` zu brauchen. Die `useCalculated`-Pruefung stand bis Fix-Runde 4
+    // ebenfalls hier und war damit ungeschuetzt; sie ist jetzt die erste
+    // Zeile in [doRefresh], also innerhalb des `try`.
     if (!WearFetchProvider.isOnline) return false
-    if (WearSettings.useCalculated(context)) return false
 
     return refreshSingleFlight.run { doRefresh(context, force) }
 }
@@ -114,37 +142,65 @@ suspend fun refreshWearOfficial(context: Context, force: Boolean = false): Boole
  * noch, wenn der Abruf zufaellig schneller war als der Dienst lebte — also
  * fast nie im Zielfall (langsames Netz), fast immer nur dann, wenn die
  * Bremse ohnehin `false` geliefert haette.
+ *
+ * [onUpdated] laeuft im `try` mit: es ist fremder Code (bei beiden Diensten
+ * ein Aufruf ins Tiles-/Komplikations-Framework, der eine
+ * `RuntimeException` werfen kann, wenn das Ziel gerade nicht erreichbar
+ * ist). Ein Fehlschlag DORT darf die Uhr nicht abstuerzen lassen — die
+ * Zeiten sind zu dem Zeitpunkt bereits abgelegt, nur das Neuzeichnen
+ * unterbleibt.
+ *
+ * [onUpdated] wird auf [Dispatchers.IO] aufgerufen, nicht auf dem
+ * Haupt-Thread. Beide heutigen Aufrufer sind damit einverstanden
+ * (`TileService.getUpdater(...).requestUpdate` und
+ * `ComplicationDataSourceUpdateRequester.requestUpdateAll` sind
+ * Thread-unabhaengige Anfragen ans System, keine UI-Aufrufe).
  */
 fun launchWearRefresh(context: Context, onUpdated: () -> Unit) {
     refreshScope.launch {
-        if (refreshWearOfficial(context)) {
-            onUpdated()
+        try {
+            if (refreshWearOfficial(context)) {
+                onUpdated()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.w("WearRefresh", "Auffrischen/Neuzeichnen fehlgeschlagen", e)
         }
     }
 }
 
 private suspend fun doRefresh(context: Context, force: Boolean): Boolean {
-    val fetcher = WearFetchProvider.fetcher(context) ?: return false
-
-    val location = WearSettings.location(context)
-    val active = location.latitude to location.longitude
-    val today = LocalDate.now()
     val now = System.currentTimeMillis()
-
-    // Bei `force` wird `dueOrder` nicht einmal gelesen — dieselbe Abkuerzung
-    // wie in `PrayerProvider.refreshOfficial`: ein DataStore-Read weniger im
-    // Klick-Pfad, `chooseTarget` liefert bei `force` ohnehin immer
-    // [activeCoords].
-    val target = chooseTarget(
-        due = if (force) emptyList() else WearOfficialCache.dueOrder(context, active, today),
-        activeCoords = active,
-        force = force,
-        today = today,
-        nowEpochMs = now,
-    ) ?: return false
-    val (targetLat, targetLng) = target
-
+    // Der Ort, unter dem ein Fehlschlag verbucht wird. Wird erst gesetzt,
+    // sobald er ueberhaupt bekannt ist: faellt die Ausnahme davor (beim
+    // Lesen der Einstellungen oder beim Oeffnen des Fetchers), gibt es
+    // keinen Ort, unter dem `recordAttempt` etwas festhalten koennte — dann
+    // bleibt es beim Protokolleintrag.
+    var versuchsOrt: Pair<Double, Double>? = null
     return try {
+        if (WearSettings.useCalculated(context)) return false
+        val fetcher = WearFetchProvider.fetcher(context) ?: return false
+
+        val location = WearSettings.location(context)
+        val active = location.latitude to location.longitude
+        versuchsOrt = active
+        val today = LocalDate.now()
+
+        // Bei `force` wird `dueOrder` nicht einmal gelesen — dieselbe Abkuerzung
+        // wie in `PrayerProvider.refreshOfficial`: ein DataStore-Read weniger im
+        // Klick-Pfad, `chooseTarget` liefert bei `force` ohnehin immer
+        // [activeCoords].
+        val target = chooseTarget(
+            due = if (force) emptyList() else WearOfficialCache.dueOrder(context, active, today),
+            activeCoords = active,
+            force = force,
+            today = today,
+            nowEpochMs = now,
+        ) ?: return false
+        versuchsOrt = target
+        val (targetLat, targetLng) = target
+
         // Dasselbe Budget wie am Telefon (~25 s). Laeuft seit Fix-Runde 2
         // NIE mehr auf dem Haupt-Thread eines Zeichenpfads — siehe KDoc an
         // [refreshWearOfficial]/[launchWearRefresh].
@@ -165,27 +221,63 @@ private suspend fun doRefresh(context: Context, force: Boolean): Boolean {
         }
     } catch (e: TimeoutCancellationException) {
         android.util.Log.w("WearRefresh", "refreshWearOfficial abgebrochen (Timeout)", e)
-        WearOfficialCache.recordAttempt(context, "Zeitüberschreitung beim Abruf", now, targetLat, targetLng)
+        verbucheFehlschlag(context, "Zeitüberschreitung beim Abruf", now, versuchsOrt)
         false
     } catch (e: CancellationException) {
         // Ein ECHTER Abbruch (z. B. der Aufrufer selbst wird abgebrochen)
         // muss weiterlaufen, nicht als Fehler protokolliert werden — sonst
         // saehe ein normaler App-Wechsel wie ein gescheiterter Abruf aus.
         // `TimeoutCancellationException` (oben) ist der einzige Fall, den
-        // WIR selbst ausloesen und deshalb auch selbst deuten duerfen.
+        // WIR selbst ausloesen und deshalb auch selbst deuten duerfen. Sie
+        // MUSS deshalb vor diesem Zweig stehen: sie ist eine Unterklasse von
+        // `CancellationException`, ein `catch` faengt immer den ersten
+        // passenden Zweig, und die Reihenfolge ist hier der einzige
+        // Unterschied zwischen "Timeout korrekt verbucht" und "Timeout still
+        // als Abbruch durchgereicht". (Kotlin meldet eine ungluecklich
+        // sortierte `catch`-Kette NICHT — anders als Java gibt es hier keinen
+        // "unreachable catch"-Fehler, der uns vor dem Vertauschen schuetzen
+        // wuerde.)
         throw e
     } catch (e: Exception) {
-        // Alles andere (z. B. eine IOException aus dem DataStore in
-        // `put`/`recordAttempt`) darf NICHT unbehandelt bis zum Aufrufer
-        // durchschlagen: `launchWearRefresh` startet ohne eigenen
-        // `CoroutineExceptionHandler`, eine hier entkommene Ausnahme risse
-        // die Coroutine (und, weil mehrere Aufrufer ueber `SingleFlight`
-        // dasselbe Ergebnis teilen, potenziell mehr als nur den einen
-        // urspruenglichen Aufrufer) mit sich. `SupervisorJob` an
-        // `refreshScope` schuetzt davor NICHT — das haelt nur Geschwister-
-        // Coroutines am Leben, faengt aber keine Ausnahme ab.
+        // Alles andere (z. B. eine IOException aus dem DataStore oder beim
+        // Einlesen der Ortstabellen) darf NICHT unbehandelt bis zum Aufrufer
+        // durchschlagen: die drei Aufrufer starten diese Funktion in einem
+        // `launch`, und weil mehrere Aufrufer ueber `SingleFlight` dasselbe
+        // Ergebnis teilen, traefe eine entkommene Ausnahme sie ALLE — auf
+        // Android heisst unbehandelt im Zweifel Prozessabsturz.
+        // `SupervisorJob` an `refreshScope` schuetzt davor NICHT — das haelt
+        // nur Geschwister-Coroutines am Leben, faengt aber keine Ausnahme ab.
         android.util.Log.w("WearRefresh", "refreshWearOfficial abgebrochen (Fehler)", e)
-        WearOfficialCache.recordAttempt(context, "Fehler beim Abruf: ${e.message}", now, targetLat, targetLng)
+        verbucheFehlschlag(context, "Fehler beim Abruf: ${e.message}", now, versuchsOrt)
         false
+    }
+}
+
+/**
+ * `recordAttempt` aus einem `catch`-Zweig heraus — selbst ein
+ * DataStore-Schreibvorgang, der aus demselben Grund scheitern kann wie das,
+ * was uns ueberhaupt erst hierher gebracht hat (volle Platte, defekte
+ * Datei). Ein Fehler beim Verbuchen des Fehlers darf den `catch`-Zweig nicht
+ * sprengen; er wuerde sonst genau die Ausnahme ersetzen, die wir gerade
+ * abgefangen haben, und waere damit wieder unbehandelt.
+ *
+ * [ort] `null` heisst: die Ausnahme fiel, bevor ueberhaupt feststand, um
+ * welchen Ort es geht — dann gibt es nichts zu verbuchen (die Bremse
+ * greift beim naechsten Versuch eben nicht, was hier das kleinere Uebel
+ * ist: ohne Ort waere jeder Eintrag geraten).
+ */
+private suspend fun verbucheFehlschlag(
+    context: Context,
+    fehler: String,
+    nowEpochMs: Long,
+    ort: Pair<Double, Double>?,
+) {
+    if (ort == null) return
+    try {
+        WearOfficialCache.recordAttempt(context, fehler, nowEpochMs, ort.first, ort.second)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        android.util.Log.w("WearRefresh", "Fehlschlag liess sich nicht verbuchen", e)
     }
 }

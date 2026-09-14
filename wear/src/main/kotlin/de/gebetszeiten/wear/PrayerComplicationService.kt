@@ -69,9 +69,14 @@ class PrayerComplicationService : ComplicationDataSourceService() {
         // `WearRefresh.kt`, nicht in einem (hier gar nicht mehr vorhandenen)
         // Service-Scope, der laengst weg waere, bevor ein langsamer Abruf
         // fertig ist. Nur bei echtem neuen Zeitplan neu anfordern.
-        launchWearRefresh(applicationContext) {
+        // `ctx` als eigene Variable, NICHT `applicationContext` direkt im
+        // Lambda: das waere ein implizites `this.getApplicationContext()`,
+        // das Lambda hielte also diese Service-INSTANZ bis zu 25 s ueber
+        // ihr `onDestroy` hinaus fest (Fix-Runde 4).
+        val ctx = applicationContext
+        launchWearRefresh(ctx) {
             ComplicationDataSourceUpdateRequester
-                .create(applicationContext, ComponentName(applicationContext, PrayerComplicationService::class.java))
+                .create(ctx, ComponentName(ctx, PrayerComplicationService::class.java))
                 .requestUpdateAll()
         }
         val title = next.first.label()

@@ -65,8 +65,13 @@ class PrayerTileService : TileService() {
         // Die Wiederholungs-Bremse darin haelt das ausser am faelligen Ort
         // billig. Nur bei einem ECHTEN neuen Zeitplan lohnt eine
         // Neuzeichnung.
-        launchWearRefresh(applicationContext) {
-            TileService.getUpdater(applicationContext).requestUpdate(PrayerTileService::class.java)
+        // `ctx` als eigene Variable, NICHT `applicationContext` direkt im
+        // Lambda: das waere ein implizites `this.getApplicationContext()`,
+        // das Lambda hielte also diese Service-INSTANZ bis zu 25 s ueber
+        // ihr `onDestroy` hinaus fest (Fix-Runde 4).
+        val ctx = applicationContext
+        launchWearRefresh(ctx) {
+            TileService.getUpdater(ctx).requestUpdate(PrayerTileService::class.java)
         }
 
         val timeline = TimelineBuilders.Timeline.Builder()
