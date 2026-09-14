@@ -1,7 +1,5 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.core.prayertimes.officialtimes
 
-import de.gebetszeiten.core.prayertimes.officialtimes.CacheStore
-import de.gebetszeiten.core.prayertimes.officialtimes.DueLocation
 import java.time.LocalDate
 
 /**
@@ -24,8 +22,12 @@ import java.time.LocalDate
  * ohne [due] zu befragen: der Nutzer meint damit, was er vor sich sieht —
  * nicht einen Favoriten am anderen Ende der Liste — und er muss auch durch
  * eine laufende Sperrfrist kommen.
+ *
+ * Oeffentlich (nicht `internal`), weil sowohl `app` (`PrayerProvider`) als
+ * auch `wear` (`refreshWearOfficial`) sie ueber die Modulgrenze hinweg
+ * aufrufen — beide liegen in einem ANDEREN Gradle-Modul als dieses hier.
  */
-internal fun chooseTarget(
+fun chooseTarget(
     due: List<DueLocation>,
     activeCoords: Pair<Double, Double>,
     force: Boolean,

@@ -4,12 +4,12 @@ import android.content.Context
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.CacheStore
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
+import de.gebetszeiten.core.prayertimes.officialtimes.chooseTarget
 import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.official.BundledOfficialSource
 import de.gebetszeiten.official.OfficialTimesCache
 import de.gebetszeiten.official.OfficialTimesProvider
-import de.gebetszeiten.official.chooseTarget
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import java.time.LocalDate

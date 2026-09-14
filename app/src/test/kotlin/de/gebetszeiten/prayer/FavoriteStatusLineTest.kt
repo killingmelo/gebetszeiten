@@ -1,9 +1,9 @@
 package de.gebetszeiten.prayer
 
+import de.gebetszeiten.core.prayertimes.officialtimes.MIN_FUTURE_DAYS
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
 import de.gebetszeiten.core.prayertimes.officialtimes.Verification
 import de.gebetszeiten.core.prayertimes.officialtimes.VerificationNote
-import de.gebetszeiten.official.MIN_FUTURE_DAYS
 import de.gebetszeiten.official.OfficialStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test

@@ -1,10 +1,10 @@
 package de.gebetszeiten.prayer
 
+import de.gebetszeiten.core.prayertimes.officialtimes.MIN_FUTURE_DAYS
 import de.gebetszeiten.core.prayertimes.officialtimes.Verification
 import de.gebetszeiten.core.prayertimes.officialtimes.VerificationNote
-import de.gebetszeiten.official.MIN_FUTURE_DAYS
+import de.gebetszeiten.core.prayertimes.officialtimes.needsRefresh
 import de.gebetszeiten.official.OfficialStatus
-import de.gebetszeiten.official.needsRefresh
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId

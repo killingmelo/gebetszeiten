@@ -1,12 +1,13 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.core.prayertimes.officialtimes
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
-// stampMatches liegt jetzt in core-prayertimes (CacheStampTest) — hier bleibt
-// nur noch needsRefresh.
+// stampMatches liegt schon laenger in core-prayertimes (CacheStampTest);
+// needsRefresh (und chooseTarget, in ChooseTargetTest im app-Modul) ist seit
+// Aufgabe 6 mit umgezogen — hier bleibt nur noch needsRefresh.
 class CacheFreshnessTest {
 
     // Fester "jetzt"-Zeitpunkt fuer alle Retry-Bremsen-Tests (Millis).

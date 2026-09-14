@@ -6,6 +6,7 @@ import de.gebetszeiten.core.prayertimes.officialtimes.CacheStore
 import de.gebetszeiten.core.prayertimes.officialtimes.RawEntry
 import de.gebetszeiten.core.prayertimes.officialtimes.ScheduleText
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
+import de.gebetszeiten.core.prayertimes.officialtimes.chooseTarget
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
