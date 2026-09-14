@@ -12,6 +12,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import de.gebetszeiten.core.prayertimes.officialtimes.CacheEntry
 import de.gebetszeiten.core.prayertimes.officialtimes.CacheHeader
 import de.gebetszeiten.core.prayertimes.officialtimes.CacheStore
+import de.gebetszeiten.core.prayertimes.officialtimes.DueLocation
 import de.gebetszeiten.core.prayertimes.officialtimes.RawEntry
 import de.gebetszeiten.core.prayertimes.officialtimes.ScheduleText
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
@@ -108,9 +109,70 @@ object WearOfficialCache {
 
     /** Einen bereits geparsten Zeitplan fuer einen Ort ablegen (ueber
      *  [CacheStore.put], also mit derselben Verdraengung wie der Phone-Cache).
-     *  Noch ohne Aufrufer — Aufgabe 6 verdrahtet die Uhr-Ortswahl darauf. */
+     *  Aufrufer: [refreshWearOfficial] (Aufgabe 6). */
     suspend fun put(context: Context, schedule: Map<LocalDate, SixTimes>, lat: Double, lng: Double, locationId: Int?) {
         writeEntry(context, schedule, lat, lng, locationId)
+    }
+
+    /** Diyanet-ID des letzten erfolgreichen Abrufs an diesem Ort — Pendant zu
+     *  `OfficialTimesCache.cachedLocationId` am Telefon. Wird der
+     *  Netzschicht als `preferredLocationId` mitgegeben, damit ein Folge-
+     *  Refresh nicht wieder ueber die Namenssuche gehen muss. */
+    suspend fun cachedLocationId(context: Context, lat: Double, lng: Double): Int? =
+        CacheStore.select(CacheStore.split(cacheText(context)), lat, lng)?.header?.locationId
+
+    /** Der EINE Uhr-Ort als [DueLocation] (oder eine leere Liste, wenn er
+     *  gar nicht bekannt ist) — Pendant zu `OfficialTimesCache.dueOrder`,
+     *  aber OHNE Favoritenliste (`pinnedCoords = emptyList()`): die Uhr
+     *  fuehrt keine eigene Favoritenrotation, es gibt nur diesen einen Ort.
+     *  Trotzdem ueber [CacheStore.dueOrder] statt handgestrickt, damit
+     *  [chooseTarget] dieselbe, bereits getestete Logik anwendet wie am
+     *  Telefon. */
+    suspend fun dueOrder(context: Context, activeCoords: Pair<Double, Double>, today: LocalDate): List<DueLocation> =
+        CacheStore.dueOrder(
+            entries = CacheStore.split(cacheText(context)),
+            pinnedCoords = emptyList(),
+            activeCoords = activeCoords,
+            today = today,
+        )
+
+    /** Abrufversuch protokollieren — Pendant zu
+     *  `OfficialTimesCache.recordAttempt`, ohne Favoriten. Lesen (samt
+     *  Migrationsentscheidung) und Schreiben in EINER Transaktion, wie
+     *  [writeEntry] (Begruendung dort: Task 5, Fix-Runde 1, Important 1). */
+    suspend fun recordAttempt(context: Context, error: String?, nowEpochMs: Long, lat: Double, lng: Double) {
+        context.officialSyncStore.edit { prefs ->
+            val entries = CacheStore.split(migrateWithin(prefs))
+            val index = CacheStore.indexOf(entries, lat, lng)
+            val updated = if (index >= 0) {
+                entries.mapIndexed { i, entry ->
+                    if (i == index) {
+                        entry.copy(header = entry.header.copy(lastAttemptEpochMs = nowEpochMs, lastError = error))
+                    } else {
+                        entry
+                    }
+                }
+            } else {
+                CacheStore.put(
+                    entries,
+                    CacheEntry(
+                        header = CacheHeader(
+                            latitude = lat,
+                            longitude = lng,
+                            locationId = null,
+                            firstDate = null,
+                            lastDate = null,
+                            updatedEpochMs = nowEpochMs,
+                            lastAttemptEpochMs = nowEpochMs,
+                            lastError = error,
+                        ),
+                        schedule = emptyMap(),
+                    ),
+                    pinnedCoords = emptyList(),
+                )
+            }
+            prefs[CACHE_TEXT] = CacheStore.serializeRaw(updated)
+        }
     }
 
     /** Liest den aktuellen Text, mergt den neuen Eintrag ein und schreibt —

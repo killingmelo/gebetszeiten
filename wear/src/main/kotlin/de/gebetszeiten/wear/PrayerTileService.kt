@@ -42,6 +42,11 @@ class PrayerTileService : TileService() {
         val now = ZonedDateTime.now(zone)
         // One extra entry so every shown prayer knows its successor ("danach").
         val upcoming = runBlocking {
+            // Seit Aufgabe 6 ruft die Uhr amtliche Zeiten selbst ab; die
+            // Wiederholungs-Bremse in `refreshWearOfficial` (`needsRefresh`)
+            // haelt das ausser am faelligen Ort billig — kein Netz bei jedem
+            // Kachel-Zeichnen.
+            refreshWearOfficial(applicationContext)
             val location = WearSettings.location(applicationContext)
             WearPrayer.upcoming(applicationContext, location, zone, now, count = 7)
         }

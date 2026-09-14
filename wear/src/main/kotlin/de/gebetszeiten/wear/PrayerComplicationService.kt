@@ -53,6 +53,9 @@ class PrayerComplicationService : ComplicationDataSourceService() {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
         val (showRemaining, next) = runBlocking {
+            // Seit Aufgabe 6 ruft die Uhr amtliche Zeiten selbst ab; siehe
+            // Kommentar in `PrayerTileService.onTileRequest`.
+            refreshWearOfficial(applicationContext)
             val location = WearSettings.location(applicationContext)
             WearSettings.showRemaining(applicationContext) to WearPrayer.next(applicationContext, location, zone, now)
         }

@@ -109,6 +109,16 @@ class MainActivity : Activity() {
             val applied = withContext(Dispatchers.IO) { WearSyncApplier.replayExisting(applicationContext) }
             if (applied) refresh()
         }
+        // Die Uhr ruft ihre amtlichen Zeiten seit Aufgabe 6 auch selbst ab
+        // (online-Flavor; im offline-Flavor ein No-op ueber
+        // `WearFetchProvider.isOnline`) — unabhaengig vom Sync vom Handy.
+        // Neu gezeichnet wird danach immer: die Bremse (`needsRefresh`)
+        // sorgt dafuer, dass ein frisch versorgter Ort hier nichts mehr zu
+        // tun hat, der Aufruf also billig bleibt.
+        scope.launch {
+            withContext(Dispatchers.IO) { refreshWearOfficial(applicationContext) }
+            refresh()
+        }
     }
 
     override fun onDestroy() {
