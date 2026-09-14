@@ -39,12 +39,6 @@ android {
         // on demand, DE-Bundle + Berechnung als Offline-Fallback.
         create("online") {
             dimension = "connectivity"
-            // :net-diyanet (Aufgabe 2) setzt minSdk 30. Nur DIESER Flavor
-            // bindet das Modul ein, deshalb hebt nur er seine Untergrenze an
-            // — der offline-Flavor bleibt bei 26. Ohne diese Zeile bricht
-            // der Manifest-Merger: "minSdkVersion 26 cannot be smaller than
-            // version 30 declared in library [:net-diyanet]".
-            minSdk = 30
         }
     }
 

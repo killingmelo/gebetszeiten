@@ -2,11 +2,10 @@ package de.gebetszeiten.places
 
 import de.gebetszeiten.data.City
 import de.gebetszeiten.data.CityLookup
+import de.gebetszeiten.net.httpGet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 
 /** Open-Meteo Geocoding (GeoNames-basiert, frei, kein API-Key): findet auch
@@ -21,7 +20,12 @@ object OpenMeteoGeocoder : CityLookup {
         withContext(Dispatchers.IO) {
             runCatching {
                 val q = URLEncoder.encode(query.trim(), "UTF-8")
-                parseGeocodingResponse(httpGet("$BASE?name=$q&count=$limit&language=de"))
+                parseGeocodingResponse(
+                    httpGet(
+                        "$BASE?name=$q&count=$limit&language=de",
+                        userAgent = "GebetszeitenApp (Ortssuche, ~1 Abruf/neuer Ort)",
+                    ),
+                )
             }.getOrDefault(emptyList())
         }
 
@@ -45,27 +49,6 @@ object OpenMeteoGeocoder : CityLookup {
                     ),
                 )
             }
-        }
-    }
-
-    /** Eigene, kleine Kopie statt einer Abhaengigkeit von `:net-diyanet`: die
-     *  Diyanet-Abrufer zogen in Aufgabe 2 in ihr eigenes Modul, ihr `httpGet`
-     *  ist dort `internal` (modulprivat) und blieb es bewusst - dieser
-     *  Geocoder hat mit Diyanet nichts zu tun und soll nicht an dessen Modul
-     *  haengen, nur fuer einen schlanken GET mit Timeout. */
-    private fun httpGet(urlString: String): String {
-        val conn = (URL(urlString).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 10_000
-            readTimeout = 10_000
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "GebetszeitenApp (Ortssuche, ~1 Abruf/neuer Ort)")
-        }
-        try {
-            if (conn.responseCode !in 200..299) error("HTTP ${conn.responseCode}")
-            return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        } finally {
-            conn.disconnect()
         }
     }
 }
