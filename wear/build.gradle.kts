@@ -67,6 +67,17 @@ android {
             assets.srcDir(rootProject.file("shared-assets"))
         }
     }
+
+    flavorDimensions += "connectivity"
+    productFlavors {
+        create("offline") {
+            dimension = "connectivity"
+            isDefault = true
+            applicationIdSuffix = ".offline"
+            versionNameSuffix = "-offline"
+        }
+        create("online") { dimension = "connectivity" }
+    }
 }
 
 dependencies {
@@ -90,8 +101,13 @@ dependencies {
     // Persisted location (DataStore)
     implementation(libs.androidx.datastore.preferences)
 
-    // Phone-Sync: amtlicher Zeiten-Cache kommt als DataItem vom Handy.
+    // Phone-Sync: amtlicher Zeiten-Cache kommt als DataItem vom Handy. Bleibt
+    // in beiden Flavors, anders als am Telefon: es ist der Bluetooth-Transport
+    // zum gekoppelten Handy, kein Internetzugang, und WearSyncApplier /
+    // WearSyncListenerService liegen in wear/src/main.
     implementation(libs.play.services.wearable)
+
+    "onlineImplementation"(project(":net-diyanet"))
 
     testImplementation(libs.junit)
 }
