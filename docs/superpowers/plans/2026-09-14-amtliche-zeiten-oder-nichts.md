@@ -239,7 +239,11 @@ plugins {
 android {
     namespace = "de.gebetszeiten.net"
     compileSdk = 36
-    defaultConfig { minSdk = 30 }
+    // 26 wie `app`, NICHT 30 wie `wear`. Ein Bibliotheksmodul setzt die
+    // Untergrenze fuer jeden, der es einbindet: mit 30 wuerde der
+    // veroeffentlichte online-Flavor Android 8 bis 10 ausschliessen. Die Uhr
+    // darf hoeher liegen, das ist ihre eigene Untergrenze.
+    defaultConfig { minSdk = 26 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
