@@ -103,6 +103,20 @@ class NoNetworkInSharedCodeTest {
         )
     }
 
+    @Test fun `net-diyanet wird nur vom online-Flavor eingebunden`() {
+        val zeilen = File("../app/build.gradle.kts").readLines() +
+            File("../wear/build.gradle.kts").readLines()
+        val einbindungen = zeilen.map { it.trim() }
+            .filter { it.contains("\":net-diyanet\"") && !it.startsWith("//") }
+        assertTrue("net-diyanet wird nirgends eingebunden", einbindungen.isNotEmpty())
+        einbindungen.forEach {
+            assertTrue(
+                "net-diyanet traegt INTERNET und darf nur im online-Flavor stehen: $it",
+                it.startsWith("\"onlineImplementation\""),
+            )
+        }
+    }
+
     /** Kommentare zaehlen nicht. Dieses Projekt erklaert seine Entscheidungen
      *  ausfuehrlich, und ein Satz wie „hier darf kein HttpURLConnection
      *  stehen" ist genau das Gegenteil eines Verstosses.

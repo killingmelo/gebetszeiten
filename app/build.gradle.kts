@@ -97,10 +97,9 @@ android {
 //       tools/notification-icons/icons.sha256
 //   OfficialAssetsIntegrityTest                       -> shared-assets/official
 //   NoNetworkInSharedCodeTest                         -> die fuenf Manifeste
-//       (inkl. net-diyanet) und den geteilten Quellsatz
+//       (inkl. net-diyanet), den geteilten Quellsatz und die beiden
+//       build.gradle.kts (Modulkante net-diyanet)
 //   OngoingWiringTest                                 -> app/src/main/kotlin
-//   CompositeFetcherContractTest                      -> ../net-diyanet/src/main/kotlin
-//       (die sechs Abrufer-Dateien zogen dort in Aufgabe 2 hin)
 //
 // Diese Pfade sind fuer Gradle keine Task-Eingaben: die Kotlin-Quellen von
 // app/src/main und core-prayertimes sind es mittelbar ueber die Uebersetzung,
@@ -149,10 +148,13 @@ tasks.withType<Test>().configureEach {
     inputs.dir(rootProject.file("wear/src/main"))
         .withPropertyName("wearQuellsatz")
         .withPathSensitivity(PathSensitivity.RELATIVE)
-    // CompositeFetcherContractTest liest die sechs Abrufer-Dateien seit
-    // Aufgabe 2 direkt aus :net-diyanet statt aus src/online.
-    inputs.dir(rootProject.file("net-diyanet/src/main/kotlin"))
-        .withPropertyName("netDiyanetQuellsatz")
+    // NoNetworkInSharedCodeTest prueft seit Aufgabe 3 zusaetzlich, dass
+    // :net-diyanet nur als onlineImplementation eingebunden ist.
+    inputs.files(
+        rootProject.file("app/build.gradle.kts"),
+        rootProject.file("wear/build.gradle.kts"),
+    )
+        .withPropertyName("modulkanten")
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
