@@ -1,5 +1,8 @@
 package de.gebetszeiten.wear
 
+import de.gebetszeiten.core.prayertimes.officialtimes.CacheEntry
+import de.gebetszeiten.core.prayertimes.officialtimes.CacheHeader
+import de.gebetszeiten.core.prayertimes.officialtimes.CacheStore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -53,5 +56,49 @@ class SyncDecisionTest {
     @Test
     fun `bereits gesynct - kein Nachholen beim App-Start`() {
         assertFalse(SyncDecision.shouldReplay(41.0082, 28.9784))
+    }
+
+    @Test fun `ein frischerer eigener Stand schlaegt den Sync`() {
+        assertFalse(SyncDecision.syncWins(syncUpdatedEpochMs = 1_000L, ownUpdatedEpochMs = 2_000L))
+    }
+
+    @Test fun `ohne eigenen Stand gewinnt der Sync`() {
+        assertTrue(SyncDecision.syncWins(syncUpdatedEpochMs = 1_000L, ownUpdatedEpochMs = null))
+    }
+
+    @Test fun `bei gleichem Stand gewinnt der Sync - er ist billiger als ein Abruf`() {
+        assertTrue(SyncDecision.syncWins(syncUpdatedEpochMs = 1_000L, ownUpdatedEpochMs = 1_000L))
+    }
+
+    private fun kopf(lat: Double, lng: Double, updatedEpochMs: Long) = CacheEntry(
+        header = CacheHeader(
+            latitude = lat,
+            longitude = lng,
+            locationId = null,
+            firstDate = null,
+            lastDate = null,
+            updatedEpochMs = updatedEpochMs,
+            lastAttemptEpochMs = null,
+            lastError = null,
+        ),
+        schedule = emptyMap(),
+    )
+
+    @Test
+    fun `eigener Zeitstempel wird am Sync-Ort nachgeschlagen - nicht am aktiven Uhr-Ort`() {
+        // Nuernberg (Sync-Ort) hat einen AELTEREN eigenen Stand als Istanbul
+        // (angenommen der aktive Uhr-Ort). Ein Vergleich mit Istanbuls
+        // Zeitstempel waere Aepfel gegen Birnen (siehe Brief) - hier muss
+        // Nuernbergs eigener Wert herauskommen, nicht Istanbuls hoeherer.
+        val nuernberg = kopf(49.4521, 11.0767, updatedEpochMs = 5_000L)
+        val istanbul = kopf(41.0082, 28.9784, updatedEpochMs = 9_000L)
+        val entries = CacheStore.split(CacheStore.serialize(listOf(nuernberg, istanbul)))
+
+        assertEquals(5_000L, SyncDecision.ownUpdatedEpochMs(entries, 49.4521, 11.0767))
+    }
+
+    @Test
+    fun `noch nie eigenstaendig abgerufener Ort liefert keinen eigenen Zeitstempel`() {
+        assertNull(SyncDecision.ownUpdatedEpochMs(emptyList(), 49.4521, 11.0767))
     }
 }

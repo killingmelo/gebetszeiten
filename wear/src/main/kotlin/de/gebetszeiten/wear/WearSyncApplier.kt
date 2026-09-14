@@ -28,8 +28,22 @@ import java.util.concurrent.TimeUnit
  */
 object WearSyncApplier {
 
+    /**
+     * Wendet [payload] an — AUSSER ein frischerer eigener Stand am
+     * SYNC-ORT unterlaeuft ihn (siehe [SyncDecision.syncWins]). Seit
+     * Aufgabe 6 ruft `MainActivity.onStart` [refreshWearOfficial] und den
+     * Sync-Nachholpfad UNABHAENGIG voneinander an — hat der eigene Abruf in
+     * diesem Wettlauf schon geschrieben, bevor dieser Sync verarbeitet
+     * wird, waere ein bedingungsloses Ueberschreiben ein Rueckschritt.
+     * `System.currentTimeMillis()` beim Eintritt in diese Funktion ist der
+     * einzige verfuegbare Zeitstempel des Syncs: das DataItem selbst traegt
+     * keinen (siehe [WearSyncContract]) — er steht also fuer "der Sync wird
+     * JETZT angewendet", nicht fuer irgendeinen frueheren Handy-Zeitpunkt.
+     */
     suspend fun apply(context: Context, payload: SyncDecision.Payload) {
         if (SyncDecision.parse(payload) == null) return
+        val ownUpdated = WearOfficialCache.ownUpdatedEpochMs(context, payload.lat, payload.lng)
+        if (!SyncDecision.syncWins(System.currentTimeMillis(), ownUpdated)) return
         val synced = WearOfficialCache.syncedLocation(context)
         val adopt = SyncDecision.shouldAdoptLocation(payload, synced?.first, synced?.second)
         WearOfficialCache.store(context, payload.scheduleText, payload.lat, payload.lng, adopt)

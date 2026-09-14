@@ -121,6 +121,14 @@ object WearOfficialCache {
     suspend fun cachedLocationId(context: Context, lat: Double, lng: Double): Int? =
         CacheStore.select(CacheStore.split(cacheText(context)), lat, lng)?.header?.locationId
 
+    /** Eigener Zeitstempel an [lat]/[lng] fuer den Sync-Vorrang-Check
+     *  ([SyncDecision.syncWins] in [WearSyncApplier]) — dieselbe
+     *  Ortsidentitaet wie [cachedLocationId]. Delegiert die Ortslogik an
+     *  [SyncDecision.ownUpdatedEpochMs] (dort begruendet), damit sie nur an
+     *  EINER, JVM-getesteten Stelle steht. */
+    suspend fun ownUpdatedEpochMs(context: Context, lat: Double, lng: Double): Long? =
+        SyncDecision.ownUpdatedEpochMs(CacheStore.split(cacheText(context)), lat, lng)
+
     /** Der EINE Uhr-Ort als [DueLocation] (oder eine leere Liste, wenn er
      *  gar nicht bekannt ist) — Pendant zu `OfficialTimesCache.dueOrder`,
      *  aber OHNE Favoritenliste (`pinnedCoords = emptyList()`): die Uhr
