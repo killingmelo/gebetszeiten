@@ -1,13 +1,13 @@
-package de.gebetszeiten.official
+package de.gebetszeiten.core.prayertimes
 
 import java.text.Normalizer
 
 /** Akzent-/Umlaut-/Türkisch-insensitive Normalisierung (lower-case → ASCII).
- *  Gemeinsam genutzt von [de.gebetszeiten.data.Cities] und der amtlichen
- *  Zeiten-Quelle ([de.gebetszeiten.official.DiyanetProxyFetcher]) — deshalb
- *  hier im `official`-Paket statt in `data`: die Abrufer duerfen keinen
- *  app-Typ importieren, `Cities` darf umgekehrt sehr wohl einen `official`-Typ
- *  importieren. */
+ *  Gemeinsam genutzt von der App-Ortssuche (`Cities`, App-Modul) und der
+ *  amtlichen Zeiten-Quelle (`DiyanetProxyFetcher`, wandert in einem
+ *  spaeteren Schritt ins eigene Netz-Modul) — deshalb hier in
+ *  `core-prayertimes`: reines `java.text.Normalizer`, ohne Android-, Netz-
+ *  oder Oberflaechenbezug, und fuer beide Seiten ohne app-Typ erreichbar. */
 object TextNormalize {
     // Einmal kompiliert — normalize() läuft beim Asset-Parse 2× pro Zeile
     // (235k Zeilen), eine Regex-Kompilierung pro Aufruf wäre der Hotspot.
