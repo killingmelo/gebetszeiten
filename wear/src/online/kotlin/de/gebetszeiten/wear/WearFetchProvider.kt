@@ -8,14 +8,26 @@ import de.gebetszeiten.net.CompositeDiyanetFetcher
  *  wie das Telefon. Auf Wear OS leitet das System die Anfrage ueber Bluetooth
  *  durchs gekoppelte Telefon, wenn die Uhr kein eigenes Netz hat.
  *
- *  `bundledLocationId` liefert hier immer `null`: das DE-Bundle
- *  (`BundledOfficialSource`), das dem Telefon einen Vorschlag gibt, ist
- *  App-seitig und der Uhr (noch) nicht zugaenglich. `null` heisst fuer
- *  `CompositeDiyanetFetcher.create` ausdruecklich „kein Vorschlag" — die
- *  Kette faellt dann auf Index/Cache/Proxy-Namenssuche zurueck, genau wie
- *  beim Telefon ausserhalb des DE-Bundles. Aufgabe 6 kann das verfeinern,
- *  sobald die Uhr selbst abruft. */
+ *  `bundledLocationId` sucht den naechstgelegenen Standort in
+ *  `locations-de.tsv` ueber [WearOfficialSource.nearestLocation] — die Uhr
+ *  hat dieses Bundle laengst (`wear/build.gradle.kts` bindet `shared-assets`
+ *  als Asset-Verzeichnis ein, und [WearOfficialSource] liest daraus schon
+ *  seit dessen Einfuehrung), es wurde hier nur nicht benutzt. Genau das
+ *  Muster wie `OfficialTimesProvider` im app-Modul, das dafuer
+ *  `BundledOfficialSource.nearestLocation` heranzieht.
+ *
+ *  Damit loesen Uhr und Telefon fuer denselben deutschen Ort KONSTRUKTIV auf
+ *  dieselbe Diyanet-ID auf (nicht nur zufaellig, weil zwei getrennt gebaute
+ *  Indizes zufaellig uebereinstimmen): beide fragen zuerst dieselbe Tabelle.
+ *  Bleibt der Standort dort unbekannt (Ausland, oder ein Ort ausserhalb der
+ *  25-km-Schwelle), liefert `nearestLocation` `null`, und die Kette faellt
+ *  auf den weltweiten Index/Cache/Proxy-Namenssuche zurueck — dort bleiben
+ *  drei bekannte Abweichungen (siehe `PhoneWatchLocationIdConsistencyTest`
+ *  in `:net-diyanet`), die fuer deutsche Orte durch diese Zeile nicht mehr
+ *  erreicht werden. */
 object WearFetchProvider {
     const val isOnline = true
-    fun fetcher(context: Context): OfficialTimesFetcher? = CompositeDiyanetFetcher.create(context) { _, _ -> null }
+    fun fetcher(context: Context): OfficialTimesFetcher? = CompositeDiyanetFetcher.create(context) { lat, lng ->
+        WearOfficialSource.nearestLocation(context, lat, lng)?.diyanetId
+    }
 }

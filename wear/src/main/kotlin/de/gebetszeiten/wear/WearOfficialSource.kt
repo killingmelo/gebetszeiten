@@ -24,9 +24,18 @@ object WearOfficialSource {
     @Volatile private var tables: Map<String, Map<LocalDate, SixTimes>> = emptyMap()
 
     suspend fun get(context: Context, lat: Double, lng: Double, date: LocalDate): SixTimes? {
-        val loc = OfficialLocations.nearest(allLocations(context), lat, lng) ?: return null
+        val loc = nearestLocation(context, lat, lng) ?: return null
         return table(context, "official/tables/${loc.tableRef}-${date.year}.tsv")[date]
     }
+
+    /** Naechstgelegener gebuendelter Diyanet-Standort <= 25 km, oder null.
+     *  Oeffentlich (nicht `private`), damit `WearFetchProvider` (online-
+     *  Flavor) daraus die `bundledLocationId` fuer `CompositeDiyanetFetcher`
+     *  bauen kann, ohne die Aufloesung ein zweites Mal zu schreiben —
+     *  dasselbe Muster wie `BundledOfficialSource.nearestLocation` im
+     *  app-Modul (dort ebenfalls "auch vom Online-Fetcher genutzt"). */
+    suspend fun nearestLocation(context: Context, lat: Double, lng: Double): OfficialLocation? =
+        OfficialLocations.nearest(allLocations(context), lat, lng)
 
     private suspend fun allLocations(context: Context): List<OfficialLocation> {
         locations?.let { return it }
