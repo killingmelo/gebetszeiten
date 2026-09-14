@@ -5,8 +5,6 @@ import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceResult
 import de.gebetszeiten.core.prayertimes.officialtimes.resolveQuorum
-import de.gebetszeiten.data.AppSettings
-import de.gebetszeiten.prayer.fetchErrorSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -57,7 +55,7 @@ import javax.net.ssl.SSLException
  * als `checkedEpochMs` in der `Verification` und muss testbar bleiben.
  */
 class CompositeDiyanetFetcher(
-    private val resolveId: suspend (AppSettings) -> Int?,
+    private val resolveId: suspend (lat: Double, lng: Double, city: String, preferredLocationId: Int?) -> Int?,
     private val direct: suspend (Int) -> Map<LocalDate, SixTimes>,
     private val proxy: suspend (Int) -> Map<LocalDate, SixTimes>,
     private val ezanvakti: suspend (Int) -> Map<LocalDate, SixTimes>,
@@ -67,9 +65,14 @@ class CompositeDiyanetFetcher(
     },
 ) : OfficialTimesFetcher {
 
-    override suspend fun fetch(settings: AppSettings): FetchResult {
+    override suspend fun fetch(
+        lat: Double,
+        lng: Double,
+        city: String,
+        preferredLocationId: Int?,
+    ): FetchResult {
         val id = try {
-            resolveId(settings)
+            resolveId(lat, lng, city, preferredLocationId)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -81,11 +84,11 @@ class CompositeDiyanetFetcher(
             // Serdivan-Fall unsichtbar: kein Log, keine UI-Meldung, nur
             // klammheimlich die eigene Berechnung.
             log(
-                "Kein Diyanet-Standort fuer '${settings.city}' aufloesbar",
+                "Kein Diyanet-Standort fuer '$city' aufloesbar",
                 IllegalStateException("keine ID"),
             )
             // Ohne Standort gibt es nichts abzurufen und damit auch nichts
-            // zu pruefen: `verification` und `errorSummary` bleiben null.
+            // zu pruefen: `verification` und `candidates` bleiben leer.
             return FetchResult(emptyMap(), null)
         }
         val candidates = coroutineScope {
@@ -98,8 +101,9 @@ class CompositeDiyanetFetcher(
         val outcome = resolveQuorum(candidates, id, now())
         // `verification` legt `refreshOfficial` im Cache-Kopf ab (sie
         // ueberlebt dort bis zum naechsten Abruf und traegt die
-        // Gegenpruefungs-Zeile der Statuszeile); `errorSummary` wird der
-        // Fehlergrund, wenn KEINE Quelle etwas geliefert hat.
+        // Gegenpruefungs-Zeile der Statuszeile). Den deutschen Fehlertext
+        // baut nicht mehr der Fetcher (das braeuchte `fetchErrorSummary`
+        // aus dem app-Modul), sondern der Aufrufer aus `candidates`.
         return FetchResult(
             schedule = outcome.schedule,
             // Kommt aus dem Quorum, nicht aus `id`: bei
@@ -107,7 +111,7 @@ class CompositeDiyanetFetcher(
             // Standort-ID gehoeren koennte.
             locationId = outcome.locationId,
             verification = outcome.verification,
-            errorSummary = fetchErrorSummary(candidates),
+            candidates = candidates,
         )
     }
 
@@ -149,26 +153,30 @@ class CompositeDiyanetFetcher(
         fun create(context: Context): CompositeDiyanetFetcher {
             val proxyFetcher = DiyanetProxyFetcher()
             return CompositeDiyanetFetcher(
-                resolveId = { settings ->
+                resolveId = { lat, lng, city, preferredLocationId ->
                     resolveLocationIdChain(
                         bundledId = BundledOfficialSource
-                            .nearestLocation(context, settings.latitude, settings.longitude)
+                            .nearestLocation(context, lat, lng)
                             ?.diyanetId,
                         indexPlace = DiyanetPlaceIndex
-                            .nearest(context, settings.latitude, settings.longitude),
-                        cachedId = OfficialTimesCache(context)
-                            .cachedLocationId(settings.latitude, settings.longitude),
+                            .nearest(context, lat, lng),
+                        // Kommt vom Aufrufer statt aus einem eigenen
+                        // Cache-Zugriff hier: `OfficialTimesCache` ist
+                        // App-seitig (DataStore), die Netzschicht soll sie
+                        // nicht kennen muessen. Gleicher Wert, anderer Ort.
+                        cachedId = preferredLocationId,
                         searchByName = {
                             // Ohne Ortsnamen gar nicht erst suchen: das waere
                             // ein `GET /search?q=` — ein Netzaufruf, der
                             // nichts finden kann. Der Name ist leer, wenn ein
                             // Favorit als Ziel gewaehlt wurde, dessen Name
-                            // nicht auffindbar ist (`targetSettings`): ein
-                            // FALSCHER Name waere dort schlimmer als keiner.
-                            if (settings.city.isBlank()) {
+                            // nicht auffindbar ist (`targetSettings` in
+                            // `PrayerProvider`): ein FALSCHER Name waere dort
+                            // schlimmer als keiner.
+                            if (city.isBlank()) {
                                 null
                             } else {
-                                withContext(Dispatchers.IO) { proxyFetcher.resolveLocationId(settings.city) }
+                                withContext(Dispatchers.IO) { proxyFetcher.resolveLocationId(city) }
                             }
                         },
                     )

@@ -1,4 +1,4 @@
-package de.gebetszeiten.data
+package de.gebetszeiten.official
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

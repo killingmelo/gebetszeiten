@@ -1,8 +1,8 @@
 package de.gebetszeiten.official
 
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
+import de.gebetszeiten.core.prayertimes.officialtimes.SourceResult
 import de.gebetszeiten.core.prayertimes.officialtimes.Verification
-import de.gebetszeiten.data.AppSettings
 import java.time.LocalDate
 
 /**
@@ -12,8 +12,20 @@ import java.time.LocalDate
  */
 interface OfficialTimesFetcher {
     /** Zeiten für so viele Tage, wie die Quelle hergibt, plus die Diyanet-ID,
-     *  mit der sie geholt wurden (wird für Folge-Refreshes persistiert). */
-    suspend fun fetch(settings: AppSettings): FetchResult
+     *  mit der sie geholt wurden (wird für Folge-Refreshes persistiert).
+     *
+     *  Vier einfache Parameter statt eines `AppSettings` — die Netzschicht
+     *  darf keinen app-Typ kennen (Vorbereitung des Modulschnitts).
+     *  [preferredLocationId] ist die zuletzt bekannte Diyanet-ID fuer
+     *  [lat]/[lng] (typischerweise aus dem Cache des Aufrufers); sie zaehlt
+     *  in der Aufloesungskette NACH Bundle und Koordinatenindex, aber VOR
+     *  der Namenssuche. */
+    suspend fun fetch(
+        lat: Double,
+        lng: Double,
+        city: String,
+        preferredLocationId: Int?,
+    ): FetchResult
 }
 
 /**
@@ -35,6 +47,14 @@ data class FetchResult(
     /** Das Prueferzeugnis zum gelieferten Zeitplan; `null`, wenn gar nicht
      *  erst abgerufen wurde (kein aufloesbarer Standort). */
     val verification: Verification? = null,
-    /** Was schiefging, Quelle fuer Quelle; `null`, wenn keine scheiterte. */
+    /** Was schiefging, Quelle fuer Quelle; `null`, wenn keine scheiterte.
+     *  Wird vom Fetcher selbst nicht mehr befuellt (das braeuchte
+     *  `fetchErrorSummary` aus dem app-Modul) — der Aufrufer baut den Text
+     *  aus [candidates]. Bleibt als Feld erhalten, damit die Schnittstelle
+     *  unveraendert bleibt. */
     val errorSummary: String? = null,
+    /** Jeder Quellenversuch, Erfolg wie Fehlschlag — Rohmaterial, aus dem
+     *  der Aufrufer (z. B. `PrayerProvider.refreshOfficial`) den deutschen
+     *  Fehlertext baut. */
+    val candidates: List<SourceResult> = emptyList(),
 )

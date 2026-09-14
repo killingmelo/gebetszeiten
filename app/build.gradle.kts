@@ -99,6 +99,7 @@ android {
 //   NoNetworkInSharedCodeTest                         -> die vier Manifeste
 //       und den geteilten Quellsatz
 //   OngoingWiringTest                                 -> app/src/main/kotlin
+//   CompositeFetcherContractTest                      -> src/online/kotlin
 //
 // Diese Pfade sind fuer Gradle keine Task-Eingaben: die Kotlin-Quellen von
 // app/src/main und core-prayertimes sind es mittelbar ueber die Uebersetzung,
@@ -136,6 +137,9 @@ tasks.withType<Test>().configureEach {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(file("src/offline"))
         .withPropertyName("offlineQuellsatz")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(file("src/online"))
+        .withPropertyName("onlineQuellsatz")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(file("src/main/kotlin"))
         .withPropertyName("mainQuellsatz")

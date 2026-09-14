@@ -133,14 +133,24 @@ object PrayerProvider {
             // durch).
             try {
                 withTimeout(25_000) {
-                    val result = fetcher.fetch(targetSettings(settings, targetLat, targetLng))
+                    val targetCityName = targetCity(settings, targetLat, targetLng)
+                    // Die zuletzt bekannte Diyanet-ID fuer diesen Ort: die
+                    // Netzschicht darf `OfficialTimesCache` (DataStore, ein
+                    // app-Typ) nicht mehr selbst befragen, deshalb kommt der
+                    // Wert von hier — gleiches Verhalten, anderer Ort.
+                    val preferredId = cache.cachedLocationId(targetLat, targetLng)
+                    val result = fetcher.fetch(targetLat, targetLng, targetCityName, preferredId)
                     if (result.schedule.isEmpty()) {
                         cache.recordAttempt(
                             // Wortlaut und Rueckfall in `emptyResultError`,
                             // einer reinen Funktion: hier drinnen — Context,
                             // Netz, DataStore — waeren sie ohne Robolectric
-                            // nicht pruefbar, dort sind sie es.
-                            emptyResultError(result.errorSummary),
+                            // nicht pruefbar, dort sind sie es. Den
+                            // deutschen Fehlertext baut jetzt der Aufrufer
+                            // aus `result.candidates` (nicht mehr der
+                            // Fetcher — der kennt `fetchErrorSummary` nicht
+                            // mehr, ein app-Typ).
+                            emptyResultError(fetchErrorSummary(result.candidates)),
                             now,
                             targetLat,
                             targetLng,
@@ -160,8 +170,9 @@ object PrayerProvider {
                         result.verification,
                     )
                     // `error = null`, auch wenn EINE von drei Quellen
-                    // gescheitert ist (`result.errorSummary` waere dann
-                    // gesetzt): ein gelungener Abruf ist kein Fehler. Ein
+                    // gescheitert ist (`fetchErrorSummary(result.candidates)`
+                    // waere dann gesetzt): ein gelungener Abruf ist kein
+                    // Fehler. Ein
                     // `lastError` neben vorhandenen Zeiten wuerde die
                     // Statuszeile "Fehler:" schreiben lassen und — an einem
                     // Ort ohne Zeitplan — `DueLocation.hopeless` ausloesen,
@@ -193,26 +204,23 @@ object PrayerProvider {
         OfficialTimesProvider.syncToWear(context, activeSchedule, settings)
     }
 
-    /** [settings] auf den gewaehlten Ort umgestellt.
-     *
-     *  Der Ortsname ist dabei nicht kosmetisch: er ist das letzte Glied der
-     *  ID-Aufloesung (`resolveLocationIdChain` → Namenssuche). `settings.city`
-     *  gehoert zum aktiven Ort — fuer einen Favoriten waere dieser Name
-     *  schlicht falsch und schlimmer als keiner. Er kommt deshalb aus dem
-     *  Favoriten selbst. Die ersten drei Glieder der Kette (Bundle,
-     *  Koordinatenindex, Cache) arbeiten ohnehin nur mit Koordinaten; die
-     *  Namenssuche ist seit dem weltweiten Index nur noch Lueckenfueller. */
-    private fun targetSettings(settings: AppSettings, lat: Double, lng: Double): AppSettings {
+    /** Der Ortsname fuer [lat]/[lng] — das letzte Glied der ID-Aufloesung
+     *  (`resolveLocationIdChain` → Namenssuche). `settings.city` gehoert zum
+     *  aktiven Ort — fuer einen Favoriten waere dieser Name schlicht falsch
+     *  und schlimmer als keiner. Er kommt deshalb aus dem Favoriten selbst.
+     *  Die ersten drei Glieder der Kette (Bundle, Koordinatenindex, Cache)
+     *  arbeiten ohnehin nur mit Koordinaten; die Namenssuche ist seit dem
+     *  weltweiten Index nur noch Lueckenfueller. */
+    private fun targetCity(settings: AppSettings, lat: Double, lng: Double): String {
         if (stampMatches(settings.latitude, settings.longitude, lat, lng)) {
-            return settings.copy(latitude = lat, longitude = lng)
+            return settings.city
         }
-        val name = settings.favorites
+        // Unerreichbar: die Kandidaten sind Favoriten oder der aktive Ort.
+        // Leer statt settings.city, weil ein falscher Name in der
+        // Namenssuche schlechter ist als gar keiner.
+        return settings.favorites
             .firstOrNull { stampMatches(it.city.latitude, it.city.longitude, lat, lng) }
             ?.city?.name
-            // Unerreichbar: die Kandidaten sind Favoriten oder der aktive Ort.
-            // Leer statt settings.city, weil ein falscher Name in der
-            // Namenssuche schlechter ist als gar keiner.
             ?: ""
-        return settings.copy(latitude = lat, longitude = lng, city = name)
     }
 }

@@ -4,6 +4,7 @@ import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
 import de.gebetszeiten.core.prayertimes.officialtimes.VerificationNote
 import de.gebetszeiten.data.AppSettings
+import de.gebetszeiten.prayer.fetchErrorSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -49,7 +50,7 @@ class CompositeDiyanetFetcherTest {
         proxy: suspend (Int) -> Map<LocalDate, SixTimes> = { proxyData },
         ezanvakti: suspend (Int) -> Map<LocalDate, SixTimes> = { ezanData },
         now: () -> Long = { 1_700_000_000_000L },
-    ) = CompositeDiyanetFetcher({ id }, direct, proxy, ezanvakti, now, log = { _, _ -> })
+    ) = CompositeDiyanetFetcher({ _, _, _, _ -> id }, direct, proxy, ezanvakti, now, log = { _, _ -> })
 
     @Test
     fun `alle drei Quellen werden immer gefragt`() = runBlocking {
@@ -65,7 +66,7 @@ class CompositeDiyanetFetcherTest {
             direct = { directCalls++; yearData },
             proxy = { proxyCalls++; proxyData },
             ezanvakti = { ezanCalls++; ezanData },
-        ).fetch(settings)
+        ).fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(1, directCalls)
         assertEquals(1, proxyCalls)
         assertEquals(1, ezanCalls)
@@ -91,7 +92,7 @@ class CompositeDiyanetFetcherTest {
             direct = { quelle("direct", yearData) },
             proxy = { quelle("proxy", proxyData) },
             ezanvakti = { quelle("ezan", ezanData) },
-        ).fetch(settings)
+        ).fetch(settings.latitude, settings.longitude, settings.city, null)
 
         val erstesEnde = marken.indexOfFirst { it.endsWith("-ende") }
         assertTrue("keine Quelle hat geendet: $marken", erstesEnde >= 0)
@@ -105,7 +106,7 @@ class CompositeDiyanetFetcherTest {
 
     @Test
     fun `alle drei einig - bestaetigt, volles Fenster des Direktabrufs`() = runBlocking {
-        val result = fetcher().fetch(settings)
+        val result = fetcher().fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(yearData, result.schedule)
         assertEquals(5, result.schedule.size)
         val v = result.verification
@@ -116,7 +117,7 @@ class CompositeDiyanetFetcherTest {
         // Die Uhr wird hineingereicht, nicht aus dem System geholt — sonst
         // waere `checkedEpochMs` nicht pruefbar.
         assertEquals(1_700_000_000_000L, v.checkedEpochMs)
-        assertNull(result.errorSummary)
+        assertNull(fetchErrorSummary(result.candidates))
     }
 
     @Test
@@ -137,7 +138,7 @@ class CompositeDiyanetFetcherTest {
             direct = { jahr },
             proxy = { abweichend },
             ezanvakti = { abweichend },
-        ).fetch(settings)
+        ).fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(abweichend, result.schedule)
         assertEquals(VerificationNote.CONFLICT_OVERRIDDEN, result.verification?.note)
         assertEquals(11024, result.locationId)
@@ -148,10 +149,11 @@ class CompositeDiyanetFetcherTest {
         // `coroutineScope` bricht bei einer Ausnahme in einem `async` ALLE
         // Geschwister mit ab. Deshalb faengt `attempt` INNEN: aus der
         // Ausnahme wird ein Fehlereintrag, kein Abbruch der beiden anderen.
-        val result = fetcher(ezanvakti = { throw IOException("Verbindung weg") }).fetch(settings)
+        val result = fetcher(ezanvakti = { throw IOException("Verbindung weg") })
+            .fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(yearData, result.schedule)
         assertEquals(VerificationNote.VERIFIED, result.verification?.note)
-        assertEquals("ezanvakti: Verbindung weg", result.errorSummary)
+        assertEquals("ezanvakti: Verbindung weg", fetchErrorSummary(result.candidates))
     }
 
     @Test
@@ -159,7 +161,8 @@ class CompositeDiyanetFetcherTest {
         // Das Ergebnis ist dasselbe wie vor Task 11, der Weg ein anderer:
         // frueher uebernahm der Proxy als naechstes Glied der Kette, heute
         // gewinnt er das Quorum, weil der Direktabruf nichts beisteuert.
-        val result = fetcher(direct = { error("HTML-Umbau") }).fetch(settings)
+        val result = fetcher(direct = { error("HTML-Umbau") })
+            .fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(proxyData, result.schedule)
         assertEquals(11024, result.locationId)
         assertEquals(VerificationNote.VERIFIED, result.verification?.note)
@@ -168,10 +171,11 @@ class CompositeDiyanetFetcherTest {
 
     @Test
     fun `direkt leer - die Pruefer tragen das Ergebnis`() = runBlocking {
-        val result = fetcher(direct = { emptyMap() }).fetch(settings)
+        val result = fetcher(direct = { emptyMap() })
+            .fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(proxyData, result.schedule)
         // Leer ohne Ausnahme ist KEIN Fehlschlag: es gibt nichts zu melden.
-        assertNull(result.errorSummary)
+        assertNull(fetchErrorSummary(result.candidates))
     }
 
     @Test
@@ -180,14 +184,14 @@ class CompositeDiyanetFetcherTest {
             direct = { error("down") },
             proxy = { error("down") },
             ezanvakti = { error("down") },
-        ).fetch(settings)
+        ).fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(emptyMap<LocalDate, SixTimes>(), result.schedule)
         assertNull(result.locationId)
         assertEquals(VerificationNote.NONE, result.verification?.note)
         // Und es wird auch GESAGT, dass alle drei scheiterten: „nichts
         // erhalten" ohne Grund waere genau die Statuszeile, die diese Runde
         // abschaffen soll.
-        assertEquals("Direktabruf: down · Proxy: down · ezanvakti: down", result.errorSummary)
+        assertEquals("Direktabruf: down · Proxy: down · ezanvakti: down", fetchErrorSummary(result.candidates))
     }
 
     @Test
@@ -195,8 +199,8 @@ class CompositeDiyanetFetcherTest {
         val result = fetcher(
             direct = { error("HTTP 503") },
             ezanvakti = { throw SocketTimeoutException("Read timed out") },
-        ).fetch(settings)
-        assertEquals("Direktabruf: HTTP 503 · ezanvakti: Zeitüberschreitung", result.errorSummary)
+        ).fetch(settings.latitude, settings.longitude, settings.city, null)
+        assertEquals("Direktabruf: HTTP 503 · ezanvakti: Zeitüberschreitung", fetchErrorSummary(result.candidates))
         // Der Proxy allein bleibt uebrig — eine Quelle belegt sich nicht selbst.
         assertEquals(proxyData, result.schedule)
         assertEquals(VerificationNote.UNVERIFIED_SINGLE, result.verification?.note)
@@ -270,25 +274,26 @@ class CompositeDiyanetFetcherTest {
             direct = { calls++; yearData },
             proxy = { calls++; proxyData },
             ezanvakti = { calls++; ezanData },
-        ).fetch(settings)
+        ).fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(emptyMap<LocalDate, SixTimes>(), result.schedule)
         assertNull(result.locationId)
         assertEquals(0, calls)
         // Ohne Abruf gibt es nichts zu pruefen und nichts zu melden.
         assertNull(result.verification)
-        assertNull(result.errorSummary)
+        assertTrue(result.candidates.isEmpty())
+        assertNull(fetchErrorSummary(result.candidates))
     }
 
     @Test
     fun `ID-Aufloesung wirft - leeres Ergebnis statt Crash`() = runBlocking {
         val f = CompositeDiyanetFetcher(
-            { error("Suche down") },
+            { _, _, _, _ -> error("Suche down") },
             { yearData },
             { proxyData },
             { ezanData },
             log = { _, _ -> },
         )
-        val result = f.fetch(settings)
+        val result = f.fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(emptyMap<LocalDate, SixTimes>(), result.schedule)
         assertNull(result.locationId)
     }
@@ -299,13 +304,13 @@ class CompositeDiyanetFetcherTest {
         // jede Spur auf die eigene Berechnung zurueck.
         val logged = mutableListOf<String>()
         val f = CompositeDiyanetFetcher(
-            resolveId = { null },
+            resolveId = { _, _, _, _ -> null },
             direct = { yearData },
             proxy = { proxyData },
             ezanvakti = { ezanData },
             log = { msg, _ -> logged.add(msg) },
         )
-        val result = f.fetch(settings)
+        val result = f.fetch(settings.latitude, settings.longitude, settings.city, null)
         assertEquals(emptyMap<LocalDate, SixTimes>(), result.schedule)
         assertNull(result.locationId)
         assertTrue(
@@ -318,18 +323,19 @@ class CompositeDiyanetFetcherTest {
     fun `CancellationException wird durchgereicht statt geschluckt`() {
         assertThrows(CancellationException::class.java) {
             runBlocking {
-                fetcher(direct = { throw CancellationException("abbruch") }).fetch(settings)
+                fetcher(direct = { throw CancellationException("abbruch") })
+                    .fetch(settings.latitude, settings.longitude, settings.city, null)
             }
         }
         assertThrows(CancellationException::class.java) {
             runBlocking {
                 CompositeDiyanetFetcher(
-                    { throw CancellationException("abbruch") },
+                    { _, _, _, _ -> throw CancellationException("abbruch") },
                     { yearData },
                     { proxyData },
                     { ezanData },
                     log = { _, _ -> },
-                ).fetch(settings)
+                ).fetch(settings.latitude, settings.longitude, settings.city, null)
             }
         }
     }

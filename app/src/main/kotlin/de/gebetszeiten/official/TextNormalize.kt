@@ -1,9 +1,13 @@
-package de.gebetszeiten.data
+package de.gebetszeiten.official
 
 import java.text.Normalizer
 
 /** Akzent-/Umlaut-/Türkisch-insensitive Normalisierung (lower-case → ASCII).
- *  Gemeinsam genutzt von [Cities] und der amtlichen Zeiten-Quelle. */
+ *  Gemeinsam genutzt von [de.gebetszeiten.data.Cities] und der amtlichen
+ *  Zeiten-Quelle ([de.gebetszeiten.official.DiyanetProxyFetcher]) — deshalb
+ *  hier im `official`-Paket statt in `data`: die Abrufer duerfen keinen
+ *  app-Typ importieren, `Cities` darf umgekehrt sehr wohl einen `official`-Typ
+ *  importieren. */
 object TextNormalize {
     // Einmal kompiliert — normalize() läuft beim Asset-Parse 2× pro Zeile
     // (235k Zeilen), eine Regex-Kompilierung pro Aufruf wäre der Hotspot.
