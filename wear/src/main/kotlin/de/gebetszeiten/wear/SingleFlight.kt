@@ -2,11 +2,7 @@ package de.gebetszeiten.wear
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 
 /**
  * Buendelt gleichzeitige Aufrufe von [run] auf HOECHSTENS einen laufenden
@@ -33,9 +29,22 @@ import kotlinx.coroutines.withContext
  */
 internal class SingleFlight<T>(private val scope: CoroutineScope) {
 
-    /** Schuetzt [inFlight] — reine Buchhaltung, keine Suspendierung ausser
-     *  bei echter Sperrkonkurrenz (siehe [run]). */
-    private val lock = Mutex()
+    /**
+     * Schuetzt [inFlight]. Ein schlichter Monitor, KEIN `Mutex`: der
+     * kritische Abschnitt suspendiert nie (er liest/schreibt ein Feld und
+     * startet hoechstens ein `async`), und die Freigabe haengt seit
+     * Fix-Runde 4 an `invokeOnCompletion` — einem NICHT suspendierbaren
+     * Rueckruf, der einen `Mutex` gar nicht nehmen koennte, ohne dafuer
+     * eine eigene Coroutine zu starten. Genau diese Coroutine waere das
+     * naechste Loch: zwischen "Lauf fertig" und "Slot geraeumt" laege ein
+     * Zeitfenster, in dem ein neuer Aufrufer das ABGESCHLOSSENE [Deferred]
+     * bekaeme und dessen altes Ergebnis zurueckgereicht bekaeme. Der
+     * Monitor raeumt synchron im Rueckruf und kennt dieses Fenster nicht.
+     * `synchronized` ist wiedereintrittsfaehig, der Rueckruf darf also
+     * (bei einem bereits abgeschlossenen Lauf) auch aus dem Abschnitt
+     * heraus feuern, der ihn gerade registriert.
+     */
+    private val lock = Any()
 
     /** Der gerade laufende Durchlauf, falls einer laeuft. */
     private var inFlight: Deferred<T>? = null
@@ -44,38 +53,33 @@ internal class SingleFlight<T>(private val scope: CoroutineScope) {
      * Fuehrt [block] aus — oder, falls schon einer laeuft, wartet auf DESSEN
      * Ergebnis, ohne [block] ein zweites Mal aufzurufen.
      *
-     * **Das Aufraeumen laeuft unter [NonCancellable].** Wird DIESER Aufrufer
-     * abgebrochen, waehrend er auf [inFlight] wartet (`deferred.await()`
-     * wirft `CancellationException`), muss das `finally` trotzdem
-     * [inFlight] zuruecksetzen koennen — sonst bliebe ein Slot mit einem
-     * bereits ABGESCHLOSSENEN [Deferred] stehen, und jeder kuenftige
-     * Aufrufer bekaeme dessen altes, laengst ueberholtes Ergebnis zurueck,
-     * OHNE dass [block] je wieder liefe (ein Leck, das sich nicht von
-     * selbst heilt — anders als ein einzelner uebersprungener Durchlauf).
-     * `Mutex.lock()` hat einen unkonkurrierten Schnellpfad, der sogar fuer
-     * einen bereits abgebrochenen Aufrufer durchlaeuft; ist der Lock aber
-     * gerade BELEGT, suspendiert `lock()` und ein abgebrochener Aufrufer
-     * bekaeme dort sofort die `CancellationException` statt zu warten — das
-     * Aufraeumen faende dann gar nicht statt. `withContext(NonCancellable)`
-     * schaltet genau das ab: dieser eine Codeabschnitt laeuft immer zu
-     * Ende, egal wie sehr der Aufrufer schon abgebrochen ist.
+     * **Die Freigabe des Slots haengt am LAUF, nicht am Wartenden.** Vor
+     * Fix-Runde 4 raeumte ein `finally` im Wartenden auf — dann gab ein
+     * ABGEBROCHENER Wartender den Slot frei, waehrend der gemeinsame Lauf
+     * noch lief, und der naechste Aufrufer startete einen ZWEITEN parallelen
+     * Durchlauf. Die Zusage oben ("hoechstens ein laufender Durchlauf")
+     * hielt damit nicht. `invokeOnCompletion` bindet das Aufraeumen
+     * stattdessen an das Ende des Laufs selbst: solange er laeuft, haengen
+     * sich neue Aufrufer daran; sobald er endet (Erfolg, Fehler ODER
+     * Abbruch des Laufs), ist der Slot frei, und der naechste Aufrufer
+     * startet frisch.
      *
-     * Der eigentliche Durchlauf selbst (`scope.async { block() }`) ist von
-     * dieser Fallunterscheidung unberuehrt: er haengt am [scope] aus dem
-     * Konstruktor, nicht am Aufrufer, und laeuft unabhaengig von jedem
-     * einzelnen `run`-Aufruf weiter, auch wenn DESSEN Aufrufer abgebrochen
-     * wird.
+     * Damit braucht [run] auch kein `withContext(NonCancellable)` mehr:
+     * es gibt keinen Aufraeum-Abschnitt im Wartenden, den ein Abbruch
+     * ueberspringen koennte. Ein abgebrochener Wartender bricht nur noch
+     * sein eigenes `await()` ab — der Lauf und alle anderen Wartenden
+     * bleiben unberuehrt, weil `scope.async` am [scope] des Konstruktors
+     * haengt und nicht am Aufrufer.
      */
     suspend fun run(block: suspend () -> T): T {
-        val deferred = lock.withLock {
-            inFlight ?: scope.async { block() }.also { inFlight = it }
-        }
-        try {
-            return deferred.await()
-        } finally {
-            withContext(NonCancellable) {
-                lock.withLock { if (inFlight === deferred) inFlight = null }
+        val deferred = synchronized(lock) {
+            inFlight ?: scope.async { block() }.also { gestartet ->
+                inFlight = gestartet
+                gestartet.invokeOnCompletion {
+                    synchronized(lock) { if (inFlight === gestartet) inFlight = null }
+                }
             }
         }
+        return deferred.await()
     }
 }
