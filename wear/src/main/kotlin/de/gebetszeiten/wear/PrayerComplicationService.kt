@@ -18,11 +18,6 @@ import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.ComplicationDataSourceService
 import androidx.wear.watchface.complications.datasource.TimeInterval
 import androidx.wear.watchface.complications.datasource.TimelineEntry
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.Duration
 import java.time.ZoneId
@@ -48,12 +43,6 @@ class PrayerComplicationService : ComplicationDataSourceService() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-    // Eigener Hintergrund-Scope fuer den Netzabruf (Fix-Runde 2) — dieselbe
-    // Begruendung wie in `PrayerTileService`: `onComplicationRequest` laeuft
-    // auf dem Haupt-Thread, `refreshWearOfficial` darf ihn nicht bis zu 25 s
-    // blockieren.
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT) return null
         return data("Asr", PlainComplicationText.Builder("17:36").build(), "17:36", null)
@@ -65,20 +54,25 @@ class PrayerComplicationService : ComplicationDataSourceService() {
     ) {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
-        // Sofort aus dem Cache zeichnen — reiner DataStore-Read.
+        // Sofort aus dem Cache zeichnen — kein Netz, aber wie in
+        // `PrayerTileService.onTileRequest` auch kein Millisekundengeschaeft:
+        // `WearPrayer.next` ruft (ueber `upcoming`) `daily()` fuer zwei Tage
+        // auf, macht bis zu sechs DataStore-Reads insgesamt. Weit unter der
+        // ANR-Schwelle.
         val (showRemaining, next) = runBlocking {
             val location = WearSettings.location(applicationContext)
             WearSettings.showRemaining(applicationContext) to WearPrayer.next(applicationContext, location, zone, now)
         }
         // Amtliche Zeiten NEBENHER auffrischen, nicht Teil dieser Antwort —
-        // siehe Kommentar in `PrayerTileService.onTileRequest`. Nur bei
-        // echtem neuen Zeitplan (Rueckgabe `true`) neu anfordern.
-        scope.launch {
-            if (refreshWearOfficial(applicationContext)) {
-                ComplicationDataSourceUpdateRequester
-                    .create(applicationContext, ComponentName(applicationContext, PrayerComplicationService::class.java))
-                    .requestUpdateAll()
-            }
+        // siehe Kommentar in `PrayerTileService.onTileRequest`:
+        // `launchWearRefresh` laeuft im datei-eigenen Scope von
+        // `WearRefresh.kt`, nicht in einem (hier gar nicht mehr vorhandenen)
+        // Service-Scope, der laengst weg waere, bevor ein langsamer Abruf
+        // fertig ist. Nur bei echtem neuen Zeitplan neu anfordern.
+        launchWearRefresh(applicationContext) {
+            ComplicationDataSourceUpdateRequester
+                .create(applicationContext, ComponentName(applicationContext, PrayerComplicationService::class.java))
+                .requestUpdateAll()
         }
         val title = next.first.label()
         val timeStr = next.second.format(timeFormat)
@@ -121,10 +115,9 @@ class PrayerComplicationService : ComplicationDataSourceService() {
         )
     }
 
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
-    }
+    // Kein eigener Scope mehr (Fix-Runde 3): `launchWearRefresh` laeuft im
+    // datei-eigenen Scope von `WearRefresh.kt` — siehe Kommentar in
+    // `PrayerTileService`.
 
     private fun data(
         title: String,

@@ -15,11 +15,6 @@ import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
 import androidx.concurrent.futures.ResolvableFuture
 import com.google.common.util.concurrent.ListenableFuture
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -40,21 +35,20 @@ class PrayerTileService : TileService() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-    // Eigener Hintergrund-Scope fuer den Netzabruf (Fix-Runde 2): das System
-    // ruft `onTileRequest` auf dem HAUPT-THREAD auf (ANR-Schwelle 5 s), ein
-    // Diyanet-Timeout in `refreshWearOfficial` kann aber bis zu 25 s dauern.
-    // Der Abruf darf die Kachel-Antwort deshalb nicht blockieren — er laeuft
-    // nebenher, `SupervisorJob` haelt einen Fehlschlag vom naechsten Aufruf
-    // fern.
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     override fun onTileRequest(
         requestParams: RequestBuilders.TileRequest,
     ): ListenableFuture<TileBuilders.Tile> {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
-        // Sofort aus dem Cache zeichnen — reiner DataStore-Read,
-        // Millisekunden, unbedenklich im `runBlocking` auf dem Haupt-Thread.
+        // Sofort aus dem Cache zeichnen — kein Netz, aber auch keine reine
+        // Millisekunden-Sache: `WearPrayer.upcoming` ruft `daily()` fuer
+        // ZWEI Tage auf, jedes davon bis zu zwei DataStore-Lesevorgaenge
+        // (useCalculated, amtlicher Cache) plus hier oben `location()` —
+        // macht bis zu sechs DataStore-Reads, und beim allerersten Aufruf
+        // zusaetzlich das Parsen von `locations-de.tsv` (947 Zeilen) samt
+        // einer Jahrestabelle (`WearOfficialSource`, danach im Prozess
+        // gecacht). Weit unter der ANR-Schwelle (5 s), aber kein
+        // Millisekundengeschaeft.
         // One extra entry so every shown prayer knows its successor ("danach").
         val upcoming = runBlocking {
             val location = WearSettings.location(applicationContext)
@@ -62,13 +56,17 @@ class PrayerTileService : TileService() {
         }
         // Amtliche Zeiten NEBENHER auffrischen (siehe KDoc an
         // `refreshWearOfficial`, "Muss NICHT-BLOCKIEREND aufgerufen
-        // werden"), nicht Teil der Kachel-Antwort. Die Wiederholungs-Bremse
-        // darin haelt das ausser am faelligen Ort billig. Nur bei einem
-        // ECHTEN neuen Zeitplan (Rueckgabe `true`) lohnt eine Neuzeichnung.
-        scope.launch {
-            if (refreshWearOfficial(applicationContext)) {
-                TileService.getUpdater(applicationContext).requestUpdate(PrayerTileService::class.java)
-            }
+        // werden"), nicht Teil der Kachel-Antwort. `launchWearRefresh`
+        // startet das im datei-eigenen, langlebigen Scope von
+        // `WearRefresh.kt` — NICHT in einem Scope dieses Services: der ist
+        // ein gebundener Dienst, das System loest ihn Sekunden nach dieser
+        // Antwort wieder, ein eigener Service-Scope wuerde also genau dann
+        // abgebrochen, wenn der Abruf tatsaechlich noch liefe (Fix-Runde 3).
+        // Die Wiederholungs-Bremse darin haelt das ausser am faelligen Ort
+        // billig. Nur bei einem ECHTEN neuen Zeitplan lohnt eine
+        // Neuzeichnung.
+        launchWearRefresh(applicationContext) {
+            TileService.getUpdater(applicationContext).requestUpdate(PrayerTileService::class.java)
         }
 
         val timeline = TimelineBuilders.Timeline.Builder()
@@ -109,10 +107,9 @@ class PrayerTileService : TileService() {
             set(ResourceBuilders.Resources.Builder().setVersion(RESOURCES_VERSION).build())
         }
 
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
-    }
+    // Kein eigener Scope mehr (Fix-Runde 3): `launchWearRefresh` laeuft im
+    // datei-eigenen Scope von `WearRefresh.kt`, der laenger lebt als dieser
+    // Dienst — hier gibt es nichts mehr, das `onDestroy` abbrechen muesste.
 
     private fun layout(
         device: DeviceParametersBuilders.DeviceParameters,
