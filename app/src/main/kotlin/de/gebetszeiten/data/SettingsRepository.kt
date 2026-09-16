@@ -205,6 +205,28 @@ internal fun countdownModeFromPrefs(
         ?: AppSettings.COUNTDOWN_OFF
 }
 
+/**
+ * Der gespeicherte `useOnline`-Schalter, geklemmt auf den Flavor.
+ *
+ * Der Offline-Flavor hat keinen Abrufmechanismus (`OfficialTimesProvider.
+ * fetcher` liefert dort `null`). Die Migration weiter unten korrigiert beim
+ * Umstieg vom alten auf den geflavorten Build nur ein gespeichertes `false`
+ * auf den Flavor-Default — ein gespeichertes `true` (z. B. aus einem Restore
+ * ueber Flavor-Grenzen hinweg, oder aus einer Version vor dem Flavor-Split)
+ * blieb dort bislang unangetastet stehen. Dann zeigte der Offline-Build
+ * „Jetzt aktualisieren" und Abruf-Zeilen fuer einen Abruf, den es dort gar
+ * nicht gibt.
+ *
+ * Diese Funktion klemmt das ERGEBNIS jedes Lesevorgangs auf den Flavor,
+ * unabhaengig von der Migration oben — damit bekommen `canFetch`, die
+ * Knopf-Sichtbarkeit in [SettingsSheet][de.gebetszeiten.ui.LocationSettings]
+ * und `noTimesNotice` (Aufgabe 11) alle dieselbe Antwort, statt dieselbe
+ * Konjunktion `useOnline && OfficialTimesProvider.isOnline` an mehreren
+ * Stellen zu wiederholen — und irgendwo zu vergessen.
+ */
+internal fun useOnlineFromPrefs(migratedUseOnline: Boolean, isOnlineFlavor: Boolean): Boolean =
+    migratedUseOnline && isOnlineFlavor
+
 class SettingsRepository(private val context: Context) {
 
     private object Keys {
@@ -273,17 +295,24 @@ class SettingsRepository(private val context: Context) {
         // ausgeschalteter Schalter ausgeschaltet.
         val useOnlineMigrated = prefs[Keys.USE_ONLINE_MIGRATED] ?: false
         val storedUseOnline = prefs[Keys.USE_ONLINE]
-        val useOnline = if (!useOnlineMigrated && storedUseOnline == false) {
+        val migratedUseOnline = if (!useOnlineMigrated && storedUseOnline == false) {
             AppSettings.DEFAULT.useOnline
         } else {
             storedUseOnline ?: AppSettings.DEFAULT.useOnline
         }
         if (!useOnlineMigrated) {
             context.dataStore.edit { migrated ->
-                migrated[Keys.USE_ONLINE] = useOnline
+                migrated[Keys.USE_ONLINE] = migratedUseOnline
                 migrated[Keys.USE_ONLINE_MIGRATED] = true
             }
         }
+        // Klemmung am LESEN (siehe useOnlineFromPrefs) — unabhaengig von der
+        // Migration oben, damit auch ein bereits migriertes, gespeichertes
+        // `true` im Offline-Flavor nicht mehr durchsickert.
+        val useOnline = useOnlineFromPrefs(
+            migratedUseOnline = migratedUseOnline,
+            isOnlineFlavor = de.gebetszeiten.official.OfficialTimesProvider.isOnline,
+        )
         AppSettings(
             latitude = prefs[Keys.LAT] ?: AppSettings.DEFAULT.latitude,
             longitude = prefs[Keys.LNG] ?: AppSettings.DEFAULT.longitude,
