@@ -34,6 +34,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -46,6 +47,7 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -336,7 +338,21 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
         },
     ) { inner ->
         when (tab) {
-            Tab.HEUTE -> HeuteContent(inner, settings, snackbarHostState)
+            Tab.HEUTE -> HeuteContent(
+                inner,
+                settings,
+                snackbarHostState,
+                // Dieselbe Aktion wie "Jetzt aktualisieren" im Einstellungsblatt
+                // (SourceStatusSection) - kein zweiter Abruf-Mechanismus.
+                onFetchNow = { viewModel.refreshOfficialNow() },
+                onEnableCalculation = {
+                    // useCalculated heisst hier noch "immer rechnen" (Notausgang).
+                    // Aufgabe 15 benennt den Schalter in calculationFillsGaps um
+                    // und dreht die Bedeutung auf "Luecken fuellen" - dieser
+                    // Aufruf muss dann mitziehen.
+                    viewModel.save(settings.copy(useCalculated = true))
+                },
+            )
             Tab.MONAT -> MonatScreen(inner, settings)
             Tab.QIBLA -> QiblaScreen(inner, settings)
         }
@@ -365,6 +381,8 @@ private fun HeuteContent(
     inner: PaddingValues,
     settings: AppSettings,
     snackbarHostState: SnackbarHostState,
+    onFetchNow: () -> Unit,
+    onEnableCalculation: () -> Unit,
 ) {
     val context = LocalContext.current
     val zone = ZoneId.systemDefault()
@@ -449,7 +467,12 @@ private fun HeuteContent(
             onNext = { selectedDate = selectedDate.plusDays(1) },
             onToday = { selectedDate = LocalDate.now(zone) },
         )
-        dayInfo?.let { info ->
+        // Lokale val statt dayInfo!!: dayInfo ist DayInfo? (spiegelt
+        // PrayerProvider.daily -> DailyPrayerTimes?, Aufgabe 9), und der
+        // Leerfall bekommt hier eine eigene Karte statt eines erzwungenen,
+        // in Wahrheit nicht vorhandenen Werts.
+        val info = dayInfo
+        if (info != null) {
             TimesCard(
                 info = info,
                 now = ZonedDateTime.now(zone),
@@ -462,6 +485,20 @@ private fun HeuteContent(
                 // erst dort, wo die App die Anzeige selbst weiterstellen muss.
                 showRemaining = settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                 onKaraha = { karahaInfo = it },
+            )
+        } else {
+            NoTimesCard(
+                notice = de.gebetszeiten.prayer.noTimesNotice(
+                    city = settings.city,
+                    // Dieselbe Funktion wie `canFetch` in SettingsSheet.kt
+                    // (SourceStatusSection): settings.useOnline ist seit der
+                    // Flavor-Klemmung in SettingsRepository
+                    // (useOnlineFromPrefs) bereits invariant false im
+                    // Offline-Flavor, also keine zweite Flavor-Abfrage hier.
+                    onlineEnabled = settings.canFetchOfficial(),
+                ),
+                onFetchNow = onFetchNow,
+                onEnableCalculation = onEnableCalculation,
             )
         }
         Text(
@@ -616,6 +653,46 @@ private fun blockOrder(b: DayBlock): Int = when (b) {
 
 /** A "primary" (prayer-level) entry: an obligatory prayer or the Duha forenoon. */
 private fun isPrimary(b: DayBlock): Boolean = b is PrayerBlock || (b is NaflBlock && b.forenoon)
+
+/**
+ * Ersetzt die Zeitachse ([TimesCard]), solange
+ * [de.gebetszeiten.prayer.PrayerProvider.daily] `null` liefert (Aufgabe 9:
+ * keine amtlichen Zeiten, Notausgang Berechnung aus). Wortlaut kommt
+ * vollstaendig aus [de.gebetszeiten.prayer.noTimesNotice] — diese Karte
+ * zeigt ihn nur an, sie entscheidet nichts selbst.
+ *
+ * „Jetzt abrufen" nur bei [de.gebetszeiten.prayer.NoTimesNotice.showFetch] —
+ * im Offline-Flavor oder bei ausgeschaltetem Online-Schalter waere der Knopf
+ * sonst wirkungslos.
+ */
+@Composable
+private fun NoTimesCard(
+    notice: de.gebetszeiten.prayer.NoTimesNotice,
+    onFetchNow: () -> Unit,
+    onEnableCalculation: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(notice.headline, style = MaterialTheme.typography.titleMedium)
+            Text(
+                notice.detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (notice.showFetch) {
+                Button(onClick = onFetchNow, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.no_times_fetch_now))
+                }
+            }
+            OutlinedButton(onClick = onEnableCalculation, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.no_times_enable_calculation))
+            }
+        }
+    }
+}
 
 @Composable
 private fun TimesCard(

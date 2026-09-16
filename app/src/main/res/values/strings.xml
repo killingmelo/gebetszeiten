@@ -146,6 +146,8 @@
     <string name="settings_section_source">Zeitenquelle</string>
     <string name="status_loading">Status wird geladen…</string>
     <string name="status_refresh">Jetzt aktualisieren</string>
+    <string name="no_times_fetch_now">Jetzt abrufen</string>
+    <string name="no_times_enable_calculation">Berechnung einschalten</string>
     <string name="settings_section_display">Anzeige</string>
     <string name="settings_show_makruh">Makruh-Zeiten anzeigen</string>
     <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>

@@ -46,7 +46,12 @@ private const val DATE_WEIGHT = 1.5f
 /** Prayer names for the accessibility (TalkBack) row description. */
 private val ROW_PRAYERS = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
 
-private data class MonatRow(val date: LocalDate, val times: List<String>)
+/** [hasTimes] false heisst: [PrayerProvider.daily] lieferte an diesem Tag
+ *  `null` (Aufgabe 9) - [times] ist dann trotzdem fuenf Eintraege lang
+ *  ("—" je Spalte), damit die Tabelle nicht aus der Spur laeuft. */
+private data class MonatRow(val date: LocalDate, val times: List<String>, val hasTimes: Boolean)
+
+private const val NO_TIME = "—"
 
 @Composable
 internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
@@ -60,13 +65,15 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
         value = (1..month.lengthOfMonth()).map { d ->
             val date = month.atDay(d)
             // Keine Zeiten unter den aktuellen Einstellungen: die Zeitspalten
-            // dieses Tages bleiben leer, statt Werte zu erfinden.
+            // dieses Tages werden "—" statt einen Wert zu erfinden - die
+            // Tabelle behaelt trotzdem ihre fuenf Spalten je Zeile.
             val t = PrayerProvider.daily(context, settings, date, zone)
             val times = t?.let { listOf(it.fajr, it.dhuhr, it.asr, it.maghrib, it.isha).map { time -> time.format(HM_MONTH) } }
-                ?: emptyList()
-            MonatRow(date, times)
+                ?: List(5) { NO_TIME }
+            MonatRow(date, times, hasTimes = t != null)
         }
     }
+    val list = rows
 
     Column(modifier = Modifier.padding(inner).fillMaxSize()) {
         Row(
@@ -83,6 +90,25 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
                 Icon(painterResource(R.drawable.ic_chevron_right), stringResource(R.string.month_next),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        }
+
+        // EINE Zeile fuer den ganzen Monat, sobald mindestens ein Tag ohne
+        // Zeiten dabei ist - nicht je Zeile wiederholt (die einzelnen Zeilen
+        // markieren ihre leeren Spalten selbst mit "—", siehe MonatRow).
+        if (list != null && list.any { !it.hasTimes }) {
+            Text(
+                de.gebetszeiten.prayer.noTimesNotice(
+                    city = settings.city,
+                    // Dieselbe Funktion wie canFetch (SettingsSheet.kt) und in
+                    // HeuteContent: settings.useOnline ist seit der
+                    // Flavor-Klemmung in SettingsRepository (useOnlineFromPrefs)
+                    // bereits invariant false im Offline-Flavor.
+                    onlineEnabled = settings.canFetchOfficial(),
+                ).headline,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
 
         // Tabellenkopf
@@ -105,7 +131,6 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
             }
         }
 
-        val list = rows
         if (list == null) {
             Text(stringResource(R.string.month_loading), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {

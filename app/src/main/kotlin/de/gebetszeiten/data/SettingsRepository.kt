@@ -114,6 +114,23 @@ data class AppSettings(
     fun notificationNeedsStepAlarms(): Boolean =
         persistentNotification && countdownMode != COUNTDOWN_OFF
 
+    /**
+     * Ob ein Online-Abrufversuch fuer amtliche Zeiten ueberhaupt etwas
+     * bewirken KANN: Online-Schalter an und keine eigene Berechnung
+     * erzwungen. [useOnline] ist seit [useOnlineFromPrefs] bereits auf den
+     * Flavor geklemmt (Offline-Build: invariant `false`) — hier kommt nur
+     * noch die zweite Bedingung dazu.
+     *
+     * Vorher stand `useOnline && !useCalculated` einzeln in
+     * `SettingsSheet.SourceStatusSection` (zweimal: `canFetch` und die
+     * Knopf-Sichtbarkeit) und musste in Aufgabe 11 fuer `noTimesNotice` in
+     * `HeuteContent` und `MonatScreen` ein drittes/viertes Mal geschrieben
+     * werden — genau das Muster, das im offline-Flavor schon einmal ein
+     * vergessenes viertes Mal hatte (siehe [useOnlineFromPrefs]). Eine
+     * Funktion statt vier Kopien derselben Konjunktion.
+     */
+    fun canFetchOfficial(): Boolean = useOnline && !useCalculated
+
     companion object {
         val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")
         const val STYLE_SILENT = "SILENT"

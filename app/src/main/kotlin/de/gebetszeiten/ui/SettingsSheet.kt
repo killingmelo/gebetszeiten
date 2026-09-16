@@ -386,8 +386,10 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, re
             }
             // Dieselbe Bedingung wie die Sichtbarkeit von "Jetzt aktualisieren"
             // unten — Knopf sichtbar ⟺ Abruf-Zeilen sichtbar, kann nicht mehr
-            // auseinanderlaufen (Fix-Runde 3).
-            val canFetch = settings.useOnline && !settings.useCalculated
+            // auseinanderlaufen (Fix-Runde 3). Seit Aufgabe 11 eine Funktion
+            // (AppSettings.canFetchOfficial), nicht mehr die Konjunktion an
+            // jeder Stelle einzeln.
+            val canFetch = settings.canFetchOfficial()
             // Anwendbarkeit der Reservewarnung — der Wortlaut kommt aus
             // coverageWarning. Massgeblich ist, ob es fuer diesen Ort
             // ueberhaupt eine gebuendelte Tabelle GIBT, nicht ob sie heute
@@ -416,7 +418,7 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, re
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (settings.useOnline && !settings.useCalculated) {
+        if (settings.canFetchOfficial()) {
             OutlinedButton(
                 onClick = onRefresh,
                 modifier = Modifier.fillMaxWidth(),
