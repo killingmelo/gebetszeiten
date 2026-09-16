@@ -59,8 +59,12 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
         value = null
         value = (1..month.lengthOfMonth()).map { d ->
             val date = month.atDay(d)
+            // Keine Zeiten unter den aktuellen Einstellungen: die Zeitspalten
+            // dieses Tages bleiben leer, statt Werte zu erfinden.
             val t = PrayerProvider.daily(context, settings, date, zone)
-            MonatRow(date, listOf(t.fajr, t.dhuhr, t.asr, t.maghrib, t.isha).map { it.format(HM_MONTH) })
+            val times = t?.let { listOf(it.fajr, it.dhuhr, it.asr, it.maghrib, it.isha).map { time -> time.format(HM_MONTH) } }
+                ?: emptyList()
+            MonatRow(date, times)
         }
     }
 

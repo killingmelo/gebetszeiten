@@ -65,7 +65,11 @@ class NextPrayerWidget : GlanceAppWidget() {
         val settings = SettingsRepository(context).current()
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
-        val next = PrayerProvider.next(context, settings, zone, now)
+        // Keine Zeiten unter den aktuellen Einstellungen: das Widget bleibt
+        // unveraendert (keine `provideContent`), statt erfundene Werte zu
+        // zeigen. Die eigentliche Leer-Darstellung kommt in einer spaeteren
+        // Aufgabe.
+        val next = PrayerProvider.next(context, settings, zone, now) ?: return
         val name = context.getString(next.prayer.labelRes())
         val time = next.time.format(timeFormat)
         // Ein Regler fuer alle Flaechen (AppSettings.countdownMode); das
@@ -83,7 +87,10 @@ class NextPrayerWidget : GlanceAppWidget() {
         val chronoBase = android.os.SystemClock.elapsedRealtime() +
             (next.time.toInstant().toEpochMilli() - System.currentTimeMillis())
         // Day plan for the large layout: label, time, is-it-the-next-prayer.
-        val dayPlan = PrayerProvider.daily(context, settings, now.toLocalDate(), zone)
+        // `next` ist bereits non-null, also war `daily(heute)` intern
+        // erfolgreich — dennoch kein `!!`, sondern derselbe frueh-Rueckgabe-
+        // Pfad wie oben, falls sich das je auseinanderentwickelt.
+        val dayPlan = (PrayerProvider.daily(context, settings, now.toLocalDate(), zone) ?: return)
             .ordered()
             .map { (prayer, at) ->
                 DayEntry(

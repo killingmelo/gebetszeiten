@@ -26,7 +26,8 @@ object PrayerAlarmScheduler {
 
     suspend fun scheduleNext(context: Context, settings: AppSettings, zone: ZoneId = ZoneId.systemDefault()) {
         val now = ZonedDateTime.now(zone)
-        val next = PrayerProvider.next(context, settings, zone, now)
+        // Keine Zeiten unter den aktuellen Einstellungen: nichts zu planen.
+        val next = PrayerProvider.next(context, settings, zone, now) ?: return
         val alarmManager = context.getSystemService(AlarmManager::class.java)
 
         setAlarm(alarmManager, next.time.toInstant().toEpochMilli(), pendingIntent(context, REQUEST_CODE, ACTION_PRAYER))
@@ -71,14 +72,16 @@ object PrayerAlarmScheduler {
             // Ziele Grenzen bekommen — laufen sie auseinander, bleibt
             // `boundaries` leer, der Alarm wird abbestellt und das Symbol
             // friert ein.
+            // Keine Zeiten unter den aktuellen Einstellungen: dieses Ziel
+            // liefert keine Grenze, statt eine zu erfinden.
             val targets = buildList {
                 if (settings.widgetNeedsStepAlarms()) {
-                    add(PrayerProvider.next(context, settings, zone, now).time)
+                    PrayerProvider.next(context, settings, zone, now)?.let { add(it.time) }
                 }
                 // Auch EXACT: das Symbol der Benachrichtigung zaehlt gegen
                 // nextPrayer und wird nur von diesen Alarmen weitergestellt.
                 if (settings.notificationNeedsStepAlarms()) {
-                    add(PrayerProvider.nextPrayer(context, settings, zone, now).time)
+                    PrayerProvider.nextPrayer(context, settings, zone, now)?.let { add(it.time) }
                 }
             }
             targets.forEach { target ->
@@ -90,13 +93,17 @@ object PrayerAlarmScheduler {
 
         if (settings.showKaraha) {
             // Karaha lines on widget + notification change at these moments.
+            // Keine Zeiten unter den aktuellen Einstellungen: keine Fenster,
+            // statt sie zu erfinden.
             val today = PrayerProvider.daily(context, settings, now.toLocalDate(), zone)
             val tomorrow = PrayerProvider.daily(context, settings, now.toLocalDate().plusDays(1), zone)
+            val todayWindows = today?.let { Karaha.windows(it) } ?: emptyList()
+            val tomorrowWindows = tomorrow?.let { Karaha.windows(it) } ?: emptyList()
             // Derselbe Zuschlag wie bei den Stufengrenzen. Karaha.status()
             // vergleicht zwar einschliessend (`!now.isBefore(start)`) und
             // waere auch exakt auf der Grenze richtig — aber eine Grenze ohne
             // Zuschlag waere hier die Ausnahme, und Ausnahmen kosten spaeter.
-            (Karaha.boundaries(Karaha.windows(today)) + Karaha.boundaries(Karaha.windows(tomorrow)))
+            (Karaha.boundaries(todayWindows) + Karaha.boundaries(tomorrowWindows))
                 .forEach { boundaries += it.toInstant().toEpochMilli() + BOUNDARY_SETTLE_MS }
         }
 
@@ -122,7 +129,13 @@ object PrayerAlarmScheduler {
     ) {
         val pre = pendingIntent(context, PRE_REQUEST_CODE, ACTION_PRE_REMINDER)
         val lead = settings.reminderLeadMinutes
+        // Keine Zeiten unter den aktuellen Einstellungen: wie "nicht gewollt"
+        // behandelt, der Pre-Reminder-Alarm wird abbestellt.
         val nextPrayer = PrayerProvider.nextPrayer(context, settings, zone, now)
+        if (nextPrayer == null) {
+            alarmManager.cancel(pre)
+            return
+        }
         val triggerAt = nextPrayer.time.minusMinutes(lead.toLong()).toInstant().toEpochMilli()
         val wanted = lead > 0 &&
             nextPrayer.prayer.name in settings.reminders &&

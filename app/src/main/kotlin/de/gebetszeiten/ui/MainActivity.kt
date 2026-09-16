@@ -387,9 +387,16 @@ private fun HeuteContent(
     val isToday = selectedDate == LocalDate.now(zone)
 
     val dayInfo by produceState<DayInfo?>(null, settings, tick, selectedDate) {
+        // Keine Zeiten unter den aktuellen Einstellungen: `dayInfo` bleibt
+        // null (bereits von `dayInfo?.let` unten abgefangen), statt Fenster
+        // aus erfundenen Zeiten zu berechnen.
         val times = PrayerProvider.daily(context, settings, selectedDate, zone)
-        val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone).fajr
-        value = DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr), nextFajr)
+        val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone)?.fajr
+        value = if (times != null && nextFajr != null) {
+            DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr), nextFajr)
+        } else {
+            null
+        }
     }
     val officialName by produceState<String?>(null, settings, selectedDate, tick) {
         value = if (settings.useCalculated) {

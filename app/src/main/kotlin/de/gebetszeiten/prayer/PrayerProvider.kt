@@ -3,8 +3,10 @@ package de.gebetszeiten.prayer
 import android.content.Context
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.CacheStore
+import de.gebetszeiten.core.prayertimes.officialtimes.DaySource
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.core.prayertimes.officialtimes.chooseTarget
+import de.gebetszeiten.core.prayertimes.officialtimes.daySourceOrder
 import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.official.BundledOfficialSource
@@ -24,36 +26,43 @@ import java.time.ZonedDateTime
  */
 object PrayerProvider {
 
-    suspend fun daily(context: Context, settings: AppSettings, date: LocalDate, zone: ZoneId): DailyPrayerTimes {
-        // 0) Nutzer hat explizit die eigene Berechnung gewählt.
-        if (settings.useCalculated) return PrayerSchedule.forDate(settings, date, zone)
-        // 1) Online-Cache (frischste Quelle, nur wenn aktiviert).
-        if (settings.useOnline) {
-            OfficialTimesCache(context).get(date, settings.latitude, settings.longitude)
-                ?.let { return it.toDaily(date, zone) }
+    /** Amtliche Zeiten oder gar keine: `null` heisst immer dasselbe — unter
+     *  den aktuellen Einstellungen liegen keine Zeiten vor. [daySourceOrder]
+     *  legt fest, welche Quellen in welcher Reihenfolge befragt werden; die
+     *  Berechnung steht darin nur, wenn der Nutzer sie als Notausgang
+     *  eingeschaltet hat (`settings.useCalculated` — Umbenennung zu
+     *  `calculationFillsGaps` folgt in Aufgabe 15). */
+    suspend fun daily(context: Context, settings: AppSettings, date: LocalDate, zone: ZoneId): DailyPrayerTimes? {
+        for (source in daySourceOrder(settings.useOnline, settings.useCalculated)) {
+            when (source) {
+                DaySource.ONLINE_CACHE ->
+                    OfficialTimesCache(context).get(date, settings.latitude, settings.longitude)
+                        ?.let { return it.toDaily(date, zone) }
+                DaySource.BUNDLED_TABLE ->
+                    BundledOfficialSource.get(context, settings.latitude, settings.longitude, date)
+                        ?.let { return it.toDaily(date, zone) }
+                DaySource.CALCULATION ->
+                    return PrayerSchedule.forDate(settings, date, zone)
+            }
         }
-        // 2) Gebündelte amtliche Tabelle (offline, nearest Diyanet-Standort ≤ 25 km).
-        BundledOfficialSource.get(context, settings.latitude, settings.longitude, date)
-            ?.let { return it.toDaily(date, zone) }
-        // 3) Fallback: Berechnung.
-        return PrayerSchedule.forDate(settings, date, zone)
+        return null
     }
 
-    suspend fun next(context: Context, settings: AppSettings, zone: ZoneId, now: ZonedDateTime): NextPrayer {
-        val today = daily(context, settings, now.toLocalDate(), zone)
+    suspend fun next(context: Context, settings: AppSettings, zone: ZoneId, now: ZonedDateTime): NextPrayer? {
+        val today = daily(context, settings, now.toLocalDate(), zone) ?: return null
         today.ordered().firstOrNull { it.second.isAfter(now) }?.let {
             return NextPrayer(it.first, it.second)
         }
-        val tomorrow = daily(context, settings, now.toLocalDate().plusDays(1), zone)
+        val tomorrow = daily(context, settings, now.toLocalDate().plusDays(1), zone) ?: return null
         val first = tomorrow.ordered().first()
         return NextPrayer(first.first, first.second)
     }
 
     /** Next actual prayer — sunrise (not a prayer) is skipped. */
-    suspend fun nextPrayer(context: Context, settings: AppSettings, zone: ZoneId, now: ZonedDateTime): NextPrayer {
-        var candidate = next(context, settings, zone, now)
+    suspend fun nextPrayer(context: Context, settings: AppSettings, zone: ZoneId, now: ZonedDateTime): NextPrayer? {
+        var candidate = next(context, settings, zone, now) ?: return null
         if (candidate.prayer == de.gebetszeiten.core.prayertimes.Prayer.SUNRISE) {
-            candidate = next(context, settings, zone, candidate.time)
+            candidate = next(context, settings, zone, candidate.time) ?: return null
         }
         return candidate
     }
@@ -68,13 +77,13 @@ object PrayerProvider {
         active: NextPrayer?,
     ): ZonedDateTime? =
         if (active?.prayer == de.gebetszeiten.core.prayertimes.Prayer.FAJR) {
-            daily(context, settings, now.toLocalDate(), zone).sunrise
+            daily(context, settings, now.toLocalDate(), zone)?.sunrise
         } else {
             null
         }
 
     suspend fun currentlyActive(context: Context, settings: AppSettings, zone: ZoneId, now: ZonedDateTime): NextPrayer? {
-        val today = daily(context, settings, now.toLocalDate(), zone)
+        val today = daily(context, settings, now.toLocalDate(), zone) ?: return null
         return today.ordered()
             .lastOrNull { !it.second.isAfter(now) }
             ?.let { NextPrayer(it.first, it.second) }

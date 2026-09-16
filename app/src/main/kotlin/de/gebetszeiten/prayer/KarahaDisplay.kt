@@ -26,7 +26,9 @@ object KarahaDisplay {
         now: ZonedDateTime,
     ): KarahaLine? {
         if (!settings.showKaraha) return null
-        val times = PrayerProvider.daily(context, settings, now.toLocalDate(), zone)
+        // Keine Zeiten unter den aktuellen Einstellungen: keine Karaha-Zeile,
+        // statt Fenster aus erfundenen Zeiten zu berechnen.
+        val times = PrayerProvider.daily(context, settings, now.toLocalDate(), zone) ?: return null
         return when (val status = Karaha.status(Karaha.windows(times), now)) {
             is Karaha.Status.Active ->
                 KarahaLine("⚠️ Karaha bis ${status.window.end.format(timeFormat)}", active = true)

@@ -33,7 +33,8 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
 
                 if (intent.action == PrayerAlarmScheduler.ACTION_PRE_REMINDER) {
                     // Heads-up before the prayer; the transition chain stays untouched.
-                    val upcoming = PrayerProvider.nextPrayer(context, settings, zone, now)
+                    // Keine Zeiten unter den aktuellen Einstellungen: keine Erinnerung.
+                    val upcoming = PrayerProvider.nextPrayer(context, settings, zone, now) ?: return@launch
                     if (upcoming.prayer.name in settings.reminders) {
                         PrayerNotifier.notifyPre(
                             context,
@@ -83,28 +84,32 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 ) {
                     // Next transition (may be sunrise) ends this notification;
                     // the text line always names a real prayer.
+                    // Keine Zeiten unter den aktuellen Einstellungen: keine
+                    // Entry-Notification, da ohne Transition kein Ablaufzeitpunkt.
                     val transition = PrayerProvider.next(context, settings, zone, now)
-                    val nextPrayer = if (transition.prayer == Prayer.SUNRISE) {
-                        PrayerProvider.next(context, settings, zone, transition.time)
-                    } else {
-                        transition
+                    if (transition != null) {
+                        val nextPrayer = if (transition.prayer == Prayer.SUNRISE) {
+                            PrayerProvider.next(context, settings, zone, transition.time)
+                        } else {
+                            transition
+                        }
+                        // With the persistent line on AND an audible style, the entry
+                        // banner is only the alert carrier — let it auto-clear after a
+                        // few minutes instead of lingering until the next transition,
+                        // so it doesn't duplicate the persistent line all interval long.
+                        PrayerNotifier.notifyPrayer(
+                            context,
+                            active,
+                            nextPrayer,
+                            entryClearAtMillis(
+                                nowMillis = now.toInstant().toEpochMilli(),
+                                transitionMillis = transition.time.toInstant().toEpochMilli(),
+                                persistent = settings.persistentNotification,
+                                audible = !styleSilent,
+                            ),
+                            settings.reminderStyle,
+                        )
                     }
-                    // With the persistent line on AND an audible style, the entry
-                    // banner is only the alert carrier — let it auto-clear after a
-                    // few minutes instead of lingering until the next transition,
-                    // so it doesn't duplicate the persistent line all interval long.
-                    PrayerNotifier.notifyPrayer(
-                        context,
-                        active,
-                        nextPrayer,
-                        entryClearAtMillis(
-                            nowMillis = now.toInstant().toEpochMilli(),
-                            transitionMillis = transition.time.toInstant().toEpochMilli(),
-                            persistent = settings.persistentNotification,
-                            audible = !styleSilent,
-                        ),
-                        settings.reminderStyle,
-                    )
                 }
                 PrayerNotifier.updateOngoing(
                     context,
