@@ -30,23 +30,23 @@ object WearSyncApplier {
 
     /**
      * Wendet [payload] an — AUSSER ein frischerer eigener Stand am
-     * SYNC-ORT unterlaeuft ihn (siehe [SyncDecision.syncWins]). Seit
-     * Aufgabe 6 ruft `MainActivity.onStart` [refreshWearOfficial] und den
+     * SYNC-ORT unterlaeuft ihn (siehe [SyncDecision.shouldApply]). Seit
+     * Aufgabe 6 ruft `MainActivity.onStart` `refreshWearOfficial` und den
      * Sync-Nachholpfad UNABHAENGIG voneinander an — hat der eigene Abruf in
      * diesem Wettlauf schon geschrieben, bevor dieser Sync verarbeitet
      * wird, waere ein bedingungsloses Ueberschreiben ein Rueckschritt.
-     * `System.currentTimeMillis()` beim Eintritt in diese Funktion ist der
-     * einzige verfuegbare Zeitstempel des Syncs: das DataItem selbst traegt
-     * keinen (siehe [WearSyncContract]) — er steht also fuer "der Sync wird
-     * JETZT angewendet", nicht fuer irgendeinen frueheren Handy-Zeitpunkt.
+     *
+     * Die eigentliche Entscheidung UND der Schreibvorgang liegen bewusst
+     * beide in [WearOfficialCache.applySync] (EINE Transaktion, siehe dort)
+     * — nicht hier: ein Lesen hier draussen, gefolgt von einem Schreiben
+     * dort drinnen, liesse genau das Fenster offen, das Fix-Runde 1 dieser
+     * Aufgabe uebersehen hatte (ein zwischen Lesen und Schreiben
+     * abgeschlossener eigener Abruf waere blind ueberschrieben worden).
      */
     suspend fun apply(context: Context, payload: SyncDecision.Payload) {
-        if (SyncDecision.parse(payload) == null) return
-        val ownUpdated = WearOfficialCache.ownUpdatedEpochMs(context, payload.lat, payload.lng)
-        if (!SyncDecision.syncWins(System.currentTimeMillis(), ownUpdated)) return
         val synced = WearOfficialCache.syncedLocation(context)
         val adopt = SyncDecision.shouldAdoptLocation(payload, synced?.first, synced?.second)
-        WearOfficialCache.store(context, payload.scheduleText, payload.lat, payload.lng, adopt)
+        if (!WearOfficialCache.applySync(context, payload, adopt)) return
         if (adopt) WearSettings.save(context, payload.city, payload.lat, payload.lng)
         // Neue Zeiten/neuer Ort: Vibrations-Kette neu armieren, Tile und
         // Complication einmalig auffrischen (danach wieder Zero-Wakeup).
@@ -57,7 +57,11 @@ object WearSyncApplier {
             .requestUpdateAll()
     }
 
-    /** Payload aus einem DataItem — null, wenn Pflichtfelder fehlen. */
+    /** Payload aus einem DataItem — null, wenn Pflichtfelder fehlen.
+     *  [WearSyncContract.KEY_UPDATED] fehlt bei einem aelteren Telefon;
+     *  `containsKey` statt `getLong` mit Default, weil `getLong` sonst nicht
+     *  von einem echten `0L`-Zeitstempel zu unterscheiden waere (siehe
+     *  [SyncDecision.shouldApply]). */
     fun payloadOf(item: DataItem): SyncDecision.Payload? {
         val map = DataMapItem.fromDataItem(item).dataMap
         return SyncDecision.Payload(
@@ -65,6 +69,11 @@ object WearSyncApplier {
             lat = map.getDouble(WearSyncContract.KEY_LAT),
             lng = map.getDouble(WearSyncContract.KEY_LNG),
             city = map.getString(WearSyncContract.KEY_CITY) ?: return null,
+            updatedEpochMs = if (map.containsKey(WearSyncContract.KEY_UPDATED)) {
+                map.getLong(WearSyncContract.KEY_UPDATED)
+            } else {
+                null
+            },
         )
     }
 

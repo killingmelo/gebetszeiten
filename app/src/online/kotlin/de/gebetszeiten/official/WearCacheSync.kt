@@ -21,16 +21,22 @@ import java.util.concurrent.TimeUnit
  * damit der letzte gute Stand auf der Uhr bleibt.
  */
 class WearCacheSync(
-    private val put: suspend (schedule: String, lat: Double, lng: Double, city: String) -> Unit,
+    private val put: suspend (schedule: String, lat: Double, lng: Double, city: String, updatedEpochMs: Long?) -> Unit,
     private val log: (String, Exception) -> Unit = { msg, e ->
         android.util.Log.w("WearCacheSync", msg, e)
     },
 ) {
 
-    suspend fun push(schedule: Map<LocalDate, SixTimes>, lat: Double, lng: Double, city: String) {
+    /** [updatedEpochMs] ist der Zeitpunkt, zu dem DAS TELEFON [schedule]
+     *  zuletzt erfolgreich abgerufen hat (`OfficialTimesCache.updatedEpochMs`
+     *  am Aufrufer) — bewusst NICHT `System.currentTimeMillis()` an dieser
+     *  Stelle: das waere der Sende-, nicht der Abrufzeitpunkt, und die Uhr
+     *  braucht genau Letzteren fuer ihren Freshness-Vergleich (siehe
+     *  `WearSyncContract.KEY_UPDATED`). */
+    suspend fun push(schedule: Map<LocalDate, SixTimes>, lat: Double, lng: Double, city: String, updatedEpochMs: Long?) {
         if (schedule.isEmpty()) return
         try {
-            put(ScheduleText.serialize(schedule), lat, lng, city)
+            put(ScheduleText.serialize(schedule), lat, lng, city, updatedEpochMs)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -40,12 +46,16 @@ class WearCacheSync(
 
     companion object {
         fun create(context: Context) = WearCacheSync(
-            put = { schedule, lat, lng, city ->
+            put = { schedule, lat, lng, city, updatedEpochMs ->
                 val request = PutDataMapRequest.create(WearSyncContract.PATH).apply {
                     dataMap.putString(WearSyncContract.KEY_SCHEDULE, schedule)
                     dataMap.putDouble(WearSyncContract.KEY_LAT, lat)
                     dataMap.putDouble(WearSyncContract.KEY_LNG, lng)
                     dataMap.putString(WearSyncContract.KEY_CITY, city)
+                    // Fehlt bewusst, wenn null (siehe KDoc an
+                    // `WearSyncContract.KEY_UPDATED`) — kein Platzhalterwert,
+                    // der auf der Uhr wie ein echter Zeitstempel aussaehe.
+                    if (updatedEpochMs != null) dataMap.putLong(WearSyncContract.KEY_UPDATED, updatedEpochMs)
                 }.asPutDataRequest()
                 withContext(Dispatchers.IO) {
                     Tasks.await(Wearable.getDataClient(context).putDataItem(request), 10, TimeUnit.SECONDS)

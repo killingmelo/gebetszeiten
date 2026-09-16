@@ -13,5 +13,5 @@ object OfficialTimesProvider {
 
     /** Offline gibt es nichts zu syncen (kein Online-Cache, kein gms). */
     @Suppress("UNUSED_PARAMETER")
-    suspend fun syncToWear(context: Context, schedule: Map<LocalDate, SixTimes>, settings: AppSettings) = Unit
+    suspend fun syncToWear(context: Context, schedule: Map<LocalDate, SixTimes>, settings: AppSettings, updatedEpochMs: Long?) = Unit
 }

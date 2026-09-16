@@ -18,6 +18,12 @@ object SyncDecision {
         val lat: Double,
         val lng: Double,
         val city: String,
+        /** Zeitpunkt, zu dem DAS TELEFON diese Zeiten geholt hat
+         *  (`WearSyncContract.KEY_UPDATED`) — `null` bei einem aelteren
+         *  Telefon, dessen DataItem das Feld noch nicht kennt. Siehe
+         *  [shouldApply]: fehlt er, gewinnt der Sync wie vor Fix-Runde 1
+         *  dieser Aufgabe immer. */
+        val updatedEpochMs: Long? = null,
     )
 
     /** Unlesbarer/leerer Payload → null: verwerfen, alter Cache bleibt. */
@@ -44,15 +50,28 @@ object SyncDecision {
      * Handy bleibt daneben bestehen, darf aber einen frischeren eigenen
      * Fund nicht mehr blind verdraengen.
      *
+     * [syncUpdatedEpochMs] ist der Zeitpunkt, zu dem das TELEFON diese
+     * Zeiten geholt hat (`WearSyncContract.KEY_UPDATED`) — NICHT der
+     * Zeitpunkt, zu dem die Uhr den Sync verarbeitet. Fix-Runde 1 dieser
+     * Aufgabe hatte genau das verwechselt: `WearSyncApplier` rief diese
+     * Funktion mit `System.currentTimeMillis()` beim EMPFANG auf. Das macht
+     * den Vergleich strukturell wertlos — der Empfangszeitpunkt liegt IMMER
+     * nach jedem zuvor persistierten eigenen Zeitstempel (der wurde ja
+     * bereits vor diesem Aufruf geschrieben), also war `syncUpdatedEpochMs
+     * >= ownUpdatedEpochMs` deterministisch fast immer wahr, ausser bei
+     * einer Uhrzeit-Ruecksetzung. Der Aufrufer muss stattdessen den
+     * TATSAECHLICHEN Abrufzeitpunkt vom Telefon durchreichen (siehe
+     * [shouldApply], das genau das tut).
+     *
      * Ohne eigenen Stand ([ownUpdatedEpochMs] `null`, siehe [ownUpdatedEpochMs])
      * gewinnt der Sync immer — an diesem Ort gibt es nichts zu schuetzen.
      * Bei GLEICHEM Stand gewinnt ebenfalls der Sync: er ist billiger als ein
      * eigener Abruf, ein Gleichstand ist kein Grund, ihn zu verwerfen. Nur
-     * ein ECHT frischerer eigener Stand schlaegt ihn — das ist der Fall, in
-     * dem die Uhr GERADE (im selben App-Start, siehe `MainActivity.onStart`,
-     * das `refreshWearOfficial` und den Sync-Nachholpfad unabhaengig
-     * voneinander anstoesst) selbst schon amtliche Zeiten geholt hat, bevor
-     * der Sync angewendet wird.
+     * ein ECHT frischerer eigener Stand schlaegt ihn — z. B. wenn die Uhr
+     * GERADE (im selben App-Start, siehe `MainActivity.onStart`, das
+     * `refreshWearOfficial` und den Sync-Nachholpfad unabhaengig
+     * voneinander anstoesst) selbst schon amtliche Zeiten geholt hat, die
+     * neuer sind als der Datenstand, den der Sync uebertraegt.
      *
      * [ownUpdatedEpochMs] MUSS vom Aufrufer am SELBEN Ort ermittelt worden
      * sein wie der Sync (siehe [ownUpdatedEpochMs]) — sonst waere dieser
@@ -61,6 +80,26 @@ object SyncDecision {
      */
     fun syncWins(syncUpdatedEpochMs: Long, ownUpdatedEpochMs: Long?): Boolean =
         ownUpdatedEpochMs == null || syncUpdatedEpochMs >= ownUpdatedEpochMs
+
+    /**
+     * Wird [payload] gegen [ownUpdatedEpochMs] angewendet? Die eigentliche
+     * Verdrahtungs-Entscheidung von [WearSyncApplier]/[WearOfficialCache] —
+     * hierher gezogen, damit sie OHNE Robolectric (das `wear`-Modul hat
+     * keines) mit plain JUnit testbar ist: genau DAS war die Luecke in
+     * Fix-Runde 1 — [syncWins] war richtig und getestet, aber die
+     * Verdrahtung (welchen Zeitstempel man ihr gibt) war es nicht, und dort
+     * steckte der Fehler.
+     *
+     * `payload.updatedEpochMs == null` (aelteres Telefon, DataItem ohne
+     * `WearSyncContract.KEY_UPDATED`): der Sync gewinnt immer — der Zustand
+     * von VOR dieser Zusicherung, also kein Rueckschritt, nur kein
+     * zusaetzlicher Schutz fuer diesen einen Fall. Sonst entscheidet
+     * [syncWins] mit dem tatsaechlichen Telefon-Abrufzeitpunkt.
+     */
+    fun shouldApply(payload: Payload, ownUpdatedEpochMs: Long?): Boolean {
+        val syncUpdatedEpochMs = payload.updatedEpochMs ?: return true
+        return syncWins(syncUpdatedEpochMs, ownUpdatedEpochMs)
+    }
 
     /**
      * Der fuer [syncWins] massgebliche eigene Zeitstempel: der Cache-Kopf AN
@@ -73,7 +112,7 @@ object SyncDecision {
      * aber fuer einen ANDEREN Ort ankommen, wenn die Uhr inzwischen per
      * Picker einen anderen Ort gewaehlt hat als das Handy zuletzt gesehen
      * hat (siehe [shouldAdoptLocation] — der Picker-Override bleibt dann
-     * bestehen, [WearOfficialCache.store] legt den Sync trotzdem unter
+     * bestehen, [WearOfficialCache.applySync] legt den Sync trotzdem unter
      * SEINEN eigenen Koordinaten ab). Ein Vergleich mit dem Zeitstempel des
      * aktiven Orts waere dann ein Vergleich ueber zwei verschiedene Orte —
      * sinnlos, denn ein frischer eigener Fund am aktiven Ort sagt nichts

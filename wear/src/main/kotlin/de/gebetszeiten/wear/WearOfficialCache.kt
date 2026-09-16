@@ -94,17 +94,50 @@ object WearOfficialCache {
         return lat to lng
     }
 
-    /** Kompatibilitaetspfad fuer [WearSyncApplier], das (noch) einen fertig
-     *  serialisierten Rumpftext fuer EINEN Ort liefert. Aufgabe 6 stellt den
-     *  Sync auf [put] mit einem bereits geparsten Zeitplan um. */
-    suspend fun store(context: Context, scheduleText: String, lat: Double, lng: Double, adoptedLocation: Boolean) {
-        writeEntry(context, ScheduleText.parse(scheduleText), lat, lng, locationId = null)
-        if (adoptedLocation) {
-            context.officialSyncStore.edit {
-                it[SYNCED_LAT] = lat
-                it[SYNCED_LNG] = lng
+    /**
+     * Wendet einen vom Handy gesyncten [payload] an — AUSSER ein frischerer
+     * eigener Stand am SYNC-ORT unterlaeuft ihn (siehe
+     * [SyncDecision.shouldApply]). Lesen (welcher eigene Stand liegt am
+     * Sync-Ort schon da?), Entscheiden und Schreiben laufen in EINER
+     * Transaktion — sonst koennte ein zwischen Lesen und Schreiben
+     * abgeschlossener eigener Abruf ([put]/`refreshWearOfficial`) hier blind
+     * ueberschrieben werden. Dasselbe Muster wie [migrateWithin] (Task 5,
+     * Fix-Runde 1, Important 1) — dort schon einmal derselbe Fehler: ein
+     * AUSSERHALB der Transaktion gelesener Schnappschuss kann gegen einen
+     * INNERHALB frisch geschriebenen Stand verlieren.
+     *
+     * Rueckgabe: wurde der Sync tatsaechlich angewendet? `false` heisst: der
+     * Payload liess sich nicht parsen, ODER ein frischerer eigener Stand hat
+     * ihn ausgestochen — in BEIDEN Faellen wurde NICHTS geschrieben, auch
+     * [adoptedLocation] nicht. Der Aufrufer ([WearSyncApplier]) darf dann
+     * Vibrations-Kette/Tile/Complication unangetastet lassen.
+     */
+    suspend fun applySync(context: Context, payload: SyncDecision.Payload, adoptedLocation: Boolean): Boolean {
+        val schedule = SyncDecision.parse(payload) ?: return false
+        var applied = false
+        context.officialSyncStore.edit { prefs ->
+            val entries = CacheStore.split(migrateWithin(prefs))
+            val ownUpdated = SyncDecision.ownUpdatedEpochMs(entries, payload.lat, payload.lng)
+            if (!SyncDecision.shouldApply(payload, ownUpdated)) return@edit
+            val header = CacheHeader(
+                latitude = payload.lat,
+                longitude = payload.lng,
+                locationId = null,
+                firstDate = null,
+                lastDate = null,
+                updatedEpochMs = System.currentTimeMillis(),
+                lastAttemptEpochMs = null,
+                lastError = null,
+            )
+            val updated = CacheStore.put(entries, CacheEntry(header, schedule), pinnedCoords = emptyList())
+            prefs[CACHE_TEXT] = CacheStore.serializeRaw(updated)
+            if (adoptedLocation) {
+                prefs[SYNCED_LAT] = payload.lat
+                prefs[SYNCED_LNG] = payload.lng
             }
+            applied = true
         }
+        return applied
     }
 
     /** Einen bereits geparsten Zeitplan fuer einen Ort ablegen (ueber
@@ -120,14 +153,6 @@ object WearOfficialCache {
      *  Refresh nicht wieder ueber die Namenssuche gehen muss. */
     suspend fun cachedLocationId(context: Context, lat: Double, lng: Double): Int? =
         CacheStore.select(CacheStore.split(cacheText(context)), lat, lng)?.header?.locationId
-
-    /** Eigener Zeitstempel an [lat]/[lng] fuer den Sync-Vorrang-Check
-     *  ([SyncDecision.syncWins] in [WearSyncApplier]) — dieselbe
-     *  Ortsidentitaet wie [cachedLocationId]. Delegiert die Ortslogik an
-     *  [SyncDecision.ownUpdatedEpochMs] (dort begruendet), damit sie nur an
-     *  EINER, JVM-getesteten Stelle steht. */
-    suspend fun ownUpdatedEpochMs(context: Context, lat: Double, lng: Double): Long? =
-        SyncDecision.ownUpdatedEpochMs(CacheStore.split(cacheText(context)), lat, lng)
 
     /** Der EINE Uhr-Ort als [DueLocation] (oder eine leere Liste, wenn er
      *  gar nicht bekannt ist) — Pendant zu `OfficialTimesCache.dueOrder`,

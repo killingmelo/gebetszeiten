@@ -21,33 +21,44 @@ class WearCacheSyncTest {
     )
 
     @Test
-    fun `pusht serialisierten Text mit Ort und Stadt`() = runBlocking {
-        val calls = mutableListOf<List<Any>>()
+    fun `pusht serialisierten Text mit Ort, Stadt und Telefon-Zeitstempel`() = runBlocking {
+        val calls = mutableListOf<List<Any?>>()
         val sync = WearCacheSync(
-            put = { text, lat, lng, city -> calls.add(listOf(text, lat, lng, city)) },
+            put = { text, lat, lng, city, updatedEpochMs -> calls.add(listOf(text, lat, lng, city, updatedEpochMs)) },
             log = { _, _ -> },
         )
-        sync.push(schedule, 41.0082, 28.9784, "Istanbul")
+        sync.push(schedule, 41.0082, 28.9784, "Istanbul", 12_345L)
         assertEquals(1, calls.size)
         assertEquals(
-            listOf<Any>("2026-07-30 03:54 05:38 13:27 17:34 21:07 22:36", 41.0082, 28.9784, "Istanbul"),
+            listOf<Any?>("2026-07-30 03:54 05:38 13:27 17:34 21:07 22:36", 41.0082, 28.9784, "Istanbul", 12_345L),
             calls.single(),
         )
     }
 
     @Test
+    fun `ohne Telefon-Zeitstempel kommt null durch - nicht 'jetzt beim Senden'`() = runBlocking {
+        val calls = mutableListOf<Long?>()
+        val sync = WearCacheSync(
+            put = { _, _, _, _, updatedEpochMs -> calls.add(updatedEpochMs) },
+            log = { _, _ -> },
+        )
+        sync.push(schedule, 41.0082, 28.9784, "Istanbul", null)
+        assertEquals(listOf<Long?>(null), calls)
+    }
+
+    @Test
     fun `leerer Zeitplan wird nie gepusht`() = runBlocking {
         var calls = 0
-        WearCacheSync(put = { _, _, _, _ -> calls++ }, log = { _, _ -> })
-            .push(emptyMap(), 41.0, 28.9, "Istanbul")
+        WearCacheSync(put = { _, _, _, _, _ -> calls++ }, log = { _, _ -> })
+            .push(emptyMap(), 41.0, 28.9, "Istanbul", 12_345L)
         assertEquals(0, calls)
     }
 
     @Test
     fun `Push-Fehler wird geschluckt und geloggt`() = runBlocking {
         var logged = 0
-        WearCacheSync(put = { _, _, _, _ -> error("kein gms") }, log = { _, _ -> logged++ })
-            .push(schedule, 41.0, 28.9, "Istanbul")
+        WearCacheSync(put = { _, _, _, _, _ -> error("kein gms") }, log = { _, _ -> logged++ })
+            .push(schedule, 41.0, 28.9, "Istanbul", 12_345L)
         assertEquals(1, logged)
     }
 
@@ -55,8 +66,8 @@ class WearCacheSyncTest {
     fun `CancellationException wird durchgereicht`() {
         assertThrows(CancellationException::class.java) {
             runBlocking {
-                WearCacheSync(put = { _, _, _, _ -> throw CancellationException("abbruch") }, log = { _, _ -> })
-                    .push(schedule, 41.0, 28.9, "Istanbul")
+                WearCacheSync(put = { _, _, _, _, _ -> throw CancellationException("abbruch") }, log = { _, _ -> })
+                    .push(schedule, 41.0, 28.9, "Istanbul", 12_345L)
             }
         }
     }

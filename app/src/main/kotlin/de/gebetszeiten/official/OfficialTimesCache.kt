@@ -73,6 +73,15 @@ class OfficialTimesCache(private val context: Context) {
     suspend fun cachedLocationId(lat: Double, lng: Double): Int? =
         entryFor(lat, lng)?.header?.locationId
 
+    /** Zeitpunkt des letzten erfolgreichen Abrufs an diesem Ort — fuer den
+     *  Wear-Sync (`WearSyncContract.KEY_UPDATED` ueber
+     *  `OfficialTimesProvider.syncToWear`/`WearCacheSync.push`), damit die
+     *  Uhr weiss, WIE ALT die gesyncten Zeiten sind, nicht nur WANN das
+     *  Telefon sie geschickt hat. Dieselbe Ortsidentitaet wie
+     *  [cachedLocationId]. */
+    suspend fun updatedEpochMs(lat: Double, lng: Double): Long? =
+        entryFor(lat, lng)?.header?.updatedEpochMs
+
     /** Alles, was die Statuszeile braucht — in EINEM DataStore-Read und
      *  ohne eine einzige Zeit zu parsen: Zeitplan und Versuchsprotokoll
      *  liegen mit einem Eintrag je Ort ohnehin zusammen im selben Kopf.

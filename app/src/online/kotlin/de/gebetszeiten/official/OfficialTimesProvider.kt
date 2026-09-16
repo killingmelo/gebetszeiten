@@ -17,7 +17,11 @@ object OfficialTimesProvider {
         BundledOfficialSource.nearestLocation(context, lat, lng)?.diyanetId
     }
 
-    /** Frisch geholte amtliche Zeiten zur Uhr replizieren (wirft nie). */
-    suspend fun syncToWear(context: Context, schedule: Map<LocalDate, SixTimes>, settings: AppSettings) =
-        WearCacheSync.create(context).push(schedule, settings.latitude, settings.longitude, settings.city)
+    /** Frisch geholte amtliche Zeiten zur Uhr replizieren (wirft nie).
+     *  [updatedEpochMs] ist der Zeitpunkt, zu dem DIESER Stand hier auf dem
+     *  Telefon zuletzt erfolgreich abgerufen wurde (siehe
+     *  `WearSyncContract.KEY_UPDATED`) — `null`, wenn dafuer (noch) kein
+     *  Cache-Kopf existiert. */
+    suspend fun syncToWear(context: Context, schedule: Map<LocalDate, SixTimes>, settings: AppSettings, updatedEpochMs: Long?) =
+        WearCacheSync.create(context).push(schedule, settings.latitude, settings.longitude, settings.city, updatedEpochMs)
 }

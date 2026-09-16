@@ -101,4 +101,35 @@ class SyncDecisionTest {
     fun `noch nie eigenstaendig abgerufener Ort liefert keinen eigenen Zeitstempel`() {
         assertNull(SyncDecision.ownUpdatedEpochMs(emptyList(), 49.4521, 11.0767))
     }
+
+    // Fix-Runde 1: die reine Funktion `syncWins` war von Anfang an richtig
+    // und getestet, aber `WearSyncApplier` rief sie mit
+    // `System.currentTimeMillis()` beim EMPFANG auf statt mit dem
+    // TATSAECHLICHEN Abrufzeitpunkt des Telefons — das machte den Vergleich
+    // strukturell wertlos (der Empfangszeitpunkt liegt IMMER nach jedem
+    // zuvor persistierten eigenen Zeitstempel). `shouldApply` ist die volle
+    // Verdrahtungs-Entscheidung inklusive des Datenzeitpunkts aus dem
+    // Payload, damit genau DIESE Verwechslung mit plain JUnit auffaellt.
+
+    @Test
+    fun `Sync mit aelterem Datenzeitpunkt verliert gegen einen frischeren eigenen Stand`() {
+        val syncPayload = payload().copy(updatedEpochMs = 1_000L)
+        assertFalse(SyncDecision.shouldApply(syncPayload, ownUpdatedEpochMs = 2_000L))
+    }
+
+    @Test
+    fun `Sync mit frischerem Datenzeitpunkt gewinnt gegen einen aelteren eigenen Stand`() {
+        val syncPayload = payload().copy(updatedEpochMs = 2_000L)
+        assertTrue(SyncDecision.shouldApply(syncPayload, ownUpdatedEpochMs = 1_000L))
+    }
+
+    @Test
+    fun `Payload ohne Telefon-Zeitstempel (aeltere App-Version) - der Sync gewinnt immer`() {
+        val syncPayload = payload().copy(updatedEpochMs = null)
+        // Selbst ein VIEL frischerer eigener Stand darf hier nicht bremsen:
+        // ohne WearSyncContract.KEY_UPDATED gibt es nichts, das man ehrlich
+        // vergleichen koennte - das ist der Zustand von vor dieser
+        // Zusicherung, kein Rueckschritt.
+        assertTrue(SyncDecision.shouldApply(syncPayload, ownUpdatedEpochMs = Long.MAX_VALUE))
+    }
 }

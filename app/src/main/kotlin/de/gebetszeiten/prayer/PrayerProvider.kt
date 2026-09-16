@@ -201,7 +201,14 @@ object PrayerProvider {
         // dedupliziert und die Uhr wird nicht geweckt. Offline-Flavor:
         // syncToWear ist ein No-op.
         val activeSchedule = fetchedActive ?: cache.snapshot(active.first, active.second)
-        OfficialTimesProvider.syncToWear(context, activeSchedule, settings)
+        // Zeitpunkt DIESES Standes (nicht "jetzt") — die Uhr vergleicht ihn
+        // gegen einen evtl. frischeren eigenen Fund (siehe
+        // `SyncDecision.syncWins` im wear-Modul). Nach einem frischen Abruf
+        // ist das derselbe `now` wie oben (putAll schrieb ihn eben); kam
+        // `activeSchedule` aus dem Snapshot, ist es der Zeitpunkt DES
+        // Abrufs, der diesen Snapshot brachte — genauso ehrlich.
+        val activeUpdatedEpochMs = cache.updatedEpochMs(active.first, active.second)
+        OfficialTimesProvider.syncToWear(context, activeSchedule, settings, activeUpdatedEpochMs)
     }
 
     /** Der Ortsname fuer [lat]/[lng] — das letzte Glied der ID-Aufloesung
