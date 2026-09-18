@@ -20,6 +20,12 @@ import org.junit.Test
  * sie nur schwerer zu entdecken: `scheduleNext` hat danach ueberhaupt keine
  * eigene Verzweigung mehr, nur noch drei gleichfoermige Anwendungen des
  * bereits fertigen Plans.
+ *
+ * Fix-Runde 2: die ersten sieben Faelle variierten `nextPrayerMillis` und
+ * `upcomingPrayerMillis` nie gegenlaeufig (entweder beide `null` oder beide
+ * gesetzt) - eine versehentliche Kopplung der beiden Parameter waere damit
+ * unentdeckt geblieben, obwohl `alarmPlan` sie als unabhaengig behandeln
+ * soll. Die beiden neuen Faelle unten schliessen diese Luecke.
  */
 class PrayerAlarmSchedulerTest {
 
@@ -141,6 +147,58 @@ class PrayerAlarmSchedulerTest {
             nowMillis = now,
         )
         assertNull(plan.preReminderAtMillis)
+    }
+
+    @Test fun gebetVorhandenVorlaufZielFehltGebetsWeckerBleibtUnabhaengigVomVorlaufZiel() {
+        // `nextPrayerMillis` und `upcomingPrayerMillis` gegenlaeufig gesetzt:
+        // das Gebet ist da, das Vorlauf-Ziel (naechstes ECHTES Gebet, ohne
+        // Sonnenaufgang) fehlt. In der Praxis waere das ungewoehnlich (beide
+        // haengen ueblicherweise an denselben Zeiten), aber `alarmPlan`
+        // bekommt sie als zwei UNABHAENGIGE Parameter - und darf sich auch
+        // dann korrekt verhalten, wenn der Aufrufer sie einmal nicht im
+        // Gleichschritt liefert. Mutation, die dieser Test toetet:
+        // `prayerAtMillis = if (upcomingPrayerMillis == null) null else
+        // nextPrayerMillis` - eine versehentliche Kopplung des Gebets-
+        // Weckers an das Vorlauf-Ziel. Mit `upcomingPrayerMillis == null`
+        // wuerde diese Mutation den Gebets-Wecker faelschlich abbestellen,
+        // obwohl eine echte Gebetszeit vorliegt.
+        val plan = PrayerAlarmScheduler.alarmPlan(
+            nextPrayerMillis = now + 60_000L,
+            upcomingPrayerName = null,
+            upcomingPrayerMillis = null,
+            reminderLeadMinutes = 15,
+            enabledReminders = setOf(fajr, isha),
+            displayStepBoundaries = emptyList(),
+            nowMillis = now,
+        )
+        assertEquals("Gebets-Wecker bleibt gesetzt, obwohl das Vorlauf-Ziel fehlt", now + 60_000L, plan.prayerAtMillis)
+        assertNull("Vorlauf-Wecker ohne Vorlauf-Ziel", plan.preReminderAtMillis)
+    }
+
+    @Test fun vorlaufZielVorhandenGebetFehltVorlaufWeckerBleibtUnabhaengigVomGebet() {
+        // Die umgekehrte Kombination: das Vorlauf-Ziel ist da, das Gebet
+        // (`nextPrayerMillis`) fehlt. Mutation, die dieser Test toetet: eine
+        // symmetrische Kopplung in die andere Richtung, etwa
+        // `preReminderAtMillis = if (nextPrayerMillis == null) null else
+        // <die eigentliche Vorlauf-Rechnung>` - mit `nextPrayerMillis ==
+        // null` wuerde diese Mutation den Vorlauf-Wecker faelschlich
+        // abbestellen, obwohl ein echtes Vorlauf-Ziel vorliegt.
+        val upcomingMillis = now + 3 * 60 * 60 * 1000L
+        val plan = PrayerAlarmScheduler.alarmPlan(
+            nextPrayerMillis = null,
+            upcomingPrayerName = isha,
+            upcomingPrayerMillis = upcomingMillis,
+            reminderLeadMinutes = 15,
+            enabledReminders = setOf(fajr, isha),
+            displayStepBoundaries = emptyList(),
+            nowMillis = now,
+        )
+        assertNull("Gebets-Wecker bleibt abbestellt, obwohl ein Vorlauf-Ziel vorliegt", plan.prayerAtMillis)
+        assertEquals(
+            "Vorlauf-Wecker bleibt gesetzt, obwohl das Gebet fehlt",
+            upcomingMillis - 15 * 60_000L,
+            plan.preReminderAtMillis,
+        )
     }
 
     @Test fun stufenWeckerNimmtDieKleinsteZukuenftigeGrenze() {

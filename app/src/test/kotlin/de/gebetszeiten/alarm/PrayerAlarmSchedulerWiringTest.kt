@@ -21,14 +21,21 @@ import java.io.File
  * scheduleDisplayStep(...) }`), was bei fehlenden Zeiten exakt denselben
  * Effekt haette — alle vier alten Behauptungen blieben dabei gruen.
  *
- * Ein Text-Test kann Verschachtelung nicht zuverlaessig beurteilen (jeder
- * Versuch daran wird bruechig: Einrueckung, Klammertiefe). Deshalb pruefen
- * wir nicht mehr WELCHE Aufrufe im Rumpf stehen, sondern die einzige
- * Eigenschaft, die eine solche Verschachtelung strukturell ausschliesst:
- * **`scheduleNext` enthaelt ueberhaupt keine eigene Verzweigung mehr** (kein
- * `if`) — jede Entscheidung liegt in `alarmPlan`, hier wird nur noch
- * angewendet. Wer eine Bedingung um die drei `applyAlarm`-Aufrufe legt, fuegt
- * damit zwangsläufig ein `if` in den Rumpf ein und faellt hier auf.
+ * Eine zweite Fassung pruefte stattdessen auf `\bif\s*\(` — das fing die
+ * `if`-Verschachtelung, aber nicht `when (true) { bedingung -> ...; else ->
+ * {} }`, das denselben Effekt haette, ohne `if` zu schreiben. Eine Liste
+ * verbotener Schluesselwoerter (`if`, `when`, naechstes waere `for`/`while`)
+ * ist keine ehrliche Sicherung — sie verschiebt das Problem nur auf das
+ * naechste Schluesselwort, das jemandem einfaellt.
+ *
+ * Stattdessen die Eigenschaft, die JEDE Form von Verschachtelung teilt, ganz
+ * gleich mit welchem Schluesselwort: eine neue geschweifte Klammer im Rumpf.
+ * `if`, `when`, `for`, `while`, `try` und ein Lambda-Argument brauchen alle
+ * ein eigenes `{ ... }` — `rumpfVon` liefert bereits nur den Inhalt ZWISCHEN
+ * der oeffnenden und der schliessenden Klammer der Funktion selbst, also darf
+ * darin ueberhaupt keine weitere `{` mehr vorkommen. **`scheduleNext`
+ * enthaelt ueberhaupt keine eigene Verzweigung mehr** — jede Entscheidung
+ * liegt in `alarmPlan`, hier wird nur noch angewendet.
  *
  * Praezedenz fuer das Idiom (Quelltext-Lese-Test statt Robolectric):
  * `OngoingWiringTest`, `NoNetworkInSharedCodeTest`, `CountdownIconAssetsTest`.
@@ -43,13 +50,15 @@ class PrayerAlarmSchedulerWiringTest {
     @Test
     fun `scheduleNext verzweigt selbst nicht und bezieht seine Entscheidung aus alarmPlan`() {
         val rumpf = rumpfVon(ohneKommentareUndTexte(text()), "suspend fun scheduleNext(")
-        // Kein `if`: weder ein fruehes `return` (Aufgabe 9) noch eine
-        // Verschachtelung der drei Aufrufe (die naheliegende zweite Form)
-        // sind ohne ein `if` im Rumpf ueberhaupt moeglich.
+        // Keine weitere `{`: egal mit welchem Schluesselwort (if, when, for,
+        // while, try) oder als Lambda-Argument verschachtelt wuerde — jede
+        // Form brauchte ein eigenes `{ ... }`, und das faellt hier auf, ohne
+        // dass die Pruefung das Schluesselwort selbst kennen muss.
         assertFalse(
-            "scheduleNext verzweigt selbst — die Entscheidung gehoert vollstaendig in alarmPlan, " +
-                "sonst kann sich die Verschachtelungs-Regression aus der Pruefung wieder einschleichen",
-            Regex("""\bif\s*\(""").containsMatchIn(rumpf),
+            "scheduleNext verzweigt selbst (eine weitere '{' im Rumpf) — die Entscheidung gehoert " +
+                "vollstaendig in alarmPlan, sonst kann sich die Verschachtelungs-Regression aus der " +
+                "Pruefung wieder einschleichen, gleich mit welchem Schluesselwort",
+            rumpf.contains("{"),
         )
         assertFalse(
             "scheduleNext kehrt vorzeitig zurueck — genau die Regression aus Aufgabe 9",
