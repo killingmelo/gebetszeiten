@@ -28,11 +28,20 @@ enum class PauseNotice { SHOW, CLEAR, NOTHING }
  *
  * Vier Faelle, keiner davon ein Default-Zweig: [hasTimes] × [alreadyShown]
  * sind zusammen genau vier Kombinationen, und jede hat eine eigene, im Test
- * benannte Bedeutung.
+ * benannte Bedeutung. Deshalb `when (hasTimes)` — ein `when` OHNE Subjekt
+ * (`when { bedingung -> ... }`) verlangt von Kotlin immer einen `else`-Zweig,
+ * selbst wenn die Bedingungen eine boolesche Kombinatorik bereits lueckenlos
+ * abdecken; der `else` sah dann wie ein fuenfter, unbenannter Fall aus, war
+ * aber tatsaechlich nur der vierte (Fix-Runde 1). Mit Boolean als Subjekt
+ * prueft der Compiler die Vollstaendigkeit selbst, ganz ohne `else`.
  */
-fun pauseNotice(hasTimes: Boolean, alreadyShown: Boolean): PauseNotice = when {
-    !hasTimes && !alreadyShown -> PauseNotice.SHOW
-    !hasTimes && alreadyShown -> PauseNotice.NOTHING
-    hasTimes && alreadyShown -> PauseNotice.CLEAR
-    else -> PauseNotice.NOTHING
+fun pauseNotice(hasTimes: Boolean, alreadyShown: Boolean): PauseNotice = when (hasTimes) {
+    false -> when (alreadyShown) {
+        false -> PauseNotice.SHOW
+        true -> PauseNotice.NOTHING
+    }
+    true -> when (alreadyShown) {
+        true -> PauseNotice.CLEAR
+        false -> PauseNotice.NOTHING
+    }
 }

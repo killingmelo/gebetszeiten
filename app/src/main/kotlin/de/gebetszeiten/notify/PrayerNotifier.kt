@@ -368,12 +368,27 @@ object PrayerNotifier {
      * PrayerViewModel]): nur eine davon bekommt tatsaechlich SHOW oder
      * CLEAR, die anderen sehen danach den schon aktualisierten Merker und
      * bekommen NOTHING.
+     *
+     * `canPost(context)` wird HIER, VOR der Transaktion ermittelt und an
+     * [de.gebetszeiten.data.SettingsRepository.resolvePauseNotice]
+     * durchgereicht (Fix-Runde 1) — nicht erst danach wie zuvor. Vorher
+     * setzte `resolvePauseNotice` den Merker bereits auf `true`, bevor hier
+     * ueberhaupt geprueft wurde, ob ueberhaupt etwas gepostet werden DARF:
+     * ohne `POST_NOTIFICATIONS` (ab Android 13 der Normalfall, bis der
+     * Nutzer zustimmt) blieb der Merker "gemeldet" stehen, obwohl nie etwas
+     * erschien — derselbe stille Ausfall, den diese Aufgabe verhindern
+     * soll, nur ueber die Berechtigung statt ueber fehlende Zeiten
+     * hereingekommen. `canPost` liest nur die aktuell erteilte Berechtigung,
+     * keinen von den vier Aufrufstellen geteilten Zustand — das Rennen um
+     * den Merker bleibt daher weiterhin ausschliesslich in der Transaktion
+     * geloest.
      */
-    @SuppressLint("MissingPermission") // guarded by canPost()
+    @SuppressLint("MissingPermission") // guarded by canPost(), passed into resolvePauseNotice
     suspend fun updatePauseNotice(context: Context, hasTimes: Boolean) {
-        when (de.gebetszeiten.data.SettingsRepository(context).resolvePauseNotice(hasTimes)) {
+        val decision = de.gebetszeiten.data.SettingsRepository(context)
+            .resolvePauseNotice(hasTimes, canShow = canPost(context))
+        when (decision) {
             PauseNotice.SHOW -> {
-                if (!canPost(context)) return
                 ensureChannel(context)
                 val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_notification)

@@ -426,14 +426,45 @@ class SettingsRepository(private val context: Context) {
      * gleichzeitige Aufruf laeuft immer NACH dem ersten und sieht dessen
      * bereits geschriebenen Merker — er bekommt dann zuverlaessig [PauseNotice.NOTHING],
      * unabhaengig davon, in welcher Reihenfolge die vier Aufrufer eintreffen.
+     *
+     * [canShow] ist die Berechtigungspruefung (`POST_NOTIFICATIONS`, ab
+     * Android 13 standardmaessig verweigert, bis der Nutzer zustimmt) — vom
+     * Aufrufer VOR dieser Transaktion ermittelt und nur hereingereicht.
+     * Fix-Runde 1: Ohne [canShow] setzte diese Funktion den Merker auf
+     * `true`, auch wenn `updatePauseNotice` danach mangels Berechtigung gar
+     * nichts posten konnte — der Merker log dann "gemeldet", obwohl der
+     * Nutzer nie etwas sah. Erteilt er die Berechtigung erst waehrend
+     * DESSELBEN Ausfalls, haette er die Meldung fuer diesen Ausfall nie zu
+     * sehen bekommen: genau die Fehlerklasse, die Aufgabe 14 verhindern
+     * soll, nur ueber einen anderen Weg. Ist [canShow] falsch, faellt SHOW
+     * deshalb auf NOTHING zurueck UND der Merker bleibt unveraendert
+     * (`false`) — der naechste Aufruf (evtl. nach erteilter Berechtigung)
+     * darf es erneut versuchen. CLEAR ist davon nicht betroffen: Zeiten
+     * zurueckziehen/`cancel(...)` funktioniert immer, unabhaengig von der
+     * Berechtigung, und ein Merker, der nach Rueckkehr der Zeiten nicht
+     * geloescht wird, wuerde die naechste echte Meldung blockieren.
+     *
+     * [canShow] liest keinen geteilten/veraenderlichen Zustand (nur die
+     * aktuell erteilte Berechtigung) — es VOR der Transaktion statt DRIN zu
+     * pruefen bringt das oben geloeste Rennen nicht zurueck, denn es gibt
+     * nichts, was zwischen zwei nahezu gleichzeitigen Aufrufen ausgelesen
+     * und dann veraltet waere: die Berechtigung aendert sich nicht dadurch,
+     * dass eine ANDERE der vier Aufrufstellen gerade eine Transaktion
+     * durchlaeuft.
      */
-    suspend fun resolvePauseNotice(hasTimes: Boolean): de.gebetszeiten.notify.PauseNotice {
+    suspend fun resolvePauseNotice(hasTimes: Boolean, canShow: Boolean): de.gebetszeiten.notify.PauseNotice {
         var decision = de.gebetszeiten.notify.PauseNotice.NOTHING
         context.dataStore.edit { prefs ->
             val alreadyShown = prefs[Keys.PAUSE_NOTICE_SHOWN] ?: AppSettings.DEFAULT.pauseNoticeShown
             decision = de.gebetszeiten.notify.pauseNotice(hasTimes = hasTimes, alreadyShown = alreadyShown)
             when (decision) {
-                de.gebetszeiten.notify.PauseNotice.SHOW -> prefs[Keys.PAUSE_NOTICE_SHOWN] = true
+                de.gebetszeiten.notify.PauseNotice.SHOW -> if (canShow) {
+                    prefs[Keys.PAUSE_NOTICE_SHOWN] = true
+                } else {
+                    // Ohne Berechtigung wird nichts sichtbar - dann darf der
+                    // Merker auch nicht "gemeldet" behaupten.
+                    decision = de.gebetszeiten.notify.PauseNotice.NOTHING
+                }
                 de.gebetszeiten.notify.PauseNotice.CLEAR -> prefs[Keys.PAUSE_NOTICE_SHOWN] = false
                 de.gebetszeiten.notify.PauseNotice.NOTHING -> Unit
             }
