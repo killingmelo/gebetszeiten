@@ -134,25 +134,25 @@ suspend fun refreshWearOfficial(context: Context, force: Boolean = false): Boole
  * langlebigen [refreshScope] und ruft bei Erfolg [notifyWearOfficialRefreshed]
  * auf — fuer `PrayerTileService`/`PrayerComplicationService`, die selbst
  * KEINEN fuer einen Netzabruf hinreichend langlebigen Scope halten
- * (Begruendung an [refreshScope]).
+ * (Begruendung an [refreshScope]), UND fuer `MainActivity.onStart` (seit
+ * Fix-Runde 3, Important 1 — siehe dort: ein `scope.launch` im
+ * Activity-gebundenen `MainScope` wird abgebrochen, sobald `onDestroy`
+ * laeuft, und riss die Fortsetzung mit sich, obwohl der Abruf selbst dank
+ * [SingleFlight] im [refreshScope] ueberlebte und die Zeiten schon ablegte).
  *
  * Nicht `context.lifecycleScope` oder ein per-Service-Feld: genau DAS war
- * der Fix-Runde-3-Befund — ein `scope.launch {...}` im Service-eigenen Scope
- * wird abgebrochen, sobald das System den Dienst kurz nach der Antwort
- * wieder loest, und das Neuzeichnen feuert dann nur noch, wenn der Abruf
- * zufaellig schneller war als der Dienst lebte — also fast nie im Zielfall
- * (langsames Netz), fast immer nur dann, wenn die Bremse ohnehin `false`
- * geliefert haette.
+ * der Fix-Runde-3-Befund (Aufgabe 6) — ein `scope.launch {...}` im
+ * Service-eigenen Scope wird abgebrochen, sobald das System den Dienst kurz
+ * nach der Antwort wieder loest, und das Neuzeichnen feuert dann nur noch,
+ * wenn der Abruf zufaellig schneller war als der Dienst lebte — also fast
+ * nie im Zielfall (langsames Netz), fast immer nur dann, wenn die Bremse
+ * ohnehin `false` geliefert haette.
  *
  * Ruft bei Erfolg NICHT mehr einen aufruferspezifischen `onUpdated`-Lambda
  * auf (Fix-Runde 2, Important 1 — vorher stiess `PrayerTileService` nur die
- * Kachel an und `PrayerComplicationService` nur die Komplikation; ein
- * eigener Abruf UEBER die Kachel liess die Komplikation deshalb genauso
- * einfrieren wie einer ueber `MainActivity.onStart`, der ueberhaupt keine der
- * beiden Oberflaechen anstiess). [notifyWearOfficialRefreshed] stoesst jetzt
- * IMMER beide Oberflaechen an, unabhaengig davon, wer den Abruf ausgeloest
- * hat — und ist derselbe gemeinsame Weg, den auch `MainActivity.onStart`
- * nach einem erfolgreichen eigenen Abruf nimmt.
+ * Kachel an und `PrayerComplicationService` nur die Komplikation).
+ * [notifyWearOfficialRefreshed] stoesst jetzt IMMER beide Oberflaechen an,
+ * unabhaengig davon, wer den Abruf ausgeloest hat.
  */
 fun launchWearRefresh(context: Context) {
     refreshScope.launch {
@@ -169,12 +169,20 @@ fun launchWearRefresh(context: Context) {
 }
 
 /**
- * Alles, was nach einem ERFOLGREICHEN Abruf (`refreshWearOfficial() ==
- * true`) passieren muss, damit keine der drei Oberflaechen (App, Kachel,
- * Komplikation) auf einem veralteten Stand einfriert — geteilt zwischen
- * [launchWearRefresh] (Kachel/Komplikation) und `MainActivity.onStart`
- * (Fix-Runde 2, Important 1: beide nehmen jetzt denselben Weg statt jeder
- * nur einen Teil der Heilung selbst zu erledigen).
+ * Alles, was passieren muss, damit keine der drei Oberflaechen (App, Kachel,
+ * Komplikation) auf einem veralteten Stand einfriert, nachdem sich etwas
+ * geaendert haben KANN, das eine naechste Zeit betrifft. Vier Aufrufer, alle
+ * gleichrangig behandelt statt die Heilung von Hand nachzubauen:
+ * - [launchWearRefresh] (ein erfolgreicher eigener Abruf — Kachel,
+ *   Komplikation, seit Fix-Runde 3 auch `MainActivity.onStart`),
+ * - `WearSyncApplier.apply` (ein neuer Stand vom Handy, Fix-Runde 3,
+ *   Important 2 — vorher drei Zeilen von Hand, OHNE `try`),
+ * - `WearAlarmReceiver.onReceive` (Boot/Update/Uhrzeit-/Zeitzonenwechsel,
+ *   Fix-Runde 3, Important 3 — vorher NUR [WearVibration.reschedule], ohne
+ *   die beiden Oberflaechen anzustossen),
+ * - der Notausgang-Toggle in `MainActivity` (dort zusaetzlich zu, nicht
+ *   statt, diesem Aufruf — siehe dort: kein Netzabruf noetig, die lokale
+ *   Berechnung loest den Leerfall sofort auf).
  *
  * [WearVibration.reschedule] und [notifyWearSurfaces] laufen in GETRENNTEN
  * `try`-Bloecken (Fix-Runde 2, Important 2): ein Fehlschlag beim
@@ -184,8 +192,9 @@ fun launchWearRefresh(context: Context) {
  * verloren gehen, wenn `reschedule` vor dem Neuzeichnen stuende und warf.
  *
  * Faengt jede Ausnahme selbst ab, statt sich auf einen Aufrufer-`try` zu
- * verlassen: `MainActivity.onStart` hat (anders als [launchWearRefresh])
- * keinen fuer Netzabrufe gedachten Rettungs-Scope wie [refreshScope], und
+ * verlassen: nicht alle vier Aufrufer haben einen fuer Netzabrufe gedachten
+ * Rettungs-Scope wie [refreshScope] (`WearSyncApplier.apply` etwa laeuft per
+ * `runBlocking` auf einem Binder-Thread ohne eigenen `try`), und
  * `notifyWearSurfaces` ruft fremden Code (Tiles-/Komplikations-Framework),
  * der werfen kann, wenn das Ziel gerade nicht erreichbar ist.
  */
@@ -212,6 +221,17 @@ suspend fun notifyWearOfficialRefreshed(context: Context) {
  * [notifyWearOfficialRefreshed] und dem Notausgang-Toggle in
  * `MainActivity` (dort ohne Netzabruf: die lokale Berechnung kann den
  * Leerfall sofort aufloesen, ohne dass `refreshWearOfficial` je lief).
+ *
+ * Kachel und Komplikation stossen sich damit potenziell GEGENSEITIG an:
+ * `onTileRequest` ruft am Ende [launchWearRefresh], dessen Erfolg wiederum
+ * diese Funktion aufruft und damit auch die Komplikation neu anfordert —
+ * und umgekehrt. Das schwingt nicht, weil beide Anfragen letztlich wieder
+ * bei [refreshWearOfficial] landen, und dessen Wiederholungs-Bremse
+ * (`chooseTarget`/`needsRefresh`) nach einem bereits erfolgreichen Abruf
+ * `false` liefert — der zweite, gegenseitig ausgeloeste Anlauf bricht dort
+ * fruehzeitig ab, OHNE diese Funktion je ein zweites Mal zu erreichen. Die
+ * Schleifensicherheit haengt damit ALLEIN an dieser Bremse; sie selbst
+ * bremst hier nichts.
  */
 fun notifyWearSurfaces(context: Context) {
     androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester

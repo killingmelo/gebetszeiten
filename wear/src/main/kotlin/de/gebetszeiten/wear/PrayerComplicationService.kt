@@ -158,15 +158,23 @@ class PrayerComplicationService : ComplicationDataSourceService() {
      *  Zeitpunkt, an dem diese Antwort automatisch ablaeuft; das System
      *  fragt stattdessen bei Bedarf erneut an.
      *
-     *  Fix-Runde 1/2, Important 4: `ShortTextComplicationData` ist vertraglich
-     *  auf rund sieben Zeichen ausgelegt (dort standen vorher "17:37"/"Asr")
-     *  — der lange Satz aus `no_times_notice` ("Keine amtlichen Zeiten", 22
-     *  Zeichen) wuerde im sichtbaren Text abgeschnitten, und selbst die erste
-     *  Kuerzung ("keine Zeiten", 12 Zeichen) noch. Deshalb zwei Formen: die
-     *  KURZE (`no_times_notice_short` = "Keine", 5 Zeichen, grossgeschrieben
-     *  wie die uebrigen Komplikationstexte) sichtbar, die LANGE als
-     *  `contentDescription`, damit Vorlesedienste trotzdem den vollen Satz
-     *  bekommen. */
+     *  Fix-Runde 1/2/3, Important 4: `ShortTextComplicationData` ist
+     *  vertraglich auf rund sieben Zeichen ausgelegt (dort standen vorher
+     *  "17:37"/"Asr") — der lange Satz aus `no_times_notice` ("Keine
+     *  amtlichen Zeiten", 22 Zeichen) wuerde im sichtbaren Text abgeschnitten,
+     *  und selbst die erste Kuerzung ("keine Zeiten", 12 Zeichen) noch.
+     *
+     *  "Keine" (5 Zeichen) passte zwar in die Zeichengrenze, wurde aber
+     *  bewusst NICHT gewaehlt: viele Zifferblaetter zeigen den `title` einer
+     *  SHORT_TEXT-Komplikation gar nicht an, und diese Antwort setzt ohnehin
+     *  keinen (siehe oben, kein `.setTitle(...)`) — im Slot stuende dann ein
+     *  alleinstehendes Artikelwort ohne Bezugswort, direkt neben "Asr
+     *  17:37". Das liest sich wie ein Anzeigefehler, nicht wie eine Aussage.
+     *
+     *  `no_times_notice_short` ist deshalb ein Geviertstrich ("—"): er liest
+     *  sich als "Wert fehlt" statt als abgebrochener Satz. Die volle Aussage
+     *  geht dabei NICHT verloren — sie steht als `contentDescription`, damit
+     *  Vorlesedienste trotzdem den vollen Satz bekommen. */
     private fun noTimesData(): ComplicationData {
         val short = PlainComplicationText.Builder(getString(R.string.no_times_notice_short)).build()
         val full = PlainComplicationText.Builder(getString(R.string.no_times_notice)).build()

@@ -72,8 +72,29 @@ object WearVibration {
     }
 }
 
-/** Fires at each prayer time (vibrates + chains the next alarm) and re-arms
- *  the chain after reboot / app update / clock or timezone changes. */
+/**
+ * Fires at each prayer time (vibrates + chains the next alarm) and re-arms
+ * the chain after reboot / app update / clock or timezone changes.
+ *
+ * Registriert im Manifest fuer `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`,
+ * `TIME_SET` UND `TIMEZONE_CHANGED` — bis Fix-Runde 3 (Important 3, Aufgabe
+ * 16) rief [onReceive] dabei AUSSCHLIESSLICH [WearVibration.reschedule] auf.
+ * Zwei Folgen, die niemand in der Tabelle der Heilungswege gefuehrt hatte:
+ * - Zeitzonenwechsel: Kachel und Komplikation haben ihre Gueltigkeit an
+ *   ABSOLUTEN Zeitpunkten, die angezeigten Zeichenketten sind aber mit der
+ *   ALTEN Zone formatiert — nach einem Flug zeigten beide Oberflaechen
+ *   stundenlang die falsche Wanduhrzeit, und nichts stiess sie an.
+ * - Neustart im Leerfall: kein Alarm (abbestellt), keine Gueltigkeitsgrenze,
+ *   kein Anstoss — die Komplikation blieb auf dem Leerfall stehen, bis die
+ *   Kachel ihre 30-Minuten-Frische zog oder die App geoeffnet wurde.
+ *
+ * [notifyWearOfficialRefreshed] statt eines von Hand nachgebauten
+ * `reschedule` + `notifyWearSurfaces` — derselbe geteilte Weg (inklusive der
+ * getrennten `try`-Bloecke aus Fix-Runde 2, Important 2) wie nach einem
+ * eigenen Abruf oder dem Notausgang-Toggle. Kein zusaetzlicher
+ * `launchWearRefresh`-Aufruf: bei `TIMEZONE_CHANGED` aendert sich nur die
+ * DARSTELLUNG, nicht der Inhalt — ein Netzabruf waere hier ohne Wirkung.
+ */
 class WearAlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -83,7 +104,7 @@ class WearAlarmReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.Default).launch {
             try {
-                WearVibration.reschedule(context)
+                notifyWearOfficialRefreshed(context)
             } finally {
                 pending.finish()
             }

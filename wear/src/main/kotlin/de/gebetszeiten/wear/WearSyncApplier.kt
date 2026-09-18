@@ -1,9 +1,6 @@
 package de.gebetszeiten.wear
 
-import android.content.ComponentName
 import android.content.Context
-import androidx.wear.tiles.TileService
-import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.DataItem
 import com.google.android.gms.wearable.DataMapItem
@@ -49,12 +46,17 @@ object WearSyncApplier {
         if (!WearOfficialCache.applySync(context, payload, adopt)) return
         if (adopt) WearSettings.save(context, payload.city, payload.lat, payload.lng)
         // Neue Zeiten/neuer Ort: Vibrations-Kette neu armieren, Tile und
-        // Complication einmalig auffrischen (danach wieder Zero-Wakeup).
-        WearVibration.reschedule(context)
-        TileService.getUpdater(context).requestUpdate(PrayerTileService::class.java)
-        ComplicationDataSourceUpdateRequester
-            .create(context, ComponentName(context, PrayerComplicationService::class.java))
-            .requestUpdateAll()
+        // Complication einmalig auffrischen (danach wieder Zero-Wakeup) —
+        // derselbe geteilte Weg wie nach einem eigenen Abruf
+        // (`WearRefresh.launchWearRefresh`) und der Notausgang-Toggle
+        // (Fix-Runde 3, Important 2). Bis hierher standen die drei Anstoesse
+        // von Hand, OHNE `try`: eine `IOException` beim Neubewerten der
+        // Vibrationskette riss das Neuzeichnen mit, und weil [apply] von
+        // [WearSyncListenerService] per `runBlocking` auf einem
+        // Binder-Thread aufgerufen wird, waere die Ausnahme dort ganz
+        // entkommen. [notifyWearOfficialRefreshed] faengt beide Schritte
+        // in getrennten `try`-Bloecken selbst ab.
+        notifyWearOfficialRefreshed(context)
     }
 
     /** Payload aus einem DataItem — null, wenn Pflichtfelder fehlen.

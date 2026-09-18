@@ -25,17 +25,22 @@
 
     <!-- Leerfall (Task 16): weder amtliche Zeiten noch eine eingeschaltete
          Ersatzberechnung liefern etwas. Zwei Formen, je EINMAL definiert
-         (Fix-Runde 1/2, Important 4 - eine gemeinsame Form scheitert an der
-         physischen Zeichengrenze der Komplikation):
+         (Fix-Runde 1/2/3, Important 4 - eine gemeinsame Form scheitert an
+         der physischen Zeichengrenze der Komplikation):
          - die LANGE Form fuer App, Kachel-Text und die contentDescription
            der Komplikation (Vorlesedienste bekommen den ganzen Satz).
-         - die KURZE Form fuer den sichtbaren Text der Komplikation
-           (ShortTextComplicationData ist vertraglich auf ~7 Zeichen
-           ausgelegt - "keine Zeiten", 12 Zeichen, wurde in Fix-Runde 1
-           weiterhin gekuerzt; Grossschreibung wie bei den uebrigen
-           Komplikationstexten, z. B. "Asr"). -->
+         - die KURZE Form fuer den sichtbaren Text der Komplikation. Erst
+           "keine Zeiten" (12 Zeichen), dann "Keine" (5 Zeichen, passt in
+           die ~7-Zeichen-Auslegung) - aber viele Zifferblaetter zeigen den
+           `title` einer SHORT_TEXT-Komplikation gar nicht, und der Leerfall
+           setzt ohnehin keinen. "Keine" stuende dann als alleinstehendes
+           Artikelwort ohne Bezugswort neben "Asr 17:37" - liest sich wie
+           ein Anzeigefehler, nicht wie eine Aussage. Ein Geviertstrich
+           liest sich dagegen als "Wert fehlt", nicht als abgebrochener
+           Satz; die volle Aussage traegt ohnehin die contentDescription
+           (siehe PrayerComplicationService.noTimesData). -->
     <string name="no_times_notice">Keine amtlichen Zeiten</string>
-    <string name="no_times_notice_short">Keine</string>
+    <string name="no_times_notice_short">—</string>
 
     <!-- MainActivity: derived congregation row label -->
     <string name="label_cemaat">Cemaat (Gemeinschaft)</string>

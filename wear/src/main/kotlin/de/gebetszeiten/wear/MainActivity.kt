@@ -128,22 +128,28 @@ class MainActivity : Activity() {
         // Die Uhr ruft ihre amtlichen Zeiten seit Aufgabe 6 auch selbst ab
         // (online-Flavor; im offline-Flavor ein No-op ueber
         // `WearFetchProvider.isOnline`) — unabhaengig vom Sync vom Handy.
-        // Neu gezeichnet wird danach immer: die Bremse (`needsRefresh`)
-        // sorgt dafuer, dass ein frisch versorgter Ort hier nichts mehr zu
-        // tun hat, der Aufruf also billig bleibt.
-        scope.launch {
-            val refreshed = withContext(Dispatchers.IO) { refreshWearOfficial(applicationContext) }
-            // Fix-Runde 2, Important 1: derselbe gemeinsame Weg wie
-            // `launchWearRefresh` (Kachel/Komplikation) und der
-            // Notausgang-Toggle - ein erfolgreicher eigener Abruf HIER war
-            // bis Fix-Runde 1 nur der Vibrationskette bekannt, nicht der
-            // Komplikation (die ohne eigenes Ablaufdatum unbegrenzt
-            // eingefroren waere) oder der Kachel.
-            if (refreshed) {
-                withContext(Dispatchers.IO) { notifyWearOfficialRefreshed(applicationContext) }
-            }
-            refresh()
-        }
+        //
+        // Fix-Runde 3, Important 1: NICHT mehr in einem eigenen
+        // `scope.launch { withContext(Dispatchers.IO) { ... } }` - das haengt
+        // am Activity-gebundenen `scope` (`MainScope`), den `onDestroy`
+        // abbricht, sobald die Activity verschwindet (Handgelenk senken, App
+        // wechseln) - und zwar GENAU dann, wenn ein bis zu 25 s laufender
+        // Abruf ueber die Bluetooth-Strecke noch unterwegs ist. Der Abruf
+        // selbst ueberlebt das dank `SingleFlight` im langlebigen
+        // `refreshScope` und legt die Zeiten ab - aber bis Fix-Runde 3 lief
+        // die FORTSETZUNG (Vibrationskette neu bewerten, Komplikation und
+        // Kachel anstossen) in DIESEM abbrechbaren Scope und ging dann
+        // verloren: neue Zeiten im Cache, aber niemand erfaehrt davon -
+        // dieselbe Krankheit wie Important 1 aus Fix-Runde 2, nur in einem
+        // schmaleren Fenster.
+        //
+        // `launchWearRefresh` startet Abruf UND Fortsetzung im selben
+        // langlebigen Scope wie Kachel und Komplikation - derselbe geteilte
+        // Weg. Das Neuzeichnen DIESES Screens (`refresh()` oben) ist davon
+        // unabhaengig: die Bremse (`needsRefresh`) haelt einen bereits
+        // versorgten Ort billig, und der Rueckgabewert wird fuer nichts
+        // anderes gebraucht.
+        launchWearRefresh(applicationContext)
     }
 
     override fun onDestroy() {
