@@ -131,47 +131,34 @@ suspend fun refreshWearOfficial(context: Context, force: Boolean = false): Boole
 
 /**
  * Startet [refreshWearOfficial] fire-and-forget im datei-eigenen,
- * langlebigen [refreshScope] und ruft bei Erfolg [onUpdated] auf — fuer
- * `PrayerTileService`/`PrayerComplicationService`, die selbst KEINEN fuer
- * einen Netzabruf hinreichend langlebigen Scope halten (Begruendung an
- * [refreshScope]).
+ * langlebigen [refreshScope] und ruft bei Erfolg [notifyWearOfficialRefreshed]
+ * auf — fuer `PrayerTileService`/`PrayerComplicationService`, die selbst
+ * KEINEN fuer einen Netzabruf hinreichend langlebigen Scope halten
+ * (Begruendung an [refreshScope]).
  *
  * Nicht `context.lifecycleScope` oder ein per-Service-Feld: genau DAS war
  * der Fix-Runde-3-Befund — ein `scope.launch {...}` im Service-eigenen Scope
  * wird abgebrochen, sobald das System den Dienst kurz nach der Antwort
- * wieder loest, und `onUpdated` (der `requestUpdate`-Aufruf) feuert dann nur
- * noch, wenn der Abruf zufaellig schneller war als der Dienst lebte — also
- * fast nie im Zielfall (langsames Netz), fast immer nur dann, wenn die
- * Bremse ohnehin `false` geliefert haette.
+ * wieder loest, und das Neuzeichnen feuert dann nur noch, wenn der Abruf
+ * zufaellig schneller war als der Dienst lebte — also fast nie im Zielfall
+ * (langsames Netz), fast immer nur dann, wenn die Bremse ohnehin `false`
+ * geliefert haette.
  *
- * [onUpdated] laeuft im `try` mit: es ist fremder Code (bei beiden Diensten
- * ein Aufruf ins Tiles-/Komplikations-Framework, der eine
- * `RuntimeException` werfen kann, wenn das Ziel gerade nicht erreichbar
- * ist). Ein Fehlschlag DORT darf die Uhr nicht abstuerzen lassen — die
- * Zeiten sind zu dem Zeitpunkt bereits abgelegt, nur das Neuzeichnen
- * unterbleibt.
- *
- * [onUpdated] wird auf [Dispatchers.IO] aufgerufen, nicht auf dem
- * Haupt-Thread. Beide heutigen Aufrufer sind damit einverstanden
- * (`TileService.getUpdater(...).requestUpdate` und
- * `ComplicationDataSourceUpdateRequester.requestUpdateAll` sind
- * Thread-unabhaengige Anfragen ans System, keine UI-Aufrufe).
- *
- * Ruft bei Erfolg AUCH [WearVibration.reschedule] auf, vor [onUpdated]
- * (Fix-Runde 1, Important 2): ein erfolgreicher eigener Abruf kann eine
- * naechste Zeit erst verfuegbar machen (Notausgang aus, Uhr vorher ohne
- * amtliche Zeiten -> Kette abbestellt) oder eine bestehende naechste Zeit
- * verschieben. Ohne diesen Aufruf blieb die Kette nach einem Abbestellen tot,
- * bis Neustart, Ortswechsel oder das Umschalten des Vibrations-Schalters
- * selbst — [WearSyncApplier.apply] deckte nur den SYNC-Pfad ab, nicht den
- * eigenen Abruf der Uhr.
+ * Ruft bei Erfolg NICHT mehr einen aufruferspezifischen `onUpdated`-Lambda
+ * auf (Fix-Runde 2, Important 1 — vorher stiess `PrayerTileService` nur die
+ * Kachel an und `PrayerComplicationService` nur die Komplikation; ein
+ * eigener Abruf UEBER die Kachel liess die Komplikation deshalb genauso
+ * einfrieren wie einer ueber `MainActivity.onStart`, der ueberhaupt keine der
+ * beiden Oberflaechen anstiess). [notifyWearOfficialRefreshed] stoesst jetzt
+ * IMMER beide Oberflaechen an, unabhaengig davon, wer den Abruf ausgeloest
+ * hat — und ist derselbe gemeinsame Weg, den auch `MainActivity.onStart`
+ * nach einem erfolgreichen eigenen Abruf nimmt.
  */
-fun launchWearRefresh(context: Context, onUpdated: () -> Unit) {
+fun launchWearRefresh(context: Context) {
     refreshScope.launch {
         try {
             if (refreshWearOfficial(context)) {
-                WearVibration.reschedule(context)
-                onUpdated()
+                notifyWearOfficialRefreshed(context)
             }
         } catch (e: CancellationException) {
             throw e
@@ -179,6 +166,58 @@ fun launchWearRefresh(context: Context, onUpdated: () -> Unit) {
             android.util.Log.w("WearRefresh", "Auffrischen/Neuzeichnen fehlgeschlagen", e)
         }
     }
+}
+
+/**
+ * Alles, was nach einem ERFOLGREICHEN Abruf (`refreshWearOfficial() ==
+ * true`) passieren muss, damit keine der drei Oberflaechen (App, Kachel,
+ * Komplikation) auf einem veralteten Stand einfriert — geteilt zwischen
+ * [launchWearRefresh] (Kachel/Komplikation) und `MainActivity.onStart`
+ * (Fix-Runde 2, Important 1: beide nehmen jetzt denselben Weg statt jeder
+ * nur einen Teil der Heilung selbst zu erledigen).
+ *
+ * [WearVibration.reschedule] und [notifyWearSurfaces] laufen in GETRENNTEN
+ * `try`-Bloecken (Fix-Runde 2, Important 2): ein Fehlschlag beim
+ * Neubewerten der Vibrationskette (z. B. eine `IOException` beim
+ * DataStore-Lesen) darf das Neuzeichnen nicht verhindern — die Zeiten sind
+ * zu diesem Zeitpunkt bereits abgelegt, nur GENAU DAS wuerde sonst
+ * verloren gehen, wenn `reschedule` vor dem Neuzeichnen stuende und warf.
+ *
+ * Faengt jede Ausnahme selbst ab, statt sich auf einen Aufrufer-`try` zu
+ * verlassen: `MainActivity.onStart` hat (anders als [launchWearRefresh])
+ * keinen fuer Netzabrufe gedachten Rettungs-Scope wie [refreshScope], und
+ * `notifyWearSurfaces` ruft fremden Code (Tiles-/Komplikations-Framework),
+ * der werfen kann, wenn das Ziel gerade nicht erreichbar ist.
+ */
+suspend fun notifyWearOfficialRefreshed(context: Context) {
+    try {
+        WearVibration.reschedule(context)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        android.util.Log.w("WearRefresh", "Vibrationskette konnte nicht neu bewertet werden", e)
+    }
+    try {
+        notifyWearSurfaces(context)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        android.util.Log.w("WearRefresh", "Neuzeichnen (Komplikation/Kachel) fehlgeschlagen", e)
+    }
+}
+
+/**
+ * Stoesst Komplikation UND Kachel GEMEINSAM neu an — nie nur eine der
+ * beiden (Fix-Runde 1/2, Important 1). Geteilt zwischen
+ * [notifyWearOfficialRefreshed] und dem Notausgang-Toggle in
+ * `MainActivity` (dort ohne Netzabruf: die lokale Berechnung kann den
+ * Leerfall sofort aufloesen, ohne dass `refreshWearOfficial` je lief).
+ */
+fun notifyWearSurfaces(context: Context) {
+    androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
+        .create(context, android.content.ComponentName(context, PrayerComplicationService::class.java))
+        .requestUpdateAll()
+    androidx.wear.tiles.TileService.getUpdater(context).requestUpdate(PrayerTileService::class.java)
 }
 
 private suspend fun doRefresh(context: Context, force: Boolean): Boolean {

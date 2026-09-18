@@ -75,6 +75,17 @@ class MergeUpcomingTest {
         assertEquals(2, ergebnis.size)
     }
 
+    @Test fun `ein Gebet genau auf now wird ausgefiltert - nicht nur vergangene`() {
+        // Mutation `isAfter` -> `!isBefore` liesse den Grenzfall "genau jetzt"
+        // durchrutschen (beide Formen stimmen fuer Zeiten VOR und NACH now
+        // ueberein, nur bei GENAUER Gleichheit weichen sie ab) - dieser Fall
+        // deckt genau das ab (Fix-Runde 2, Minor 2).
+        val heute = tag("2026-09-18")
+        val now = heute.maghrib
+        val ergebnis = mergeUpcoming(heute, null, now, count = 6)
+        assertEquals(listOf(Prayer.ISHA), ergebnis.map { it.first })
+    }
+
     @Test fun `Reihenfolge bleibt chronologisch ueber die Tagesgrenze`() {
         val now = ZonedDateTime.of(LocalDate.parse("2026-09-18"), java.time.LocalTime.parse("21:00"), zone)
         val heute = tag("2026-09-18")

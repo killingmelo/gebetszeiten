@@ -69,16 +69,9 @@ class PrayerTileService : TileService() {
         // Antwort wieder, ein eigener Service-Scope wuerde also genau dann
         // abgebrochen, wenn der Abruf tatsaechlich noch liefe (Fix-Runde 3).
         // Die Wiederholungs-Bremse darin haelt das ausser am faelligen Ort
-        // billig. Nur bei einem ECHTEN neuen Zeitplan lohnt eine
-        // Neuzeichnung.
-        // `ctx` als eigene Variable, NICHT `applicationContext` direkt im
-        // Lambda: das waere ein implizites `this.getApplicationContext()`,
-        // das Lambda hielte also diese Service-INSTANZ bis zu 25 s ueber
-        // ihr `onDestroy` hinaus fest (Fix-Runde 4).
-        val ctx = applicationContext
-        launchWearRefresh(ctx) {
-            TileService.getUpdater(ctx).requestUpdate(PrayerTileService::class.java)
-        }
+        // billig. Stoesst bei Erfolg jetzt IMMER Komplikation UND Kachel an
+        // (Fix-Runde 2, Important 1), nicht nur diese Kachel selbst.
+        launchWearRefresh(applicationContext)
 
         // Leerfall (Task 16): weder amtliche Zeiten noch der Notausgang
         // liefern etwas fuer heute ODER morgen — kurzer Satz statt Zeiten,

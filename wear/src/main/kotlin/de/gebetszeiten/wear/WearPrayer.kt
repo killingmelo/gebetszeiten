@@ -12,23 +12,6 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
- * Shared prayer-time helpers for the watch. Prioritätskette wie am Phone,
- * ueber dieselbe [daySourceOrder] (Task 16, nicht mehr eine eigene Kette):
- * amtliche Zeiten (WearOfficialCache) → gebündelte Diyanet-Tabellen
- * (nearest ≤ 25 km) → Berechnung, und zwar NUR, wenn der Nutzer sie als
- * Notausgang eingeschaltet hat ([WearSettings.calculationFillsGaps]) —
- * sonst `null`, dieselbe Regel wie `PrayerProvider.daily` am Telefon: die
- * Uhr zeigt keine Zeit, fuer die sie nicht buergt.
- *
- * `useOnline` in [daySourceOrder] ist hier immer `true`: die Uhr hat keinen
- * eigenen "Online"-Schalter, [WearOfficialCache] wird in BEIDEN Flavors
- * abgefragt (der Sync vom Handy ist rein empfangend und laeuft auch im
- * offline-Flavor). Im ONLINE-Flavor traegt WearOfficialCache seit Aufgabe 6
- * zusaetzlich, was [refreshWearOfficial] selbst abgerufen hat — der Sync
- * bleibt zwar weiterhin empfangend, ist aber nicht mehr der einzige Weg, wie
- * amtliche Zeiten in den Cache kommen.
- */
-/**
  * Reine Verschmelzung von (ggf. fehlenden) heutigen/morgigen Zeiten zur
  * Liste der naechsten [count] Gebete nach [now] — herausgezogen aus
  * [WearPrayer.upcoming], damit die Leerfall-Faelle (ein oder beide Tage
@@ -47,6 +30,23 @@ internal fun mergeUpcoming(
         .filter { it.first != Prayer.SUNRISE && it.second.isAfter(now) }
         .take(count)
 
+/**
+ * Shared prayer-time helpers for the watch. Prioritätskette wie am Phone,
+ * ueber dieselbe [daySourceOrder] (Task 16, nicht mehr eine eigene Kette):
+ * amtliche Zeiten (WearOfficialCache) → gebündelte Diyanet-Tabellen
+ * (nearest ≤ 25 km) → Berechnung, und zwar NUR, wenn der Nutzer sie als
+ * Notausgang eingeschaltet hat ([WearSettings.calculationFillsGaps]) —
+ * sonst `null`, dieselbe Regel wie `PrayerProvider.daily` am Telefon: die
+ * Uhr zeigt keine Zeit, fuer die sie nicht buergt.
+ *
+ * `useOnline` in [daySourceOrder] ist hier immer `true`: die Uhr hat keinen
+ * eigenen "Online"-Schalter, [WearOfficialCache] wird in BEIDEN Flavors
+ * abgefragt (der Sync vom Handy ist rein empfangend und laeuft auch im
+ * offline-Flavor). Im ONLINE-Flavor traegt WearOfficialCache seit Aufgabe 6
+ * zusaetzlich, was [refreshWearOfficial] selbst abgerufen hat — der Sync
+ * bleibt zwar weiterhin empfangend, ist aber nicht mehr der einzige Weg, wie
+ * amtliche Zeiten in den Cache kommen.
+ */
 object WearPrayer {
 
     suspend fun today(context: Context, location: GeoLocation, zone: ZoneId): DailyPrayerTimes? =

@@ -1,7 +1,6 @@
 package de.gebetszeiten.wear
 
 import android.app.PendingIntent
-import android.content.ComponentName
 import android.content.Intent
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationText
@@ -12,7 +11,6 @@ import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
 import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import androidx.wear.watchface.complications.data.TimeRange
-import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import androidx.wear.watchface.complications.datasource.ComplicationDataTimeline
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.ComplicationDataSourceService
@@ -68,17 +66,11 @@ class PrayerComplicationService : ComplicationDataSourceService() {
         // `launchWearRefresh` laeuft im datei-eigenen Scope von
         // `WearRefresh.kt`, nicht in einem (hier gar nicht mehr vorhandenen)
         // Service-Scope, der laengst weg waere, bevor ein langsamer Abruf
-        // fertig ist. Nur bei echtem neuen Zeitplan neu anfordern.
-        // `ctx` als eigene Variable, NICHT `applicationContext` direkt im
-        // Lambda: das waere ein implizites `this.getApplicationContext()`,
-        // das Lambda hielte also diese Service-INSTANZ bis zu 25 s ueber
-        // ihr `onDestroy` hinaus fest (Fix-Runde 4).
-        val ctx = applicationContext
-        launchWearRefresh(ctx) {
-            ComplicationDataSourceUpdateRequester
-                .create(ctx, ComponentName(ctx, PrayerComplicationService::class.java))
-                .requestUpdateAll()
-        }
+        // fertig ist. Stoesst bei Erfolg jetzt IMMER Komplikation UND Kachel
+        // an (Fix-Runde 2, Important 1) - `applicationContext` statt `this`,
+        // damit das Lambda diese Service-INSTANZ nicht ueber ihr `onDestroy`
+        // hinaus festhaelt (Fix-Runde 4).
+        launchWearRefresh(applicationContext)
 
         // Leerfall (Task 16): weder amtliche Zeiten noch der Notausgang
         // liefern etwas fuer heute ODER morgen — kurzer Satz statt Zeit,
@@ -166,11 +158,13 @@ class PrayerComplicationService : ComplicationDataSourceService() {
      *  Zeitpunkt, an dem diese Antwort automatisch ablaeuft; das System
      *  fragt stattdessen bei Bedarf erneut an.
      *
-     *  Fix-Runde 1, Important 4: `ShortTextComplicationData` ist vertraglich
+     *  Fix-Runde 1/2, Important 4: `ShortTextComplicationData` ist vertraglich
      *  auf rund sieben Zeichen ausgelegt (dort standen vorher "17:37"/"Asr")
      *  — der lange Satz aus `no_times_notice` ("Keine amtlichen Zeiten", 22
-     *  Zeichen) wuerde im sichtbaren Text abgeschnitten. Deshalb zwei
-     *  Formen: die KURZE (`no_times_notice_short`) sichtbar, die LANGE als
+     *  Zeichen) wuerde im sichtbaren Text abgeschnitten, und selbst die erste
+     *  Kuerzung ("keine Zeiten", 12 Zeichen) noch. Deshalb zwei Formen: die
+     *  KURZE (`no_times_notice_short` = "Keine", 5 Zeichen, grossgeschrieben
+     *  wie die uebrigen Komplikationstexte) sichtbar, die LANGE als
      *  `contentDescription`, damit Vorlesedienste trotzdem den vollen Satz
      *  bekommen. */
     private fun noTimesData(): ComplicationData {
