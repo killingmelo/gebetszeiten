@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import de.gebetszeiten.core.prayertimes.Karaha
 import de.gebetszeiten.data.AppSettings
+import de.gebetszeiten.prayer.NextPrayer
 import de.gebetszeiten.prayer.PrayerProvider
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -26,11 +27,26 @@ object PrayerAlarmScheduler {
 
     suspend fun scheduleNext(context: Context, settings: AppSettings, zone: ZoneId = ZoneId.systemDefault()) {
         val now = ZonedDateTime.now(zone)
-        // Keine Zeiten unter den aktuellen Einstellungen: nichts zu planen.
-        val next = PrayerProvider.next(context, settings, zone, now) ?: return
         val alarmManager = context.getSystemService(AlarmManager::class.java)
-
-        setAlarm(alarmManager, next.time.toInstant().toEpochMilli(), pendingIntent(context, REQUEST_CODE, ACTION_PRAYER))
+        // Keine Zeiten unter den aktuellen Einstellungen: der Gebets-Wecker
+        // wird ABBESTELLT, nicht unangetastet gelassen — sonst bliebe ein
+        // frueher gesetzter Wecker stehen und feuerte spaeter auf eine
+        // veraltete Zeit. Bis Aufgabe 13 kehrte diese Funktion hier per
+        // fruehem `return` zurueck, BEVOR ueberhaupt etwas abbestellt wurde
+        // — auch die beiden Aufrufe unten liefen dann gar nicht erst, und
+        // Vorlauf- wie Stufen-Wecker blieben ebenfalls stehen, obwohl ihre
+        // eigene Null-Behandlung (unten) laengst richtig war.
+        val next = PrayerProvider.next(context, settings, zone, now)
+        val prayerAlarm = pendingIntent(context, REQUEST_CODE, ACTION_PRAYER)
+        // Die eigentliche Entscheidung — Zeit oder Abbestellen — steht als
+        // reine Funktion in `mainAlarmTriggerAtMillis`, ohne Context und
+        // damit im Test pruefbar; hier wird nur noch verdrahtet.
+        val trigger = mainAlarmTriggerAtMillis(next)
+        if (trigger != null) {
+            setAlarm(alarmManager, trigger, prayerAlarm)
+        } else {
+            alarmManager.cancel(prayerAlarm)
+        }
         schedulePreReminder(context, alarmManager, settings, zone, now)
         scheduleDisplayStep(context, alarmManager, settings, zone, now)
     }
@@ -146,6 +162,15 @@ object PrayerAlarmScheduler {
             alarmManager.cancel(pre)
         }
     }
+
+    /** Wohin der naechste Gebets-Wecker gestellt wird — oder `null`, wenn er
+     *  abbestellt werden muss, weil unter den aktuellen Einstellungen keine
+     *  Zeiten vorliegen. Herausgezogen nach demselben Muster wie
+     *  `displayStepBoundaries`/`nextDisplayBoundary`: ohne `Context` und
+     *  `AlarmManager`, also im Test pruefbar, auch wenn `scheduleNext`
+     *  selbst es wegen der Android-Naht nicht ist. */
+    internal fun mainAlarmTriggerAtMillis(next: NextPrayer?): Long? =
+        next?.time?.toInstant()?.toEpochMilli()
 
     private fun pendingIntent(context: Context, requestCode: Int, action: String): PendingIntent =
         PendingIntent.getBroadcast(
