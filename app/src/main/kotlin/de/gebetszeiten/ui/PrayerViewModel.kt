@@ -67,9 +67,10 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         val now = java.time.ZonedDateTime.now(zone)
         val active = PrayerProvider.currentlyActive(app, value, zone, now)
             ?.takeIf { it.prayer != de.gebetszeiten.core.prayertimes.Prayer.SUNRISE }
+        val next = PrayerProvider.nextPrayer(app, value, zone, now)
         PrayerNotifier.updateOngoing(
             app,
-            PrayerProvider.nextPrayer(app, value, zone, now),
+            next,
             value.persistentNotification,
             value.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
             active,
@@ -82,6 +83,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
             // Zeiten daneben.
             city = value.city,
         )
+        PrayerNotifier.updatePauseNotice(app, hasTimes = next != null)
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)
         // Zaehler hier, nicht in refreshOfficialNow: JEDER abgeschlossene

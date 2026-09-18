@@ -74,6 +74,12 @@ data class AppSettings(
     /** Bewusst gemerkte Orte (in der Reihenfolge des Hinzufügens). Unabhängig
      *  von [recentPlaces]: manuell und dauerhaft statt automatisch und flüchtig. */
     val favorites: List<Favorite> = emptyList(),
+    /** Ob die Pause-Meldung ("Keine amtlichen Zeiten — Erinnerungen
+     *  pausiert", Aufgabe 14) schon einmal gezeigt wurde. Systemzustand,
+     *  KEIN Einstellungswert vom Nutzer — deshalb schreibt [save] dieses
+     *  Feld bewusst nicht mit; nur [SettingsRepository.resolvePauseNotice]
+     *  darf es aendern (siehe dort zur Transaktion, die das erzwingt). */
+    val pauseNoticeShown: Boolean = false,
 ) {
     /**
      * True, wenn irgendeine Oberflaeche die Anzeige-Weckkette braucht
@@ -278,6 +284,7 @@ class SettingsRepository(private val context: Context) {
         val NOTIFICATION_COUNTDOWN = stringPreferencesKey("notification_countdown")
         val RECENT_PLACES = stringPreferencesKey("recent_places")
         val FAVORITES = stringPreferencesKey("favorites")
+        val PAUSE_NOTICE_SHOWN = booleanPreferencesKey("pause_notice_shown")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -356,6 +363,7 @@ class SettingsRepository(private val context: Context) {
             // Kein Vorgängerschlüssel, keine Migration: fehlt der Schlüssel,
             // ist die Liste leer — der richtige Startzustand.
             favorites = parseFavorites(prefs[Keys.FAVORITES]),
+            pauseNoticeShown = prefs[Keys.PAUSE_NOTICE_SHOWN] ?: AppSettings.DEFAULT.pauseNoticeShown,
         )
     }
 
@@ -389,6 +397,47 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.COUNTDOWN_MIGRATED] = true
             prefs[Keys.RECENT_PLACES] = serializeRecentPlaces(value.recentPlaces)
             prefs[Keys.FAVORITES] = serializeFavorites(value.favorites)
+            // PAUSE_NOTICE_SHOWN bewusst NICHT hier: es ist Systemzustand,
+            // kein Feld, das die Einstellungen-Oberflaeche setzt. Wuerde es
+            // hier aus `value.pauseNoticeShown` geschrieben, koennte ein
+            // Schnappschuss von VOR einem zwischenzeitlichen
+            // `resolvePauseNotice`-Aufruf dessen Ergebnis stillschweigend
+            // zuruecksetzen — dieselbe Fehlerklasse wie beim Wear-Cache
+            // (Aufgabe 5, migrateWithin): Lesen ausserhalb, Schreiben
+            // innerhalb einer eigenen Transaktion, blind.
         }
+    }
+
+    /**
+     * Trifft UND persistiert die Pause-Melde-Entscheidung ([pauseNotice]) in
+     * EINER DataStore-Transaktion. `PrayerNotifier.updatePauseNotice` wird
+     * von VIER Stellen gerufen (`PrayerAlarmReceiver` zweimal, `BootReceiver`,
+     * `PrayerViewModel`) — Boot gefolgt vom sofortigen App-Start etwa kann
+     * zwei davon nahezu gleichzeitig ausloesen.
+     *
+     * Laesen (`alreadyShown`), Entscheiden UND Schreiben liegen deshalb ALLE
+     * innerhalb von `dataStore.edit { }`, statt den Merker vorher zu lesen
+     * und das Ergebnis erst danach in einer zweiten Transaktion abzulegen —
+     * genau das Muster, das in Aufgabe 5 bei `WearOfficialCache.migrateWithin`
+     * schiefging: ein zwischenzeitlicher zweiter Aufruf saehe sonst denselben
+     * veralteten Stand und traefe dieselbe Entscheidung ein zweites Mal
+     * (zweimal posten/zuruecknehmen). `edit { }`-Aufrufe auf demselben
+     * DataStore werden von DataStore selbst serialisiert: der zweite
+     * gleichzeitige Aufruf laeuft immer NACH dem ersten und sieht dessen
+     * bereits geschriebenen Merker — er bekommt dann zuverlaessig [PauseNotice.NOTHING],
+     * unabhaengig davon, in welcher Reihenfolge die vier Aufrufer eintreffen.
+     */
+    suspend fun resolvePauseNotice(hasTimes: Boolean): de.gebetszeiten.notify.PauseNotice {
+        var decision = de.gebetszeiten.notify.PauseNotice.NOTHING
+        context.dataStore.edit { prefs ->
+            val alreadyShown = prefs[Keys.PAUSE_NOTICE_SHOWN] ?: AppSettings.DEFAULT.pauseNoticeShown
+            decision = de.gebetszeiten.notify.pauseNotice(hasTimes = hasTimes, alreadyShown = alreadyShown)
+            when (decision) {
+                de.gebetszeiten.notify.PauseNotice.SHOW -> prefs[Keys.PAUSE_NOTICE_SHOWN] = true
+                de.gebetszeiten.notify.PauseNotice.CLEAR -> prefs[Keys.PAUSE_NOTICE_SHOWN] = false
+                de.gebetszeiten.notify.PauseNotice.NOTHING -> Unit
+            }
+        }
+        return decision
     }
 }

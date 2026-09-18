@@ -51,9 +51,10 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     // redraw widget + persistent line, chain the next one.
                     val stepActive = PrayerProvider.currentlyActive(context, settings, zone, now)
                         ?.takeIf { it.prayer != Prayer.SUNRISE }
+                    val stepNext = PrayerProvider.nextPrayer(context, settings, zone, now)
                     PrayerNotifier.updateOngoing(
                         context,
-                        PrayerProvider.nextPrayer(context, settings, zone, now),
+                        stepNext,
                         settings.persistentNotification,
                         settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                         stepActive,
@@ -65,6 +66,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         // von `refreshOfficial`, das ein anderer sein kann.
                         city = settings.city,
                     )
+                    PrayerNotifier.updatePauseNotice(context, hasTimes = stepNext != null)
                     NextPrayerWidget().updateAll(context)
                     PrayerAlarmScheduler.scheduleNext(context, settings, zone)
                     return@launch
@@ -111,9 +113,10 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         )
                     }
                 }
+                val transitionNext = PrayerProvider.nextPrayer(context, settings, zone, now)
                 PrayerNotifier.updateOngoing(
                     context,
-                    PrayerProvider.nextPrayer(context, settings, zone, now),
+                    transitionNext,
                     settings.persistentNotification,
                     settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                     active,
@@ -126,6 +129,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     // einen ANDEREN Ort auf — der gehoert nicht hierher.
                     city = settings.city,
                 )
+                PrayerNotifier.updatePauseNotice(context, hasTimes = transitionNext != null)
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)
                 // Online-Flavor: amtlichen Cache auch ohne App-Öffnen frisch

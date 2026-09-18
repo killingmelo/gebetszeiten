@@ -28,9 +28,10 @@ class BootReceiver : BroadcastReceiver() {
                 PrayerNotifier.ensureChannel(context)
                 val active = PrayerProvider.currentlyActive(context, settings, zone, now)
                     ?.takeIf { it.prayer != de.gebetszeiten.core.prayertimes.Prayer.SUNRISE }
+                val next = PrayerProvider.nextPrayer(context, settings, zone, now)
                 PrayerNotifier.updateOngoing(
                     context,
-                    PrayerProvider.nextPrayer(context, settings, zone, now),
+                    next,
                     settings.persistentNotification,
                     settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                     active,
@@ -42,6 +43,7 @@ class BootReceiver : BroadcastReceiver() {
                     // die Zeiten oben kommen.
                     city = settings.city,
                 )
+                PrayerNotifier.updatePauseNotice(context, hasTimes = next != null)
                 NextPrayerWidget().updateAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)
             } finally {

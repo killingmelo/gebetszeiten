@@ -28,6 +28,7 @@ object PrayerNotifier {
     private const val NOTIFICATION_ID = 1
     private const val ONGOING_ID = 2
     private const val PRE_ID = 3
+    private const val PAUSE_NOTICE_ID = 4
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     fun ensureChannel(context: Context) {
@@ -333,5 +334,60 @@ object PrayerNotifier {
             }
             .build()
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Meldet EINMAL, dass Wecker und Dauerbenachrichtigung mangels amtlicher
+     * Zeiten schweigen (Aufgabe 14) — und zieht die Meldung zurueck, sobald
+     * wieder Zeiten da sind. [hasTimes] ist `PrayerProvider.nextPrayer(...)
+     * != null`, dasselbe Signal, an dem [updateOngoing] oben schon erkennt,
+     * ob es ueberhaupt eine Dauerbenachrichtigung geben kann — hier bewusst
+     * UNABHAENGIG von `enabled`/`persistentNotification`: die WECKER
+     * schweigen auch, wenn die Dauerbenachrichtigung nie eingeschaltet war.
+     *
+     * Eine ZWEITE, EIGENE Benachrichtigung ([PAUSE_NOTICE_ID]), nicht die
+     * Dauerbenachrichtigung ([ONGOING_ID]) wiederbelebt: die entfernt
+     * [updateOngoing] bei fehlenden Zeiten bereits korrekt (seit 8d5dd7c) —
+     * genau darum verschwindet mit ihr jeder Hinweis lautlos, und diese
+     * Funktion soll den Ausfall gerade SICHTBAR machen, nicht die stumme
+     * Entfernung nachahmen.
+     *
+     * Auf dem BESTEHENDEN stillen Kanal [CHANNEL_ID] ("Gebetszeiten
+     * (still)"), nicht auf einem eigenen: inhaltlich ist es eine
+     * Gebetszeiten-Meldung, sie soll IMMER lautlos bleiben — unabhaengig von
+     * `reminderStyle`, das nur fuer die Gebets-ERINNERUNGEN gilt, nicht fuer
+     * einen Systemhinweis über deren Ausfall — und ein zusaetzlicher Kanal
+     * waere ein weiterer Dauereintrag in den System-Benachrichtigungs-
+     * einstellungen fuer etwas, das im Idealfall nie und sonst hoechstens
+     * selten erscheint.
+     *
+     * Die Entscheidung selbst UND ihre Persistierung laufen atomar in
+     * [de.gebetszeiten.data.SettingsRepository.resolvePauseNotice] — siehe
+     * dort zum Rennen zwischen den VIER Aufrufstellen ([PrayerAlarmReceiver]
+     * zweimal, [BootReceiver], [PrayerViewModel][de.gebetszeiten.ui.
+     * PrayerViewModel]): nur eine davon bekommt tatsaechlich SHOW oder
+     * CLEAR, die anderen sehen danach den schon aktualisierten Merker und
+     * bekommen NOTHING.
+     */
+    @SuppressLint("MissingPermission") // guarded by canPost()
+    suspend fun updatePauseNotice(context: Context, hasTimes: Boolean) {
+        when (de.gebetszeiten.data.SettingsRepository(context).resolvePauseNotice(hasTimes)) {
+            PauseNotice.SHOW -> {
+                if (!canPost(context)) return
+                ensureChannel(context)
+                val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setContentTitle(context.getString(R.string.pause_notice_title))
+                    .setContentText(context.getString(R.string.pause_notice_text))
+                    .setContentIntent(contentIntent(context))
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setSilent(true)
+                    .setAutoCancel(true)
+                    .build()
+                NotificationManagerCompat.from(context).notify(PAUSE_NOTICE_ID, notification)
+            }
+            PauseNotice.CLEAR -> NotificationManagerCompat.from(context).cancel(PAUSE_NOTICE_ID)
+            PauseNotice.NOTHING -> Unit
+        }
     }
 }
