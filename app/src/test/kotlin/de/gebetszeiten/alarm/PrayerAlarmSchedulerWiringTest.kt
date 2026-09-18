@@ -8,21 +8,30 @@ import java.io.File
 /**
  * Die Verdrahtung von `scheduleNext` — das, was kein reiner Test sehen kann.
  *
- * `mainAlarmTriggerAtMillis` entscheidet Zeit-oder-Abbestellen fuer den
- * Gebets-Wecker und ist ohne Geraet pruefbar ([PrayerAlarmSchedulerTest]).
- * Ob `scheduleNext` diese Entscheidung auch wirklich UMSETZT — den Wecker
- * abbestellt statt ihn stehen zu lassen, und die Vorlauf- und Stufen-Wecker
- * dabei ueberhaupt noch aufruft —, ist es nicht: dafuer braeuchte es
- * `AlarmManager`, also Robolectric oder ein Geraet.
+ * `alarmPlan` entscheidet alle drei Ketten-Wecker und ist ohne Geraet
+ * pruefbar ([PrayerAlarmSchedulerTest]). Ob `scheduleNext` diese Entscheidung
+ * auch wirklich UMSETZT, ist es nicht: dafuer braeuchte es `AlarmManager`,
+ * also Robolectric oder ein Geraet.
  *
- * Genau in dieser Luecke lag der Fehler aus Aufgabe 9: `scheduleNext` kehrte
- * bei fehlenden Zeiten per `?: return` VOR jeder Abbestellung zurueck. Ein
- * reiner Test der Entscheidung allein haette das NICHT gefangen — die
- * Entscheidung selbst war ja nie falsch, nur wurde sie nirgends mehr
- * angewendet. Das Mittel ist das Idiom des Hauses: ein Test, der den
- * Quelltext liest — Praezedenz `OngoingWiringTest`, `NoNetworkInSharedCodeTest`,
- * `CountdownIconAssetsTest`.
+ * Eine erste Fassung dieses Tests pruefte nur Textvorkommen ("kein `return`
+ * im Rumpf", "die drei Aufrufe stehen da") — das fing die Regression aus
+ * Aufgabe 9 (fruehes `return`), aber NICHT ihre naheliegende zweite Form:
+ * dieselben drei Aufrufe HINTER eine eigene Bedingung verschachtelt
+ * (`if (trigger != null) { setAlarm(...); schedulePreReminder(...);
+ * scheduleDisplayStep(...) }`), was bei fehlenden Zeiten exakt denselben
+ * Effekt haette — alle vier alten Behauptungen blieben dabei gruen.
  *
+ * Ein Text-Test kann Verschachtelung nicht zuverlaessig beurteilen (jeder
+ * Versuch daran wird bruechig: Einrueckung, Klammertiefe). Deshalb pruefen
+ * wir nicht mehr WELCHE Aufrufe im Rumpf stehen, sondern die einzige
+ * Eigenschaft, die eine solche Verschachtelung strukturell ausschliesst:
+ * **`scheduleNext` enthaelt ueberhaupt keine eigene Verzweigung mehr** (kein
+ * `if`) — jede Entscheidung liegt in `alarmPlan`, hier wird nur noch
+ * angewendet. Wer eine Bedingung um die drei `applyAlarm`-Aufrufe legt, fuegt
+ * damit zwangsläufig ein `if` in den Rumpf ein und faellt hier auf.
+ *
+ * Praezedenz fuer das Idiom (Quelltext-Lese-Test statt Robolectric):
+ * `OngoingWiringTest`, `NoNetworkInSharedCodeTest`, `CountdownIconAssetsTest`.
  * Der gelesene Pfad steht als Gradle-Eingabe in `app/build.gradle.kts`
  * (`mainQuellsatz`, deckt den ganzen Quellsatz ab). Das Arbeitsverzeichnis
  * ist das Modul (`app/`), daher der relative Pfad.
@@ -32,29 +41,39 @@ class PrayerAlarmSchedulerWiringTest {
     private val scheduler = File("src/main/kotlin/de/gebetszeiten/alarm/PrayerAlarmScheduler.kt")
 
     @Test
-    fun `scheduleNext bestellt den Gebets-Wecker ab, statt ihn stehen zu lassen`() {
+    fun `scheduleNext verzweigt selbst nicht und bezieht seine Entscheidung aus alarmPlan`() {
         val rumpf = rumpfVon(ohneKommentareUndTexte(text()), "suspend fun scheduleNext(")
-        // Der Fehler aus Aufgabe 9 in einem Wort: ein frueher `return`, der
-        // die Abbestellung ueberspringt. Kommt er zurueck — gleich in
-        // welcher Form —, muss dieser Test sterben.
+        // Kein `if`: weder ein fruehes `return` (Aufgabe 9) noch eine
+        // Verschachtelung der drei Aufrufe (die naheliegende zweite Form)
+        // sind ohne ein `if` im Rumpf ueberhaupt moeglich.
         assertFalse(
-            "scheduleNext kehrt vorzeitig zurueck — genau die Regression aus Aufgabe 9, " +
-                "bei der alte Wecker stehen blieben, statt abbestellt zu werden",
+            "scheduleNext verzweigt selbst — die Entscheidung gehoert vollstaendig in alarmPlan, " +
+                "sonst kann sich die Verschachtelungs-Regression aus der Pruefung wieder einschleichen",
+            Regex("""\bif\s*\(""").containsMatchIn(rumpf),
+        )
+        assertFalse(
+            "scheduleNext kehrt vorzeitig zurueck — genau die Regression aus Aufgabe 9",
             rumpf.contains("return"),
         )
         assertTrue(
-            "scheduleNext bestellt den Gebets-Wecker nicht ab, wenn `mainAlarmTriggerAtMillis` null liefert",
-            rumpf.contains("alarmManager.cancel(prayerAlarm)"),
+            "scheduleNext bezieht seine Entscheidung nicht aus alarmPlan",
+            rumpf.contains("alarmPlan("),
+        )
+        // Alle drei Ketten-Wecker muessen ueber dieselbe, ungeteilte Anwendung
+        // laufen — sonst waere eine feature-spezifische Extra-Bedingung um
+        // eines der drei Felder wieder moeglich, ohne dass `if` im Rumpf
+        // selbst auftaucht (z. B. ein bedingter Methodenaufruf).
+        assertTrue(
+            "scheduleNext wendet den Gebets-Wecker nicht (mehr) über applyAlarm an",
+            rumpf.contains("applyAlarm(alarmManager, plan.prayerAtMillis,"),
         )
         assertTrue(
-            "scheduleNext ruft schedulePreReminder nicht mehr unbedingt auf — der Vorlauf-Wecker " +
-                "bliebe bei fehlenden Zeiten stehen",
-            rumpf.contains("schedulePreReminder(context, alarmManager, settings, zone, now)"),
+            "scheduleNext wendet den Vorlauf-Wecker nicht (mehr) über applyAlarm an",
+            rumpf.contains("applyAlarm(alarmManager, plan.preReminderAtMillis,"),
         )
         assertTrue(
-            "scheduleNext ruft scheduleDisplayStep nicht mehr unbedingt auf — der Stufen-Wecker " +
-                "bliebe bei fehlenden Zeiten stehen",
-            rumpf.contains("scheduleDisplayStep(context, alarmManager, settings, zone, now)"),
+            "scheduleNext wendet den Stufen-Wecker nicht (mehr) über applyAlarm an",
+            rumpf.contains("applyAlarm(alarmManager, plan.displayStepAtMillis,"),
         )
     }
 
