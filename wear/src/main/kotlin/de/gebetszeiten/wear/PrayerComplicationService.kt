@@ -160,17 +160,25 @@ class PrayerComplicationService : ComplicationDataSourceService() {
         return builder.build()
     }
 
-    /** Leerfall-Komplikation (Task 16): nur der geteilte Wortlaut aus
-     *  `no_times_notice`, ohne Titel (kein "naechstes Gebet") — Tippen
-     *  oeffnet weiterhin die App, wie im Normalfall. Kein `setValidTimeRange`:
-     *  ohne bekannte naechste Zeit gibt es keinen Zeitpunkt, an dem diese
-     *  Antwort automatisch ablaeuft; das System fragt stattdessen bei
-     *  Bedarf erneut an. */
+    /** Leerfall-Komplikation (Task 16): ohne Titel (kein "naechstes Gebet")
+     *  — Tippen oeffnet weiterhin die App, wie im Normalfall. Kein
+     *  `setValidTimeRange`: ohne bekannte naechste Zeit gibt es keinen
+     *  Zeitpunkt, an dem diese Antwort automatisch ablaeuft; das System
+     *  fragt stattdessen bei Bedarf erneut an.
+     *
+     *  Fix-Runde 1, Important 4: `ShortTextComplicationData` ist vertraglich
+     *  auf rund sieben Zeichen ausgelegt (dort standen vorher "17:37"/"Asr")
+     *  — der lange Satz aus `no_times_notice` ("Keine amtlichen Zeiten", 22
+     *  Zeichen) wuerde im sichtbaren Text abgeschnitten. Deshalb zwei
+     *  Formen: die KURZE (`no_times_notice_short`) sichtbar, die LANGE als
+     *  `contentDescription`, damit Vorlesedienste trotzdem den vollen Satz
+     *  bekommen. */
     private fun noTimesData(): ComplicationData {
-        val text = PlainComplicationText.Builder(getString(R.string.no_times_notice)).build()
+        val short = PlainComplicationText.Builder(getString(R.string.no_times_notice_short)).build()
+        val full = PlainComplicationText.Builder(getString(R.string.no_times_notice)).build()
         return ShortTextComplicationData.Builder(
-            text = text,
-            contentDescription = text,
+            text = short,
+            contentDescription = full,
         )
             .setTapAction(openAppPendingIntent())
             .build()

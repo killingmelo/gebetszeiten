@@ -78,7 +78,23 @@ class MainActivity : Activity() {
                         applicationContext,
                         !WearSettings.calculationFillsGaps(applicationContext),
                     )
+                    // Kann den Leerfall <-> Normalfall umschalten (Fix-Runde 1,
+                    // Important 2): die Vibrationskette muss neu bewertet
+                    // werden, sonst bleibt sie tot, obwohl gerade wieder eine
+                    // naechste Zeit verfuegbar wurde (oder umgekehrt).
+                    WearVibration.reschedule(applicationContext)
                 }
+                // Komplikation UND Kachel muessen das sofort spiegeln, nicht
+                // erst bei der naechsten natuerlichen Anfrage (Fix-Runde 1,
+                // Important 1): die Komplikation hat im Leerfall gar kein
+                // Ablaufdatum (siehe PrayerComplicationService.noTimesData)
+                // und wuerde sonst unbegrenzt einfrieren; die Kachel heilte
+                // sich sonst erst nach bis zu 30 Minuten (NO_TIMES_FRESHNESS_MILLIS).
+                androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
+                    .create(this@MainActivity, android.content.ComponentName(this@MainActivity, PrayerComplicationService::class.java))
+                    .requestUpdateAll()
+                androidx.wear.tiles.TileService.getUpdater(applicationContext)
+                    .requestUpdate(PrayerTileService::class.java)
                 refresh()
             }
         }
@@ -116,7 +132,14 @@ class MainActivity : Activity() {
         // sorgt dafuer, dass ein frisch versorgter Ort hier nichts mehr zu
         // tun hat, der Aufruf also billig bleibt.
         scope.launch {
-            withContext(Dispatchers.IO) { refreshWearOfficial(applicationContext) }
+            val refreshed = withContext(Dispatchers.IO) { refreshWearOfficial(applicationContext) }
+            // Fix-Runde 1, Important 2: derselbe Grund wie in
+            // `launchWearRefresh` (Kachel/Komplikation) - ein erfolgreicher
+            // eigener Abruf kann eine naechste Zeit erst verfuegbar machen,
+            // die Vibrationskette braucht dann eine neue Bewertung.
+            if (refreshed) {
+                withContext(Dispatchers.IO) { WearVibration.reschedule(applicationContext) }
+            }
             refresh()
         }
     }
@@ -262,6 +285,11 @@ class MainActivity : Activity() {
     )
 
     private fun applyState(state: ViewState) {
+        // Leerfall: die statische Ueberschrift "Naechstes Gebet" gehoert
+        // zum Namen darunter - ohne sie zu verstecken laese sich der Screen
+        // "Naechstes Gebet / Keine amtlichen Zeiten" (Fix-Runde 1, Minor 1).
+        findViewById<TextView>(R.id.nextPrayerHeading).visibility =
+            if (state.noTimes) View.GONE else View.VISIBLE
         findViewById<TextView>(R.id.heroName).apply {
             // Leerfall: kein "naechstes Gebet", also auch kein Name darueber -
             // der Satz in heroTime steht dann fuer sich.

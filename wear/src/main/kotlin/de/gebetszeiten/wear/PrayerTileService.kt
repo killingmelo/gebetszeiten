@@ -166,7 +166,14 @@ class PrayerTileService : TileService() {
 
     /** Leerfall-Kachel (Task 16): nur der geteilte Wortlaut aus
      *  `no_times_notice` statt Name+Uhrzeit — Tippen oeffnet weiterhin die
-     *  App, wie im Normalfall. */
+     *  App, wie im Normalfall.
+     *
+     *  Fix-Runde 1, Important 4: `androidx.wear.protolayout.material.
+     *  Text.Builder` setzt in seinem Konstruktor `setMaxLines(1)` — auf
+     *  einer kleinen runden Uhr passt "Keine amtlichen Zeiten" (22 Zeichen)
+     *  nicht in eine Zeile und wuerde abgeschnitten ("Keine amtlic…").
+     *  `setMaxLines(2)` explizit gesetzt, statt sich auf den Standard zu
+     *  verlassen. */
     private fun noTimesLayout(
         device: DeviceParametersBuilders.DeviceParameters,
     ): LayoutElementBuilders.LayoutElement {
@@ -180,6 +187,7 @@ class PrayerTileService : TileService() {
                 Text.Builder(this, getString(R.string.no_times_notice))
                     .setTypography(Typography.TYPOGRAPHY_BODY1)
                     .setColor(ColorBuilders.argb(0xFFFFFFFF.toInt()))
+                    .setMaxLines(2)
                     .build(),
             )
             .build()

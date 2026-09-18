@@ -13,19 +13,27 @@
     <string name="mode_clock">Anzeige: Uhrzeit</string>
     <string name="vibrate_on">Vibration: An</string>
     <string name="vibrate_off">Vibration: Aus</string>
-    <!-- Notausgang: Berechnung springt nur ein, wo amtliche Zeiten fehlen
-         (bis Task 16 hiess dies "Eigene Berechnung" und bedeutete "immer
-         rechnen") -->
-    <string name="settings_calculation_fallback">Notausgang: An</string>
-    <string name="settings_calculation_fallback_off">Notausgang: Aus</string>
+    <!-- Ersatzberechnung: springt nur ein, wo amtliche Zeiten fehlen (bis
+         Task 16 hiess dies "Eigene Berechnung" und bedeutete "immer
+         rechnen"). Selbsterklaerend gewaehlt (Fix-Runde 1, Rueckmeldung zum
+         Wortlaut) - die Uhr hat keinen Platz fuer einen erklaerenden
+         Untertext wie am Telefon ("Berechnung als Notausgang"). -->
+    <string name="settings_calculation_fallback">Ersatzberechnung: An</string>
+    <string name="settings_calculation_fallback_off">Ersatzberechnung: Aus</string>
     <string name="cemaat_on">Cemaat morgens: An</string>
     <string name="cemaat_off">Cemaat morgens: Aus</string>
 
-    <!-- Leerfall (Task 16): weder amtliche Zeiten noch ein eingeschalteter
-         Notausgang liefern etwas. Ein einziger Wortlaut, dreimal verwendet
-         (App, Kachel, Komplikation) - auf der Uhr ist kein Platz fuer einen
-         Ortsnamen. -->
+    <!-- Leerfall (Task 16): weder amtliche Zeiten noch eine eingeschaltete
+         Ersatzberechnung liefern etwas. Zwei Formen, je EINMAL definiert
+         (Fix-Runde 1, Important 4 - eine gemeinsame Form scheitert an der
+         physischen Zeichengrenze der Komplikation):
+         - die LANGE Form fuer App, Kachel-Text und die contentDescription
+           der Komplikation (Vorlesedienste bekommen den ganzen Satz).
+         - die KURZE Form fuer den sichtbaren Text der Komplikation
+           (ShortTextComplicationData ist vertraglich auf ~7 Zeichen
+           ausgelegt, "Keine amtlichen Zeiten" wuerde dort abgeschnitten). -->
     <string name="no_times_notice">Keine amtlichen Zeiten</string>
+    <string name="no_times_notice_short">keine Zeiten</string>
 
     <!-- MainActivity: derived congregation row label -->
     <string name="label_cemaat">Cemaat (Gemeinschaft)</string>

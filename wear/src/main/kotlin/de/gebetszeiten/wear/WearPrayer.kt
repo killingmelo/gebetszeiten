@@ -28,6 +28,25 @@ import java.time.ZonedDateTime
  * bleibt zwar weiterhin empfangend, ist aber nicht mehr der einzige Weg, wie
  * amtliche Zeiten in den Cache kommen.
  */
+/**
+ * Reine Verschmelzung von (ggf. fehlenden) heutigen/morgigen Zeiten zur
+ * Liste der naechsten [count] Gebete nach [now] — herausgezogen aus
+ * [WearPrayer.upcoming], damit die Leerfall-Faelle (ein oder beide Tage
+ * `null`) OHNE Robolectric testbar sind (Praezedenz: [SyncDecision] im
+ * selben Modul, ebenfalls eine reine Verschmelzungs-/Auswahlfunktion neben
+ * einem Context-verdrahteten Aufrufer). Sunrise ist nur das Ende von Fajrs
+ * Fenster, kein eigenes Gebet, und wird deshalb ausgefiltert.
+ */
+internal fun mergeUpcoming(
+    today: DailyPrayerTimes?,
+    tomorrow: DailyPrayerTimes?,
+    now: ZonedDateTime,
+    count: Int,
+): List<Pair<Prayer, ZonedDateTime>> =
+    ((today?.ordered() ?: emptyList()) + (tomorrow?.ordered() ?: emptyList()))
+        .filter { it.first != Prayer.SUNRISE && it.second.isAfter(now) }
+        .take(count)
+
 object WearPrayer {
 
     suspend fun today(context: Context, location: GeoLocation, zone: ZoneId): DailyPrayerTimes? =
@@ -58,9 +77,7 @@ object WearPrayer {
     ): List<Pair<Prayer, ZonedDateTime>> {
         val today = daily(context, location, now.toLocalDate(), zone)
         val tomorrow = daily(context, location, now.toLocalDate().plusDays(1), zone)
-        return ((today?.ordered() ?: emptyList()) + (tomorrow?.ordered() ?: emptyList()))
-            .filter { it.first != Prayer.SUNRISE && it.second.isAfter(now) }
-            .take(count)
+        return mergeUpcoming(today, tomorrow, now, count)
     }
 
     /** Sync-Cache → amtliche Tabelle → Berechnung (nur als Notausgang), oder

@@ -156,11 +156,21 @@ suspend fun refreshWearOfficial(context: Context, force: Boolean = false): Boole
  * (`TileService.getUpdater(...).requestUpdate` und
  * `ComplicationDataSourceUpdateRequester.requestUpdateAll` sind
  * Thread-unabhaengige Anfragen ans System, keine UI-Aufrufe).
+ *
+ * Ruft bei Erfolg AUCH [WearVibration.reschedule] auf, vor [onUpdated]
+ * (Fix-Runde 1, Important 2): ein erfolgreicher eigener Abruf kann eine
+ * naechste Zeit erst verfuegbar machen (Notausgang aus, Uhr vorher ohne
+ * amtliche Zeiten -> Kette abbestellt) oder eine bestehende naechste Zeit
+ * verschieben. Ohne diesen Aufruf blieb die Kette nach einem Abbestellen tot,
+ * bis Neustart, Ortswechsel oder das Umschalten des Vibrations-Schalters
+ * selbst — [WearSyncApplier.apply] deckte nur den SYNC-Pfad ab, nicht den
+ * eigenen Abruf der Uhr.
  */
 fun launchWearRefresh(context: Context, onUpdated: () -> Unit) {
     refreshScope.launch {
         try {
             if (refreshWearOfficial(context)) {
+                WearVibration.reschedule(context)
                 onUpdated()
             }
         } catch (e: CancellationException) {

@@ -80,6 +80,17 @@ android {
     }
 }
 
+// CalculationFillsGapsMigrationWiringTest liest WearSettings.kt zur Laufzeit
+// von der Platte (quelltextlesender Waechter statt Robolectric). Ohne diese
+// Deklaration gilt der Test als UP-TO-DATE, obwohl sich genau die Datei
+// geaendert hat, gegen die er verteidigt — Praezedenz `mainQuellsatz` in
+// app/build.gradle.kts.
+tasks.withType<Test>().configureEach {
+    inputs.dir(file("src/main/kotlin"))
+        .withPropertyName("mainQuellsatz")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 dependencies {
     implementation(project(":core-prayertimes"))
 

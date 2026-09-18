@@ -17,6 +17,7 @@
         android:paddingBottom="52dp">
 
         <TextView
+            android:id="@+id/nextPrayerHeading"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/label_naechstes_gebet"
