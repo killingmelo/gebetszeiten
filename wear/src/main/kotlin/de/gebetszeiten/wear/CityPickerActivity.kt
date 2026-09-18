@@ -1,7 +1,6 @@
 package de.gebetszeiten.wear
 
 import android.app.Activity
-import android.content.ComponentName
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
@@ -9,8 +8,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import androidx.wear.tiles.TileService
-import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -74,11 +71,11 @@ class CityPickerActivity : Activity() {
         // New location = new times: re-arm the vibration chain.
         runBlocking { WearVibration.reschedule(applicationContext) }
         // One-off refresh so tile and complication show the new location
-        // immediately instead of at their next natural validity boundary.
-        TileService.getUpdater(this).requestUpdate(PrayerTileService::class.java)
-        ComplicationDataSourceUpdateRequester
-            .create(this, ComponentName(this, PrayerComplicationService::class.java))
-            .requestUpdateAll()
+        // immediately instead of at their next natural validity boundary -
+        // derselbe geteilte Weg wie der Notausgang-Toggle in MainActivity
+        // und notifyWearOfficialRefreshed (WearRefresh.kt), statt die beiden
+        // Anstoesse hier ein weiteres Mal einzeln zu schreiben.
+        notifyWearSurfaces(applicationContext)
         finish()
     }
 }
