@@ -108,7 +108,11 @@ object PrayerProvider {
      *  Ort. Der Nutzer meint damit, was er vor sich sieht — nicht einen
      *  Favoriten am anderen Ende der Liste. */
     suspend fun refreshOfficial(context: Context, settings: AppSettings, force: Boolean = false) {
-        if (!settings.useOnline || settings.useCalculated) return
+        // War von Hand `!settings.useOnline || settings.useCalculated`
+        // geschrieben - exakt `!canFetchOfficial()`, nur an einer fuenften
+        // Stelle. Aufgabe 15 passt canFetchOfficial() an, wenn useCalculated
+        // in calculationFillsGaps umbenannt wird; diese Zeile muss mitziehen.
+        if (!settings.canFetchOfficial()) return
         val cache = OfficialTimesCache(context)
         val today = LocalDate.now()
         val now = System.currentTimeMillis()

@@ -95,16 +95,22 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
         // EINE Zeile fuer den ganzen Monat, sobald mindestens ein Tag ohne
         // Zeiten dabei ist - nicht je Zeile wiederholt (die einzelnen Zeilen
         // markieren ihre leeren Spalten selbst mit "—", siehe MonatRow).
-        if (list != null && list.any { !it.hasTimes }) {
+        // monthNoTimesNotice (nicht noTimesNotice.headline - Fix-Runde 1):
+        // ein EINZELNER leerer Tag heisst nicht "keine amtlichen Zeiten fuer
+        // diesen Ort", nur nicht fuer DIESEN Tag.
+        val emptyDays = list?.count { !it.hasTimes } ?: 0
+        if (list != null && emptyDays > 0) {
             Text(
-                de.gebetszeiten.prayer.noTimesNotice(
+                de.gebetszeiten.prayer.monthNoTimesNotice(
                     city = settings.city,
                     // Dieselbe Funktion wie canFetch (SettingsSheet.kt) und in
                     // HeuteContent: settings.useOnline ist seit der
                     // Flavor-Klemmung in SettingsRepository (useOnlineFromPrefs)
                     // bereits invariant false im Offline-Flavor.
                     onlineEnabled = settings.canFetchOfficial(),
-                ).headline,
+                    emptyDays = emptyDays,
+                    totalDays = list.size,
+                ),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
