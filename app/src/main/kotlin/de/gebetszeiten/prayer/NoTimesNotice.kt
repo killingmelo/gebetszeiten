@@ -42,6 +42,32 @@ fun noTimesNotice(city: String, onlineEnabled: Boolean): NoTimesNotice {
 }
 
 /**
+ * Der Ein-Tag-Entscheid fuer das Widget (Aufgabe 12): WELCHER Zustand
+ * gezeigt wird (Zeit vorhanden → nichts zu sagen; keine Zeit → der Hinweis)
+ * und mit WELCHEM Wahrheitswert `onlineEnabled` in [noTimesNotice] einfliesst.
+ * Das ist reine Logik, kein Glance/Context, und gehoert deshalb hierher statt
+ * in `NextPrayerWidget.kt` — dort waere sie ohne Robolectric nicht pruefbar
+ * (die `GlanceAppWidget`-Verdrahtung selbst bleibt das zu Recht), hier ist
+ * sie es.
+ *
+ * [next] ist `PrayerProvider.next(...)`s Ergebnis: `null` heisst „keine
+ * amtlichen Zeiten unter den aktuellen Einstellungen" (derselbe Leerfall wie
+ * in der Heute-/Monatsansicht), nicht-`null` heisst „es gibt eine Uhrzeit,
+ * die Karte zeigt sie normal" — dann liefert diese Funktion `null` zurueck,
+ * das Widget zeigt also KEINEN Hinweis.
+ *
+ * Liefert das VOLLE [NoTimesNotice] zurueck, nicht nur die Ueberschrift:
+ * `headline` allein aendert sich nie mit `onlineEnabled` (nur `detail` und
+ * `showFetch` tun das, siehe [noTimesNotice]) — ein Rueckgabetyp `String?`
+ * koennte die Weiterleitung von `onlineEnabled` also gar nicht pruefbar
+ * machen, selbst mit einem Test. Der Aufrufer (das Widget) liest weiterhin
+ * nur `.headline` aus — auf einem 110×40dp-Widget ist fuer `detail` kein
+ * Platz.
+ */
+fun widgetNotice(next: NextPrayer?, city: String, onlineEnabled: Boolean): NoTimesNotice? =
+    if (next != null) null else noTimesNotice(city, onlineEnabled)
+
+/**
  * Der Satzteil, der sagt, was der Nutzer TUN kann — geteilt zwischen
  * [noTimesNotice] (Ein-Tag-Fall, Heute-Ansicht) und [monthNoTimesNotice]
  * (Monats-Fall), damit beide fuer dieselbe Handlung denselben Wortlaut

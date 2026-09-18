@@ -36,7 +36,7 @@ import de.gebetszeiten.ui.theme.LightColors
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.prayer.hijriTextShort
 import de.gebetszeiten.prayer.labelRes
-import de.gebetszeiten.prayer.noTimesNotice
+import de.gebetszeiten.prayer.widgetNotice
 import de.gebetszeiten.prayer.remainingStepLabel
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -70,10 +70,21 @@ class NextPrayerWidget : GlanceAppWidget() {
         // letzten (echten, aber veralteten) Stand einzufrieren, sagt das
         // Widget das jetzt selbst - derselbe Wortlaut wie Heute- und
         // Monatsansicht (Aufgabe 10/11), hier nur die Kurzform (`headline`,
-        // kein `detail` - dafuer ist auf einem Widget kein Platz).
+        // kein `detail` - dafuer ist auf einem Widget kein Platz). WELCHER
+        // Zustand gezeigt wird und mit welchem `onlineEnabled`-Wahrheitswert:
+        // das entscheidet `widgetNotice` (reine Funktion, `NoTimesNotice.kt`,
+        // mit Tests) - hier steht nur noch der Aufruf und die Auswahl von
+        // `.headline`. Verzweigt bewusst auf `next == null` (nicht auf
+        // `notice == null`), damit `next` fuer den Rest der Funktion vom
+        // Compiler als nicht-nullbar erkannt wird - ohne zweite Deklaration
+        // und ohne `!!`.
         val next = PrayerProvider.next(context, settings, zone, now)
         if (next == null) {
-            val notice = noTimesNotice(settings.city, settings.canFetchOfficial())
+            // `widgetNotice(null, ...)` liefert laut eigenem Vertrag immer
+            // ein Ergebnis - `?: return` statt `!!`, derselbe defensive
+            // Rueckgabepfad wie beim Tagesplan weiter unten, falls sich das
+            // je auseinanderentwickelt.
+            val notice = widgetNotice(next, settings.city, settings.canFetchOfficial()) ?: return
             val transparent = settings.widgetTransparent
             provideContent {
                 GlanceTheme(colors = ColorProviders(light = LightColors, dark = DarkColors)) {
