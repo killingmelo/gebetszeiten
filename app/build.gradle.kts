@@ -90,7 +90,7 @@ android {
     }
 }
 
-// Sechs Unit-Tests oeffnen zur Laufzeit Dateien direkt im Arbeitsbaum, statt
+// Sieben Unit-Tests oeffnen zur Laufzeit Dateien direkt im Arbeitsbaum, statt
 // sie ueber den Klassenpfad zu beziehen:
 //
 //   CountdownIconAssetsTest, CountdownGlyphShapeTest  -> die Drawables und
@@ -99,7 +99,8 @@ android {
 //   NoNetworkInSharedCodeTest                         -> die fuenf Manifeste
 //       (inkl. net-diyanet), den geteilten Quellsatz und die beiden
 //       build.gradle.kts (Modulkante net-diyanet)
-//   OngoingWiringTest, PrayerAlarmSchedulerWiringTest -> app/src/main/kotlin
+//   OngoingWiringTest, PrayerAlarmSchedulerWiringTest,
+//   CalculationFallbackMigrationWiringTest             -> app/src/main/kotlin
 //
 // Diese Pfade sind fuer Gradle keine Task-Eingaben: die Kotlin-Quellen von
 // app/src/main und core-prayertimes sind es mittelbar ueber die Uebersetzung,

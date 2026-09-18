@@ -32,6 +32,21 @@ class TimesSourceBadgeTest {
         )
     }
 
+    @Test fun `Index-Treffer schlaegt die Berechnung auch bei eingeschaltetem Notausgang (kein Bundle)`() {
+        // Fix-Runde 1: eine Mutation, die `calculationFillsGaps -> Calculated`
+        // vom letzten in den mittleren Rang schiebt (zwischen bundledName und
+        // officialPlace), ueberlebte bis hierhin ALLE zehn Tests - keiner
+        // pruefte "kein Bundle-Treffer, aber ein Index-Treffer, UND der
+        // Notausgang an". Genau das ist der Fall eines Auslands-Orts wie
+        // Serdivan (kein DE-Bundle, Index-Treffer Sakarya): ohne diesen Test
+        // haette die Mutation dort "Berechnet" statt "Amtlich · Sakarya"
+        // gezeigt, obwohl eine amtliche Quelle vorlag.
+        assertEquals(
+            TimesSourceBadge.Official("Sakarya", 2),
+            timesSourceBadge(null, sakarya, 2.1, calculationFillsGaps = true),
+        )
+    }
+
     @Test fun `Distanz wird kaufmaennisch gerundet`() {
         assertEquals(
             TimesSourceBadge.Official("Sakarya", 8),

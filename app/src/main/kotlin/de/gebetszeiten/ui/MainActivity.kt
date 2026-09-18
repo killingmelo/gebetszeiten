@@ -489,6 +489,21 @@ private fun HeuteContent(
                 showRemaining = settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
                 onKaraha = { karahaInfo = it },
             )
+            // Fix-Runde 1 (Aufgabe 15): stand bis hierhin AUSSERHALB dieses
+            // Zweigs, direkt hinter dem `if`/`else`. Im Leerfall (info ==
+            // null, NoTimesCard sichtbar) behauptete sie trotzdem "Berechnet
+            // · Diyanet-Methode" - obwohl NICHTS berechnet und NICHTS
+            // angezeigt wird. Vorbestehend seit Aufgabe 9/10, aber durch die
+            // neue Werkseinstellung (Notausgang ab Werk aus) sehen jetzt
+            // deutlich mehr Nutzer genau diesen Leerfall.
+            Text(
+                // Amtlich nennt die Stadt ("… · Nürnberg"); der berechnete String hat
+                // keinen Platzhalter, das Extra-Argument wird dort gefahrlos ignoriert.
+                text = stringResource(de.gebetszeiten.prayer.dataCreditRes(officialName != null), officialName ?: settings.city),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
         } else {
             NoTimesCard(
                 notice = de.gebetszeiten.prayer.noTimesNotice(
@@ -504,14 +519,6 @@ private fun HeuteContent(
                 onEnableCalculation = onEnableCalculation,
             )
         }
-        Text(
-            // Amtlich nennt die Stadt ("… · Nürnberg"); der berechnete String hat
-            // keinen Platzhalter, das Extra-Argument wird dort gefahrlos ignoriert.
-            text = stringResource(de.gebetszeiten.prayer.dataCreditRes(officialName != null), officialName ?: settings.city),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
     }
 
     karahaInfo?.let { (title, text) ->

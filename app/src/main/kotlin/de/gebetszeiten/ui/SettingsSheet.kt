@@ -843,11 +843,11 @@ internal fun LocationSettings(
                 }
             }
 
-            ToggleRow(stringResource(R.string.settings_use_calculated), settings.calculationFillsGaps) {
+            ToggleRow(stringResource(R.string.settings_calculation_fallback), settings.calculationFillsGaps) {
                 commit { copy(calculationFillsGaps = it) }
             }
             Text(
-                stringResource(R.string.settings_use_calculated_hint),
+                stringResource(R.string.settings_calculation_fallback_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

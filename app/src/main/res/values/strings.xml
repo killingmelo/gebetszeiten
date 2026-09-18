@@ -158,8 +158,8 @@
     <string name="settings_cemaat_hint">Zeigt unter Fajr die übliche Moschee-Gemeinschaftszeit: Sonnenaufgang minus Vorlauf (Diyanet-Praxis ≈30 Min). Berechnet, keine amtliche Zeit — die eigene Moschee kann abweichen.</string>
     <string name="settings_cemaat_offset">Vorlauf vor Sonnenaufgang</string>
     <string name="cemaat_offset_chip">%1$d Min</string>
-    <string name="settings_use_calculated">Berechnung als Notausgang</string>
-    <string name="settings_use_calculated_hint">Wenn für einen Tag keine amtlichen Diyanet-Zeiten vorliegen, die lokale astronomische Berechnung verwenden. Amtliche Zeiten haben immer Vorrang. Ist dies aus, zeigt die App für solche Tage gar keine Zeiten.</string>
+    <string name="settings_calculation_fallback">Berechnung als Notausgang</string>
+    <string name="settings_calculation_fallback_hint">Wenn für einen Tag keine amtlichen Diyanet-Zeiten vorliegen, die lokale astronomische Berechnung verwenden. Amtliche Zeiten haben immer Vorrang. Ist dies aus, zeigt die App für solche Tage gar keine Zeiten.</string>
     <string name="settings_remaining">Restzeit</string>
     <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit — eine Einstellung für alles: App, Widget, Sperrbildschirm und das Symbol in der Statusleiste. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
     <string name="settings_remaining_all">Überall</string>
