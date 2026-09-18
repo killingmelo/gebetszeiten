@@ -39,12 +39,38 @@ object WearSyncApplier {
      * dort drinnen, liesse genau das Fenster offen, das Fix-Runde 1 dieser
      * Aufgabe uebersehen hatte (ein zwischen Lesen und Schreiben
      * abgeschlossener eigener Abruf waere blind ueberschrieben worden).
+     *
+     * **Wirft nie ausser CancellationException** (Fix-Runde 4, Important 2).
+     * Bis dahin war nur der SCHLUSS gekapselt ([notifyWearOfficialRefreshed]
+     * faengt selbst ab), alles davor stand ohne `try`:
+     * [WearOfficialCache.syncedLocation] (`store.data.first()`),
+     * [WearOfficialCache.applySync] und [WearSettings.save] (beide
+     * `store.edit{}`) — keine davon faengt intern, eine `IOException` aus dem
+     * DataStore kam also ganz heraus. Der eine Aufrufer ([replayExisting])
+     * kapselte das selbst, der andere NICHT: [WearSyncListenerService] ruft
+     * diese Funktion per `runBlocking` auf einem Binder-Thread auf, wo eine
+     * entkommene Ausnahme unbehandelt an den Default-Handler geht — also in
+     * den Prozessabsturz.
      */
     suspend fun apply(context: Context, payload: SyncDecision.Payload) {
-        val synced = WearOfficialCache.syncedLocation(context)
-        val adopt = SyncDecision.shouldAdoptLocation(payload, synced?.first, synced?.second)
-        if (!WearOfficialCache.applySync(context, payload, adopt)) return
-        if (adopt) WearSettings.save(context, payload.city, payload.lat, payload.lng)
+        // Schon abgelegt? Dann muss das Neuzeichnen unten AUCH dann laufen,
+        // wenn erst danach etwas scheitert (z. B. `WearSettings.save` beim
+        // Ortswechsel) — dieselbe Regel wie in `notifyWearOfficialRefreshed`:
+        // was bereits geschrieben ist, darf nicht unsichtbar bleiben, nur
+        // weil ein spaeterer Schritt scheitert.
+        var abgelegt = false
+        try {
+            val synced = WearOfficialCache.syncedLocation(context)
+            val adopt = SyncDecision.shouldAdoptLocation(payload, synced?.first, synced?.second)
+            if (!WearOfficialCache.applySync(context, payload, adopt)) return
+            abgelegt = true
+            if (adopt) WearSettings.save(context, payload.city, payload.lat, payload.lng)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.w("WearSyncApplier", "Sync liess sich nicht anwenden", e)
+            if (!abgelegt) return
+        }
         // Neue Zeiten/neuer Ort: Vibrations-Kette neu armieren, Tile und
         // Complication einmalig auffrischen (danach wieder Zero-Wakeup) —
         // derselbe geteilte Weg wie nach einem eigenen Abruf

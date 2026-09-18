@@ -4,6 +4,7 @@ import android.app.Activity
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -47,7 +48,16 @@ class MainActivity : Activity() {
                         !WearSettings.showRemaining(applicationContext),
                     )
                 }
-                // The complication mirrors the mode — refresh it once.
+                // Nur die Komplikation, ABSICHTLICH nicht die Kachel (und
+                // damit bewusst NICHT der geteilte `notifyWearSurfaces`-Weg):
+                // der Modus-Schalter betrifft allein die Darstellungsform der
+                // naechsten Zeit (Uhrzeit ⇄ Restzeit), nicht die Zeiten selbst.
+                // Die Komplikation spiegelt den Modus (siehe
+                // `PrayerComplicationService`), die Kachel zeigt NIE die
+                // Restzeit — ein Kachel-Anstoss waere hier reine Arbeit ohne
+                // sichtbare Wirkung. Das ist also keine vergessene
+                // Handschrift, sondern die einzige Stelle, an der genau eine
+                // Oberflaeche richtig ist.
                 androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
                     .create(this@MainActivity, android.content.ComponentName(this@MainActivity, PrayerComplicationService::class.java))
                     .requestUpdateAll()
@@ -74,27 +84,46 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.calculationFillsGapsLabel).setOnClickListener {
             scope.launch {
                 withContext(Dispatchers.IO) {
-                    WearSettings.saveCalculationFillsGaps(
-                        applicationContext,
-                        !WearSettings.calculationFillsGaps(applicationContext),
-                    )
-                    // Kann den Leerfall <-> Normalfall umschalten (Fix-Runde 1,
-                    // Important 2): die Vibrationskette muss neu bewertet
-                    // werden, sonst bleibt sie tot, obwohl gerade wieder eine
-                    // naechste Zeit verfuegbar wurde (oder umgekehrt).
-                    WearVibration.reschedule(applicationContext)
-                    // Komplikation UND Kachel muessen das sofort spiegeln, nicht
-                    // erst bei der naechsten natuerlichen Anfrage (Fix-Runde 1,
-                    // Important 1): die Komplikation hat im Leerfall gar kein
-                    // Ablaufdatum (siehe PrayerComplicationService.noTimesData)
-                    // und wuerde sonst unbegrenzt einfrieren; die Kachel heilte
-                    // sich sonst erst nach bis zu 30 Minuten
-                    // (NO_TIMES_FRESHNESS_MILLIS). Derselbe geteilte Weg wie
-                    // `notifyWearOfficialRefreshed` (WearRefresh.kt) benutzt,
-                    // nur ohne den Netzabruf davor - die lokale Berechnung
-                    // loest den Leerfall sofort auf, kein Abruf noetig.
-                    notifyWearSurfaces(applicationContext)
+                    // Fix-Runde 4, Important 3: der Schreibvorgang braucht einen
+                    // eigenen `try`. `scope` ist ein blanker `MainScope` — kein
+                    // `SupervisorJob`, kein `CoroutineExceptionHandler` — eine
+                    // `IOException` aus dem DataStore ginge hier an den
+                    // Default-Handler und damit in den Prozessabsturz. Ein
+                    // fehlgeschlagenes Speichern heisst ausserdem: nichts hat
+                    // sich geaendert, also gibt es auch nichts anzustossen.
+                    try {
+                        WearSettings.saveCalculationFillsGaps(
+                            applicationContext,
+                            !WearSettings.calculationFillsGaps(applicationContext),
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        android.util.Log.w("MainActivity", "Notausgang liess sich nicht umschalten", e)
+                        return@withContext
+                    }
+                    // Der Umschalter kann den Leerfall <-> Normalfall kippen,
+                    // ganz OHNE Netzabruf (die lokale Berechnung loest den
+                    // Leerfall sofort auf). Genau dieselben Folgen wie nach
+                    // einem erfolgreichen Abruf, also auch derselbe geteilte,
+                    // defensiv gekapselte Weg (Fix-Runde 4, Important 3 —
+                    // vorher standen `WearVibration.reschedule` und
+                    // `notifyWearSurfaces` hier einzeln und ohne `try` von
+                    // Hand, die letzte verbliebene Handschrift):
+                    // - Vibrationskette neu bewerten (Fix-Runde 1, Important 2),
+                    //   sonst bleibt sie tot, obwohl gerade wieder eine
+                    //   naechste Zeit verfuegbar wurde (oder umgekehrt);
+                    // - Komplikation UND Kachel anstossen (Fix-Runde 1,
+                    //   Important 1): die Komplikation hat im Leerfall gar kein
+                    //   Ablaufdatum (siehe PrayerComplicationService.noTimesData)
+                    //   und wuerde sonst unbegrenzt einfrieren, die Kachel
+                    //   heilte sich erst nach bis zu 30 Minuten
+                    //   (NO_TIMES_FRESHNESS_MILLIS).
+                    notifyWearOfficialRefreshed(applicationContext)
                 }
+                // Die vierte Oberflaeche: dieser Screen. Ihn erreicht
+                // `notifyWearOfficialRefreshed` NICHT (das sind nur Kachel und
+                // Komplikation) — die Activity zeichnet sich selbst neu.
                 refresh()
             }
         }
@@ -129,9 +158,9 @@ class MainActivity : Activity() {
         // (online-Flavor; im offline-Flavor ein No-op ueber
         // `WearFetchProvider.isOnline`) — unabhaengig vom Sync vom Handy.
         //
-        // Fix-Runde 3, Important 1: NICHT mehr in einem eigenen
-        // `scope.launch { withContext(Dispatchers.IO) { ... } }` - das haengt
-        // am Activity-gebundenen `scope` (`MainScope`), den `onDestroy`
+        // Fix-Runde 3, Important 1: die FORTSETZUNG des Abrufs
+        // (Vibrationskette, Kachel, Komplikation) darf NICHT mehr am
+        // Activity-gebundenen `scope` (`MainScope`) haengen, den `onDestroy`
         // abbricht, sobald die Activity verschwindet (Handgelenk senken, App
         // wechseln) - und zwar GENAU dann, wenn ein bis zu 25 s laufender
         // Abruf ueber die Bluetooth-Strecke noch unterwegs ist. Der Abruf
@@ -145,11 +174,40 @@ class MainActivity : Activity() {
         //
         // `launchWearRefresh` startet Abruf UND Fortsetzung im selben
         // langlebigen Scope wie Kachel und Komplikation - derselbe geteilte
-        // Weg. Das Neuzeichnen DIESES Screens (`refresh()` oben) ist davon
-        // unabhaengig: die Bremse (`needsRefresh`) haelt einen bereits
-        // versorgten Ort billig, und der Rueckgabewert wird fuer nichts
-        // anderes gebraucht.
+        // Weg.
         launchWearRefresh(applicationContext)
+        // Fix-Runde 4, Important 1: das reicht fuer DIESEN Screen NICHT.
+        // `notifyWearOfficialRefreshed` stoesst ausschliesslich Kachel und
+        // Komplikation an (`notifyWearSurfaces`); die Activity kennt niemand.
+        // Ohne die folgenden Zeilen sah der Leerfall so aus: App oeffnen, der
+        // Abruf gelingt drei Sekunden spaeter, Kachel und Komplikation heilen -
+        // und genau der Bildschirm, auf den der Nutzer gerade schaut, zeigt
+        // weiter "Keine amtlichen Zeiten", bis er die App verlaesst und neu
+        // oeffnet. Das `refresh()` oben lief schon VOR dem Abruf.
+        //
+        // Der Abruf bleibt deshalb im langlebigen Scope (die Korrektur von
+        // Fix-Runde 3 wird nicht zurueckgenommen); dieser Aufruf haengt sich
+        // nur als ZWEITER Aufrufer an denselben Lauf: `SingleFlight` reicht ihm
+        // das Ergebnis des bereits laufenden Durchlaufs durch, es entsteht kein
+        // zweiter Netzabruf. Wird die Activity vorher zerstoert, bricht hier
+        // nur das `await()` ab - der Lauf selbst und die Anstoesse an Kachel,
+        // Komplikation und Vibrationskette haengen unveraendert am
+        // langlebigen Scope.
+        //
+        // (Kommt dieser Aufruf ausnahmsweise erst NACH dem Ende des gemeinsamen
+        // Laufs an, startet er einen eigenen - der endet dann an der Bremse
+        // `chooseTarget`/`needsRefresh` nach einem DataStore-Read mit `false`,
+        // kein zweiter Netzabruf.)
+        scope.launch {
+            // `refreshWearOfficial` wirft nie ausser CancellationException
+            // (siehe KDoc dort) - der `MainScope` hat zwar keinen
+            // Rettungs-Handler, braucht hier aber auch keinen eigenen `try`.
+            // `withContext(Dispatchers.IO)` wie beim Sync-Nachholpfad darueber:
+            // der Haupt-Thread wartet so an keiner Stelle auf den Slot der
+            // Buendelung.
+            val abgerufen = withContext(Dispatchers.IO) { refreshWearOfficial(applicationContext) }
+            if (abgerufen) refresh()
+        }
     }
 
     override fun onDestroy() {

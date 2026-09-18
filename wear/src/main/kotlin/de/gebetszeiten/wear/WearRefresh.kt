@@ -92,13 +92,16 @@ private val refreshSingleFlight = SingleFlight<Boolean>(refreshScope)
  * aufgerufen (ANR-Schwelle 5 s) — sie rufen diese Funktion deshalb NIE
  * direkt auf, sondern ueber [launchWearRefresh] (fire-and-forget im
  * datei-eigenen [refreshScope], siehe dort — NICHT im eigenen Service-Scope,
- * der stirbt, bevor `await()` zurueckkehrt). `MainActivity` ruft
- * [refreshWearOfficial] direkt auf, aber ebenfalls nicht-blockierend
- * (`scope.launch { withContext(Dispatchers.IO) { refreshWearOfficial(...) }
- * }`, ausserhalb des synchronen `onStart`-Pfads) — ihr eigener `MainScope`
- * ist lang genug lebendig (Aktivitaets-Lebenszyklus), und ein Abbruch dort
- * bedeutet ohnehin nur "niemand schaut mehr hin", der Abruf selbst laeuft
- * unbeeinflusst im geteilten [refreshScope] weiter (siehe [SingleFlight]).
+ * der stirbt, bevor `await()` zurueckkehrt). `MainActivity` geht BEIDE Wege
+ * (Fix-Runde 4, Important 1): [launchWearRefresh] traegt den Abruf samt
+ * Anstoessen an Kachel, Komplikation und Vibrationskette im langlebigen
+ * Scope, und daneben haengt sich `onStart` per `scope.launch {
+ * withContext(Dispatchers.IO) { refreshWearOfficial(...) } }` als zweiter
+ * Aufrufer an denselben Lauf — nur, um den eigenen Bildschirm neu zu
+ * zeichnen, den sonst niemand erreicht. Auch das nicht-blockierend und
+ * ausserhalb des synchronen `onStart`-Pfads; wird dieser zweite Aufrufer
+ * abgebrochen ("niemand schaut mehr hin"), laeuft der Abruf unbeeinflusst
+ * im geteilten [refreshScope] weiter (siehe [SingleFlight]).
  *
  * Offline-Flavor: [WearFetchProvider.isOnline] ist `false` — sofortige
  * Rueckkehr, ohne dass hier auch nur eine DataStore geoeffnet wird.
@@ -169,20 +172,40 @@ fun launchWearRefresh(context: Context) {
 }
 
 /**
- * Alles, was passieren muss, damit keine der drei Oberflaechen (App, Kachel,
- * Komplikation) auf einem veralteten Stand einfriert, nachdem sich etwas
- * geaendert haben KANN, das eine naechste Zeit betrifft. Vier Aufrufer, alle
- * gleichrangig behandelt statt die Heilung von Hand nachzubauen:
+ * Alles, was passieren muss, damit weder Kachel noch Komplikation auf einem
+ * veralteten Stand einfrieren, nachdem sich etwas geaendert haben KANN, das
+ * eine naechste Zeit betrifft.
+ *
+ * **Die App (Activity) gehoert ausdruecklich NICHT dazu.** Die Uhr hat VIER
+ * Oberflaechen, die heilen muessen — App, Kachel, Komplikation und die
+ * Vibrationskette —, aber diese Funktion erreicht nur drei davon:
+ * [WearVibration.reschedule] plus [notifyWearSurfaces] (Kachel und
+ * Komplikation). Fuer den Bildschirm gibt es keinen Anstoss von aussen; die
+ * Activity zeichnet sich selbst neu (`MainActivity.refresh()`), und JEDER
+ * Aufrufer, der aus einer sichtbaren Activity heraus laeuft, muss das
+ * zusaetzlich selbst tun. Genau diese Zeile fehlte bis Fix-Runde 4 in
+ * `MainActivity.onStart` (dort Important 1): Kachel und Komplikation heilten
+ * nach einem gelungenen Abruf, der Bildschirm davor nicht.
+ *
+ * Vier Aufrufer, alle gleichrangig behandelt statt die Heilung von Hand
+ * nachzubauen:
  * - [launchWearRefresh] (ein erfolgreicher eigener Abruf — Kachel,
- *   Komplikation, seit Fix-Runde 3 auch `MainActivity.onStart`),
+ *   Komplikation, seit Fix-Runde 3 auch `MainActivity.onStart`; dort seit
+ *   Fix-Runde 4 zusaetzlich ein eigener, an denselben Lauf gehaengter
+ *   Aufruf von [refreshWearOfficial], nur fuer das Neuzeichnen des
+ *   Bildschirms),
  * - `WearSyncApplier.apply` (ein neuer Stand vom Handy, Fix-Runde 3,
  *   Important 2 — vorher drei Zeilen von Hand, OHNE `try`),
  * - `WearAlarmReceiver.onReceive` (Boot/Update/Uhrzeit-/Zeitzonenwechsel,
  *   Fix-Runde 3, Important 3 — vorher NUR [WearVibration.reschedule], ohne
  *   die beiden Oberflaechen anzustossen),
- * - der Notausgang-Toggle in `MainActivity` (dort zusaetzlich zu, nicht
- *   statt, diesem Aufruf — siehe dort: kein Netzabruf noetig, die lokale
- *   Berechnung loest den Leerfall sofort auf).
+ * - der Notausgang-Toggle in `MainActivity` (seit Fix-Runde 4, Important 3 —
+ *   vorher schrieb er [WearVibration.reschedule] und [notifyWearSurfaces]
+ *   einzeln und ohne `try` von Hand, im `MainScope` ohne
+ *   `CoroutineExceptionHandler`: eine `IOException` aus dem DataStore liess
+ *   dort das Neuzeichnen ausfallen UND die App abstuerzen). Er ruft KEIN
+ *   [refreshWearOfficial] davor — die lokale Berechnung loest den Leerfall
+ *   sofort auf, ein Netzabruf ist dafuer nicht noetig.
  *
  * [WearVibration.reschedule] und [notifyWearSurfaces] laufen in GETRENNTEN
  * `try`-Bloecken (Fix-Runde 2, Important 2): ein Fehlschlag beim
@@ -194,7 +217,8 @@ fun launchWearRefresh(context: Context) {
  * Faengt jede Ausnahme selbst ab, statt sich auf einen Aufrufer-`try` zu
  * verlassen: nicht alle vier Aufrufer haben einen fuer Netzabrufe gedachten
  * Rettungs-Scope wie [refreshScope] (`WearSyncApplier.apply` etwa laeuft per
- * `runBlocking` auf einem Binder-Thread ohne eigenen `try`), und
+ * `runBlocking` auf einem Binder-Thread, der Notausgang-Toggle im blanken
+ * `MainScope` der Activity — beide ohne `CoroutineExceptionHandler`), und
  * `notifyWearSurfaces` ruft fremden Code (Tiles-/Komplikations-Framework),
  * der werfen kann, wenn das Ziel gerade nicht erreichbar ist.
  */
@@ -217,10 +241,20 @@ suspend fun notifyWearOfficialRefreshed(context: Context) {
 
 /**
  * Stoesst Komplikation UND Kachel GEMEINSAM neu an — nie nur eine der
- * beiden (Fix-Runde 1/2, Important 1). Geteilt zwischen
- * [notifyWearOfficialRefreshed] und dem Notausgang-Toggle in
- * `MainActivity` (dort ohne Netzabruf: die lokale Berechnung kann den
- * Leerfall sofort aufloesen, ohne dass `refreshWearOfficial` je lief).
+ * beiden (Fix-Runde 1/2, Important 1). Zwei Aufrufer:
+ * [notifyWearOfficialRefreshed] (der Regelweg, mit Vibrationskette und
+ * `try`-Kapselung) und `CityPickerActivity.pick`, das die Vibrationskette
+ * unmittelbar davor selbst neu bestellt.
+ *
+ * Genau EINE Ausnahme von "nie nur eine der beiden", bewusst nicht ueber
+ * diese Funktion: der Modus-Umschalter (Uhrzeit ⇄ Restzeit) in
+ * `MainActivity` fordert allein die Komplikation neu an. Die Kachel zeigt
+ * nie die Restzeit, ein Anstoss waere dort Arbeit ohne sichtbare Wirkung —
+ * keine vergessene Handschrift, sondern die einzige Stelle, an der genau
+ * eine Oberflaeche richtig ist.
+ *
+ * Erreicht die vierte Oberflaeche NICHT: den App-Bildschirm. Siehe
+ * [notifyWearOfficialRefreshed].
  *
  * Kachel und Komplikation stossen sich damit potenziell GEGENSEITIG an:
  * `onTileRequest` ruft am Ende [launchWearRefresh], dessen Erfolg wiederum
