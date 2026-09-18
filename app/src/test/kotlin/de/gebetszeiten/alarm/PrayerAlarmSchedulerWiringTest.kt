@@ -1,5 +1,6 @@
 package de.gebetszeiten.alarm
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -9,33 +10,45 @@ import java.io.File
  * Die Verdrahtung von `scheduleNext` — das, was kein reiner Test sehen kann.
  *
  * `alarmPlan` entscheidet alle drei Ketten-Wecker und ist ohne Geraet
- * pruefbar ([PrayerAlarmSchedulerTest]). Ob `scheduleNext` diese Entscheidung
- * auch wirklich UMSETZT, ist es nicht: dafuer braeuchte es `AlarmManager`,
- * also Robolectric oder ein Geraet.
+ * pruefbar ([PrayerAlarmSchedulerTest]) — **dort liegt der eigentliche
+ * Schutz.** Dieser Waechter hier haelt nur die VERDRAHTUNG trivial: dass
+ * `scheduleNext` den fertigen Plan unbedingt anwendet, statt selbst noch
+ * einmal zu entscheiden. Er ist die zweite Verteidigungslinie, nicht die
+ * erste.
  *
- * Eine erste Fassung dieses Tests pruefte nur Textvorkommen ("kein `return`
- * im Rumpf", "die drei Aufrufe stehen da") — das fing die Regression aus
- * Aufgabe 9 (fruehes `return`), aber NICHT ihre naheliegende zweite Form:
- * dieselben drei Aufrufe HINTER eine eigene Bedingung verschachtelt
- * (`if (trigger != null) { setAlarm(...); schedulePreReminder(...);
- * scheduleDisplayStep(...) }`), was bei fehlenden Zeiten exakt denselben
- * Effekt haette — alle vier alten Behauptungen blieben dabei gruen.
+ * Drei Fassungen, drei Luecken, jede durch eine tatsaechlich nachgebaute
+ * Mutation gefunden (Rohausgaben im Bericht zu Aufgabe 13):
+ * 1. Textvorkommen ("kein `return`", "die drei Aufrufe stehen da") fing die
+ *    Regression aus Aufgabe 9 (fruehes `return`), nicht ihre Verschachtelung
+ *    hinter einem `if`.
+ * 2. `\bif\s*\(` fing die `if`-Verschachtelung, nicht `when { bedingung ->
+ *    ...; else -> {} }` — dieselbe Verschachtelung, anderes Schluesselwort.
+ * 3. `!rumpf.contains("{")` fing auch `when`, aber auf Kosten von zwei neuen
+ *    Fehlern: ein blockloses `if ohne_klammern applyAlarm(...)` (gueltiges
+ *    Kotlin, keine `{` im Rumpf, stellt exakt die urspruengliche Regression
+ *    wieder her) waere UNBEMERKT durchgerutscht, und jede harmlose
+ *    Scope-Funktion (`?.let { ... }`, `.also { ... }`) haette den Test rot
+ *    gefaerbt, ohne dass irgendetwas kaputt war — ein Test, der bei
+ *    harmlosen Aenderungen rot wird, wird abgeschaltet und schuetzt dann gar
+ *    nichts mehr.
  *
- * Eine zweite Fassung pruefte stattdessen auf `\bif\s*\(` — das fing die
- * `if`-Verschachtelung, aber nicht `when (true) { bedingung -> ...; else ->
- * {} }`, das denselben Effekt haette, ohne `if` zu schreiben. Eine Liste
- * verbotener Schluesselwoerter (`if`, `when`, naechstes waere `for`/`while`)
- * ist keine ehrliche Sicherung — sie verschiebt das Problem nur auf das
- * naechste Schluesselwort, das jemandem einfaellt.
+ * Diese (vierte) Fassung prueft zwei UNABHAENGIGE Dinge:
+ * - **Schluesselwoerter, nicht Klammern:** `if`, `when`, `for`, `while` als
+ *   ganzes Wort im bereinigten Rumpf. Das faengt auch das blocklose `if` von
+ *   oben (das Schluesselwort steht ja da, ganz ohne `{`) und laesst Lambdas
+ *   in Ruhe (kein Schluesselwort drin).
+ * - **Genau drei `applyAlarm(`-Aufrufe.** Faengt, dass einer wegfaellt oder
+ *   dazukommt — das sieht die Schluesselwortpruefung allein nicht, ein
+ *   vierter Aufruf braucht kein einziges der vier Schluesselwoerter.
  *
- * Stattdessen die Eigenschaft, die JEDE Form von Verschachtelung teilt, ganz
- * gleich mit welchem Schluesselwort: eine neue geschweifte Klammer im Rumpf.
- * `if`, `when`, `for`, `while`, `try` und ein Lambda-Argument brauchen alle
- * ein eigenes `{ ... }` — `rumpfVon` liefert bereits nur den Inhalt ZWISCHEN
- * der oeffnenden und der schliessenden Klammer der Funktion selbst, also darf
- * darin ueberhaupt keine weitere `{` mehr vorkommen. **`scheduleNext`
- * enthaelt ueberhaupt keine eigene Verzweigung mehr** — jede Entscheidung
- * liegt in `alarmPlan`, hier wird nur noch angewendet.
+ * **Die ehrliche Grenze:** ein quelltextlesender Test kann Verzweigung nicht
+ * VOLLSTAENDIG ausschliessen. `?:`, `takeIf`, `?.let { ... }` mit einer
+ * bedingten Fortsetzung, oder ein bedingter Ausdruck als Argument (`if (x)
+ * a else b` OHNE eigene Zeile) kaemen ohne die vier gepruefte Schluesselwoerter
+ * aus und blieben unentdeckt. Wird dieser Waechter durch so etwas erneut
+ * umgangen, ist das eine bekannte, akzeptierte Luecke dieses Idioms — nicht
+ * ein weiterer Grund, die Pruefung noch enger zu schnueren. Der Schutz, der
+ * wirklich zaehlt, liegt in [PrayerAlarmSchedulerTest] (`alarmPlan` selbst).
  *
  * Praezedenz fuer das Idiom (Quelltext-Lese-Test statt Robolectric):
  * `OngoingWiringTest`, `NoNetworkInSharedCodeTest`, `CountdownIconAssetsTest`.
@@ -50,15 +63,14 @@ class PrayerAlarmSchedulerWiringTest {
     @Test
     fun `scheduleNext verzweigt selbst nicht und bezieht seine Entscheidung aus alarmPlan`() {
         val rumpf = rumpfVon(ohneKommentareUndTexte(text()), "suspend fun scheduleNext(")
-        // Keine weitere `{`: egal mit welchem Schluesselwort (if, when, for,
-        // while, try) oder als Lambda-Argument verschachtelt wuerde — jede
-        // Form brauchte ein eigenes `{ ... }`, und das faellt hier auf, ohne
-        // dass die Pruefung das Schluesselwort selbst kennen muss.
+        // Schluesselwoerter statt Klammern: faengt auch ein blockloses `if`
+        // ohne `{ ... }` (gueltiges Kotlin), ohne harmlose Lambda-Argumente
+        // (`?.let { ... }`, `.also { ... }`) mitzutreffen.
         assertFalse(
-            "scheduleNext verzweigt selbst (eine weitere '{' im Rumpf) — die Entscheidung gehoert " +
+            "scheduleNext verzweigt selbst (if/when/for/while im Rumpf) — die Entscheidung gehoert " +
                 "vollstaendig in alarmPlan, sonst kann sich die Verschachtelungs-Regression aus der " +
-                "Pruefung wieder einschleichen, gleich mit welchem Schluesselwort",
-            rumpf.contains("{"),
+                "Pruefung wieder einschleichen",
+            Regex("""\b(if|when|for|while)\b""").containsMatchIn(rumpf),
         )
         assertFalse(
             "scheduleNext kehrt vorzeitig zurueck — genau die Regression aus Aufgabe 9",
@@ -69,9 +81,14 @@ class PrayerAlarmSchedulerWiringTest {
             rumpf.contains("alarmPlan("),
         )
         // Alle drei Ketten-Wecker muessen ueber dieselbe, ungeteilte Anwendung
-        // laufen — sonst waere eine feature-spezifische Extra-Bedingung um
-        // eines der drei Felder wieder moeglich, ohne dass `if` im Rumpf
-        // selbst auftaucht (z. B. ein bedingter Methodenaufruf).
+        // laufen. Die Schluesselwortpruefung allein saehe weder einen
+        // wegfallenden noch einen zusaetzlichen `applyAlarm`-Aufruf — beides
+        // braucht kein einziges der vier gepruefte Schluesselwoerter.
+        assertEquals(
+            "scheduleNext wendet nicht mehr genau drei Wecker ueber applyAlarm an",
+            3,
+            Regex("""applyAlarm\(""").findAll(rumpf).count(),
+        )
         assertTrue(
             "scheduleNext wendet den Gebets-Wecker nicht (mehr) über applyAlarm an",
             rumpf.contains("applyAlarm(alarmManager, plan.prayerAtMillis,"),
