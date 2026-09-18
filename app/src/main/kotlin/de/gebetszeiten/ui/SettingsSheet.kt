@@ -372,8 +372,13 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, re
             val bundledName = de.gebetszeiten.official.BundledOfficialSource.locationNameFor(context, lat, lng, today)
             val cached = if (settings.useOnline) cache.get(today, lat, lng) else null
             val indexPlace = de.gebetszeiten.official.DiyanetPlaceIndex.nearest(context, lat, lng)
+            // Reihenfolge spiegelt PrayerProvider.daily/daySourceOrder: amtliche
+            // Quellen gewinnen IMMER, wenn es sie gibt (Aufgabe 15) — der
+            // Notausgang (calculationFillsGaps) steht deshalb erst als letzte
+            // Bedingung, nicht mehr als erste. Bis Aufgabe 15 stand
+            // `settings.useCalculated -> Calculated` hier vorn und hat eine
+            // vorhandene amtliche Quelle verdraengt.
             val source: TimesSourceBadge = when {
-                settings.useCalculated -> TimesSourceBadge.Calculated
                 // 1) Online-Cache — Name bevorzugt aus dem Bundle (bessere Schreibweise),
                 //    sonst aus dem Index, sonst der Ortsname der Einstellungen.
                 cached != null -> TimesSourceBadge.Official(
@@ -382,7 +387,8 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, re
                 )
                 // 2) Gebuendelte Tabelle.
                 bundledName != null -> TimesSourceBadge.Bundled(bundledName)
-                else -> TimesSourceBadge.Calculated
+                settings.calculationFillsGaps -> TimesSourceBadge.Calculated
+                else -> TimesSourceBadge.None
             }
             // Dieselbe Bedingung wie die Sichtbarkeit von "Jetzt aktualisieren"
             // unten — Knopf sichtbar ⟺ Abruf-Zeilen sichtbar, kann nicht mehr
@@ -665,7 +671,7 @@ internal fun LocationSettings(
             val shownMatches = matches.ifEmpty { onlineMatches }
             // Quelle pro Treffer: beide Indizes sind vorgewärmt, das läuft
             // ohne Netz und ohne merkbare Verzögerung.
-            val badges by produceState(emptyMap<String, TimesSourceBadge>(), shownMatches, settings.useCalculated) {
+            val badges by produceState(emptyMap<String, TimesSourceBadge>(), shownMatches, settings.calculationFillsGaps) {
                 // F8: bei Schluesselwechsel (z. B. Toggle "Eigene Berechnung")
                 // zuruecksetzen — sonst blitzen kurz die Badges des vorherigen
                 // Zustands auf, genau der Fehler, den SourceStatusSection oben
@@ -687,7 +693,7 @@ internal fun LocationSettings(
                         distanceKm = place?.let {
                             de.gebetszeiten.official.DiyanetPlaceIndex.distanceKm(it, c.latitude, c.longitude)
                         },
-                        useCalculated = settings.useCalculated,
+                        calculationFillsGaps = settings.calculationFillsGaps,
                     )
                 }
             }
@@ -723,9 +729,14 @@ internal fun LocationSettings(
                                                         stringResource(R.string.badge_official, badge.locationName, badge.distanceKm)
                                                     TimesSourceBadge.Calculated ->
                                                         stringResource(R.string.badge_calculated)
+                                                    // Notausgang aus, keine amtliche Quelle fuer diesen
+                                                    // Ort (Aufgabe 15) — waehlt der Nutzer ihn, zeigt die
+                                                    // App fuer ihn gar keine Zeiten.
+                                                    TimesSourceBadge.None ->
+                                                        stringResource(R.string.badge_none)
                                                 },
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = if (badge is TimesSourceBadge.Calculated) {
+                                                color = if (badge is TimesSourceBadge.Calculated || badge is TimesSourceBadge.None) {
                                                     MaterialTheme.colorScheme.onSurfaceVariant
                                                 } else {
                                                     MaterialTheme.colorScheme.primary
@@ -832,8 +843,8 @@ internal fun LocationSettings(
                 }
             }
 
-            ToggleRow(stringResource(R.string.settings_use_calculated), settings.useCalculated) {
-                commit { copy(useCalculated = it) }
+            ToggleRow(stringResource(R.string.settings_use_calculated), settings.calculationFillsGaps) {
+                commit { copy(calculationFillsGaps = it) }
             }
             Text(
                 stringResource(R.string.settings_use_calculated_hint),

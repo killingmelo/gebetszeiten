@@ -346,11 +346,10 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
                 // (SourceStatusSection) - kein zweiter Abruf-Mechanismus.
                 onFetchNow = { viewModel.refreshOfficialNow() },
                 onEnableCalculation = {
-                    // useCalculated heisst hier noch "immer rechnen" (Notausgang).
-                    // Aufgabe 15 benennt den Schalter in calculationFillsGaps um
-                    // und dreht die Bedeutung auf "Luecken fuellen" - dieser
-                    // Aufruf muss dann mitziehen.
-                    viewModel.save(settings.copy(useCalculated = true))
+                    // Der Notausgang: springt nur ein, wenn fuer diesen Tag
+                    // keine amtlichen Zeiten vorliegen (sonst waere NoTimesCard
+                    // hier gar nicht sichtbar - siehe dayInfo unten).
+                    viewModel.save(settings.copy(calculationFillsGaps = true))
                 },
             )
             Tab.MONAT -> MonatScreen(inner, settings)
@@ -417,19 +416,23 @@ private fun HeuteContent(
         }
     }
     val officialName by produceState<String?>(null, settings, selectedDate, tick) {
-        value = if (settings.useCalculated) {
-            null
-        } else {
-            // Reihenfolge spiegelt resolveLocationIdChain (Bundle vor Index) —
-            // die Kette, die entscheidet, WELCHER Diyanet-Standort geholt wird.
-            // NICHT PrayerProvider.daily: dort geht es um die ZEITEN, und der
-            // Online-Cache enthaelt genau die Zeiten der ID aus dem Bundle.
-            // Beide Quellen fuehren denselben Ort (Nuernberg = 11024 in beiden),
-            // aber das Bundle schreibt ihn richtig ("Nürnberg" statt "NURNBERG").
-            de.gebetszeiten.official.BundledOfficialSource
-                .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
-                ?: officialCacheName(context, settings, selectedDate)
-        }
+        // Reihenfolge spiegelt resolveLocationIdChain (Bundle vor Index) —
+        // die Kette, die entscheidet, WELCHER Diyanet-Standort geholt wird.
+        // NICHT PrayerProvider.daily: dort geht es um die ZEITEN, und der
+        // Online-Cache enthaelt genau die Zeiten der ID aus dem Bundle.
+        // Beide Quellen fuehren denselben Ort (Nuernberg = 11024 in beiden),
+        // aber das Bundle schreibt ihn richtig ("Nürnberg" statt "NURNBERG").
+        //
+        // Bis Aufgabe 15 stand hier zuerst `if (settings.useCalculated) null
+        // else {...}` — der Notausgang hat den amtlichen Namen komplett
+        // unterdrueckt, auch an Tagen, an denen er gar nicht gebraucht wurde.
+        // Amtliche Zeiten gewinnen jetzt immer, wenn es sie gibt (siehe
+        // AppSettings.calculationFillsGaps); ob dieser Tag amtlich versorgt
+        // ist, entscheidet sich hier ausschliesslich an Bundle/Cache-Treffer,
+        // nicht mehr an der Einstellung.
+        value = de.gebetszeiten.official.BundledOfficialSource
+            .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
+            ?: officialCacheName(context, settings, selectedDate)
     }
 
     // stringResource statt context.getString: Lint verbietet

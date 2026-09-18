@@ -28,8 +28,19 @@ data class AppSettings(
      *  Im Online-Flavor ab Werk an — amtliche Zeiten sind der Zweck des Flavors;
      *  der Settings-Schalter bleibt das Opt-out. Offline immer false. */
     val useOnline: Boolean = de.gebetszeiten.official.OfficialTimesProvider.isOnline,
-    /** Immer die lokale astronomische Berechnung nutzen (amtliche Quellen ignorieren). */
-    val useCalculated: Boolean = false,
+    /** Notausgang: die lokale astronomische Berechnung springt nur ein, wenn
+     *  fuer einen Tag keine amtlichen Zeiten vorliegen. Amtliche Zeiten haben
+     *  IMMER Vorrang, wenn es sie gibt — dieses Feld entscheidet nur, was
+     *  passiert, wenn es sie NICHT gibt: rechnen (true) oder gar keine Zeiten
+     *  zeigen (false, Werkseinstellung).
+     *
+     *  Hiess bis Aufgabe 15 `useCalculated` und bedeutete "immer rechnen,
+     *  amtliche Zeiten ignorieren" — das genaue Gegenteil der Vorrang-Regel
+     *  oben. Wer den alten Schalter an hatte, behaelt nach der Migration
+     *  seinen Notausgang (siehe [calculationFillsGapsFromPrefs]); die
+     *  Bedeutungsaenderung selbst betrifft nur noch Tage, an denen amtliche
+     *  Zeiten VORLIEGEN — die zeigt die App jetzt statt der Berechnung. */
+    val calculationFillsGaps: Boolean = false,
     /** Show optional voluntary (nafl) prayer windows. */
     val showNafl: Boolean = false,
     /** Show the Hanafi makruh (karaha) segments. */
@@ -122,20 +133,28 @@ data class AppSettings(
 
     /**
      * Ob ein Online-Abrufversuch fuer amtliche Zeiten ueberhaupt etwas
-     * bewirken KANN: Online-Schalter an und keine eigene Berechnung
-     * erzwungen. [useOnline] ist seit [useOnlineFromPrefs] bereits auf den
-     * Flavor geklemmt (Offline-Build: invariant `false`) — hier kommt nur
-     * noch die zweite Bedingung dazu.
+     * bewirken KANN. [useOnline] ist seit [useOnlineFromPrefs] bereits auf
+     * den Flavor geklemmt (Offline-Build: invariant `false`).
      *
-     * Vorher stand `useOnline && !useCalculated` einzeln in
+     * Bis Aufgabe 15 kam noch `&& !useCalculated` dazu: der Schalter hiess
+     * damals "immer rechnen, amtliche Zeiten ignorieren", und unter ihm war
+     * ein Abruf sinnlos — sein Ergebnis wurde ja nie angezeigt. Seit er
+     * [calculationFillsGaps] heisst und nur noch als Notausgang fuer LUECKEN
+     * eingreift, gilt das Gegenteil: wer ihn einschaltet, will amtliche
+     * Zeiten WEITERHIN — die Berechnung soll nur einspringen, wo keine da
+     * sind. Ein Abruf ist unter [calculationFillsGaps] also GENAUSO sinnvoll
+     * wie ohne; die zweite Bedingung entfaellt ersatzlos, die Funktion bleibt
+     * aber stehen (fuenf Aufrufstellen), damit sich die Bedeutung an einer
+     * einzigen Stelle aendern liess statt an jeder einzeln.
+     *
+     * Vorher stand die Konjunktion einzeln in
      * `SettingsSheet.SourceStatusSection` (zweimal: `canFetch` und die
      * Knopf-Sichtbarkeit) und musste in Aufgabe 11 fuer `noTimesNotice` in
      * `HeuteContent` und `MonatScreen` ein drittes/viertes Mal geschrieben
      * werden — genau das Muster, das im offline-Flavor schon einmal ein
-     * vergessenes viertes Mal hatte (siehe [useOnlineFromPrefs]). Eine
-     * Funktion statt vier Kopien derselben Konjunktion.
+     * vergessenes viertes Mal hatte (siehe [useOnlineFromPrefs]).
      */
-    fun canFetchOfficial(): Boolean = useOnline && !useCalculated
+    fun canFetchOfficial(): Boolean = useOnline
 
     companion object {
         val DEFAULT_REMINDERS = setOf("FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA")
@@ -156,7 +175,7 @@ data class AppSettings(
             city = "Nürnberg",
             region = null,
             useOnline = de.gebetszeiten.official.OfficialTimesProvider.isOnline,
-            useCalculated = false,
+            calculationFillsGaps = false,
             showNafl = false,
             showKaraha = true,
             showCemaat = false,
@@ -250,6 +269,35 @@ internal fun countdownModeFromPrefs(
 internal fun useOnlineFromPrefs(migratedUseOnline: Boolean, isOnlineFlavor: Boolean): Boolean =
     migratedUseOnline && isOnlineFlavor
 
+/**
+ * Der gespeicherte Notausgang-Schalter — einschliesslich der einmaligen
+ * Migration aus dem alten `useCalculated` ("immer rechnen").
+ *
+ * Reine Funktion aus demselben Grund wie [countdownModeFromPrefs] und
+ * [useOnlineFromPrefs]: sie fasst NUTZERDATEN an, und im DataStore-Flow kaeme
+ * ohne Robolectric kein Test an sie heran.
+ *
+ * Das ist eine Verhaltensaenderung fuer Bestandsnutzer, keine stille
+ * Umdeutung desselben Schluessels: der alte Schalter bedeutete "immer
+ * rechnen, amtliche Zeiten ignorieren", der neue bedeutet "rechnen, NUR wo
+ * amtliche Zeiten fehlen". Wer ihn an hatte, WILL den Notausgang also
+ * weiterhin — und behaelt ihn 1:1 (`legacyUseCalculated == true` ->
+ * `true`). Wer ihn aus hatte oder ihn nie gesehen hat (frische Installation,
+ * `legacyUseCalculated == null`), bekommt `false`, der Werksstand.
+ *
+ * Ist [migrated] gesetzt, entscheidet ausschliesslich [stored] — derselbe
+ * Schutz wie bei [countdownModeFromPrefs]: ein liegengebliebener alter
+ * Schluessel darf die Wahl nach dem Update nicht mehr ueberschreiben.
+ */
+internal fun calculationFillsGapsFromPrefs(
+    migrated: Boolean,
+    stored: Boolean?,
+    legacyUseCalculated: Boolean?,
+): Boolean {
+    if (migrated) return stored ?: AppSettings.DEFAULT.calculationFillsGaps
+    return legacyUseCalculated ?: AppSettings.DEFAULT.calculationFillsGaps
+}
+
 class SettingsRepository(private val context: Context) {
 
     private object Keys {
@@ -260,7 +308,12 @@ class SettingsRepository(private val context: Context) {
         val COUNTDOWN = booleanPreferencesKey("show_countdown")
         val USE_ONLINE = booleanPreferencesKey("use_online")
         val USE_ONLINE_MIGRATED = booleanPreferencesKey("use_online_migrated")
-        val USE_CALCULATED = booleanPreferencesKey("use_calculated")
+        val CALCULATION_FILLS_GAPS = booleanPreferencesKey("calculation_fills_gaps")
+        val CALCULATION_FILLS_GAPS_MIGRATED = booleanPreferencesKey("calculation_fallback_migrated")
+
+        // Nur noch fuer die einmalige Migration da (Aufgabe 15): gelesen,
+        // uebersetzt, geloescht.
+        val USE_CALCULATED_LEGACY = booleanPreferencesKey("use_calculated")
         val SHOW_NAFL = booleanPreferencesKey("show_nafl")
         val SHOW_KARAHA = booleanPreferencesKey("show_karaha")
         val SHOW_CEMAAT = booleanPreferencesKey("show_cemaat")
@@ -337,13 +390,32 @@ class SettingsRepository(private val context: Context) {
             migratedUseOnline = migratedUseOnline,
             isOnlineFlavor = de.gebetszeiten.official.OfficialTimesProvider.isOnline,
         )
+        // Migration: aus useCalculated ("immer rechnen") wird
+        // calculationFillsGaps ("Luecken fuellen") - eine Verhaltensaenderung
+        // fuer Bestandsnutzer, siehe calculationFillsGapsFromPrefs. Wie bei
+        // COUNTDOWN_MIGRATED oben: der alte Schluessel wird nach der
+        // einmaligen Uebernahme entfernt, sonst aufersteht er beim naechsten
+        // Update, das aus Versehen wieder danach fragt.
+        val calculationFillsGapsMigrated = prefs[Keys.CALCULATION_FILLS_GAPS_MIGRATED] ?: false
+        val calculationFillsGaps = calculationFillsGapsFromPrefs(
+            migrated = calculationFillsGapsMigrated,
+            stored = prefs[Keys.CALCULATION_FILLS_GAPS],
+            legacyUseCalculated = prefs[Keys.USE_CALCULATED_LEGACY],
+        )
+        if (!calculationFillsGapsMigrated) {
+            context.dataStore.edit { migrated ->
+                migrated[Keys.CALCULATION_FILLS_GAPS] = calculationFillsGaps
+                migrated[Keys.CALCULATION_FILLS_GAPS_MIGRATED] = true
+                migrated.remove(Keys.USE_CALCULATED_LEGACY)
+            }
+        }
         AppSettings(
             latitude = prefs[Keys.LAT] ?: AppSettings.DEFAULT.latitude,
             longitude = prefs[Keys.LNG] ?: AppSettings.DEFAULT.longitude,
             city = prefs[Keys.CITY] ?: AppSettings.DEFAULT.city,
             region = regionFromPref(prefs[Keys.REGION]),
             useOnline = useOnline,
-            useCalculated = prefs[Keys.USE_CALCULATED] ?: AppSettings.DEFAULT.useCalculated,
+            calculationFillsGaps = calculationFillsGaps,
             showNafl = prefs[Keys.SHOW_NAFL] ?: AppSettings.DEFAULT.showNafl,
             showKaraha = prefs[Keys.SHOW_KARAHA] ?: AppSettings.DEFAULT.showKaraha,
             showCemaat = prefs[Keys.SHOW_CEMAAT] ?: AppSettings.DEFAULT.showCemaat,
@@ -376,7 +448,12 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.CITY] = value.city
             prefs[Keys.REGION] = regionToPref(value.region)
             prefs[Keys.USE_ONLINE] = value.useOnline
-            prefs[Keys.USE_CALCULATED] = value.useCalculated
+            prefs[Keys.CALCULATION_FILLS_GAPS] = value.calculationFillsGaps
+            // Auch hier gesetzt, nicht nur beim Lesen (dasselbe Muster wie
+            // COUNTDOWN_MIGRATED): wer speichert, hat gewaehlt. Ohne das Flag
+            // koennte eine Migration, die noch nicht durch war, die frische
+            // Wahl gleich wieder ueberschreiben.
+            prefs[Keys.CALCULATION_FILLS_GAPS_MIGRATED] = true
             prefs[Keys.SHOW_NAFL] = value.showNafl
             prefs[Keys.SHOW_KARAHA] = value.showKaraha
             prefs[Keys.SHOW_CEMAAT] = value.showCemaat

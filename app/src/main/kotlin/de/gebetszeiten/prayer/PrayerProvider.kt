@@ -30,10 +30,9 @@ object PrayerProvider {
      *  den aktuellen Einstellungen liegen keine Zeiten vor. [daySourceOrder]
      *  legt fest, welche Quellen in welcher Reihenfolge befragt werden; die
      *  Berechnung steht darin nur, wenn der Nutzer sie als Notausgang
-     *  eingeschaltet hat (`settings.useCalculated` — Umbenennung zu
-     *  `calculationFillsGaps` folgt in Aufgabe 15). */
+     *  eingeschaltet hat (`settings.calculationFillsGaps`). */
     suspend fun daily(context: Context, settings: AppSettings, date: LocalDate, zone: ZoneId): DailyPrayerTimes? {
-        for (source in daySourceOrder(settings.useOnline, settings.useCalculated)) {
+        for (source in daySourceOrder(settings.useOnline, settings.calculationFillsGaps)) {
             when (source) {
                 DaySource.ONLINE_CACHE ->
                     OfficialTimesCache(context).get(date, settings.latitude, settings.longitude)
@@ -110,8 +109,10 @@ object PrayerProvider {
     suspend fun refreshOfficial(context: Context, settings: AppSettings, force: Boolean = false) {
         // War von Hand `!settings.useOnline || settings.useCalculated`
         // geschrieben - exakt `!canFetchOfficial()`, nur an einer fuenften
-        // Stelle. Aufgabe 15 passt canFetchOfficial() an, wenn useCalculated
-        // in calculationFillsGaps umbenannt wird; diese Zeile muss mitziehen.
+        // Stelle. Seit Aufgabe 15 bedeutet ein eingeschalteter Notausgang
+        // NICHT mehr "nie abrufen" (siehe canFetchOfficial-KDoc) - wer den
+        // Notausgang eingeschaltet hat, will amtliche Zeiten weiterhin, also
+        // frischt dieser Aufruf den Cache jetzt auch fuer ihn auf.
         if (!settings.canFetchOfficial()) return
         val cache = OfficialTimesCache(context)
         val today = LocalDate.now()

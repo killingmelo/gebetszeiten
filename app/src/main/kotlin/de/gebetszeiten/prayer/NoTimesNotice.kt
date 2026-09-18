@@ -24,11 +24,10 @@ data class NoTimesNotice(
  * fetcher` liefert dort `null`) — dort waere „Jetzt abrufen" eine Luege, ganz
  * unabhaengig davon, ob ein Schalter zufaellig auf „an" steht. Der Aufrufer
  * traegt diese Vorpruefung (Flavor UND Schalter), genau wie `canFetch` in
- * [officialStatusText] bereits `settings.useOnline && !settings.useCalculated`
- * vorrechnet, statt die Flavor-Frage hier hineinzuziehen: diese Funktion
- * bekommt Android-Context nie zu sehen, und ein zweiter Ort, an dem die
- * Flavor-Entscheidung fallen kann, waere ein zweiter Ort, an dem sie
- * auseinanderlaufen kann.
+ * [officialStatusText] bereits `settings.canFetchOfficial()` vorrechnet, statt
+ * die Flavor-Frage hier hineinzuziehen: diese Funktion bekommt Android-Context
+ * nie zu sehen, und ein zweiter Ort, an dem die Flavor-Entscheidung fallen
+ * kann, waere ein zweiter Ort, an dem sie auseinanderlaufen kann.
  *
  * `detail` nennt in JEDEM Fall den Notausgang (die eigene Berechnung) — der
  * Satz sagt, was der Nutzer TUN kann, nicht nur, was fehlt.

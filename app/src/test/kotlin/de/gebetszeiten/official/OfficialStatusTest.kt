@@ -78,17 +78,18 @@ class OfficialStatusTest {
     // --- Fix-Runde 2 (finale Branch-Review): die Statuszeile muss dieselbe
     // Quelle nennen, die PrayerProvider.daily tatsaechlich anzeigt — nicht
     // den Diyanet-Standortnamen allein, der frueher unabhaengig von
-    // useCalculated/useOnline/Bundle aus dem Cache-Stempel gelesen wurde.
+    // calculationFillsGaps/useOnline/Bundle aus dem Cache-Stempel gelesen
+    // wurde.
 
     @Test fun `F1a eigene Berechnung ueberschreibt einen veralteten Diyanet-Stempel`() {
         // Der Cache-Stempel zeigt noch einen erfolgreichen Diyanet-Abruf
         // (Sakarya, ID 9807) von VOR dem Umschalten auf "Eigene Berechnung":
-        // refreshOfficial() kehrt fuer useCalculated fruehzeitig zurueck und
-        // laesst Cache und Stempel unangetastet. Die Zeile darf trotzdem
-        // nicht mehr "amtliche Diyanet-Zeiten" behaupten, wenn die
-        // Klassifikation (die den tatsaechlich genutzten Pfad widerspiegelt)
-        // Calculated liefert. canFetch = false, weil useCalculated an bereits
-        // per Definition canFetch = useOnline && !useCalculated ausschliesst.
+        // dieses Beispiel haengt canFetch=false absichtlich an useOnline=false,
+        // nicht am Notausgang - seit Aufgabe 15 schliesst ein eingeschalteter
+        // Notausgang (calculationFillsGaps) canFetch nicht mehr aus (siehe
+        // canFetchOfficial-KDoc). Die Zeile darf trotzdem nicht mehr
+        // "amtliche Diyanet-Zeiten" behaupten, wenn die Klassifikation (die
+        // den tatsaechlich genutzten Pfad widerspiegelt) Calculated liefert.
         val text = officialStatusText(
             OfficialStatus(9807, LocalDate.of(2026, 12, 31), now, null),
             source = TimesSourceBadge.Calculated,

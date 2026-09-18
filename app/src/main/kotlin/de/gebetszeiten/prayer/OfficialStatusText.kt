@@ -41,12 +41,12 @@ private val SHORT_STAMP = DateTimeFormatter.ofPattern("dd.MM., HH:mm")
  * [canFetch] entscheidet ueber "Letzter Abruf"/"Fehler" — bewusst NICHT
  * `source is Bundled` (Fix-Runde 3): ob ein Abrufmechanismus ueberhaupt
  * existiert, haengt am Flavor/Schalter, nicht an der Quelle, die gerade
- * traegt. Online-Flavor + `useOnline` + keine eigene Berechnung kann einen
- * fehlgeschlagenen Abruf haben, WAEHREND die gebuendelte DE-Tabelle traegt —
- * der Fehlergrund darf dann nicht verschwinden, sonst bleibt "Jetzt
- * aktualisieren" (das an derselben Bedingung haengt) ein Knopf ohne
- * sichtbare Wirkung. Am Aufrufort identisch mit der Knopf-Sichtbarkeit:
- * `settings.useOnline && !settings.useCalculated`.
+ * traegt. Online-Flavor + `useOnline` kann einen fehlgeschlagenen Abruf
+ * haben, WAEHREND die gebuendelte DE-Tabelle traegt — der Fehlergrund darf
+ * dann nicht verschwinden, sonst bleibt "Jetzt aktualisieren" (das an
+ * derselben Bedingung haengt) ein Knopf ohne sichtbare Wirkung. Am Aufrufort
+ * identisch mit der Knopf-Sichtbarkeit: `settings.canFetchOfficial()` — seit
+ * Aufgabe 15 nur noch `settings.useOnline`, siehe die KDoc dort.
  *
  * [bundledCoverageEnd] ist der letzte Tag, den die GEBUENDELTEN Tabellen
  * abdecken — und den uebergibt der Aufrufer nur, wenn es fuer diesen Ort
@@ -76,6 +76,10 @@ fun officialStatusText(
             lines += "Quelle: amtliche Diyanet-Zeiten · ${source.locationName} (gebündelt)"
         TimesSourceBadge.Calculated ->
             lines += "Quelle: eigene Berechnung (Diyanet-Methode)"
+        // Notausgang aus, keine amtliche Quelle da (Aufgabe 15) — dann zeigt
+        // die App fuer diesen Ort/Tag gar keine Zeiten (siehe noTimesNotice).
+        TimesSourceBadge.None ->
+            lines += "Quelle: keine — Notausgang aus"
     }
     // "Abgedeckt bis" beschreibt die Abdeckung des ONLINE-CACHES — nur
     // zeigen, wenn der Cache auch die aktive Quelle ist. Sonst (Bundled,
