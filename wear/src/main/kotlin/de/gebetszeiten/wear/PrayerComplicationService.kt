@@ -79,6 +79,14 @@ class PrayerComplicationService : ComplicationDataSourceService() {
                 .create(ctx, ComponentName(ctx, PrayerComplicationService::class.java))
                 .requestUpdateAll()
         }
+
+        // Leerfall (Task 16): weder amtliche Zeiten noch der Notausgang
+        // liefern etwas fuer heute ODER morgen — kurzer Satz statt Zeit,
+        // dieselbe Regel wie `WearPrayer.next`/`PrayerProvider.daily`.
+        if (next == null) {
+            listener.onComplicationData(noTimesData())
+            return
+        }
         val title = next.first.label()
         val timeStr = next.second.format(timeFormat)
         val prayerAt = next.second.toInstant()
@@ -124,6 +132,18 @@ class PrayerComplicationService : ComplicationDataSourceService() {
     // datei-eigenen Scope von `WearRefresh.kt` — siehe Kommentar in
     // `PrayerTileService`.
 
+    /** Tapping the complication opens the watch app — geteilt zwischen
+     *  [data] und [noTimesData], damit die App-Oeffnung nicht zweimal
+     *  geschrieben wird. */
+    private fun openAppPendingIntent(): PendingIntent =
+        PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
     private fun data(
         title: String,
         text: ComplicationText,
@@ -135,17 +155,24 @@ class PrayerComplicationService : ComplicationDataSourceService() {
             contentDescription = PlainComplicationText.Builder(getString(R.string.complication_desc, title, timeStr)).build(),
         )
             .setTitle(PlainComplicationText.Builder(title).build())
-            // Tapping the complication opens the watch app.
-            .setTapAction(
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    Intent(this, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                ),
-            )
+            .setTapAction(openAppPendingIntent())
         if (validUntil != null) builder.setValidTimeRange(validUntil)
         return builder.build()
+    }
+
+    /** Leerfall-Komplikation (Task 16): nur der geteilte Wortlaut aus
+     *  `no_times_notice`, ohne Titel (kein "naechstes Gebet") — Tippen
+     *  oeffnet weiterhin die App, wie im Normalfall. Kein `setValidTimeRange`:
+     *  ohne bekannte naechste Zeit gibt es keinen Zeitpunkt, an dem diese
+     *  Antwort automatisch ablaeuft; das System fragt stattdessen bei
+     *  Bedarf erneut an. */
+    private fun noTimesData(): ComplicationData {
+        val text = PlainComplicationText.Builder(getString(R.string.no_times_notice)).build()
+        return ShortTextComplicationData.Builder(
+            text = text,
+            contentDescription = text,
+        )
+            .setTapAction(openAppPendingIntent())
+            .build()
     }
 }

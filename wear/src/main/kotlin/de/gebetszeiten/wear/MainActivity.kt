@@ -70,13 +70,13 @@ class MainActivity : Activity() {
                 refresh()
             }
         }
-        // Toggle local astronomical calculation vs. official Diyanet tables.
-        findViewById<TextView>(R.id.useCalculatedLabel).setOnClickListener {
+        // Toggle den Notausgang: lokale Berechnung nur, wo amtliche Zeiten fehlen.
+        findViewById<TextView>(R.id.calculationFillsGapsLabel).setOnClickListener {
             scope.launch {
                 withContext(Dispatchers.IO) {
-                    WearSettings.saveUseCalculated(
+                    WearSettings.saveCalculationFillsGaps(
                         applicationContext,
-                        !WearSettings.useCalculated(applicationContext),
+                        !WearSettings.calculationFillsGaps(applicationContext),
                     )
                 }
                 refresh()
@@ -137,6 +137,7 @@ class MainActivity : Activity() {
     /** Everything the screen needs, computed off the UI thread. */
     private data class KarahaUi(val text: String, val warn: Boolean)
     private data class ViewState(
+        val noTimes: Boolean,
         val heroName: String,
         val heroTimeText: String,
         val heroTimeSize: Float,
@@ -145,7 +146,7 @@ class MainActivity : Activity() {
         val karaha: KarahaUi?,
         val modeText: String,
         val vibrateText: String,
-        val useCalculatedText: String,
+        val calculationFillsGapsText: String,
         val cemaatText: String,
         val rows: List<Pair<String, String>>,
     )
@@ -155,8 +156,39 @@ class MainActivity : Activity() {
         val now = ZonedDateTime.now(zone)
         val s = WearSettings.snapshot(applicationContext)
 
+        val settingsRows = SettingsRows(
+            modeText = if (s.showRemaining) getString(R.string.mode_remaining) else getString(R.string.mode_clock),
+            vibrateText = if (s.vibrate) getString(R.string.vibrate_on) else getString(R.string.vibrate_off),
+            calculationFillsGapsText = if (s.calculationFillsGaps) {
+                getString(R.string.settings_calculation_fallback)
+            } else {
+                getString(R.string.settings_calculation_fallback_off)
+            },
+            cemaatText = if (s.showCemaat) getString(R.string.cemaat_on) else getString(R.string.cemaat_off),
+        )
+
+        // Leerfall (Task 16): weder amtliche Zeiten noch der Notausgang
+        // liefern etwas fuer heute ODER morgen — dieselbe Regel wie
+        // `PrayerProvider.daily` am Telefon. Die Uhr zeigt dann einen
+        // kurzen Satz statt Zeiten, ohne Ortsnamen (kein Platz).
         val upcoming = WearPrayer.upcoming(applicationContext, s.location, zone, now, count = 6)
-        val next = upcoming.first()
+        val next = upcoming.firstOrNull()
+        if (next == null) {
+            return ViewState(
+                noTimes = true,
+                heroName = "",
+                heroTimeText = getString(R.string.no_times_notice),
+                heroTimeSize = 18f,
+                heroTimeDesc = getString(R.string.no_times_notice),
+                city = s.city,
+                karaha = null,
+                rows = emptyList(),
+                modeText = settingsRows.modeText,
+                vibrateText = settingsRows.vibrateText,
+                calculationFillsGapsText = settingsRows.calculationFillsGapsText,
+                cemaatText = settingsRows.cemaatText,
+            )
+        }
         val name = next.first.label()
 
         val heroTimeText: String
@@ -173,14 +205,19 @@ class MainActivity : Activity() {
             heroTimeDesc = getString(R.string.desc_hero_time_clock, heroTimeText)
         }
 
+        // Kann trotz vorhandenem [next] `null` sein (z. B. morgen liegen
+        // amtliche Zeiten vor, heute nicht) — Karaha und die Sonnenaufgang-/
+        // Cemaat-Zeile beziehen sich auf HEUTE und entfallen dann einfach.
         val todayTimes = WearPrayer.today(applicationContext, s.location, zone)
-        val karaha = de.gebetszeiten.core.prayertimes.Karaha
-        val karahaUi = when (val status = karaha.status(karaha.windows(todayTimes), now)) {
-            is de.gebetszeiten.core.prayertimes.Karaha.Status.Active ->
-                KarahaUi(getString(R.string.karaha_active, status.window.end.format(timeFormat)), warn = true)
-            is de.gebetszeiten.core.prayertimes.Karaha.Status.Soon ->
-                KarahaUi(getString(R.string.karaha_soon, status.window.start.format(timeFormat)), warn = false)
-            de.gebetszeiten.core.prayertimes.Karaha.Status.None -> null
+        val karahaUi = todayTimes?.let { times ->
+            val karaha = de.gebetszeiten.core.prayertimes.Karaha
+            when (val status = karaha.status(karaha.windows(times), now)) {
+                is de.gebetszeiten.core.prayertimes.Karaha.Status.Active ->
+                    KarahaUi(getString(R.string.karaha_active, status.window.end.format(timeFormat)), warn = true)
+                is de.gebetszeiten.core.prayertimes.Karaha.Status.Soon ->
+                    KarahaUi(getString(R.string.karaha_soon, status.window.start.format(timeFormat)), warn = false)
+                de.gebetszeiten.core.prayertimes.Karaha.Status.None -> null
+            }
         }
 
         val rows = buildList {
@@ -188,39 +225,56 @@ class MainActivity : Activity() {
                 val tomorrow = time.toLocalDate() != now.toLocalDate()
                 add((if (tomorrow) getString(R.string.label_morgen_suffix, prayer.label()) else prayer.label()) to time)
             }
-            val sunrise = todayTimes.sunrise
-            if (sunrise.isAfter(now)) add(getString(R.string.label_sonnenaufgang) to sunrise)
-            // Abgeleitete Cemaat-Zeit (fester Vorlauf 30 Min, wie Diyanet-Praxis).
-            if (s.showCemaat) {
-                val cemaat = sunrise.minusMinutes(30)
-                if (cemaat.isAfter(now)) add(getString(R.string.label_cemaat) to cemaat)
+            todayTimes?.sunrise?.let { sunrise ->
+                if (sunrise.isAfter(now)) add(getString(R.string.label_sonnenaufgang) to sunrise)
+                // Abgeleitete Cemaat-Zeit (fester Vorlauf 30 Min, wie Diyanet-Praxis).
+                if (s.showCemaat) {
+                    val cemaat = sunrise.minusMinutes(30)
+                    if (cemaat.isAfter(now)) add(getString(R.string.label_cemaat) to cemaat)
+                }
             }
         }.sortedBy { it.second }.map { it.first to it.second.format(timeFormat) }
 
         return ViewState(
+            noTimes = false,
             heroName = name,
             heroTimeText = heroTimeText,
             heroTimeSize = heroTimeSize,
             heroTimeDesc = heroTimeDesc,
             city = s.city,
             karaha = karahaUi,
-            modeText = if (s.showRemaining) getString(R.string.mode_remaining) else getString(R.string.mode_clock),
-            vibrateText = if (s.vibrate) getString(R.string.vibrate_on) else getString(R.string.vibrate_off),
-            useCalculatedText = if (s.useCalculated) getString(R.string.settings_use_calculated) else getString(R.string.settings_use_calculated_off),
-            cemaatText = if (s.showCemaat) getString(R.string.cemaat_on) else getString(R.string.cemaat_off),
+            modeText = settingsRows.modeText,
+            vibrateText = settingsRows.vibrateText,
+            calculationFillsGapsText = settingsRows.calculationFillsGapsText,
+            cemaatText = settingsRows.cemaatText,
             rows = rows,
         )
     }
 
+    /** Die vier Einstellungs-Zeilen unten im Screen — unabhaengig vom
+     *  Leerfall immer gleich, deshalb einmal berechnet statt zweimal
+     *  (Leerfall- und Normalfall-`return`) hingeschrieben. */
+    private data class SettingsRows(
+        val modeText: String,
+        val vibrateText: String,
+        val calculationFillsGapsText: String,
+        val cemaatText: String,
+    )
+
     private fun applyState(state: ViewState) {
         findViewById<TextView>(R.id.heroName).apply {
+            // Leerfall: kein "naechstes Gebet", also auch kein Name darueber -
+            // der Satz in heroTime steht dann fuer sich.
+            visibility = if (state.noTimes) View.GONE else View.VISIBLE
             text = state.heroName
             contentDescription = getString(R.string.desc_naechstes_gebet, state.heroName)
         }
         findViewById<TextView>(R.id.heroTime).apply {
             text = state.heroTimeText
             textSize = state.heroTimeSize
-            contentDescription = getString(R.string.desc_hero_time, state.heroName, state.heroTimeDesc)
+            contentDescription = if (state.noTimes) state.heroTimeDesc else {
+                getString(R.string.desc_hero_time, state.heroName, state.heroTimeDesc)
+            }
         }
         findViewById<TextView>(R.id.cityLabel).apply {
             text = state.city
@@ -244,9 +298,9 @@ class MainActivity : Activity() {
             text = state.vibrateText
             contentDescription = getString(R.string.desc_toggle, state.vibrateText)
         }
-        findViewById<TextView>(R.id.useCalculatedLabel).apply {
-            text = state.useCalculatedText
-            contentDescription = getString(R.string.desc_toggle, state.useCalculatedText)
+        findViewById<TextView>(R.id.calculationFillsGapsLabel).apply {
+            text = state.calculationFillsGapsText
+            contentDescription = getString(R.string.desc_toggle, state.calculationFillsGapsText)
         }
         findViewById<TextView>(R.id.cemaatLabel).apply {
             text = state.cemaatText

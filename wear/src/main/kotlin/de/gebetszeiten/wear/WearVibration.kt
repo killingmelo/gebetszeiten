@@ -41,7 +41,15 @@ object WearVibration {
         }
         val zone = ZoneId.systemDefault()
         val location = WearSettings.location(context)
-        val next = WearPrayer.next(context, location, zone, ZonedDateTime.now(zone))
+        // Leerfall (Task 16): weder amtliche Zeiten noch der Notausgang
+        // liefern eine naechste Zeit — es gibt dann nichts, wofuer die Uhr
+        // vibrieren koennte. Dieselbe Behandlung wie eine ausgeschaltete
+        // Einstellung: die Kette wird abbestellt statt gegen einen
+        // erfundenen Zeitpunkt zu planen.
+        val next = WearPrayer.next(context, location, zone, ZonedDateTime.now(zone)) ?: run {
+            alarmManager.cancel(pending)
+            return
+        }
         val triggerAt = next.second.toInstant().toEpochMilli()
         try {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending)

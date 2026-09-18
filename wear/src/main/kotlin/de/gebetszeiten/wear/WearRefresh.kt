@@ -102,11 +102,14 @@ private val refreshSingleFlight = SingleFlight<Boolean>(refreshScope)
  *
  * Offline-Flavor: [WearFetchProvider.isOnline] ist `false` — sofortige
  * Rueckkehr, ohne dass hier auch nur eine DataStore geoeffnet wird.
- * Genauso, wenn der Nutzer auf der Uhr die eigene Berechnung gewaehlt hat
- * ([WearSettings.useCalculated], geprueft als erstes in [doRefresh]):
- * `WearPrayer.daily` liest den amtlichen Cache dann ohnehin nicht — ein
- * Abruf waere reiner Akkuverbrauch ohne Wirkung (dieselbe erste Zeile wie
- * in `PrayerProvider.refreshOfficial`).
+ *
+ * Laeuft dagegen AUCH, wenn der Notausgang ([WearSettings.calculationFillsGaps])
+ * eingeschaltet ist — bis Task 16 (unter dem alten Namen `useCalculated`,
+ * "immer rechnen") stand hier ein fruehes `return false`, weil ein Abruf
+ * dessen Ergebnis nie angezeigt haette. Seit der Schalter nur noch LUECKEN
+ * fuellt, will ein Nutzer, der ihn einschaltet, amtliche Zeiten WEITERHIN —
+ * ein Abruf ist also GENAUSO sinnvoll wie ohne (dieselbe Begruendung wie
+ * `canFetchOfficial()`/`PrayerProvider.refreshOfficial` am Telefon).
  *
  * [force] (der "Jetzt aktualisieren"-Knopf, falls die Uhr einen bekommt)
  * durchbricht die Bremse fuer den aktiven Ort — dieselbe Semantik wie am
@@ -120,9 +123,7 @@ private val refreshSingleFlight = SingleFlight<Boolean>(refreshScope)
 suspend fun refreshWearOfficial(context: Context, force: Boolean = false): Boolean {
     // Reine Konstante des Flavors, kein DataStore, kein Asset — das einzige,
     // was hier VOR der Buendelungs-Huelle stehen darf, ohne einen eigenen
-    // `try` zu brauchen. Die `useCalculated`-Pruefung stand bis Fix-Runde 4
-    // ebenfalls hier und war damit ungeschuetzt; sie ist jetzt die erste
-    // Zeile in [doRefresh], also innerhalb des `try`.
+    // `try` zu brauchen.
     if (!WearFetchProvider.isOnline) return false
 
     return refreshSingleFlight.run { doRefresh(context, force) }
@@ -179,7 +180,6 @@ private suspend fun doRefresh(context: Context, force: Boolean): Boolean {
     // bleibt es beim Protokolleintrag.
     var versuchsOrt: Pair<Double, Double>? = null
     return try {
-        if (WearSettings.useCalculated(context)) return false
         val fetcher = WearFetchProvider.fetcher(context) ?: return false
 
         val location = WearSettings.location(context)

@@ -22,6 +22,12 @@ import java.time.format.DateTimeFormatter
 
 private const val RESOURCES_VERSION = "1"
 
+/** Kein Validitaetsende bekannt (Leerfall, Task 16) — die Kachel soll
+ *  trotzdem irgendwann erneut anfragen, falls der Notausgang eingeschaltet
+ *  oder amtliche Zeiten inzwischen eingetroffen sind. 30 Minuten, dieselbe
+ *  Grössenordnung wie ein einzelner Gebetsuebergang. */
+private const val NO_TIMES_FRESHNESS_MILLIS = 30 * 60 * 1000L
+
 /**
  * Swipeable tile showing the next prayer (name + time), static.
  *
@@ -43,7 +49,7 @@ class PrayerTileService : TileService() {
         // Sofort aus dem Cache zeichnen — kein Netz, aber auch keine reine
         // Millisekunden-Sache: `WearPrayer.upcoming` ruft `daily()` fuer
         // ZWEI Tage auf, jedes davon bis zu zwei DataStore-Lesevorgaenge
-        // (useCalculated, amtlicher Cache) plus hier oben `location()` —
+        // (calculationFillsGaps, amtlicher Cache) plus hier oben `location()` —
         // macht bis zu sechs DataStore-Reads, und beim allerersten Aufruf
         // zusaetzlich das Parsen von `locations-de.tsv` (947 Zeilen) samt
         // einer Jahrestabelle (`WearOfficialSource`, danach im Prozess
@@ -72,6 +78,30 @@ class PrayerTileService : TileService() {
         val ctx = applicationContext
         launchWearRefresh(ctx) {
             TileService.getUpdater(ctx).requestUpdate(PrayerTileService::class.java)
+        }
+
+        // Leerfall (Task 16): weder amtliche Zeiten noch der Notausgang
+        // liefern etwas fuer heute ODER morgen — kurzer Satz statt Zeiten,
+        // dieselbe Regel wie `WearPrayer.upcoming`/`PrayerProvider.daily`.
+        if (upcoming.isEmpty()) {
+            val tile = TileBuilders.Tile.Builder()
+                .setResourcesVersion(RESOURCES_VERSION)
+                .setTileTimeline(
+                    TimelineBuilders.Timeline.Builder()
+                        .addTimelineEntry(
+                            TimelineBuilders.TimelineEntry.Builder()
+                                .setLayout(
+                                    LayoutElementBuilders.Layout.Builder()
+                                        .setRoot(noTimesLayout(requestParams.deviceConfiguration))
+                                        .build(),
+                                )
+                                .build(),
+                        )
+                        .build(),
+                )
+                .setFreshnessIntervalMillis(NO_TIMES_FRESHNESS_MILLIS)
+                .build()
+            return ResolvableFuture.create<TileBuilders.Tile>().apply { set(tile) }
         }
 
         val timeline = TimelineBuilders.Timeline.Builder()
@@ -116,14 +146,11 @@ class PrayerTileService : TileService() {
     // datei-eigenen Scope von `WearRefresh.kt`, der laenger lebt als dieser
     // Dienst — hier gibt es nichts mehr, das `onDestroy` abbrechen muesste.
 
-    private fun layout(
-        device: DeviceParametersBuilders.DeviceParameters,
-        name: String,
-        time: String,
-        after: String?,
-    ): LayoutElementBuilders.LayoutElement {
-        // Tapping the tile opens the watch app.
-        val openApp = ModifiersBuilders.Clickable.Builder()
+    /** Tapping the tile opens the watch app — geteilt zwischen [layout] und
+     *  [noTimesLayout], damit die Kachel-Oeffnung nicht zweimal geschrieben
+     *  wird. */
+    private fun openAppClickable(): ModifiersBuilders.Clickable =
+        ModifiersBuilders.Clickable.Builder()
             .setId("open_app")
             .setOnClick(
                 ActionBuilders.LaunchAction.Builder()
@@ -136,10 +163,39 @@ class PrayerTileService : TileService() {
                     .build(),
             )
             .build()
+
+    /** Leerfall-Kachel (Task 16): nur der geteilte Wortlaut aus
+     *  `no_times_notice` statt Name+Uhrzeit — Tippen oeffnet weiterhin die
+     *  App, wie im Normalfall. */
+    private fun noTimesLayout(
+        device: DeviceParametersBuilders.DeviceParameters,
+    ): LayoutElementBuilders.LayoutElement {
         val column = LayoutElementBuilders.Column.Builder()
             .setModifiers(
                 ModifiersBuilders.Modifiers.Builder()
-                    .setClickable(openApp)
+                    .setClickable(openAppClickable())
+                    .build(),
+            )
+            .addContent(
+                Text.Builder(this, getString(R.string.no_times_notice))
+                    .setTypography(Typography.TYPOGRAPHY_BODY1)
+                    .setColor(ColorBuilders.argb(0xFFFFFFFF.toInt()))
+                    .build(),
+            )
+            .build()
+        return PrimaryLayout.Builder(device).setContent(column).build()
+    }
+
+    private fun layout(
+        device: DeviceParametersBuilders.DeviceParameters,
+        name: String,
+        time: String,
+        after: String?,
+    ): LayoutElementBuilders.LayoutElement {
+        val column = LayoutElementBuilders.Column.Builder()
+            .setModifiers(
+                ModifiersBuilders.Modifiers.Builder()
+                    .setClickable(openAppClickable())
                     .build(),
             )
             .addContent(
