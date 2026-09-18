@@ -36,6 +36,7 @@ import de.gebetszeiten.ui.theme.LightColors
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.prayer.hijriTextShort
 import de.gebetszeiten.prayer.labelRes
+import de.gebetszeiten.prayer.noTimesNotice
 import de.gebetszeiten.prayer.remainingStepLabel
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -65,11 +66,22 @@ class NextPrayerWidget : GlanceAppWidget() {
         val settings = SettingsRepository(context).current()
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
-        // Keine Zeiten unter den aktuellen Einstellungen: das Widget bleibt
-        // unveraendert (keine `provideContent`), statt erfundene Werte zu
-        // zeigen. Die eigentliche Leer-Darstellung kommt in einer spaeteren
-        // Aufgabe.
-        val next = PrayerProvider.next(context, settings, zone, now) ?: return
+        // Keine Zeiten unter den aktuellen Einstellungen: statt auf dem
+        // letzten (echten, aber veralteten) Stand einzufrieren, sagt das
+        // Widget das jetzt selbst - derselbe Wortlaut wie Heute- und
+        // Monatsansicht (Aufgabe 10/11), hier nur die Kurzform (`headline`,
+        // kein `detail` - dafuer ist auf einem Widget kein Platz).
+        val next = PrayerProvider.next(context, settings, zone, now)
+        if (next == null) {
+            val notice = noTimesNotice(settings.city, settings.canFetchOfficial())
+            val transparent = settings.widgetTransparent
+            provideContent {
+                GlanceTheme(colors = ColorProviders(light = LightColors, dark = DarkColors)) {
+                    NoTimesContent(notice.headline, transparent)
+                }
+            }
+            return
+        }
         val name = context.getString(next.prayer.labelRes())
         val time = next.time.format(timeFormat)
         // Ein Regler fuer alle Flaechen (AppSettings.countdownMode); das
@@ -189,6 +201,36 @@ class NextPrayerWidget : GlanceAppWidget() {
                 }
             }
             karahaLine?.let { KarahaText(it, fontSize = 13) }
+        }
+    }
+
+    /** Leer-Darstellung (Aufgabe 12): keine amtlichen Zeiten unter den
+     *  aktuellen Einstellungen. Ersetzt die sonstige Widget-Anzeige komplett
+     *  (nicht nur eine Zeile darin) — es gibt weder ein "naechstes Gebet"
+     *  noch einen Tagesplan, die daneben noch Sinn ergeben wuerden. Bleibt
+     *  wie gewohnt antippbar zur App: derselbe Weg fuehrt dort zur
+     *  Heute-Ansicht mit demselben Hinweis samt Handlungsmoeglichkeit
+     *  (Abrufen/Notausgang einschalten).
+     */
+    @Composable
+    private fun NoTimesContent(headline: String, transparent: Boolean) {
+        Column(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(widgetBackground(transparent))
+                .padding(14.dp)
+                .clickable(actionStartActivity<de.gebetszeiten.ui.MainActivity>()),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.Start,
+        ) {
+            Text(
+                text = headline,
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurface,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+            )
         }
     }
 
