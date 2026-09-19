@@ -97,6 +97,11 @@ hochgeladenen Wear-versionCode).
 
 Neu bauen: `.\gradlew.bat :app:bundleOnlineRelease :wear:bundleOnlineRelease`.
 
+Stand 19.09.2026, nach dem Zusammenführen der Jahrgänge 2026+2027: App-Bundle
+**17 MB**, Wear-Bundle **9 MB**. Beide bündeln dieselben amtlichen Tabellen
+(`shared-assets/official/`, 29 MB roh), die den Löwenanteil ausmachen — eine
+Größenänderung ohne einen Lauf der Datenpipeline wäre also erklärungsbedürftig.
+
 Vor dem Upload geprüft: Testlauf über alle Module und beide Flavors beider
 Anwendungen grün, `lintOnlineRelease` **0 Fehler** (nicht nur `lintVital` —
 der volle Lint hatte einen Compose-Fehler gefunden, den der Release-Build
