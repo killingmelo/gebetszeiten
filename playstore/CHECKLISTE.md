@@ -55,7 +55,7 @@ Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
   **Löschung entfällt** (es wird nichts serverseitig gespeichert, was der
   App zuordenbar wäre — Antwort: Daten werden nicht gespeichert).
 - Abschnitt 5: Upload-Datei ist ab jetzt das **online**-Bundle.
-- **Stand 0.1.20 — Datentyp/Endpunkte unverändert, aber NICHT mehr "keine
+- **Stand 0.2.0 — Datentyp/Endpunkte unverändert, aber NICHT mehr "keine
   Änderung nötig".** Der neue weltweite Standortindex ist weiterhin ein
   *gebündeltes* Asset, kein zusätzlicher Abruf, und die Netz-Endpunkte sind
   unverändert dieselben drei (diyanet.gov.tr, der Fallback-Proxy, open-meteo
