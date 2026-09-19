@@ -122,6 +122,12 @@ tasks.withType<Test>().configureEach {
     inputs.dir(file("src/main/res/drawable"))
         .withPropertyName("countdownDrawables")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // DisplayStepBoundariesTest rechnet die Kostenangabe in
+    // `settings_remaining_cost` nach; ohne diese Zeile bliebe er gruen,
+    // wenn jemand nur den Text aendert.
+    inputs.file(file("src/main/res/values/strings.xml"))
+        .withPropertyName("deutscheTexte")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(rootProject.file("tools/notification-icons/icons.sha256"))
         .withPropertyName("countdownIconManifest")
         .withPathSensitivity(PathSensitivity.RELATIVE)

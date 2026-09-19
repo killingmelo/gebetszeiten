@@ -64,3 +64,20 @@ internal fun displayStepBoundaries(targetMs: Long, nowMs: Long): List<Long> {
  *  wenn keine mehr kommt (dann wird der Alarm abbestellt). */
 internal fun nextDisplayBoundary(boundaries: List<Long>, nowMs: Long): Long? =
     boundaries.filter { it > nowMs + BOUNDARY_MIN_LEAD_MS }.minOrNull()
+
+/**
+ * Wie viele Weckvorgaenge dieses Ziel noch kostet.
+ *
+ * Es gibt sie, damit die Kostenangabe im Einstellungsblatt keine erfundene
+ * Zahl ist: `settings_remaining_cost` nennt eine Spanne, und ein Test rechnet
+ * sie mit GENAU dieser Funktion nach. Eine Zahl in der Oberflaeche, die kein
+ * Test haelt, driftet beim ersten Umbau von der Wahrheit weg — der frueher
+ * dort stehende Wert „19 bis 24" tat das bereits: er unterschlug die kurzen
+ * Intervalle (Maghrib->Isha liegt im Sommer unter anderthalb Stunden und
+ * kostet 15, nicht 19).
+ *
+ * Gezaehlt wird nach derselben Regel, nach der [nextDisplayBoundary] auswaehlt
+ * — sonst zaehlte sie Grenzen mit, die nie feuern.
+ */
+internal fun displayStepCount(targetMs: Long, nowMs: Long): Int =
+    displayStepBoundaries(targetMs, nowMs).count { it > nowMs + BOUNDARY_MIN_LEAD_MS }

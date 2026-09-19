@@ -127,14 +127,19 @@ object PrayerAlarmScheduler {
      *  - STEPS countdown: floor-step boundaries (full hours, 10-minute marks,
      *    minute marks in the final 10) of either surface's target.
      *  - Karaha indicator: warning start, window start and window end of each
-     *    makruh window (+6 ms-scale wake-ups/day while enabled).
+     *    makruh window. `Karaha.windows` liefert DREI Fenster, `boundaries`
+     *    drei Grenzen je Fenster — also 9 Grenzen/Tag, nicht 6, wie hier
+     *    frueher stand. Drei davon (Beginn Israk, Ende Zeval, Ende Isfirar)
+     *    fallen zeitlich mit Gebetsuebergaengen zusammen.
      *
      * Die Dauerbenachrichtigung ist seit dem Statusleisten-Symbol AUCH im
      * EXACT-Modus dabei, und das kostet: EXACT verliert seine Eigenschaft,
      * ganz ohne Weckvorgaenge auszukommen (der Systemzaehler zeichnete sich
      * selbst). Es kommen die Stufengrenzen dazu — volle Stunden,
-     * Zehnminuten-Marken, die letzten zehn Minuten einzeln, also rund 19 bis
-     * 24 Weckvorgaenge je Gebetsintervall. Der Preis dafuer, dass das Symbol
+     * Zehnminuten-Marken, die letzten zehn Minuten einzeln, also je nach
+     * Intervall etwa 13 bis 24 Weckvorgaenge (nachgerechnet von
+     * [displayStepCount]; „19 bis 24" stand hier frueher und unterschlug die
+     * kurzen Intervalle). Der Preis dafuer, dass das Symbol
      * auch dort lebt statt einzufrieren; der Plan hat ihn ausdruecklich
      * akzeptiert. Das Widget bleibt bei STEPS — es hat kein Symbol.
      *

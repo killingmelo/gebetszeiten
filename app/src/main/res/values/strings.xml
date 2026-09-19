@@ -163,8 +163,8 @@
     <string name="settings_remaining">Restzeit</string>
     <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit — eine Einstellung für alles: App, Widget, Sperrbildschirm und das Symbol in der Statusleiste. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
     <string name="settings_remaining_all">Überall</string>
-    <string name="settings_remaining_cost">Stufen kostet rund 19 bis 24 Weckvorgänge je Gebetsintervall. Genau kostet dieselben, sobald die dauerhafte Anzeige läuft — sonst keine, weil das System dann selbst zählt. Aus kostet nie welche.</string>
-    <string name="settings_lockscreen_hint">Auf dem Sperrbildschirm erscheint die Restzeit erst, wenn unten die dauerhafte Anzeige eingeschaltet ist.</string>
+    <string name="settings_remaining_cost">Stufen kostet je Gebetsintervall bis zu 14 feste Weckvorgänge — die letzten neun Minuten einzeln, davor die Zehnminuten-Marken — plus einen je angefangener Stunde; je nach Intervall etwa 13 bis 25. Genau kostet fast dieselben, sobald die dauerhafte Anzeige läuft: Den Text zählt dort das System, aber das Symbol in der Statusleiste stellt nur die App weiter. Etwas billiger ist Genau trotzdem, weil das Widget dabei ohne die App auskommt. Ohne dauerhafte Anzeige kostet Genau gar nichts, und Aus kostet nie welche.</string>
+    <string name="settings_lockscreen_hint">Auf dem Sperrbildschirm erscheint die Restzeit erst, wenn die dauerhafte Anzeige eingeschaltet ist.</string>
     <string name="settings_wear_hint">Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).</string>
     <string name="settings_official_online">Offizielle Diyanet-Zeiten (online)</string>
     <string name="settings_high_contrast">Hoher Kontrast</string>
@@ -182,7 +182,7 @@
     <string name="lead_15">15 Min</string>
     <string name="lead_30">30 Min</string>
     <string name="settings_persistent">Dauerhafte Anzeige (Sperrbildschirm)</string>
-    <string name="settings_persistent_hint">Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet und Restzeit — sichtbar auch auf dem Sperrbildschirm. Wird vom System gezeichnet, kostet keinen zusätzlichen Akku.</string>
+    <string name="settings_persistent_hint">Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet — sichtbar auch auf dem Sperrbildschirm. Für sich allein kostet sie keinen zusätzlichen Akku: Sie wird nur zu den Gebetszeiten neu geschrieben. Zusammen mit der Restzeit kommen Weckvorgänge dazu, weil dann auch das Symbol in der Statusleiste weitergestellt werden muss.</string>
     <string name="settings_section_appearance">Darstellung</string>
     <string name="settings_theme">Design</string>
     <string name="theme_system">System</string>

@@ -114,4 +114,56 @@ class DisplayStepBoundariesTest {
     @Test fun ohneGrenzenGibtEsKeinenAlarm() {
         assertNull(nextDisplayBoundary(emptyList(), target))
     }
+
+    // --- Die Kostenangabe im Einstellungsblatt ---
+
+    private fun kosten(minuten: Long) = displayStepCount(target, target - minuten * 60_000L)
+
+    @Test fun `displayStepCount zaehlt nur Grenzen, die auch feuern`() {
+        // 45 Min: neun Minutengrenzen, aber nur VIER Zehnminutenmarken — die
+        // 50er liegt schon hinter uns. Keine volle Stunde.
+        assertEquals(9 + 4, kosten(45))
+        // Ab einer Stunde sind alle fuenf Zehnminutenmarken dabei.
+        assertEquals(9 + 5 + 1, kosten(65))
+        // Anderthalb Stunden kosten nicht mehr als eine — es ist dieselbe
+        // angefangene zweite Stunde. Genau das unterschlug „19 bis 24".
+        assertEquals(9 + 5 + 1, kosten(95))
+        assertEquals(9 + 5 + 5, kosten(5 * 60 + 10))
+        assertEquals(9 + 5 + 10, kosten(10 * 60 + 10))
+    }
+
+    @Test fun `genau auf der Stundengrenze zaehlt die Stunde nicht mehr mit`() {
+        // Der Randfall, der die Spanne sonst um eins verschoebe: bei exakt
+        // fuenf Stunden liegt die 5-Stunden-Grenze 500 ms voraus und faellt
+        // damit unter BOUNDARY_MIN_LEAD_MS. Sie steht in der Liste, feuert
+        // aber nie — und wird deshalb auch nicht gezaehlt.
+        assertTrue(displayStepBoundaries(target, target - 5 * 3_600_000L).size > kosten(5 * 60))
+        assertEquals(9 + 5 + 4, kosten(5 * 60))
+    }
+
+    @Test fun `die Spanne im Kostentext stimmt mit der Rechnung ueberein`() {
+        // Der Text in `settings_remaining_cost` nennt eine Spanne. Ohne
+        // diesen Test driftet er beim ersten Umbau von der Wahrheit weg —
+        // genau das war mit „19 bis 24" passiert.
+        //
+        // Gerechnet wird ueber die Laengen echter Gebetsintervalle: das
+        // kuerzeste ist Maghrib->Isha (im deutschen Sommer gut anderthalb
+        // Stunden), das laengste Isha->Fajr im Winter (rund zwoelf).
+        val spanne = (45..(12 * 60) step 5).map { kosten(it.toLong()) }
+        assertEquals("kleinster Wert", 13, spanne.min())
+        assertEquals("groesster Wert", 25, spanne.max())
+
+        val text = java.io.File("src/main/res/values/strings.xml")
+            .readText()
+            .substringAfter("""<string name="settings_remaining_cost">""")
+            .substringBefore("</string>")
+        assertTrue(
+            "Der Kostentext nennt nicht die Spanne ${spanne.min()} bis ${spanne.max()}: $text",
+            text.contains("${spanne.min()} bis ${spanne.max()}"),
+        )
+        assertTrue(
+            "Der Kostentext nennt die 14 festen Marken nicht: $text",
+            text.contains("14 feste"),
+        )
+    }
 }
