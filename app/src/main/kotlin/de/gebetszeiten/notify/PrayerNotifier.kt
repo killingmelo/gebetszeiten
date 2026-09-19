@@ -14,7 +14,6 @@ import androidx.core.content.ContextCompat
 import de.gebetszeiten.R
 import de.gebetszeiten.prayer.NextPrayer
 import de.gebetszeiten.prayer.labelRes
-import de.gebetszeiten.prayer.remainingStepShort
 import de.gebetszeiten.ui.MainActivity
 import java.time.format.DateTimeFormatter
 
@@ -181,7 +180,6 @@ object PrayerNotifier {
             java.time.Instant.now(),
             java.time.Instant.ofEpochMilli(whenMillis),
         )
-        val stepShort = if (countdown && !exact) remainingStepShort(remaining) else ""
         // Dieselben Bausteine tragen die eingeklappte Zeile UND den
         // aufgeklappten Text — einmal aufgeloest, mehrfach benutzt.
         val atLine = context.getString(R.string.ongoing_at, timeStr)
@@ -195,13 +193,15 @@ object PrayerNotifier {
         val untilLine = activeUntil?.let {
             context.getString(R.string.ongoing_until, it.format(timeFormat))
         }
-        // Die EINE Entscheidung liegt in [ongoingMode]/[ongoingTexts] — ohne
-        // Context, also ausfuehrbar im Test. Hier wird nur noch
-        // zusammengesetzt, was sie liefern.
-        val mode = ongoingMode(countdown, exact, stepShort)
-        val texts = ongoingTexts(
-            mode = mode,
-            titleWithStep = context.getString(R.string.ongoing_title_remaining, stepShort, name),
+        // Die EINE Entscheidung liegt in [ongoing] — ohne Context, also
+        // ausfuehrbar im Test, und dieselbe Funktion, aus der die Vorschau im
+        // Onboarding ihr Bild baut. Hier wird nur noch zusammengesetzt, was
+        // sie liefert.
+        val anzeige = ongoing(
+            remaining = remaining,
+            countdown = countdown,
+            exact = exact,
+            titleWithStep = { step -> context.getString(R.string.ongoing_title_remaining, step, name) },
             titleWithTime = context.getString(R.string.ongoing_title, name, timeStr),
             timeLine = atLine,
             activeLine = sinceLine,
@@ -209,6 +209,8 @@ object PrayerNotifier {
             karahaText = karahaLine?.text,
             city = city,
         )
+        val mode = anzeige.mode
+        val texts = anzeige.texts
         val notification = NotificationCompat.Builder(context, ONGOING_CHANNEL_ID)
             // Die Restzeit in der Statusleiste statt des statischen Monds.
             // Ist [countdown] aus, liefert countdownGlyph None und
@@ -217,7 +219,7 @@ object PrayerNotifier {
             // Systemzaehler zeichnet den Text, das Symbol kommt von hier und
             // wird von der Anzeige-Weckkette weitergestellt
             // (AppSettings.needsDisplayStepAlarms).
-            .setSmallIcon(countdownIconRes(countdownGlyph(remaining, countdown)))
+            .setSmallIcon(countdownIconRes(anzeige.glyph))
             .setContentTitle(texts.title)
             // `null` heisst „gar keine Zeile" — genau wie frueher das
             // uebersprungene `setContentText`; die Vorgabe des Builders IST

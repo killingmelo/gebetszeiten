@@ -126,3 +126,59 @@ internal fun ongoingTexts(
         subText = ongoingSubText(city),
     )
 }
+
+/**
+ * Symbol, Modus und alle vier Texte der Dauerbenachrichtigung — aus EINEM
+ * Aufruf.
+ *
+ * Warum es diese Klammer ueber [ongoingMode], [ongoingTexts] und
+ * [countdownGlyph] gibt: `updateOngoing` hat die drei frueher selbst
+ * zusammengerechnet. Solange es die einzige Stelle war, die das tut, war das
+ * unauffaellig. Sobald eine ZWEITE Stelle dieselbe Anzeige zeigen will — die
+ * Vorschau im Onboarding, die dem Nutzer zeigt, was er bekommt —, waere das
+ * Nachbauen dieser Rechnung eine zweite Wahrheit: die Vorschau koennte ein
+ * Symbol versprechen, das die echte Anzeige nie zeigt.
+ *
+ * [titleWithStep] ist eine Funktion und kein fertiger Text, weil die
+ * Reststufe („20+ Min") erst hier entsteht. Der Aufrufer formatiert sie in
+ * seinen Ressourcen-String, ohne die Stufenregel zu kennen.
+ */
+internal data class Ongoing(
+    val mode: OngoingMode,
+    val glyph: CountdownGlyph,
+    val texts: OngoingTexts,
+)
+
+internal fun ongoing(
+    remaining: java.time.Duration,
+    countdown: Boolean,
+    exact: Boolean,
+    titleWithStep: (step: String) -> String,
+    titleWithTime: String,
+    timeLine: String,
+    activeLine: String? = null,
+    untilLine: String? = null,
+    karahaText: String? = null,
+    city: String? = null,
+): Ongoing {
+    // Im EXACT-Modus gibt es keine Stufe: den Text zeichnet dort der
+    // Systemzaehler. Das Symbol dagegen folgt in BEIDEN Modi derselben
+    // Stufenregel — deshalb steht `countdownGlyph` ausserhalb dieser
+    // Bedingung. Genau darauf stuetzt sich die Vorschau.
+    val stepShort = if (countdown && !exact) de.gebetszeiten.prayer.remainingStepShort(remaining) else ""
+    val mode = ongoingMode(countdown, exact, stepShort)
+    return Ongoing(
+        mode = mode,
+        glyph = countdownGlyph(remaining, countdown),
+        texts = ongoingTexts(
+            mode = mode,
+            titleWithStep = titleWithStep(stepShort),
+            titleWithTime = titleWithTime,
+            timeLine = timeLine,
+            activeLine = activeLine,
+            untilLine = untilLine,
+            karahaText = karahaText,
+            city = city,
+        ),
+    )
+}

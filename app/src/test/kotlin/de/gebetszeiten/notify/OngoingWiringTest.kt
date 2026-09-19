@@ -90,6 +90,34 @@ class OngoingWiringTest {
         }
     }
 
+    @Test
+    fun `updateOngoing bestimmt Symbol und Modus nicht mehr selbst`() {
+        // Seit es die Vorschau im Onboarding gibt, muessen echte Anzeige und
+        // Vorschau aus DERSELBEN Rechnung kommen — sonst verspricht die
+        // Vorschau ein Symbol, das die Anzeige nie zeigt. Die Rechnung heisst
+        // `ongoing(...)`. Baut jemand sie hier wieder von Hand nach
+        // (`countdownGlyph(remaining, countdown)`, `ongoingMode(...)`), faellt
+        // dieser Test — nicht der Nutzer.
+        assertTrue("$notifier fehlt", notifier.isFile)
+        val rumpf = rumpfVon(ohneKommentareUndTexte(notifier.readText()), "fun updateOngoing(")
+            .replace(Regex("""\s+"""), "")
+        assertEquals(
+            "updateOngoing ruft ongoing(...) nicht genau einmal auf",
+            1,
+            Regex("""(?<![A-Za-z])ongoing\(""").findAll(rumpf).count(),
+        )
+        listOf("countdownGlyph(", "ongoingMode(", "ongoingTexts(", "remainingStepShort(").forEach {
+            assertTrue(
+                "updateOngoing rechnet mit $it wieder selbst, statt ongoing(...) zu fragen",
+                !rumpf.contains(it),
+            )
+        }
+        assertTrue(
+            "das Symbol kommt nicht aus demselben Ergebnis wie die Texte",
+            rumpf.contains("setSmallIcon(countdownIconRes(anzeige.glyph))"),
+        )
+    }
+
     // --- Werkzeug ------------------------------------------------------------
 
     /** Die Argumentliste ab der oeffnenden Klammer an [klammer]. */

@@ -2,6 +2,7 @@ package de.gebetszeiten.notify
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -175,5 +176,96 @@ class OngoingTextTest {
         // „Noch  bis Isha" waere kaputt. Schon heute faellt er dort auf den
         // klassischen zurueck; hier steht es als Fall, nicht als Zufall.
         assertEquals(OngoingMode.PLAIN, ongoingMode(countdown = true, exact = false, stepShort = ""))
+    }
+
+    // --- Die Klammer ueber allem: `ongoing(...)` ---------------------------
+
+    private fun anzeige(minuten: Long, countdown: Boolean, exact: Boolean) = ongoing(
+        remaining = java.time.Duration.ofMinutes(minuten),
+        countdown = countdown,
+        exact = exact,
+        titleWithStep = { step -> "Noch $step bis Isha" },
+        titleWithTime = "Isha um 22:48",
+        timeLine = "um 22:48",
+        activeLine = "aktuell: Maghrib",
+        city = "Nuernberg",
+    )
+
+    @Test fun `ohne Countdown bleibt es der Mond und der klassische Titel`() {
+        val a = anzeige(41, countdown = false, exact = false)
+        assertEquals(CountdownGlyph.None, a.glyph)
+        assertEquals(OngoingMode.PLAIN, a.mode)
+        assertEquals("Isha um 22:48", a.texts.title)
+    }
+
+    @Test fun `in Stufen traegt der Titel die Stufe, das Symbol die abgerundete Minute`() {
+        val a = anzeige(41, countdown = true, exact = false)
+        assertEquals(CountdownGlyph.Minutes(40, approx = true), a.glyph)
+        assertEquals(OngoingMode.STEPS, a.mode)
+        assertEquals("Noch 40+ Min bis Isha", a.texts.title)
+    }
+
+    @Test fun `in Genau traegt der Titel die Uhrzeit, das Symbol bleibt dasselbe`() {
+        val a = anzeige(41, countdown = true, exact = true)
+        assertEquals(CountdownGlyph.Minutes(40, approx = true), a.glyph)
+        assertEquals(OngoingMode.EXACT, a.mode)
+        assertEquals("Isha um 22:48", a.texts.title)
+    }
+
+    @Test fun `Stufen und Genau zeigen IMMER dasselbe Symbol`() {
+        // Die Zusage, auf der die Vorschau im Onboarding steht: sie zeichnet
+        // die Statusleiste EINMAL und behauptet daneben, das Symbol sei in
+        // beiden Modi gleich. Waere das falsch, versprsche sie etwas, das die
+        // echte Anzeige nie zeigt.
+        //
+        // Vierzehn Stunden in Minutenschritten — ueber den Stundendeckel bei
+        // neun hinaus, durch die Zehnminuten-Stufen und die letzten neun
+        // Minuten einzeln.
+        for (minuten in 0L..14L * 60L) {
+            assertEquals(
+                "Minute $minuten: Stufen und Genau zeigen verschiedene Symbole",
+                anzeige(minuten, countdown = true, exact = false).glyph,
+                anzeige(minuten, countdown = true, exact = true).glyph,
+            )
+        }
+    }
+
+    @Test fun `verschieden ist der Text, und zwar ab der ersten vollen Minute`() {
+        // Gegenprobe zum Test darueber: gaebe es gar keinen Unterschied,
+        // waere der Test oben auch dann gruen, wenn die beiden Modi
+        // zusammengefallen waeren.
+        for (minuten in 1L..14L * 60L) {
+            assertNotEquals(
+                "Minute $minuten: Stufen und Genau sind textlich nicht unterscheidbar",
+                anzeige(minuten, countdown = true, exact = false).texts.title,
+                anzeige(minuten, countdown = true, exact = true).texts.title,
+            )
+        }
+    }
+
+    @Test fun `in der letzten Minute fallen Stufen und Genau auch im Text zusammen`() {
+        // Dort gibt es keine Stufe mehr; der Stufen-Modus faellt auf den
+        // klassischen Titel zurueck. Die Vorschau darf hier keinen
+        // Unterschied vorgaukeln.
+        val stufen = anzeige(0, countdown = true, exact = false)
+        assertEquals(OngoingMode.PLAIN, stufen.mode)
+        assertEquals("Isha um 22:48", stufen.texts.title)
+        assertEquals(CountdownGlyph.Now, stufen.glyph)
+    }
+
+    @Test fun `die genaue Uhrzeit steht in jedem Modus im Aufgeklappten`() {
+        listOf(
+            anzeige(41, countdown = false, exact = false),
+            anzeige(41, countdown = true, exact = false),
+            anzeige(41, countdown = true, exact = true),
+        ).forEach { assertTrue(it.texts.bigText, it.texts.bigText.contains("um 22:48")) }
+    }
+
+    @Test fun `der Ort steht in jedem Modus im Untertitel`() {
+        listOf(
+            anzeige(41, countdown = false, exact = false),
+            anzeige(41, countdown = true, exact = false),
+            anzeige(41, countdown = true, exact = true),
+        ).forEach { assertEquals("Nuernberg", it.texts.subText) }
     }
 }
