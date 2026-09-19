@@ -125,7 +125,11 @@ private data class DayInfo(
     val times: DailyPrayerTimes,
     val karaha: KarahaTimes,
     val nafl: NaflTimes,
-    val nextFajr: ZonedDateTime, // next day's Fajr (for the Isha→Fajr night phase)
+    // Null when the next day has no official times (e.g. last day of bundled
+    // coverage) - the card still shows TODAY's times; only the parts that
+    // need tomorrow's Fajr (Tahajjud window, the after-Isha countdown) fall
+    // away instead of the whole card.
+    val nextFajr: ZonedDateTime?,
 )
 
 class MainActivity : ComponentActivity() {
@@ -407,9 +411,12 @@ private fun HeuteContent(
         // Keine Zeiten unter den aktuellen Einstellungen: `dayInfo` bleibt
         // null (bereits von `dayInfo?.let` unten abgefangen), statt Fenster
         // aus erfundenen Zeiten zu berechnen.
+        // `nextFajr` fehlt am letzten abgedeckten Tag (oder bei gescheitertem
+        // Abruf ohne Reserve) - das darf NUR das Tahajjud-Fenster kosten, nicht
+        // die ganze Karte: HEUTE liegen amtliche Zeiten vor, nur MORGEN nicht.
         val times = PrayerProvider.daily(context, settings, selectedDate, zone)
         val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone)?.fajr
-        value = if (times != null && nextFajr != null) {
+        value = if (times != null) {
             DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr), nextFajr)
         } else {
             null
@@ -766,9 +773,17 @@ private fun TimesCard(
                 }
                 // Voluntary-prayer tips: Awwabin on Maghrib (always), Tahajjud on
                 // Isha (only while Isha is the current prayer — i.e. at night).
+                // Tahajjud needs tomorrow's Fajr; missing it (last covered day)
+                // drops just this tip, honestly, instead of inventing an end time.
+                val tahajjudStart = n.tahajjudStart
+                val tahajjudEnd = n.tahajjudEnd
                 val tip = when (p) {
                     Prayer.MAGHRIB -> NaflBlock(labelAwwabin, n.awwabinStart, n.awwabinEnd, explain = naflAwwabin)
-                    Prayer.ISHA -> NaflBlock(labelTahajjud, n.tahajjudStart, n.tahajjudEnd, explain = naflTahajjud, whenCurrent = true)
+                    Prayer.ISHA -> if (tahajjudStart != null && tahajjudEnd != null) {
+                        NaflBlock(labelTahajjud, tahajjudStart, tahajjudEnd, explain = naflTahajjud, whenCurrent = true)
+                    } else {
+                        null
+                    }
                     else -> null
                 }
                 val cemaat = if (showCemaat && p == Prayer.FAJR) {
@@ -865,13 +880,17 @@ private fun TimesCard(
                 pillMakruh = pillMakruh,
                 onKaraha = onKaraha,
             )
+            // Ohne bekanntes `nextFajr` (letzter abgedeckter Tag) bleibt dieser
+            // Hinweis weg, statt eine Uhrzeit fuer morgen zu erfinden.
             if (afterIsha) {
-                Text(
-                    text = stringResource(R.string.times_tomorrow_fajr, info.nextFajr.format(HM)),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 54.dp, top = 4.dp),
-                )
+                info.nextFajr?.let { nextFajr ->
+                    Text(
+                        text = stringResource(R.string.times_tomorrow_fajr, nextFajr.format(HM)),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 54.dp, top = 4.dp),
+                    )
+                }
             }
             if (hasLater) {
                 ExpanderRow(
@@ -908,7 +927,7 @@ private fun Timeline(
     showPast: Boolean,
     amber: Color,
     green: Color,
-    nextFajr: ZonedDateTime,
+    nextFajr: ZonedDateTime?,
     showNextCountdown: Boolean,
     showRemaining: Boolean,
     pillMakruh: MakruhBlock?,
@@ -1000,10 +1019,15 @@ private fun Timeline(
                 when (block) {
                     is PrayerBlock -> {
                         val isSelected = isPrayerSelected(block.prayer)
+                        // For Isha (last prayer) the running period ends at
+                        // tomorrow's Fajr; missing it (last covered day) means
+                        // the length of "now" is unknown - shown plainly below
+                        // instead of a fabricated progress fraction.
+                        val nextT = nextEntry?.second ?: nextFajr
                         val isNext = nextEntry?.first == block.prayer
                         val isPast = active != null && block.time.isBefore(active.second)
                         val foreground = when {
-                            isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
+                            isSelected && nextT != null -> MaterialTheme.colorScheme.onPrimaryContainer
                             isNext -> primary
                             isPast -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             else -> MaterialTheme.colorScheme.onSurface
@@ -1029,11 +1053,9 @@ private fun Timeline(
                                     onKaraha = onKaraha,
                                 )
                             }
-                            if (isSelected) {
+                            if (isSelected && nextT != null) {
                                 // Current prayer: the pill itself fills with the
                                 // progress of the running period; remaining inside.
-                                // For Isha (last prayer) the period runs to tomorrow's Fajr.
-                                val nextT = nextEntry?.second ?: nextFajr
                                 val total = Duration.between(block.time, nextT).seconds.coerceAtLeast(1).toFloat()
                                 val frac = if (nextT.isAfter(block.time)) {
                                     Duration.between(block.time, now).seconds / total

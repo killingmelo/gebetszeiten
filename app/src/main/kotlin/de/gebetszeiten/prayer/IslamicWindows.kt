@@ -23,8 +23,11 @@ data class NaflTimes(
     /** Awwabin: between Maghrib and Isha. */
     val awwabinStart: ZonedDateTime,
     val awwabinEnd: ZonedDateTime,
-    val tahajjudStart: ZonedDateTime,
-    val tahajjudEnd: ZonedDateTime,
+    // Null when the next day's Fajr is unavailable (e.g. last day of bundled
+    // coverage): the last-third-of-the-night window can't be derived without
+    // inventing a time, so it simply doesn't exist rather than being guessed.
+    val tahajjudStart: ZonedDateTime?,
+    val tahajjudEnd: ZonedDateTime?,
 )
 
 /**
@@ -50,13 +53,17 @@ object IslamicWindows {
         isfirarEnd = times.maghrib,
     )
 
-    /** [nextFajr] is the following day's Fajr, used for the last-third night. */
-    fun nafl(times: DailyPrayerTimes, nextFajr: ZonedDateTime): NaflTimes {
+    /** [nextFajr] is the following day's Fajr, used for the last-third night.
+     *  Pass null when it's unavailable (e.g. the last day of bundled coverage) -
+     *  the Tahajjud window is then left out rather than guessed. */
+    fun nafl(times: DailyPrayerTimes, nextFajr: ZonedDateTime?): NaflTimes {
         val duhaStart = times.sunrise.plusMinutes(ISRAK_AFTER_SUNRISE_MIN)
         val duhaEnd = times.dhuhr.minusMinutes(ZEVAL_BEFORE_DHUHR_MIN)
         // Last third of the night (sunset → next dawn).
-        val nightSeconds = java.time.Duration.between(times.maghrib, nextFajr).seconds
-        val tahajjudStart = times.maghrib.plusSeconds(nightSeconds * 2 / 3)
+        val tahajjudStart = nextFajr?.let { fajr ->
+            val nightSeconds = java.time.Duration.between(times.maghrib, fajr).seconds
+            times.maghrib.plusSeconds(nightSeconds * 2 / 3)
+        }
         return NaflTimes(
             duhaStart = duhaStart,
             duhaEnd = duhaEnd,
