@@ -110,11 +110,23 @@ object WearSyncApplier {
      * nie etwas gesynct wurde, siehe [SyncDecision.shouldReplay] — danach
      * kostet der App-Start keinen gms-Roundtrip mehr). Wirft nie ausser
      * CancellationException; true, wenn etwas angewendet wurde.
+     *
+     * Bis Fix-Runde 5 galt diese Zusage NICHT: die Vorpruefung
+     * ([WearOfficialCache.syncedLocation], ein nackter `store.data.first()`,
+     * der nichts faengt, plus [SyncDecision.shouldReplay]) stand VOR dem
+     * `try`. Eine DataStore-`IOException` verliess die Funktion damit
+     * ungehindert — und der einzige Aufrufer ist `MainActivity.onStart` im
+     * blanken `MainScope` (kein `SupervisorJob`, kein
+     * `CoroutineExceptionHandler`): derselbe Absturzpfad wie in [apply] vor
+     * Fix-Runde 4, nur zwei Funktionen weiter unten. Die Vorpruefung steht
+     * jetzt IM `try`; ihr `false` ("nichts nachzuholen") und das `false` des
+     * `catch`-Zweigs ("Nachholen gescheitert") haben fuer den Aufrufer
+     * ohnehin dieselbe Bedeutung: nicht neu zeichnen.
      */
     suspend fun replayExisting(context: Context): Boolean {
-        val synced = WearOfficialCache.syncedLocation(context)
-        if (!SyncDecision.shouldReplay(synced?.first, synced?.second)) return false
         return try {
+            val synced = WearOfficialCache.syncedLocation(context)
+            if (!SyncDecision.shouldReplay(synced?.first, synced?.second)) return false
             val payloads = withContext(Dispatchers.IO) {
                 val buffer = Tasks.await(
                     Wearable.getDataClient(context).getDataItems(),

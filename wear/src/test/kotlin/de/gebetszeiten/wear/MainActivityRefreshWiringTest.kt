@@ -28,8 +28,10 @@ import java.io.File
  *   am `MainScope`, den `onDestroy` abbricht (Fix-Runde 3, Important 1; wer
  *   den Bildschirm-Fix nachtraegt, darf diese Korrektur nicht wieder
  *   einkassieren);
- * - hinter dem Abruf (`refreshWearOfficial(...)`) noch ein `refresh()` — der
- *   Bildschirm zeichnet sich neu, wenn Zeiten ankamen.
+ * - im SELBEN `scope.launch`-Block wie der Abruf (`refreshWearOfficial(...)`)
+ *   noch ein `refresh()` — der Bildschirm zeichnet sich neu, wenn Zeiten
+ *   ankamen. Der Zusammenhang, nicht die blosse Reihenfolge: siehe
+ *   [abrufBlock].
  *
  * Quelltextlesend statt laufend, weil das wear-Modul kein Robolectric hat
  * (nur `testImplementation(libs.junit)`) — Context-verdrahtete Funktionen
@@ -57,10 +59,10 @@ class MainActivityRefreshWiringTest {
             block.contains("refreshWearOfficial("),
         )
         assertTrue(
-            "hinter refreshWearOfficial folgt kein refresh() - Kachel und Komplikation heilen, der " +
-                "Bildschirm vor dem Nutzer bleibt auf „Keine amtlichen Zeiten\" stehen " +
-                "(notifyWearOfficialRefreshed erreicht die Activity NICHT)",
-            block.substringAfter("refreshWearOfficial(").contains("refresh()"),
+            "im selben scope.launch-Block wie refreshWearOfficial steht kein refresh() - Kachel und " +
+                "Komplikation heilen, der Bildschirm vor dem Nutzer bleibt auf „Keine amtlichen " +
+                "Zeiten\" stehen (notifyWearOfficialRefreshed erreicht die Activity NICHT)",
+            abrufBlock(block).contains("refresh()"),
         )
     }
 
@@ -76,6 +78,32 @@ class MainActivityRefreshWiringTest {
         val marker = "override fun onStart()"
         val start = text.indexOf(marker)
         assertTrue("„$marker" + "\" nicht gefunden — wurde onStart umgebaut?", start >= 0)
+        return rumpfAb(text, start, marker)
+    }
+
+    /**
+     * Der `scope.launch`-Block, in dem der Abruf steht — ab dem letzten
+     * `scope.launch` VOR `refreshWearOfficial(`, wieder per Klammerzaehlung.
+     *
+     * Bewusst der ZUSAMMENHANG statt der Position (Fix-Runde 5, Minor):
+     * vorher stand hier `block.substringAfter("refreshWearOfficial(")
+     * .contains("refresh()")`. Das haette eine harmlose Umsortierung
+     * mitgefaerbt — schoebe jemand den Abruf-Block VOR den
+     * Sync-Nachhol-Block, faerbte schon dessen `if (applied) refresh()` die
+     * Zusicherung gruen, auch wenn das `refresh()` hinter dem Abruf geloescht
+     * waere. Der Block-Zuschnitt haelt fest, was wirklich gemeint ist: das
+     * Ergebnis des Abrufs und das Neuzeichnen stehen in EINER Coroutine.
+     */
+    private fun abrufBlock(onStart: String): String {
+        val abruf = onStart.indexOf("refreshWearOfficial(")
+        assertTrue("refreshWearOfficial( kommt in onStart nicht vor", abruf >= 0)
+        val start = onStart.lastIndexOf("scope.launch", abruf)
+        assertTrue("der Abruf steht in keinem scope.launch-Block", start >= 0)
+        return rumpfAb(onStart, start, "scope.launch (Abruf)")
+    }
+
+    /** Ab [start] bis zur schliessenden Klammer des dort beginnenden Blocks. */
+    private fun rumpfAb(text: String, start: Int, marker: String): String {
         val auf = text.indexOf('{', start)
         assertTrue("kein Rumpf hinter $marker", auf >= 0)
         var tiefe = 0
