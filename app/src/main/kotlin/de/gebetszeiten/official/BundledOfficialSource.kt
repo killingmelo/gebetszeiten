@@ -16,7 +16,8 @@ import java.time.format.DateTimeParseException
 /**
  * Amtliche Diyanet-Zeiten aus gebündelten Offline-Tabellen (assets/official/).
  * Lookup per Koordinaten: nächstgelegener deutscher Diyanet-Standort ≤ 25 km.
- * Nicht abgedeckt (Ausland, fehlendes Jahr) → null → Aufrufer rechnet selbst.
+ * Nicht abgedeckt (Ausland, Tag außerhalb des Fensters) → null → Aufrufer
+ * rechnet selbst.
  */
 object BundledOfficialSource {
 
@@ -57,7 +58,8 @@ object BundledOfficialSource {
      * Letzter Tag, den die gebündelten Tabellen abdecken — aus
      * `official/coverage.tsv`, geschrieben von `fetch_diyanet.py`, nicht von
      * Hand gepflegt. Gilt für ALLE gebündelten Standorte: die Pipeline
-     * emittiert genau einen Jahrgang (siehe `OfficialAssetsIntegrityTest`).
+     * emittiert genau einen Lauf, und jeder Standort deckt dessen Fenster
+     * lückenlos ab (siehe `OfficialAssetsIntegrityTest`).
      *
      * `null`, wenn die Datei fehlt oder unlesbar ist — eine fehlende Warnung
      * ist besser als eine App, die nicht startet.
@@ -92,7 +94,12 @@ object BundledOfficialSource {
         date: LocalDate,
     ): Pair<OfficialLocation, SixTimes>? {
         val loc = nearestLocation(context, lat, lng) ?: return null
-        val time = table(context, "official/tables/${loc.tableRef}-${date.year}.tsv")[date] ?: return null
+        // Der `tableRef` traegt seit dem rollierenden Fenster die Lauf-Kennung
+        // (`t000-20260919`), das Datum steckt NICHT mehr im Dateinamen: eine
+        // Tabelle umspannt jetzt zwei Kalenderjahre. Index und Tabellen stammen
+        // dadurch zwangslaeufig aus demselben Pipeline-Lauf — eine liegen
+        // gebliebene Tabelle eines aelteren Laufs wird nie referenziert.
+        val time = table(context, "official/tables/${loc.tableRef}.tsv")[date] ?: return null
         return loc to time
     }
 

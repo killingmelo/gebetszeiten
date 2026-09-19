@@ -25,7 +25,10 @@ object WearOfficialSource {
 
     suspend fun get(context: Context, lat: Double, lng: Double, date: LocalDate): SixTimes? {
         val loc = nearestLocation(context, lat, lng) ?: return null
-        return table(context, "official/tables/${loc.tableRef}-${date.year}.tsv")[date]
+        // `tableRef` traegt die Lauf-Kennung (`t000-20260919`); das Datum steckt
+        // nicht mehr im Dateinamen, weil eine Tabelle zwei Kalenderjahre
+        // umspannt. Gleiche Konstruktion wie `BundledOfficialSource`.
+        return table(context, "official/tables/${loc.tableRef}.tsv")[date]
     }
 
     /** Naechstgelegener gebuendelter Diyanet-Standort <= 25 km, oder null.

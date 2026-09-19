@@ -148,28 +148,44 @@ Phone und Wear teilen sich die applicationId `de.gebetszeiten` — Play verlangt
 - Updates später: einfach neues AAB mit höherem versionCode hochladen —
   ich baue die Bundles jederzeit (`.\gradlew.bat :app:bundleOnlineRelease :wear:bundleOnlineRelease`).
 
-### 8. Jaehrliches Zeiten-Update (amtliche Diyanet-Tabellen)
-Die gebuendelten amtlichen Zeiten (shared-assets/official/) gelten je ein
-Kalenderjahr. **Du musst dir den Termin nicht merken:** der Unit-Test
-`OfficialAssetsIntegrityTest.bundledYearCoversTheNextTwoMonths` liest
-`shared-assets/official/coverage.tsv` und wird in jedem lokalen Build rot,
-sobald die Abdeckung in weniger als zwei Monaten endet. Seine Meldung
-wiederholt die Schritte unten.
+### 8. Zeiten-Update (amtliche Diyanet-Tabellen)
+**Die Jahresseite liefert immer nur das NAECHSTE Kalenderjahr** (plus 31 Tage
+ab heute in einer zweiten Tabelle, die das Skript nicht liest). Den Rest des
+LAUFENDEN Jahres gibt sie nie wieder her. Deshalb die eiserne Regel: ein Lauf
+**ergaenzt** den vorhandenen Jahrgang, er **ersetzt** ihn nie. Wer sie bricht,
+verliert Tage unwiederbringlich — genau das ist in `647fd0d` passiert
+(„Jahrgang 2027 loest 2026 ab"), und danach begann die Reserve erst am
+01.01.2027.
 
-Sobald Diyanet das Folgejahr publiziert (erfahrungsgemaess Ende Dezember,
-Jahresansicht auf namazvakitleri.diyanet.gov.tr pruefen):
-1. `tools/diyanet-fetch/cache/` loeschen (sonst wird das alte Jahr re-emittiert),
-2. `python tools/diyanet-fetch/fetch_diyanet.py --year <jahr>` laufen lassen
-   (~30-60 min). `--year` ist Pflicht: die Jahresseite ist ein rollierendes
-   ~16-Monats-Fenster, das Skript schreibt nur Zeilen dieses Jahres und bricht
-   hart ab, wenn ein Standort das Jahr nicht lueckenlos abdeckt,
-3. Report pruefen: >=500 Standorte und **~4.6 KB je Standort**. Nicht die
-   Gesamtgroesse ist der Massstab — sie waechst mit der Zahl der Orte (2026:
-   621 Orte / 2.71 MB, 2027: 947 Orte / 4.28 MB). Auffaellig waere nur, wenn
-   der Wert JE STANDORT steigt; davor warnt das Skript,
-4. Tabellen des Vorjahrs entfernen
-   (`git rm shared-assets/official/tables/t*-<altjahr>.tsv`, das Skript warnt
-   danach), dann `git add shared-assets/official` — dazu gehoert das vom
+**Du musst dir den Termin nicht merken:** zwei Unit-Tests in
+`OfficialAssetsIntegrityTest` werden in jedem lokalen Build rot —
+`bundledYearCoversTheNextTwoMonths`, sobald die Abdeckung in weniger als zwei
+Monaten endet, und `coverageHasAlreadyBegun`, sobald die Ankerorte Nuernberg
+und Berlin heute keine Reserve mehr haben. Ihre Meldungen wiederholen die
+Schritte unten.
+
+Wenn einer der beiden rot wird:
+1. `tools/diyanet-fetch/cache/` loeschen (sonst wird das alte Fenster re-emittiert),
+2. `python tools/diyanet-fetch/fetch_diyanet.py --out-dir /tmp/neu` laufen
+   lassen (~20-60 min) — **in ein temporaeres Verzeichnis**, nicht direkt in
+   die Assets. Stichtag und Ende leitet das Skript aus den Daten ab und bricht
+   hart ab, wenn ein Standort die Tage dazwischen nicht lueckenlos abdeckt,
+2b. zusammenfuehren statt ersetzen:
+   `python tools/diyanet-fetch/merge_bundles.py --base shared-assets/official
+   --overlay /tmp/neu --out shared-assets/official`. Verbunden wird ueber die
+   Diyanet-Standort-Kennung; bei Ueberschneidung gewinnt der neuere Abruf,
+3. Report pruefen: >=500 Standorte und **~4.6 KB je Standort und 365 Tage**.
+   Nicht die Gesamtgroesse ist der Massstab — sie waechst mit der Zahl der
+   Orte und mit der Fensterlaenge (2026: 621 Orte / 2.71 MB ueber 365 Tage,
+   2027: 947 Orte / 4.28 MB ueber 365 Tage, zusammengefuehrt 19.09.2026:
+   947 Orte / 5.72 MB ueber bis zu 730 Tage). Auffaellig waere nur, wenn der
+   Wert JE STANDORT UND JAHR steigt; davor warnt das Skript. `merge_bundles.py`
+   nennt ausserdem, wie viele Orte eine Reserve fuer HEUTE haben — nach dem
+   Lauf vom 19.09.2026 sind das 621 von 947, weil die uebrigen 326 erst mit
+   dem Jahrgang 2027 dazukamen,
+4. Tabellen des vorigen Laufs entfernen
+   (`git rm shared-assets/official/tables/t*-<alte-kennung>.tsv`, das Skript
+   warnt danach), dann `git add shared-assets/official` — dazu gehoert das vom
    Skript neu geschriebene `coverage.tsv`,
 5. **Die handgepruefte Referenz neu ablesen.**
    `OfficialAssetsIntegrityTest.nuernbergReproducesTheHandCheckedReference`
@@ -182,11 +198,13 @@ Jahresansicht auf namazvakitleri.diyanet.gov.tr pruefen):
    eine Minute pro Tag, ein Zeilenversatz sieht dort aus wie ein Parser-Fehler
    (schon einmal passiert, 11.09.2026),
 6. Integritaetstest: `gradlew :app:testOfflineDebugUnitTest` (jetzt wieder
-   gruen, inklusive des Stolperdrahts oben). Achte auf
+   gruen, inklusive der Stolperdraehte oben). Achte auf
    `onlyOneVintageIsBundled`: er faellt, wenn Schritt 4 vergessen wurde — und
    das waere schlimm, weil die Kennungen (`t000`, `t001`, …) bei jedem Lauf
-   neu vergeben werden und ein liegengebliebener Jahrgang die Zeiten eines
-   FREMDEN Orts ausliefert (Nuernberg wanderte 2026→2027 von `t507` auf `t809`),
+   neu vergeben werden (Nuernberg wanderte 2026→2027 von `t507` auf `t809`).
+   Seit der Dateiname die Lauf-Kennung traegt (`t000-20260919.tsv`, auch im
+   `tableRef` von `locations-de.tsv`) kann ein alter Jahrgang keine fremden
+   Zeiten mehr ausliefern — er waere aber totes Gewicht im APK,
 7. App- UND Wear-Update mit erhoehtem versionCode veroeffentlichen (beide
    Module buendeln dieselben Assets).
 
