@@ -91,6 +91,22 @@ data class AppSettings(
      *  Feld bewusst nicht mit; nur [SettingsRepository.resolvePauseNotice]
      *  darf es aendern (siehe dort zur Transaktion, die das erzwingt). */
     val pauseNoticeShown: Boolean = false,
+    /**
+     * Ob der Nutzer die Ersteinrichtung schon durchlaufen hat.
+     *
+     * Systemzustand wie [pauseNoticeShown]: [save] schreibt ihn nicht,
+     * nur [SettingsRepository.markOnboardingDone] setzt ihn.
+     *
+     * Der Feld-Vorgabewert ist `true`, und das ist die Ausnahme von der
+     * Regel „Vorgabe = Werkseinstellung": er dient hier als Startwert von
+     * `PrayerViewModel.settings` (`stateIn`), bevor der DataStore gelesen
+     * ist. Stuende hier `false`, blitzte die Ersteinrichtung bei JEDEM
+     * App-Start fuer ein paar Frames auf, auch bei laengst eingerichteten
+     * Nutzern. Die echte Werkseinstellung entsteht beim Aufloesen:
+     * `prefs[ONBOARDING_DONE] ?: false` — wer den Schluessel nicht hat, war
+     * noch nicht da.
+     */
+    val onboardingDone: Boolean = true,
 ) {
     /**
      * True, wenn irgendeine Oberflaeche die Anzeige-Weckkette braucht
@@ -338,6 +354,7 @@ class SettingsRepository(private val context: Context) {
         val RECENT_PLACES = stringPreferencesKey("recent_places")
         val FAVORITES = stringPreferencesKey("favorites")
         val PAUSE_NOTICE_SHOWN = booleanPreferencesKey("pause_notice_shown")
+        val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -436,6 +453,11 @@ class SettingsRepository(private val context: Context) {
             // ist die Liste leer — der richtige Startzustand.
             favorites = parseFavorites(prefs[Keys.FAVORITES]),
             pauseNoticeShown = prefs[Keys.PAUSE_NOTICE_SHOWN] ?: AppSettings.DEFAULT.pauseNoticeShown,
+            // NICHT `?: AppSettings.DEFAULT.onboardingDone` — der Feld-
+            // Vorgabewert ist dort `true` und dient nur als Startwert, bevor
+            // der Store gelesen ist. Wer den Schluessel nicht hat, war noch
+            // nicht in der Ersteinrichtung.
+            onboardingDone = prefs[Keys.ONBOARDING_DONE] ?: false,
         )
     }
 
@@ -482,6 +504,13 @@ class SettingsRepository(private val context: Context) {
             // zuruecksetzen — dieselbe Fehlerklasse wie beim Wear-Cache
             // (Aufgabe 5, migrateWithin): Lesen ausserhalb, Schreiben
             // innerhalb einer eigenen Transaktion, blind.
+            //
+            // ONBOARDING_DONE aus demselben Grund nicht: es ist ebenfalls
+            // Systemzustand. Stuende es hier, setzte JEDES Speichern aus dem
+            // Einstellungsblatt die Ersteinrichtung auf „erledigt" — ein
+            // Nutzer, der sie abbricht und stattdessen die Einstellungen
+            // oeffnet, saehe sie nie wieder. Nur [markOnboardingDone] setzt
+            // sie.
         }
     }
 
@@ -529,6 +558,19 @@ class SettingsRepository(private val context: Context) {
      * dass eine ANDERE der vier Aufrufstellen gerade eine Transaktion
      * durchlaeuft.
      */
+    /**
+     * Die Ersteinrichtung ist durchlaufen — einmalig, unwiderruflich.
+     *
+     * Eigene Transaktion am [save] vorbei, aus demselben Grund wie bei
+     * [resolvePauseNotice]: es ist Systemzustand, kein Einstellungswert.
+     * Wuerde [save] ihn mitschreiben, setzte ihn jedes Speichern aus dem
+     * Einstellungsblatt — und ein Nutzer, der die Ersteinrichtung abbricht
+     * und stattdessen die Einstellungen oeffnet, saehe sie nie wieder.
+     */
+    suspend fun markOnboardingDone() {
+        context.dataStore.edit { it[Keys.ONBOARDING_DONE] = true }
+    }
+
     suspend fun resolvePauseNotice(hasTimes: Boolean, canShow: Boolean): de.gebetszeiten.notify.PauseNotice {
         var decision = de.gebetszeiten.notify.PauseNotice.NOTHING
         context.dataStore.edit { prefs ->
