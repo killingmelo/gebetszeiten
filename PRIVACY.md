@@ -25,11 +25,15 @@ enthält **keine Werbung, kein Tracking, keine Analyse-Dienste, keine Konten**.
   Geräte-Kennungen; technisch bedingt sieht der Server die IP-Adresse.
 - **Abschaltbar:** In den Einstellungen lässt sich der Online-Abgleich
   deaktivieren (deaktiviert auch die Online-Ortssuche); für Deutschland sind
-  amtliche Tabellen offline gebündelt, sonst rechnet die App lokal.
+  amtliche Tabellen offline gebündelt. Für andere Orte zeigt die App ohne
+  amtliche Zeiten **keine Zeiten mehr an**, sondern einen Hinweis — es sei
+  denn, in den Einstellungen ist zusätzlich „Berechnung als Notausgang"
+  aktiviert; nur dann rechnet die App lokal weiter.
 - **Wear OS:** Die Watch-App geht selbst nie ins Internet. Sie erhält die
   amtlichen Zeiten und den gewählten Ort vom gekoppelten Handy
-  (Play-Services-Gerätesync) und funktioniert ohne Handy vollständig
-  weiter (eingebaute Tabellen bzw. lokale Berechnung).
+  (Play-Services-Gerätesync) und nutzt ohne Handy eingebaute amtliche
+  Tabellen; liegen auch die nicht vor, zeigt sie — wie das Telefon — keine
+  Zeiten, es sei denn, der Notausgang ist aktiviert.
 
 **Offline-Variante:** Aus dem Quellcode ist weiterhin eine Variante ohne
 jede Internet-Berechtigung baubar (`de.gebetszeiten.offline`).
@@ -57,11 +61,15 @@ This app does **not collect, store, or share any personal data** and contains
   technical reasons the server does see the IP address.
 - **Can be turned off:** The online sync can be disabled in the settings
   (this also disables the online place search); official tables for Germany
-  are bundled offline, elsewhere the app calculates locally.
+  are bundled offline. For other places, without official times the app
+  **shows no times at all**, only a notice — unless the "Calculation as a
+  fallback" setting is additionally enabled, in which case it calculates
+  locally.
 - **Wear OS:** The watch app itself never connects to the Internet. It
   receives the official times and the chosen place from the paired phone
-  (Play Services device sync) and keeps working fully without a phone
-  (bundled tables or local calculation).
+  (Play Services device sync) and, without a phone, uses bundled official
+  tables; if those are unavailable too, it shows — like the phone — no
+  times, unless the fallback calculation is enabled.
 
 **Offline variant:** A variant without any Internet permission can still be
 built from source (`de.gebetszeiten.offline`).

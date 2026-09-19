@@ -3,14 +3,14 @@
 Die signierten Release-Bundles sind frisch gebaut (online-Flavor, R8/Minify,
 lintVital + voller Lint grün, signiert mit `keystore/gebetszeiten.jks`,
 Zertifikat gültig bis 2053). Neu bauen jederzeit mit:
-`.\gradlew.bat :app:bundleOnlineRelease :wear:bundleRelease`.
+`.\gradlew.bat :app:bundleOnlineRelease :wear:bundleOnlineRelease`.
 
 Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
 
 | Artefakt | Pfad |
 |---|---|
 | Phone-Bundle (AAB, signiert, aktueller Stand laut git tag) | `app/build/outputs/bundle/onlineRelease/app-online-release.aab` |
-| Wear-Bundle (AAB, signiert, aktueller Stand laut git tag) | `wear/build/outputs/bundle/release/wear-release.aab` |
+| Wear-Bundle (AAB, signiert, aktueller Stand laut git tag) | `wear/build/outputs/bundle/onlineRelease/wear-online-release.aab` |
 | App-Icon 512×512 | `playstore/icon_512.png` |
 | Feature-Graphic 1024×500 | `playstore/feature_1024x500.png` |
 | Phone-Screenshots (9:16) | `playstore/screenshots/phone/` |
@@ -71,25 +71,49 @@ haben Zusatzauflagen). Werbung: **keine**.
 
 ### 5. Releases hochladen
 
-**Stand dieses Release: 0.1.20 (versionCode 21).** Nur das **Phone**-Bundle ist
-neu. Das `wear/`-Modul wurde in diesem Umbau nicht angefasst — sein Bundle
-(versionCode 1015) ist unverändert gültig und muss **nicht** erneut hochgeladen
-werden. Neu bauen falls nötig: `.\gradlew.bat :app:bundleOnlineRelease`.
+**Diese Aussage ist veraltet und stimmt seit dem Umbau "amtliche Zeiten oder
+nichts" nicht mehr:** das `wear/`-Modul hat inzwischen dieselbe Quellen-Regel
+wie das Telefon bekommen (u. a. Aufgaben 16/17) und **eigene Flavors**
+(`offline`/`online`, seit `eccde09`). Das Wear-Bundle ist bei diesem Release
+also **ebenfalls neu** und muss erneut hochgeladen werden — "wear unverändert,
+kein erneuter Upload nötig" gilt nicht mehr generell, sondern nur für Releases,
+die das `wear/`-Modul tatsächlich nicht berühren; das ist von Release zu
+Release neu zu prüfen (z. B. per `git log -- wear/` seit dem letzten
+hochgeladenen Wear-versionCode).
 
-Vor dem Upload geprüft: 252 Unit-Tests grün, `lintOnlineRelease` **0 Fehler**
-(nicht nur `lintVital` — der volle Lint hatte einen Compose-Fehler gefunden,
-den der Release-Build allein durchgelassen hätte), Bundle signiert mit
-`keystore/gebetszeiten.jks`, Standortindex im Bundle enthalten.
+Neu bauen: `.\gradlew.bat :app:bundleOnlineRelease :wear:bundleOnlineRelease`.
+
+Vor dem Upload geprüft: Testlauf über alle Module und beide Flavors beider
+Anwendungen grün, `lintOnlineRelease` **0 Fehler** (nicht nur `lintVital` —
+der volle Lint hatte einen Compose-Fehler gefunden, den der Release-Build
+allein durchgelassen hätte), Bundles signiert mit `keystore/gebetszeiten.jks`,
+Standortindex im Bundle enthalten.
 
 - **Produktion (bzw. zuerst geschlossener Test)** →
   `app/build/outputs/bundle/onlineRelease/app-online-release.aab` (aktueller Stand laut git tag).
 - **Wear OS Form-Faktor:** unter „Releases" den Wear-Track aktivieren
   (Erweiterte Einstellungen → Formfaktoren → Wear OS) und
-  `wear/build/outputs/bundle/release/wear-release.aab` (aktueller Stand laut git tag) hochladen; Wear-Screenshots (1:1) im
-  Store-Eintrag unter Wear OS ergänzen. Wear-Apps durchlaufen eine eigene
-  kurze Google-Prüfung.
+  `wear/build/outputs/bundle/onlineRelease/wear-online-release.aab` (aktueller
+  Stand laut git tag) hochladen — das **online**-Bundle, wie am Telefon, weil
+  nur dieser Flavor den amtlichen Abruf überhaupt enthält; Wear-Screenshots
+  (1:1) im Store-Eintrag unter Wear OS ergänzen. Wear-Apps durchlaufen eine
+  eigene kurze Google-Prüfung.
 - Beim ersten Upload fragt Play nach **Play App Signing** → zustimmen;
   unser vorhandener Schlüssel wird automatisch der **Upload-Key**.
+
+**Release-Notiz für dieses Update (0.1.16 der Uhr / entsprechender Phone-Stand)
+— bitte in die Store-Ankündigung bzw. Release-Notes übernehmen:**
+1. **Die Werkseinstellung ändert ihr Verhalten.** Bisher galt bei
+   ausgeschaltetem Notausgang-Schalter „amtlich zuerst, Berechnung als
+   Auffang". Künftig heißt ausgeschaltet „amtlich oder gar nichts". Wer nie
+   einen Schalter angefasst hat — die Mehrheit — sieht für Orte ohne amtliche
+   Abdeckung künftig einen Hinweis statt Zeiten. Das ist beabsichtigt; die
+   Nutzer sollten das in den Release-Notes lesen, bevor sie sich wundern.
+2. **Geändertes Netzverhalten für eine Bestandsgruppe.** Wer „immer rechnen"
+   eingeschaltet hatte, löste nie einen Diyanet-Abruf aus. Nach der Migration
+   bedeutet sein Schalter „Lücken füllen", und die App ruft für ihn
+   regelmäßig amtliche Zeiten ab. Der Online-Schalter bleibt die Kontrolle
+   darüber, ob überhaupt abgerufen wird.
 
 ### 6. Hinweis zur Signatur (wichtig zu wissen)
 Play signiert die ausgelieferte App mit einem eigenen Google-Schlüssel.
@@ -108,7 +132,7 @@ Phone und Wear teilen sich die applicationId `de.gebetszeiten` — Play verlangt
 ### 7. Nach dem Einreichen
 - Prüfung dauert typischerweise 1–7 Tage (erste App eines neuen Kontos eher länger).
 - Updates später: einfach neues AAB mit höherem versionCode hochladen —
-  ich baue die Bundles jederzeit (`.\gradlew.bat :app:bundleOnlineRelease :wear:bundleRelease`).
+  ich baue die Bundles jederzeit (`.\gradlew.bat :app:bundleOnlineRelease :wear:bundleOnlineRelease`).
 
 ### 8. Jaehrliches Zeiten-Update (amtliche Diyanet-Tabellen)
 Die gebuendelten amtlichen Zeiten (shared-assets/official/) gelten je ein
