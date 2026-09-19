@@ -47,17 +47,31 @@ Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
   nur wenn die eingebaute Ortsliste keinen Treffer hat — gleicher Datentyp,
   gleiche Antworten, keine neue Kategorie nötig).
 - Zweck: **App-Funktionen** (amtliche Gebetszeiten). Erhebung **optional**
-  (in den Einstellungen abschaltbar). **Keine Weitergabe** zu Werbe-/
+  (in den Einstellungen abschaltbar) — **das gilt nur fürs Telefon**, siehe
+  Nachtrag unten: die Wear-App hat seit dem Umbau "amtliche Zeiten oder
+  nichts" keinen eigenen Schalter mehr dafür. **Keine Weitergabe** zu Werbe-/
   Analysezwecken, **kein Verkauf**, Übertragung **verschlüsselt (HTTPS)**,
   Daten **nicht mit Nutzern verknüpft** (keine Konten/Kennungen),
   **Löschung entfällt** (es wird nichts serverseitig gespeichert, was der
   App zuordenbar wäre — Antwort: Daten werden nicht gespeichert).
 - Abschnitt 5: Upload-Datei ist ab jetzt das **online**-Bundle.
-- **Stand 0.1.20 — keine Änderung nötig.** Der neue weltweite Standortindex ist
-  ein *gebündeltes* Asset, kein zusätzlicher Abruf: die Netz-Endpunkte sind
-  unverändert dieselben drei (diyanet.gov.tr, der Fallback-Proxy,
-  open-meteo für die Ortssuche). Datentyp, Zweck und alle Antworten oben
-  bleiben also wie sie sind.
+- **Stand 0.1.20 — Datentyp/Endpunkte unverändert, aber NICHT mehr "keine
+  Änderung nötig".** Der neue weltweite Standortindex ist weiterhin ein
+  *gebündeltes* Asset, kein zusätzlicher Abruf, und die Netz-Endpunkte sind
+  unverändert dieselben drei (diyanet.gov.tr, der Fallback-Proxy, open-meteo
+  für die Ortssuche) — das stimmt nach wie vor. Neu ist der **Formfaktor**:
+  seit dem Umbau "amtliche Zeiten oder nichts" ruft die **Wear-App diese
+  Endpunkte selbst ab** (`WearRefresh.kt`, online-Flavor), statt nur die vom
+  Telefon gesyncten Zeiten anzuzeigen — und sie hat dafür **keinen eigenen
+  Online-Schalter**: weder der "Online-Abgleich"-Schalter des Telefons (wirkt
+  nur dort) noch der Notausgang ("Berechnung als Notausgang", der nur
+  bestimmt, was OHNE amtliche Zeiten angezeigt wird, nicht ob abgerufen wird)
+  stellen diesen Abruf ab. Die Antwort **"Erhebung optional (abschaltbar)"**
+  gilt deshalb NICHT mehr für die ganze App — für das Telefon weiterhin ja,
+  für die Wear-App nein. Im Formular entsprechend eintragen (Erhebung nicht
+  durchgängig als optional kennzeichnen bzw. den Wear-Formfaktor gesondert
+  vermerken, je nachdem, welche Granularität die Play-Console-Maske beim
+  Ausfüllen tatsächlich anbietet).
 
 **Inhaltseinstufung (Content Rating, IARC):**
 - Kategorie: „Referenz, Nachrichten oder Bildung" bzw. „Dienstprogramm".

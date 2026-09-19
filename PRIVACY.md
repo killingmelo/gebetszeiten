@@ -29,11 +29,19 @@ enthält **keine Werbung, kein Tracking, keine Analyse-Dienste, keine Konten**.
   amtliche Zeiten **keine Zeiten mehr an**, sondern einen Hinweis — es sei
   denn, in den Einstellungen ist zusätzlich „Berechnung als Notausgang"
   aktiviert; nur dann rechnet die App lokal weiter.
-- **Wear OS:** Die Watch-App geht selbst nie ins Internet. Sie erhält die
-  amtlichen Zeiten und den gewählten Ort vom gekoppelten Handy
-  (Play-Services-Gerätesync) und nutzt ohne Handy eingebaute amtliche
-  Tabellen; liegen auch die nicht vor, zeigt sie — wie das Telefon — keine
-  Zeiten, es sei denn, der Notausgang ist aktiviert.
+- **Wear OS:** Die Watch-App ruft die amtlichen Zeiten für den gewählten Ort
+  seit dieser Version selbst ab — über dieselben Endpunkte und mit denselben
+  übertragenen Daten wie das Telefon (Diyanet-Standort-Kennung, typischerweise
+  ein Abruf pro Jahr und Ort). Sie erhält die Zeiten außerdem weiterhin vom
+  gekoppelten Handy (Play-Services-Gerätesync). Anders als am Telefon gibt es
+  auf der Uhr **keinen eigenen Schalter**, der diesen Abruf abstellt — der
+  oben beschriebene Online-Abgleich-Schalter wirkt nur auf dem Telefon, und
+  auch der Notausgang („Berechnung als Notausgang") ändert daran nichts: er
+  bestimmt nur, was ohne amtliche Zeiten angezeigt wird, nicht, ob die Uhr
+  abruft. Ohne eigenen Abruf, ohne Handy-Sync und ohne eingebaute amtliche
+  Tabellen zeigt sie — wie das Telefon — keine Zeiten, es sei denn, der
+  Notausgang ist aktiviert. Wer den Netzzugriff der Uhr ausschließen will,
+  muss die Offline-Variante der Watch-App installieren (siehe unten).
 
 **Offline-Variante:** Aus dem Quellcode ist weiterhin eine Variante ohne
 jede Internet-Berechtigung baubar (`de.gebetszeiten.offline`).
@@ -65,11 +73,19 @@ This app does **not collect, store, or share any personal data** and contains
   **shows no times at all**, only a notice — unless the "Calculation as a
   fallback" setting is additionally enabled, in which case it calculates
   locally.
-- **Wear OS:** The watch app itself never connects to the Internet. It
-  receives the official times and the chosen place from the paired phone
-  (Play Services device sync) and, without a phone, uses bundled official
-  tables; if those are unavailable too, it shows — like the phone — no
-  times, unless the fallback calculation is enabled.
+- **Wear OS:** As of this version, the watch app fetches the official times
+  for the chosen place itself — via the same endpoints and with the same
+  data transmitted as the phone (Diyanet location id, typically one request
+  per year and location). It also still receives times from the paired phone
+  (Play Services device sync). Unlike the phone, the watch has **no switch of
+  its own** to turn this off — the online-sync switch described above only
+  affects the phone, and the fallback-calculation setting doesn't change it
+  either: that setting only decides what is shown when no official times are
+  available, not whether the watch fetches. Without its own fetch, without
+  phone sync, and without bundled official tables, it shows — like the
+  phone — no times, unless the fallback calculation is enabled. Anyone who
+  wants to rule out the watch's network access entirely has to install the
+  offline variant of the watch app (see below).
 
 **Offline variant:** A variant without any Internet permission can still be
 built from source (`de.gebetszeiten.offline`).
