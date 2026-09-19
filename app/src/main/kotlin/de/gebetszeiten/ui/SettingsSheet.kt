@@ -863,6 +863,21 @@ internal fun LocationSettings(
             CountdownModeSelector(stringResource(R.string.settings_remaining_all), settings.countdownMode) {
                 commit { copy(countdownMode = it) }
             }
+            // Die Daueranzeige steht hier und nicht mehr unter
+            // „Erinnerungen": sie ist keine Erinnerung an ein einzelnes
+            // Gebet, sondern die Flaeche, auf der die Restzeit ueberhaupt
+            // erst erscheint. Frueher lagen die beiden in verschiedenen
+            // Sektionen, und der Hinweis unten verwies auf ein „unten", an
+            // dem der Schalter nicht stand. `SettingsLayoutTest` haelt sie
+            // zusammen.
+            ToggleRow(stringResource(R.string.settings_persistent), settings.persistentNotification) {
+                commit { copy(persistentNotification = it) }
+            }
+            Text(
+                stringResource(R.string.settings_persistent_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Text(
                 stringResource(R.string.settings_remaining_cost),
                 style = MaterialTheme.typography.bodySmall,
@@ -935,14 +950,6 @@ internal fun LocationSettings(
                 }
             }
 
-            ToggleRow(stringResource(R.string.settings_persistent), settings.persistentNotification) {
-                commit { copy(persistentNotification = it) }
-            }
-            Text(
-                stringResource(R.string.settings_persistent_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
 
         SettingsSection(stringResource(R.string.settings_section_appearance)) {
