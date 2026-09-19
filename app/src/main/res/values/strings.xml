@@ -168,6 +168,8 @@
     <string name="settings_wear_hint">Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).</string>
     <string name="settings_official_online">Offizielle Diyanet-Zeiten (online)</string>
     <string name="settings_high_contrast">Hoher Kontrast</string>
+    <!-- Hinweisstreifen, wenn Benachrichtigungen blockiert sind -->
+    <string name="notification_block_title">Benachrichtigungen sind aus</string>
     <string name="settings_section_reminders">Erinnerungen</string>
     <string name="settings_reminders_hint">Stille Benachrichtigung zur jeweiligen Gebetszeit.</string>
     <string name="settings_style">Stil</string>

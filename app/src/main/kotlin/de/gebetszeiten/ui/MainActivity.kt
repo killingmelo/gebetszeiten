@@ -150,7 +150,6 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(
                     LocalDensity provides Density(density.density, density.fontScale * settings.fontScale),
                 ) {
-                    NotificationPermissionRequester()
                     MainScreen(viewModel)
                 }
             }
@@ -159,13 +158,36 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Der Anfrager fuer die Benachrichtigungs-Erlaubnis — als Rueckruf, nicht als
+ * Selbstlaeufer.
+ *
+ * Hier stand einmal ein `LaunchedEffect(Unit) { launcher.launch(...) }`: der
+ * Systemdialog kam ab Android 13 unvermittelt beim allerersten Zeichnen, ohne
+ * ein Wort dazu, warum die App ihn braucht. Der Ergebnis-Rueckruf war leer.
+ * Wer ablehnte, bekam von da an schweigend nichts — keine Gebets-Meldung,
+ * keine Dauerzeile —, und die App sagte darueber nie etwas. Wer spaeter in
+ * den Systemeinstellungen zustimmte, sah bis zum naechsten Gebets-Wecker
+ * trotzdem nichts, weil `ensureScheduled()` nur in `onCreate` laeuft.
+ *
+ * Beides ist jetzt anders: gefragt wird an der Stelle, an der erklaert wurde
+ * wofuer (Ersteinrichtung, Hinweisstreifen), und nach einer Zusage wird
+ * sofort neu geplant, statt auf das naechste Gebet zu warten.
+ */
 @Composable
-private fun NotificationPermissionRequester() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+private fun rememberNotificationPermissionRequest(onResult: () -> Unit): () -> Unit {
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { /* optional */ }
-    LaunchedEffect(Unit) { launcher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+    ) { onResult() }
+    return {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            // Vor Android 13 gibt es nichts zu erlauben; der Aufrufer soll
+            // trotzdem erfahren, dass der Vorgang durch ist.
+            onResult()
+        }
+    }
 }
 
 private enum class Tab { HEUTE, MONAT, QIBLA }
@@ -355,6 +377,9 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
                     // hier gar nicht sichtbar - siehe dayInfo unten).
                     viewModel.save(settings.copy(calculationFillsGaps = true))
                 },
+                // Nach einer erteilten Erlaubnis sofort neu planen: sonst
+                // erschiene die Dauerzeile erst beim naechsten Gebets-Wecker.
+                onNotificationsGranted = { viewModel.ensureScheduled() },
             )
             Tab.MONAT -> MonatScreen(inner, settings)
             Tab.QIBLA -> QiblaScreen(inner, settings)
@@ -386,6 +411,7 @@ private fun HeuteContent(
     snackbarHostState: SnackbarHostState,
     onFetchNow: () -> Unit,
     onEnableCalculation: () -> Unit,
+    onNotificationsGranted: () -> Unit,
 ) {
     val context = LocalContext.current
     val zone = ZoneId.systemDefault()
@@ -469,6 +495,12 @@ private fun HeuteContent(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        // Wenn nichts ankommt, sagt die App es jetzt — statt schweigend
+        // nichts zu tun. `tick` als Schluessel: kommt der Nutzer aus den
+        // Systemeinstellungen zurueck, ist der Streifen beim naechsten
+        // Vordergrund-Tick weg.
+        NotificationBlockCard(tick, onNotificationsGranted)
+
         DateNavigator(
             date = selectedDate,
             isToday = isToday,
@@ -670,6 +702,55 @@ private fun blockOrder(b: DayBlock): Int = when (b) {
 
 /** A "primary" (prayer-level) entry: an obligatory prayer or the Duha forenoon. */
 private fun isPrimary(b: DayBlock): Boolean = b is PrayerBlock || (b is NaflBlock && b.forenoon)
+
+/**
+ * Der Streifen, der sagt, WARUM gerade nichts ankommt.
+ *
+ * Bis hierher war das der lautloseste Ausfall der App: wer den
+ * Berechtigungsdialog wegtippte (und er kam ungefragt beim allerersten
+ * Zeichnen), bekam von da an keine Gebets-Meldung und keine Dauerzeile — und
+ * nirgends stand, dass etwas fehlt. Dasselbe galt fuer eine im System
+ * abgeschaltete Kategorie, die `checkSelfPermission` gar nicht sieht.
+ *
+ * [tick] ist kein Inhalt, sondern der Anlass zum Nachsehen: er zaehlt im
+ * Vordergrund hoch, also ist der Streifen weg, sobald der Nutzer aus den
+ * Systemeinstellungen zurueckkommt.
+ */
+@Composable
+private fun NotificationBlockCard(tick: Int, onGranted: () -> Unit) {
+    val context = LocalContext.current
+    val block = remember(tick) { de.gebetszeiten.notify.PrayerNotifier.blockOf(context) }
+    val text = de.gebetszeiten.notify.notificationBlockText(block) ?: return
+    val action = de.gebetszeiten.notify.notificationBlockAction(block) ?: return
+    // Nach einer Zusage sofort planen und posten, statt auf das naechste
+    // Gebet zu warten — das war die zweite Haelfte des alten Fehlers.
+    val erlauben = rememberNotificationPermissionRequest(onGranted)
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                stringResource(R.string.notification_block_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Button(
+                onClick = {
+                    if (block == de.gebetszeiten.notify.NotificationBlock.NO_PERMISSION) {
+                        erlauben()
+                    } else {
+                        context.startActivity(
+                            android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(action) }
+        }
+    }
+}
 
 /**
  * Ersetzt die Zeitachse ([TimesCard]), solange

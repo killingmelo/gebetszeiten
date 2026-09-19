@@ -90,10 +90,38 @@ object PrayerNotifier {
         style != de.gebetszeiten.data.AppSettings.STYLE_VIBRATE &&
             style != de.gebetszeiten.data.AppSettings.STYLE_SOUND
 
-    private fun canPost(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) ==
-            PackageManager.PERMISSION_GRANTED
+    /**
+     * Der Hinderungsgrund, warum gerade nichts ankaeme — oder [NotificationBlock.NONE].
+     *
+     * Oeffentlich, weil die Oberflaeche ihn braucht: sie sagt dem Nutzer, was
+     * im Weg ist, statt ihn raten zu lassen.
+     */
+    fun blockOf(context: Context): NotificationBlock {
+        val manager = NotificationManagerCompat.from(context)
+        return notificationBlock(
+            hasPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED,
+            appEnabled = manager.areNotificationsEnabled(),
+            ongoingChannelImportance = importanceOf(manager, ONGOING_CHANNEL_ID),
+            entryChannelImportance = importanceOf(manager, CHANNEL_ID),
+        )
+    }
+
+    /**
+     * Die Wichtigkeit eines Kanals, oder `IMPORTANCE_DEFAULT`, wenn es ihn
+     * noch nicht gibt.
+     *
+     * Ein fehlender Kanal ist KEIN Ausfall — er entsteht beim ersten
+     * `ensureChannels`. Gaebe man hier die -1000 aus
+     * (`IMPORTANCE_UNSPECIFIED`) durch, meldete die App vor ihrem ersten
+     * Kanal-Aufbau faelschlich einen abgeschalteten Kanal.
+     */
+    private fun importanceOf(manager: NotificationManagerCompat, id: String): Int =
+        manager.getNotificationChannelCompat(id)?.importance
+            ?: NotificationManager.IMPORTANCE_DEFAULT
+
+    private fun canPost(context: Context): Boolean = blockOf(context) == NotificationBlock.NONE
 
     private fun contentIntent(context: Context): PendingIntent = PendingIntent.getActivity(
         context,
