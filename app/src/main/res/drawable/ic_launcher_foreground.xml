@@ -3,11 +3,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Crescent, kept within the adaptive-icon safe zone (centre 54,54). -->
+    <!-- Erzeugt von tools/notification-icons/build_icons.py; nicht von Hand aendern. -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,32 A22,22 0 1 0 54,76 A17.5,17.5 0 1 1 54,32 Z" />
-    <path
-        android:fillColor="#FFD166"
-        android:pathData="M70,38 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+        android:pathData="M75.354,59.294 A22.000,22.000 0 1,1 48.706,32.646 A18.920,18.920 0 0,0 75.354,59.294 Z" />
 </vector>

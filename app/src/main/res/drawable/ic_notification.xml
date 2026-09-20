@@ -4,8 +4,8 @@
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="#FFFFFFFF">
-    <!-- Crescent silhouette on transparent background; the system tints it. -->
+    <!-- Erzeugt von tools/notification-icons/build_icons.py; nicht von Hand aendern. -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M12,3 A9,9 0 1 0 12,21 A7,7 0 1 1 12,3 Z" />
+        android:pathData="M21.221,14.286 A9.500,9.500 0 1,1 9.714,2.779 A8.170,8.170 0 0,0 21.221,14.286 Z" />
 </vector>

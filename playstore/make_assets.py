@@ -1,6 +1,21 @@
 # Generates Play Store listing graphics matching the app's adaptive icon
 # (green #0E7A5F background, white crescent).
+#
+# Die Sichel-Proportionen stehen NICHT mehr hier, sondern in
+# tools/notification-icons/build_icons.py — derselben Datei, die
+# ic_notification.xml und ic_launcher_foreground.xml erzeugt. Bis zum
+# 20.09.2026 hatte jede der drei Stellen ihre eigene Definition, und nur
+# diese war richtig: die beiden Vektoren zogen konzentrische Boegen und
+# fielen dadurch in sich zusammen. Ein Store-Symbol, das anders aussieht als
+# das auf dem Geraet, faellt niemandem auf, der beide nicht nebeneinander
+# haelt — deshalb jetzt eine Quelle.
+import sys
+from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "notification-icons"))
+from build_icons import CRESCENT_INNER, CRESCENT_OFFSET  # noqa: E402
 
 GREEN = (14, 122, 95, 255)
 WHITE = (255, 255, 255, 255)
@@ -9,8 +24,8 @@ WHITE = (255, 255, 255, 255)
 def crescent(draw: ImageDraw.ImageDraw, cx: float, cy: float, r: float, fill, bg):
     """Crescent = full circle minus a circle shifted to the upper right."""
     draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
-    off = r * 0.42
-    r2 = r * 0.86
+    off = r * CRESCENT_OFFSET
+    r2 = r * CRESCENT_INNER
     draw.ellipse([cx + off - r2, cy - off - r2, cx + off + r2, cy - off + r2], fill=bg)
 
 

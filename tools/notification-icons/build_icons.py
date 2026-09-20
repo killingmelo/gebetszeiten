@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Erzeugt die 23 Countdown-Symbole in app/src/main/res/drawable/.
+"""Erzeugt die 23 Countdown-Symbole UND die Sichel in app/src/main/res/drawable/.
 
 Ablauf: elf Zeichen (`0`-`9` und `h`) einmal als Sieben-Segment-Geometrie
 definieren -> zu 23 Symbolen zusammensetzen (`1h`…`9h`, `50 40 30 20 10`,
-`9`…`1`) -> je eine Vektordatei in der Form von `ic_notification.xml`
-schreiben -> `icons.sha256` als Manifest daneben legen.
+`9`…`1`) -> dazu die Sichel in zwei Groessen (`ic_notification.xml` fuer die
+Statusleiste, `ic_launcher_foreground.xml` fuer das Startbildschirm-Symbol)
+-> je eine Vektordatei schreiben -> `icons.sha256` als Manifest daneben legen.
+
+Warum die Sichel hier steht und nicht mehr von Hand daneben: sie war an drei
+Stellen verschieden definiert, und zwei davon waren falsch (siehe den
+Abschnitt „Die Sichel" weiter unten). Wer nicht im Generator steht, wird
+nicht geprueft.
 
 Warum ein Generator und keine 23 handgeschriebenen Dateien: 23 Dateien mit
 Pfaddaten von Hand sind 23 Gelegenheiten fuer einen Zahlendreher, den im
@@ -30,6 +36,7 @@ Nur ausfuehren, wenn sich die Ziffernform aendert (siehe README.md).
 """
 import argparse
 import hashlib
+import math
 import sys
 from pathlib import Path
 
@@ -186,6 +193,144 @@ def path_data(text: str) -> str:
     return " ".join(_rect(*box) for box in rects_for(text))
 
 
+# --- Die Sichel --------------------------------------------------------------
+# Das Zeichen der App — und bis zum 20.09.2026 an DREI Stellen verschieden
+# definiert: richtig in `playstore/make_assets.py` (Vollkreis minus versetzt
+# ausgestanzter Kreis), falsch in `ic_notification.xml` und
+# `ic_launcher_foreground.xml`. Die beiden Vektoren zogen zwei KONZENTRISCHE
+# Boegen um denselben Mittelpunkt. Das ergibt keine Sichel, sondern eine Figur,
+# die in sich zusammenfaellt: in der Statusleiste blieb ein Haarstrich, auf dem
+# Startbildschirm eine leere gruene Scheibe mit einem gelben Fleck. Beides am
+# Emulator gesehen, beides seit der ersten Fassung so.
+#
+# Ab hier gilt diese eine Definition; `make_assets.py` liest sie mit.
+CRESCENT_OFFSET = 0.42   # Versatz des Stanzkreises, nach rechts oben
+CRESCENT_INNER = 0.86    # Radius des Stanzkreises
+
+
+def crescent_points(cx: float, cy: float, r: float):
+    """Die beiden Schnittpunkte von Aussen- und Stanzkreis (Kreisschnitt).
+
+    Bewusst ungerundet: an den Hoernern laeuft der Pfad sonst auseinander.
+    """
+    dx, dy = CRESCENT_OFFSET * r, -CRESCENT_OFFSET * r
+    d = math.hypot(dx, dy)
+    r2 = CRESCENT_INNER * r
+    assert abs(r - r2) < d < r + r2, "Kreise schneiden sich nicht — keine Sichel"
+    a = (d * d + r * r - r2 * r2) / (2 * d)
+    h = math.sqrt(r * r - a * a)
+    bx, by = cx + a * dx / d, cy + a * dy / d
+    px, py = -dy / d, dx / d
+    return (bx + h * px, by + h * py), (bx - h * px, by - h * py)
+
+
+def crescent_path(cx: float, cy: float, r: float) -> str:
+    """Grosser Bogen aussen herum, kleiner Bogen zurueck.
+
+    NICHT zwei Kreise mit `evenOdd` — das waere naheliegend und falsch: der
+    Teil des Stanzkreises, der AUSSERHALB des Aussenkreises liegt, wuerde
+    dabei gefuellt statt ausgespart. Pillow kommt damit durch, weil es
+    Hintergrund darueber malt; ein Vektor kann das nicht.
+    """
+    (x1, y1), (x2, y2) = crescent_points(cx, cy, r)
+    r2 = CRESCENT_INNER * r
+    # Aussen der LANGE Bogen im Uhrzeigersinn (1,1): er laeuft unten und links
+    # herum, das ist die runde Aussenkante der Sichel.
+    #
+    # Zurueck der KURZE Bogen GEGEN den Uhrzeigersinn (0,0). Das `0` am Ende
+    # ist die ganze Sichel: mit `0,1` liefe der Bogen andersherum, und weil
+    # diese Richtung 190 Grad braucht (mehr als das `large-arc=0` erlaubt),
+    # waehlt der Renderer stillschweigend den ANDEREN Kreismittelpunkt. Das
+    # Ergebnis ist eine fast volle Scheibe mit einer Kerbe — am Emulator
+    # gesehen, nachdem ich genau hier zuerst `0,1` geschrieben hatte.
+    return (
+        f"M{x1:.3f},{y1:.3f} "
+        f"A{r:.3f},{r:.3f} 0 1,1 {x2:.3f},{y2:.3f} "
+        f"A{r2:.3f},{r2:.3f} 0 0,0 {x1:.3f},{y1:.3f} Z"
+    )
+
+
+def crescent_area(r: float) -> float:
+    """Flaeche der Sichel: Aussenkreis minus Linse der beiden Kreise.
+
+    Der Gegenwert zur Pfadbeschreibung. [check_crescent] tastet den Pfad ab
+    und vergleicht — genau die Pruefung, die den urspruenglichen Fehler
+    sofort gefunden haette.
+    """
+    r2 = CRESCENT_INNER * r
+    d = math.hypot(CRESCENT_OFFSET * r, CRESCENT_OFFSET * r)
+    lens = (
+        r * r * math.acos((d * d + r * r - r2 * r2) / (2 * d * r))
+        + r2 * r2 * math.acos((d * d + r2 * r2 - r * r) / (2 * d * r2))
+        - 0.5 * math.sqrt((-d + r + r2) * (d + r - r2) * (d - r + r2) * (d + r + r2))
+    )
+    return math.pi * r * r - lens
+
+
+def check_crescent(r: float) -> None:
+    """Umschliesst der beschriebene Pfad wirklich eine Sichel?
+
+    Drei Pruefungen, und die ersten beiden sind die wichtigen. Eine reine
+    Flaechenprobe reicht naemlich NICHT: sie vergleicht meine Abtastung mit
+    meiner Formel — beides von derselben Hand, beides kann dieselbe falsche
+    Annahme ueber die Bogenrichtung teilen. Genau das ist mir hier passiert,
+    und erst der Emulator hat es gezeigt.
+
+    Deshalb zuerst zwei Aussagen ueber die FORM, die keine Formel teilen:
+    der Mittelpunkt des Stanzkreises liegt AUSSERHALB der Sichel, und der
+    Punkt gegenueber davon liegt DRIN. Eine volle Scheibe mit Kerbe faellt
+    an der ersten, eine in sich zusammengefallene Figur an der zweiten.
+    """
+    (x1, y1), (x2, y2) = crescent_points(0.0, 0.0, r)
+    r2 = CRESCENT_INNER * r
+    ix, iy = CRESCENT_OFFSET * r, -CRESCENT_OFFSET * r
+    punkte = []
+    a1, a2 = math.atan2(y1, x1), math.atan2(y2, x2)
+    span = (a2 - a1) % (2 * math.pi)                 # aussen: 1,1
+    for i in range(1001):
+        t = a1 + span * i / 1000
+        punkte.append((r * math.cos(t), r * math.sin(t)))
+    b1 = math.atan2(y2 - iy, x2 - ix)
+    b2 = math.atan2(y1 - iy, x1 - ix)
+    span2 = -((b1 - b2) % (2 * math.pi))             # innen: 0,0 (fallend)
+    for i in range(1001):
+        t = b1 + span2 * i / 1000
+        punkte.append((ix + r2 * math.cos(t), iy + r2 * math.sin(t)))
+
+    def drin(px: float, py: float) -> bool:
+        """Strahlenverfahren."""
+        treffer = False
+        for i in range(len(punkte)):
+            xa, ya = punkte[i]
+            xb, yb = punkte[(i + 1) % len(punkte)]
+            if (ya > py) != (yb > py) and px < xa + (py - ya) / (yb - ya) * (xb - xa):
+                treffer = not treffer
+        return treffer
+
+    assert not drin(ix, iy), (
+        f"r={r}: der Mittelpunkt des Stanzkreises liegt INNERHALB der Figur — "
+        f"das ist eine Scheibe mit Kerbe, keine Sichel"
+    )
+    # Die dickste Stelle der Sichel, dem Stanzkreis genau gegenueber.
+    dicke = r - r2 + math.hypot(ix, iy)
+    weit = math.hypot(ix, iy)
+    assert drin(-ix / weit * (r - dicke / 2), -iy / weit * (r - dicke / 2)), (
+        f"r={r}: die Sichelmitte ist nicht gefuellt — die Figur faellt in sich zusammen"
+    )
+    flaeche = abs(
+        sum(
+            punkte[i][0] * punkte[(i + 1) % len(punkte)][1]
+            - punkte[(i + 1) % len(punkte)][0] * punkte[i][1]
+            for i in range(len(punkte))
+        )
+    ) / 2
+    soll = crescent_area(r)
+    assert abs(flaeche - soll) < soll * 0.001, (
+        f"r={r}: der Pfad umschliesst {flaeche:.3f}, die Sichel hat {soll:.3f} — "
+        f"die Boegen passen nicht zusammen"
+    )
+
+
 def vector_xml(text: str) -> str:
     """Dateiform exakt wie app/src/main/res/drawable/ic_notification.xml."""
     return (
@@ -201,6 +346,61 @@ def vector_xml(text: str) -> str:
         "    <path\n"
         '        android:fillColor="#FFFFFFFF"\n'
         f'        android:pathData="{path_data(text)}" />\n'
+        "</vector>\n"
+    )
+
+
+NOTIFICATION_FILE = "ic_notification.xml"
+LAUNCHER_FILE = "ic_launcher_foreground.xml"
+# Durchmesser 44 von 108: innerhalb der Schutzzone des adaptiven Symbols (66)
+# und optisch so gross wie im Play-Symbol, dessen sichtbare Flaeche kleiner
+# ist als seine Leinwand.
+LAUNCHER_RADIUS = 22.0
+
+
+def notification_xml() -> str:
+    """Der Mond in der Statusleiste — genauso hoch wie die Ziffern (19 dp).
+
+    Dieselbe Hoehe ist kein Zufall: die beiden wechseln sich in DEMSELBEN
+    Platz ab, jede Stunde. Ein Mond, der aus der Reihe faellt, faellt dort
+    staendig auf.
+    """
+    return (
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '    android:width="24dp"\n'
+        '    android:height="24dp"\n'
+        '    android:viewportWidth="24"\n'
+        '    android:viewportHeight="24"\n'
+        '    android:tint="#FFFFFFFF">\n'
+        "    <!-- Erzeugt von tools/notification-icons/build_icons.py;"
+        " nicht von Hand aendern. -->\n"
+        "    <path\n"
+        '        android:fillColor="#FFFFFFFF"\n'
+        f'        android:pathData="{crescent_path(VIEWPORT / 2, VIEWPORT / 2, GLYPH_HEIGHT / 2)}" />\n'
+        "</vector>\n"
+    )
+
+
+def launcher_xml() -> str:
+    """Der Vordergrund des Startbildschirm-Symbols — dieselbe Sichel, groesser.
+
+    Kein `android:tint`: die Datei dient auch als `monochrome`-Ebene, die das
+    System selbst einfaerbt. Und kein gelber Punkt mehr — er stand nur hier,
+    nicht im Play-Symbol, und im monochromen Themed-Icon waere er ohnehin ein
+    bedeutungsloser weisser Fleck.
+    """
+    c = 108.0 / 2
+    return (
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '    android:width="108dp"\n'
+        '    android:height="108dp"\n'
+        '    android:viewportWidth="108"\n'
+        '    android:viewportHeight="108">\n'
+        "    <!-- Erzeugt von tools/notification-icons/build_icons.py;"
+        " nicht von Hand aendern. -->\n"
+        "    <path\n"
+        '        android:fillColor="#FFFFFF"\n'
+        f'        android:pathData="{crescent_path(c, c, LAUNCHER_RADIUS)}" />\n'
         "</vector>\n"
     )
 
@@ -239,6 +439,15 @@ def build() -> dict:
         assert data not in seen, f"{text} ist pfadgleich mit {seen.get(data)}"
         seen[data] = text
         files[filename(text)] = vector_xml(text)
+
+    # Die Sichel gehoert dazu, seit sie hier definiert ist: als Mond in der
+    # Statusleiste und als Vordergrund des Startbildschirm-Symbols. Vorher
+    # standen beide von Hand daneben, ungeprueft — und beide waren falsch.
+    check_crescent(GLYPH_HEIGHT / 2)
+    check_crescent(LAUNCHER_RADIUS)
+    files[NOTIFICATION_FILE] = notification_xml()
+    files[LAUNCHER_FILE] = launcher_xml()
+    assert len(set(files.values())) == len(files), "zwei Dateien mit gleichem Inhalt"
     return files
 
 
