@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -208,7 +209,7 @@ private fun OnboardingDisplayStep(draft: AppSettings, onChange: (AppSettings) ->
     //
     // `nachgefragt` zwingt die Neuberechnung nach der Antwort: `blockOf`
     // liest den Systemzustand, den Compose nicht beobachtet.
-    var nachgefragt by remember { mutableStateOf(0) }
+    var nachgefragt by remember { mutableIntStateOf(0) }
     val block = remember(nachgefragt) { PrayerNotifier.blockOf(context) }
     val erlauben = rememberNotificationPermissionRequest { nachgefragt++ }
     if (block != NotificationBlock.NONE) {
