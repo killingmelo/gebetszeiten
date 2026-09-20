@@ -81,7 +81,7 @@ fun onboardingCopy(step: OnboardingStep, fresh: Boolean): OnboardingCopy = when 
         detail = "Eine stille, dauerhafte Benachrichtigung zeigt das nächste " +
             "Gebet auf dem Sperrbildschirm, mit einem Symbol oben in der " +
             "Statusleiste. Wichtig zu wissen: Solange der Erinnerungsstil " +
-            "„Still\" ist, ersetzt diese eine Zeile die einzelnen Meldungen zur " +
+            "„Still“ ist, ersetzt diese eine Zeile die einzelnen Meldungen zur " +
             "Gebetszeit — sie ändert sich dann, statt neu aufzutauchen.",
     )
 

@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -78,7 +78,12 @@ internal fun Onboarding(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .imePadding()
+                // Das Onboarding ist Vollbild und liegt NICHT im Scaffold der
+                // Hauptansicht — es muss die System-Einzuege selbst nehmen,
+                // sonst liegt die Schrittzahl unter der Statusleiste (am
+                // Emulator gesehen). `safeDrawing` deckt Statusleiste,
+                // Navigationsleiste, Display-Ausschnitt UND Tastatur ab.
+                .safeDrawingPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -197,13 +202,34 @@ private fun OnboardingDisplayStep(draft: AppSettings, onChange: (AppSettings) ->
         checked = draft.persistentNotification,
         onChange = { onChange(draft.copy(persistentNotification = it)) },
     )
-    val block = PrayerNotifier.blockOf(context)
+    // Hier — und nur hier — wird die Benachrichtigungs-Erlaubnis eingeholt:
+    // nachdem erklaert wurde, wofuer. Genau das fehlte vorher, als der
+    // Systemdialog beim allerersten Zeichnen kam.
+    //
+    // `nachgefragt` zwingt die Neuberechnung nach der Antwort: `blockOf`
+    // liest den Systemzustand, den Compose nicht beobachtet.
+    var nachgefragt by remember { mutableStateOf(0) }
+    val block = remember(nachgefragt) { PrayerNotifier.blockOf(context) }
+    val erlauben = rememberNotificationPermissionRequest { nachgefragt++ }
     if (block != NotificationBlock.NONE) {
         Text(
             de.gebetszeiten.notify.notificationBlockText(block).orEmpty(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
         )
+        Button(
+            onClick = {
+                if (block == NotificationBlock.NO_PERMISSION) {
+                    erlauben()
+                } else {
+                    context.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(de.gebetszeiten.notify.notificationBlockAction(block).orEmpty()) }
     }
 }
 

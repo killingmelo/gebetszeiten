@@ -174,7 +174,7 @@
     <string name="onboarding_place_current">Aktuell eingestellt: %1$s</string>
 
     <!-- Ersteinrichtung: Vorschau der Dauerzeile -->
-    <string name="onboarding_preview_same_icon">Das Symbol ist bei „Stufen" und „Genau" dasselbe — verschieden ist nur der Text darunter.</string>
+    <string name="onboarding_preview_same_icon">Das Symbol ist bei „Stufen“ und „Genau“ dasselbe — verschieden ist nur der Text darunter.</string>
     <string name="onboarding_preview_statusbar_desc">Vorschau: Symbol in der Statusleiste</string>
     <string name="onboarding_preview_statusbar_hint">so sieht es oben in der Statusleiste aus</string>
     <string name="onboarding_preview_expand">▾ antippen zum Aufklappen</string>

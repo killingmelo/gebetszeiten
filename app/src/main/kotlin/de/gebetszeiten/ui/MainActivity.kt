@@ -183,7 +183,7 @@ class MainActivity : ComponentActivity() {
  * sofort neu geplant, statt auf das naechste Gebet zu warten.
  */
 @Composable
-private fun rememberNotificationPermissionRequest(onResult: () -> Unit): () -> Unit {
+internal fun rememberNotificationPermissionRequest(onResult: () -> Unit): () -> Unit {
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { onResult() }

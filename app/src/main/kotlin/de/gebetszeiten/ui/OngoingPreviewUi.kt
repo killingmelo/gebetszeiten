@@ -92,29 +92,39 @@ internal fun CountdownPreview(
 /**
  * Der nachgebaute Leistenbalken. Absichtlich schlicht: er soll zeigen, WAS
  * dort steht, nicht so tun, als waere er die echte Systemleiste.
+ *
+ * Fester dunkler Grund und WEISSES Symbol, unabhaengig vom App-Thema — und
+ * das ist kein Geschmack, sondern Notwendigkeit: die Vektoren tragen
+ * `android:tint="#FFFFFFFF"` in der Datei (im Betrieb faerbt das System sie
+ * um). Dieses eingebackene Weiss laesst sich von Compose aus nicht
+ * ueberschreiben. Auf hellem Grund war das Symbol am Emulator schlicht
+ * unsichtbar. Ein dunkler Balken mit weissem Glyph ist ausserdem das, was
+ * die meisten Leute als „Statusleiste" wiedererkennen.
  */
 @Composable
 private fun StatusBarStrip(iconRes: Int) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = androidx.compose.ui.graphics.Color(0xFF1F1F1F),
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Icon(
                 painterResource(iconRes),
                 contentDescription = stringResource(R.string.onboarding_preview_statusbar_desc),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                // Kein `tint`: die Datei bringt ihr Weiss mit, und jeder
+                // Versuch, es hier zu setzen, liefe ins Leere.
+                tint = androidx.compose.ui.graphics.Color.Unspecified,
                 modifier = Modifier.size(18.dp),
             )
             Text(
                 stringResource(R.string.onboarding_preview_statusbar_hint),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = androidx.compose.ui.graphics.Color(0xFFBDBDBD),
                 modifier = Modifier.weight(1f),
             )
         }
