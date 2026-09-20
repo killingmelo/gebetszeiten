@@ -33,3 +33,7 @@ tools/cities/cache/
 tools/cities/__pycache__/
 tools/diyanet-index/cache/
 tools/diyanet-index/__pycache__/
+
+# Python-Bytecode der Werkzeuge
+__pycache__/
+*.pyc
