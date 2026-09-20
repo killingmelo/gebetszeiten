@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -21,17 +20,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,23 +40,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.repeatOnLifecycle
@@ -70,7 +58,6 @@ import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.core.prayertimes.officialtimes.displayName
 import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
 import de.gebetszeiten.data.AppSettings
-import de.gebetszeiten.data.Cities
 import de.gebetszeiten.data.City
 import de.gebetszeiten.data.FAVORITES_MAX
 import de.gebetszeiten.data.Favorite
@@ -80,11 +67,9 @@ import de.gebetszeiten.data.withFavorite
 import de.gebetszeiten.data.withRecentPlace
 import de.gebetszeiten.data.withoutFavorite
 import de.gebetszeiten.official.OfficialTimesProvider
-import de.gebetszeiten.places.PlaceSearchProvider
 import de.gebetszeiten.prayer.TimesSourceBadge
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.prayer.timesSourceBadge
-import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import java.time.LocalDate
@@ -105,7 +90,7 @@ private fun SettingsSection(title: String, content: @Composable ColumnScope.() -
 }
 
 /** Stadtname mit fett hervorgehobenem, übereinstimmendem Wortanfang. */
-private fun highlightPrefix(name: String, query: String): AnnotatedString = buildAnnotatedString {
+internal fun highlightPrefix(name: String, query: String): AnnotatedString = buildAnnotatedString {
     val q = query.trim()
     if (q.isNotEmpty() && name.startsWith(q, ignoreCase = true)) {
         withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(name.take(q.length)) }
@@ -116,7 +101,7 @@ private fun highlightPrefix(name: String, query: String): AnnotatedString = buil
 }
 
 /** Lokalisierter Ländername statt kryptischem ISO-Code („DE" → „Deutschland"). */
-private fun countryDisplayName(code: String): String = runCatching {
+internal fun countryDisplayName(code: String): String = runCatching {
     Locale.Builder().setRegion(code).build().displayCountry
 }.getOrDefault("").ifBlank { code }
 
@@ -445,80 +430,20 @@ internal fun LocationSettings(
 ) {
     // Location is the only draft state (typing half a coordinate must not
     // trigger a reschedule) — everything else applies instantly via commit().
-    // Das Stadt-Feld ist ein reines Suchfeld: Entwurf startet leer, der
-    // aktuelle Ort steht als Placeholder. Den alten Namen beim Fokus zu
-    // leeren/markieren scheitert am Echo der startenden IME-Session —
-    // ein leeres Feld hat dieses Race gar nicht erst.
-    var city by rememberSaveable(settings.city, stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue(""))
-    }
     var lat by rememberSaveable(settings.latitude) { mutableStateOf(settings.latitude.toString()) }
     var lng by rememberSaveable(settings.longitude) { mutableStateOf(settings.longitude.toString()) }
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    var matches by remember { mutableStateOf<List<City>>(emptyList()) }
-    var searching by remember { mutableStateOf(false) }
-    // Online-Fallback (nur online-Flavor + Online-Schalter): greift erst,
-    // wenn die gebündelte Liste keinen Treffer hat.
-    var onlineMatches by remember { mutableStateOf<List<City>>(emptyList()) }
-    var searchingOnline by remember { mutableStateOf(false) }
     var manual by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
-    val focusRequester = remember { FocusRequester() }
 
     // Named "commit" (not "apply") to avoid clashing with Kotlin's stdlib apply.
     val commit: (AppSettings.() -> AppSettings) -> Unit = { change -> onApply(settings.change()) }
-    val locationDirty = (city.text.isNotBlank() && city.text != settings.city) ||
+    // Nur noch die Koordinaten: der Suchtext gehoert dem PlacePicker, und
+    // ein getippter, aber NICHT gewaehlter Name hat ohnehin keine geprueften
+    // Koordinaten - ihn mit handgetippten zu verheiraten waere genau die Art
+    // zweiter Wahrheit, die dieses Projekt vermeidet.
+    val locationDirty =
         lat.toDoubleOrNull() != settings.latitude || lng.toDoubleOrNull() != settings.longitude
-
-    // Autofokus aufs leere Suchfeld beim Öffnen — die Tastatur soll sofort
-    // stehen, ohne erst antippen zu müssen. Anders als das Race oben (das
-    // beim *Ändern des Textwerts* auf Fokus hin auftritt) wird hier nur der
-    // Fokus angefordert, kein Text gesetzt — trotzdem eine kurze Verzögerung,
-    // damit die IME-Startsequenz des Sheets sicher abgeklungen ist, bevor wir
-    // requestFocus() aufrufen (Fallback laut Spezifikation; ungetestet ohne
-    // Gerät/Emulator in dieser Umgebung).
-    LaunchedEffect(Unit) {
-        delay(150)
-        focusRequester.requestFocus()
-    }
-
-    // Die Städteliste einmalig vorwärmen — sonst hängt die allererste
-    // Suche still an der TSV-Parse-Latenz (33k Zeilen). Der Diyanet-Index
-    // (online-Flavor) und die gebündelte DE-Tabelle (im offline-Flavor die
-    // EINZIGE Badge-Quelle) ebenso, sonst hängt die erste Badge-Berechnung.
-    LaunchedEffect(Unit) {
-        Cities.preload(context)
-        de.gebetszeiten.official.DiyanetPlaceIndex.preload(context)
-        de.gebetszeiten.official.BundledOfficialSource.preload(context)
-    }
-
-    LaunchedEffect(city.text, expanded) {
-        if (expanded && city.text.isNotBlank()) {
-            // Tipp-Debounce: die Coroutine wird bei jedem Tastendruck neu
-            // gestartet — das delay macht daraus ein gratis Debouncing.
-            delay(200)
-            searching = true
-            matches = Cities.search(context, city.text, limit = 12)
-            searching = false
-            onlineMatches = emptyList()
-            val lookup = PlaceSearchProvider.lookup()
-            if (matches.isEmpty() && lookup != null && settings.useOnline && city.text.trim().length >= 3) {
-                searchingOnline = true
-                delay(300)
-                onlineMatches = lookup.search(city.text, limit = 10)
-                searchingOnline = false
-            } else {
-                searchingOnline = false
-            }
-        } else {
-            matches = emptyList()
-            onlineMatches = emptyList()
-            searching = false
-            searchingOnline = false
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -541,110 +466,103 @@ internal fun LocationSettings(
         // Sektions-Titel nennt den aktiven Ort — das Stadt-Feld selbst ist ein
         // leeres Suchfeld und zeigt unfokussiert keinen Wert an.
         SettingsSection("${stringResource(R.string.location_title)} · ${settings.city}") {
-            // Inline-Vorschläge statt ExposedDropdownMenu: dessen Popup-Fenster
-            // liegt unter dem IME-Fenster, die Tastatur verdeckt daher die
-            // Liste. Der Sheet-Inhalt weicht der Tastatur aus — die Liste
-            // im Sheet bleibt damit immer sichtbar.
-            OutlinedTextField(
-                value = city,
-                onValueChange = { city = it; expanded = true },
-                label = { Text(stringResource(R.string.settings_city)) },
-                placeholder = { Text(settings.city) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                trailingIcon = {
-                    Row {
-                        if (city.text.isNotEmpty()) {
-                            IconButton(onClick = { city = TextFieldValue(""); expanded = true }) {
-                                Icon(painterResource(R.drawable.ic_close), stringResource(R.string.city_clear))
+            // Die Suche selbst steht in `PlacePicker` — dieselbe, die die
+            // Ersteinrichtung benutzt. Was hier bleibt, ist der Rahmen:
+            // Favoriten und zuletzt gewaehlte Orte, solange nicht gesucht
+            // wird, und die manuellen Koordinaten darunter.
+            PlacePicker(
+                useOnline = settings.useOnline,
+                calculationFillsGaps = settings.calculationFillsGaps,
+                currentCity = settings.city,
+                whenEmpty = {
+                    // Der aktuelle Ort als City. Das Land kennen die Einstellungen
+                    // nicht — es bleibt leer, `recentPlaceLabel` liest es nicht.
+                    // Die Region dagegen wird mitgeführt: nur so kann die
+                    // Beschriftung zwei gleichnamige Favoriten (Esenköy in Yalova
+                    // und in Aydın) auseinanderhalten. Für die Identität
+                    // (stampMatches) zählen ohnehin nur die Koordinaten.
+                    val currentPlace = City(settings.city, "", settings.latitude, settings.longitude, settings.region)
+                    val currentIsFavorite = isFavorite(settings.favorites, currentPlace)
+                    FavoritesRow(
+                        favorites = settings.favorites,
+                        isFav = currentIsFavorite,
+                        full = settings.favorites.size >= FAVORITES_MAX,
+                        currentLat = settings.latitude,
+                        currentLng = settings.longitude,
+                        refreshTick = refreshTick,
+                        onToggle = {
+                            if (currentIsFavorite) {
+                                commit { copy(favorites = withoutFavorite(favorites, currentPlace)) }
+                            } else {
+                                // Keine eigene Grenzprüfung: withFavorite lehnt
+                                // bei voller Liste selbst ab, und die rote Zeile
+                                // in FavoritesRow hat den Nutzer schon VOR dem
+                                // Tipp darauf hingewiesen. Eine zweite Prüfung
+                                // hier wäre dieselbe Grenze an zwei Stellen.
+                                //
+                                // Kein eigener Abruf: der Stern heftet nur den
+                                // AKTIVEN Ort an, und den versorgt commit →
+                                // save() → reschedule() → refreshOfficial ohnehin.
+                                // Ein Abruf-Aufruf hier wäre ein zweiter
+                                // Mechanismus für dieselbe Sache. (Beim WECHSEL zu
+                                // einem Favoriten ohne Zeiten greift zusätzlich
+                                // CacheStore.dueOrder, das einen Ort ohne Eintrag
+                                // an die Spitze stellt — das ist aber die Sache
+                                // von onPick, nicht des Sterns.)
+                                commit {
+                                    copy(
+                                        favorites = withFavorite(
+                                            favorites,
+                                            currentPlace,
+                                            System.currentTimeMillis(),
+                                        ),
+                                    )
+                                }
                             }
-                        }
-                        val toggleLabel = stringResource(R.string.city_suggestions_toggle)
-                        IconButton(
-                            onClick = { expanded = !expanded },
-                            modifier = Modifier.semantics { contentDescription = toggleLabel },
-                        ) {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { expanded = it.isFocused },
-            )
-            // Gleiche Sichtbarkeitsbedingung wie bei den zuletzt gewählten
-            // Orten: während einer laufenden Ortssuche soll der Abschnitt
-            // nicht im Weg stehen.
-            if (city.text.isBlank()) {
-                // Der aktuelle Ort als City. Das Land kennen die Einstellungen
-                // nicht — es bleibt leer, `recentPlaceLabel` liest es nicht.
-                // Die Region dagegen wird mitgeführt: nur so kann die
-                // Beschriftung zwei gleichnamige Favoriten (Esenköy in Yalova
-                // und in Aydın) auseinanderhalten. Für die Identität
-                // (stampMatches) zählen ohnehin nur die Koordinaten.
-                val currentPlace = City(settings.city, "", settings.latitude, settings.longitude, settings.region)
-                val currentIsFavorite = isFavorite(settings.favorites, currentPlace)
-                FavoritesRow(
-                    favorites = settings.favorites,
-                    isFav = currentIsFavorite,
-                    full = settings.favorites.size >= FAVORITES_MAX,
-                    currentLat = settings.latitude,
-                    currentLng = settings.longitude,
-                    refreshTick = refreshTick,
-                    onToggle = {
-                        if (currentIsFavorite) {
-                            commit { copy(favorites = withoutFavorite(favorites, currentPlace)) }
-                        } else {
-                            // Keine eigene Grenzprüfung: withFavorite lehnt
-                            // bei voller Liste selbst ab, und die rote Zeile
-                            // in FavoritesRow hat den Nutzer schon VOR dem
-                            // Tipp darauf hingewiesen. Eine zweite Prüfung
-                            // hier wäre dieselbe Grenze an zwei Stellen.
-                            //
-                            // Kein eigener Abruf: der Stern heftet nur den
-                            // AKTIVEN Ort an, und den versorgt commit →
-                            // save() → reschedule() → refreshOfficial ohnehin.
-                            // Ein Abruf-Aufruf hier wäre ein zweiter
-                            // Mechanismus für dieselbe Sache. (Beim WECHSEL zu
-                            // einem Favoriten ohne Zeiten greift zusätzlich
-                            // CacheStore.dueOrder, das einen Ort ohne Eintrag
-                            // an die Spitze stellt — das ist aber die Sache
-                            // von onPick, nicht des Sterns.)
+                        },
+                        onPick = { c ->
+                            // Kompletter Umzug wie bei „zuletzt gewählt", aber
+                            // OHNE recentPlaces mitzuschreiben: ein
+                            // Favoritenwechsel ist keine Suche, die beiden Listen
+                            // bleiben unabhängig. Die Region zieht mit, sonst
+                            // verlöre der Ort sie beim Speichern.
                             commit {
                                 copy(
-                                    favorites = withFavorite(
-                                        favorites,
-                                        currentPlace,
-                                        System.currentTimeMillis(),
-                                    ),
+                                    city = c.name,
+                                    latitude = c.latitude,
+                                    longitude = c.longitude,
+                                    region = c.region,
                                 )
                             }
-                        }
-                    },
-                    onPick = { c ->
-                        // Kompletter Umzug wie bei „zuletzt gewählt", aber
-                        // OHNE recentPlaces mitzuschreiben: ein
-                        // Favoritenwechsel ist keine Suche, die beiden Listen
-                        // bleiben unabhängig. Die Region zieht mit, sonst
-                        // verlöre der Ort sie beim Speichern.
+                        },
+                        // Entfernen ohne hinzureisen: kein Ortswechsel, nur die
+                        // Liste ändert sich.
+                        onRemove = { c -> commit { copy(favorites = withoutFavorite(favorites, c)) } },
+                    )
+            
+                    if (settings.recentPlaces.isNotEmpty()) {
+                    RecentPlacesRow(settings.recentPlaces, settings.latitude, settings.longitude) { c ->
                         commit {
                             copy(
                                 city = c.name,
                                 latitude = c.latitude,
                                 longitude = c.longitude,
                                 region = c.region,
+                                recentPlaces = withRecentPlace(recentPlaces, c),
                             )
                         }
-                    },
-                    // Entfernen ohne hinzureisen: kein Ortswechsel, nur die
-                    // Liste ändert sich.
-                    onRemove = { c -> commit { copy(favorites = withoutFavorite(favorites, c)) } },
-                )
-            }
-            if (city.text.isBlank() && settings.recentPlaces.isNotEmpty()) {
-                RecentPlacesRow(settings.recentPlaces, settings.latitude, settings.longitude) { c ->
+                    }
+            
+                    }
+                },
+                onPick = { c ->
+                    // Die manuellen Felder ziehen mit, damit sie nicht die
+                    // Koordinaten des vorigen Orts behaupten.
+                    lat = c.latitude.toString()
+                    lng = c.longitude.toString()
+                    // Aus der Liste gewaehlt = vollstaendige Daten, gilt sofort.
+                    // Die Region wird mitgespeichert, damit der Ort sie als
+                    // Favorit nicht verliert.
                     commit {
                         copy(
                             city = c.name,
@@ -654,128 +572,8 @@ internal fun LocationSettings(
                             recentPlaces = withRecentPlace(recentPlaces, c),
                         )
                     }
-                }
-            }
-            if (expanded && (searching || searchingOnline)) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                if (searchingOnline) {
-                    Text(
-                        stringResource(R.string.city_searching_online),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            // Lokale Treffer haben Vorrang; Online-Treffer erscheinen nur,
-            // wenn die gebündelte Liste leer ausgeht (mit Quellen-Hinweis).
-            val shownMatches = matches.ifEmpty { onlineMatches }
-            // Quelle pro Treffer: beide Indizes sind vorgewärmt, das läuft
-            // ohne Netz und ohne merkbare Verzögerung.
-            val badges by produceState(emptyMap<String, TimesSourceBadge>(), shownMatches, settings.calculationFillsGaps) {
-                // F8: bei Schluesselwechsel (z. B. Toggle "Eigene Berechnung")
-                // zuruecksetzen — sonst blitzen kurz die Badges des vorherigen
-                // Zustands auf, genau der Fehler, den SourceStatusSection oben
-                // schon per "value = null" vermeidet.
-                value = emptyMap()
-                value = shownMatches.associate { c ->
-                    val key = "${c.name}|${c.latitude}|${c.longitude}"
-                    // F3: wie im Footer datumsabhaengig pruefen (locationNameFor),
-                    // nicht nur den naechsten Standort (nearestLocation) — die
-                    // gebuendelten Tabellen sind nur fuer 2026 befuellt, ab 2027
-                    // waere sonst jeder deutsche Ort faelschlich "Amtlich".
-                    val bundled = de.gebetszeiten.official.BundledOfficialSource
-                        .locationNameFor(context, c.latitude, c.longitude, LocalDate.now())
-                    val place = de.gebetszeiten.official.DiyanetPlaceIndex
-                        .nearest(context, c.latitude, c.longitude)
-                    key to timesSourceBadge(
-                        bundledName = bundled,
-                        officialPlace = place,
-                        distanceKm = place?.let {
-                            de.gebetszeiten.official.DiyanetPlaceIndex.distanceKm(it, c.latitude, c.longitude)
-                        },
-                        calculationFillsGaps = settings.calculationFillsGaps,
-                    )
-                }
-            }
-            if (expanded && !searching && !searchingOnline && shownMatches.isNotEmpty()) {
-                if (matches.isEmpty()) {
-                    Text(
-                        stringResource(R.string.city_results_online),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Surface(tonalElevation = 2.dp, shape = MaterialTheme.shapes.medium) {
-                    Column {
-                        shownMatches.forEach { c ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(highlightPrefix(c.name, city.text))
-                                        Text(
-                                            // Region unterscheidet gleichnamige Kleinorte
-                                            // („Esenköy — Yalova · Türkei" vs. „… Aydın · Türkei").
-                                            listOfNotNull(c.region, countryDisplayName(c.country)).joinToString(" · "),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        val badge = badges["${c.name}|${c.latitude}|${c.longitude}"]
-                                        if (badge != null) {
-                                            Text(
-                                                when (badge) {
-                                                    is TimesSourceBadge.Bundled ->
-                                                        stringResource(R.string.badge_bundled, badge.locationName)
-                                                    is TimesSourceBadge.Official ->
-                                                        stringResource(R.string.badge_official, badge.locationName, badge.distanceKm)
-                                                    TimesSourceBadge.Calculated ->
-                                                        stringResource(R.string.badge_calculated)
-                                                    // Notausgang aus, keine amtliche Quelle fuer diesen
-                                                    // Ort (Aufgabe 15) — waehlt der Nutzer ihn, zeigt die
-                                                    // App fuer ihn gar keine Zeiten.
-                                                    TimesSourceBadge.None ->
-                                                        stringResource(R.string.badge_none)
-                                                },
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = if (badge is TimesSourceBadge.Calculated || badge is TimesSourceBadge.None) {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                } else {
-                                                    MaterialTheme.colorScheme.primary
-                                                },
-                                            )
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    city = TextFieldValue(c.name)
-                                    lat = c.latitude.toString(); lng = c.longitude.toString()
-                                    expanded = false
-                                    keyboard?.hide()
-                                    focusManager.clearFocus()
-                                    // Picked from the list = complete data → applies directly.
-                                    // Die Region wird mitgespeichert, damit der
-                                    // Ort sie als Favorit nicht verliert.
-                                    commit {
-                                        copy(
-                                            city = c.name,
-                                            latitude = c.latitude,
-                                            longitude = c.longitude,
-                                            region = c.region,
-                                            recentPlaces = withRecentPlace(recentPlaces, c),
-                                        )
-                                    }
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-            if (expanded && !searching && !searchingOnline && matches.isEmpty() && onlineMatches.isEmpty() && city.text.isNotBlank()) {
-                Text(
-                    stringResource(R.string.city_no_results),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+                },
+            )
 
             // Koordinatenfelder sind der Ausnahmefall (Suche/Chips reichen
             // sonst) — hinter einem Aufklapper, statt immer sichtbar zu sein.
@@ -792,7 +590,8 @@ internal fun LocationSettings(
                     onApply = {
                         val parsedLat = lat.toDoubleOrNull() ?: settings.latitude
                         val parsedLng = lng.toDoubleOrNull() ?: settings.longitude
-                        // Leeres Suchfeld = Name unverändert (nur Koordinaten angepasst).
+                        // Der Name bleibt: manuelle Koordinaten ruecken den
+                        // AKTUELLEN Ort zurecht, Umbenennen geht ueber die Suche.
                         // Die Region wird auf null gesetzt: manuelle Koordinaten
                         // haben keine, und die des VORHERIGEN Orts würde sonst
                         // an den neuen Koordinaten hängenbleiben — bei einem
@@ -801,7 +600,7 @@ internal fun LocationSettings(
                         // eine fehlende; eine falsche wäre irreführend.
                         commit {
                             copy(
-                                city = city.text.ifBlank { settings.city },
+                                city = settings.city,
                                 latitude = parsedLat,
                                 longitude = parsedLng,
                                 region = null,
