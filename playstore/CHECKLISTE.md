@@ -52,16 +52,49 @@ beabsichtigt und bestätigt.
 
 ## Schritte (nur du kannst sie machen)
 
-### 1. Developer-Konto
-- https://play.google.com/console → Konto anlegen (einmalig **25 USD**).
-- ⚠️ **Wichtig für neue Privatkonten:** Google verlangt vor der Produktions-
-  Freigabe einen **geschlossenen Test mit mindestens 12 Testern über 14 Tage**.
-  Plane das ein: Closed-Track anlegen, 12 Freunde/Familie per E-Mail-Liste
-  einladen, 14 Tage laufen lassen, dann Produktionszugang beantragen.
+### 1. Konto und App — erledigt, hier steht nur noch, wo man steht
 
-### 2. App anlegen
-- „App erstellen" → Name **Gebetszeiten**, Standardsprache **Deutsch**,
-  App (kein Spiel), **kostenlos**.
+Bis zum 20.09.2026 stand an dieser Stelle „Konto anlegen (25 USD)" und „App
+erstellen". Beides ist laengst passiert; wer der Anleitung folgte, suchte
+Schritte, die es nicht mehr gibt. Der tatsaechliche Stand (vom Nutzer aus der
+Console gemeldet, 20.09.2026):
+
+| Formfaktor | Track | Zustand | Stand |
+|---|---|---|---|
+| Telefon | Geschlossener Test – Alpha | verfuegbar, vollstaendiger Roll-out | versionCode **21**, seit 15.08.2026, **177 von 177** Testern |
+| Wear OS | Interner Test | verfuegbar, vollstaendiger Roll-out | versionCode **1015**, seit 08.08.2026 |
+| Wear OS | Geschlossener Test – Alpha | **Entwurf** | 177 Tester zugewiesen, nie veroeffentlicht |
+
+Daraus folgt dreierlei:
+
+- **Dies ist ein Update, keine Ersteinrichtung.** Die versionCodes passen
+  lueckenlos an: Telefon 21 → **22**, Uhr 1015 → **1016**.
+- **Die 12-Tester-Regel laeuft schon.** Google verlangt fuer den
+  Produktionszugang einen geschlossenen Test mit mindestens 12 Testern ueber
+  14 zusammenhaengende Tage. Mit 177 Testern seit dem 15.08.2026 ist die
+  Bedingung der Sache nach erfuellt — der Zugang muss nur noch beantragt
+  werden. Das war frueher der lange Posten im Plan und ist es nicht mehr.
+- **Der Wear-Entwurf will aufgeloest werden.** Ein geschlossener Test fuer die
+  Uhr liegt als Entwurf herum und wurde nie veroeffentlicht. Beim Hochladen
+  von 1016 entweder diesen Entwurf fertigstellen oder ihn verwerfen — zwei
+  halbfertige Tracks nebeneinander sind spaeter nicht mehr auseinanderzuhalten.
+
+### 2. Was die 177 Testern bei diesem Update erleben
+
+Kein Formularpunkt, aber das Wichtigste an diesem Release: die Tester haben
+eine Fassung installiert, die bei fehlenden amtlichen Zeiten still gerechnet
+hat. Nach dem Update tut sie das nicht mehr.
+
+- Beim ersten Start **nach** dem Update laeuft einmalig die Ersteinrichtung,
+  mit dem Wortlaut fuer Bestandsnutzer („Stimmt dein Ort noch?", „Das gibt es
+  — gefunden hat es kaum jemand"). Der Schalter fuer die Dauerzeile steht
+  dabei auf ihrem gespeicherten Wert, nicht auf „an": eine bewusste Abwahl
+  wird nicht umgedreht. Dieser Weg ist am Emulator durchgespielt worden, mit
+  einer echten Installation der Vorfassung darunter.
+- Bis sie antworten, bleibt alles wie vorher. Erst die Antwort setzt etwas.
+- Wer den alten Schalter „immer rechnen" an hatte, bekommt nach der Migration
+  „Luecken fuellen" — sein Geraet ruft dadurch regelmaessig ab, wo es das
+  vorher nie tat.
 
 ### 3. Store-Eintrag
 - Kurz- und Vollbeschreibung aus `fastlane/metadata/android/de-DE/` einfügen
@@ -153,10 +186,15 @@ der volle Lint hatte einen Compose-Fehler gefunden, den der Release-Build
 allein durchgelassen hätte), Bundles signiert mit `keystore/gebetszeiten.jks`,
 Standortindex im Bundle enthalten.
 
-- **Produktion (bzw. zuerst geschlossener Test)** →
-  `app/build/outputs/bundle/onlineRelease/app-online-release.aab` (aktueller Stand laut git tag).
-- **Wear OS Form-Faktor:** unter „Releases" den Wear-Track aktivieren
-  (Erweiterte Einstellungen → Formfaktoren → Wear OS) und
+- **Telefon → derselbe Track wie bisher, „Geschlossener Test – Alpha"** (dort
+  laeuft versionCode 21):
+  `app/build/outputs/bundle/onlineRelease/app-online-release.aab`, versionCode
+  **22**, Tag `v0.2.0`. Erst in die Produktion, wenn der Produktionszugang
+  beantragt und erteilt ist (siehe Schritt 1).
+- **Wear OS Form-Faktor:** der Track ist bereits aktiv (Interner Test laeuft
+  mit 1015, ein geschlossener Test liegt als Entwurf daneben — Schritt 1).
+  Falls doch neu einzurichten: unter „Releases" den Wear-Track aktivieren
+  (Erweiterte Einstellungen → Formfaktoren → Wear OS). Hochladen:
   `wear/build/outputs/bundle/onlineRelease/wear-online-release.aab` (aktueller
   Stand laut git tag) hochladen — das **online**-Bundle, wie am Telefon, weil
   nur dieser Flavor den amtlichen Abruf überhaupt enthält; Wear-Screenshots
