@@ -168,6 +168,14 @@
     <string name="settings_wear_hint">Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).</string>
     <string name="settings_official_online">Offizielle Diyanet-Zeiten (online)</string>
     <string name="settings_high_contrast">Hoher Kontrast</string>
+    <!-- Ersteinrichtung: Vorschau der Dauerzeile -->
+    <string name="onboarding_preview_same_icon">Das Symbol ist bei „Stufen" und „Genau" dasselbe — verschieden ist nur der Text darunter.</string>
+    <string name="onboarding_preview_statusbar_desc">Vorschau: Symbol in der Statusleiste</string>
+    <string name="onboarding_preview_statusbar_hint">so sieht es oben in der Statusleiste aus</string>
+    <string name="onboarding_preview_expand">▾ antippen zum Aufklappen</string>
+    <string name="onboarding_preview_collapse">▴ antippen zum Zuklappen</string>
+    <string name="onboarding_preview_example">Beispielwerte — für deinen Ort liegen noch keine Zeiten vor.</string>
+
     <!-- Hinweisstreifen, wenn Benachrichtigungen blockiert sind -->
     <string name="notification_block_title">Benachrichtigungen sind aus</string>
     <string name="settings_section_reminders">Erinnerungen</string>
