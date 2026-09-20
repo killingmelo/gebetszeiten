@@ -27,7 +27,7 @@ angenommen:
 
 | | Telefon | Uhr |
 |---|---|---|
-| Version | 0.2.0 (versionCode 22) | 0.1.16 (versionCode 1016) |
+| Version | 0.2.0 (versionCode 22) | 0.1.17 (versionCode 1017) |
 | Bundle | 17 MB | 9 MB |
 | Signatur | `jarsigner -verify` bestanden | bestanden |
 | Paket | `de.gebetszeiten` | `de.gebetszeiten` |
@@ -68,7 +68,9 @@ Console gemeldet, 20.09.2026):
 Daraus folgt dreierlei:
 
 - **Dies ist ein Update, keine Ersteinrichtung.** Die versionCodes passen
-  lueckenlos an: Telefon 21 → **22**, Uhr 1015 → **1016**.
+  lueckenlos an: Telefon 21 → **22**, Uhr 1015 → **1017** (die 1016 hat Play
+  beim ersten, an `targetSdk` gescheiterten Upload verbraucht — ein
+  hochgeladener Code bleibt belegt, auch ohne Roll-out).
 - **Die 12-Tester-Regel laeuft schon.** Google verlangt fuer den
   Produktionszugang einen geschlossenen Test mit mindestens 12 Testern ueber
   14 zusammenhaengende Tage. Mit 177 Testern seit dem 15.08.2026 ist die
@@ -76,7 +78,7 @@ Daraus folgt dreierlei:
   werden. Das war frueher der lange Posten im Plan und ist es nicht mehr.
 - **Der Wear-Entwurf will aufgeloest werden.** Ein geschlossener Test fuer die
   Uhr liegt als Entwurf herum und wurde nie veroeffentlicht. Beim Hochladen
-  von 1016 entweder diesen Entwurf fertigstellen oder ihn verwerfen — zwei
+  von 1017 entweder diesen Entwurf fertigstellen oder ihn verwerfen — zwei
   halbfertige Tracks nebeneinander sind spaeter nicht mehr auseinanderzuhalten.
 
 ### 2. Was die 177 Testern bei diesem Update erleben
@@ -102,7 +104,7 @@ hat. Nach dem Update tut sie das nicht mehr.
   dort stehen seit dem 20.09.2026 nur noch App-Name, Kategorie und Kontakt.
   Bis dahin gab es die Texte doppelt, und beide Fassungen beschrieben eine
   App, die es nicht mehr gibt: rein offline rechnend, ohne INTERNET.
-- „Was ist neu" aus `changelogs/22.txt` (Telefon) bzw. `changelogs/1016.txt`
+- „Was ist neu" aus `changelogs/22.txt` (Telefon) bzw. `changelogs/1017.txt`
   (Uhr), je Sprache. Play kürzt bei 500 Zeichen.
 - Icon (`icon_512.png`), Feature-Graphic (`feature_1024x500.png`) und die
   Screenshots aus `fastlane/…/images/` hochladen.
@@ -203,7 +205,7 @@ Standortindex im Bundle enthalten.
 - Beim ersten Upload fragt Play nach **Play App Signing** → zustimmen;
   unser vorhandener Schlüssel wird automatisch der **Upload-Key**.
 
-**Release-Notiz für dieses Update (0.1.16 der Uhr / entsprechender Phone-Stand)
+**Release-Notiz für dieses Update (0.1.17 der Uhr / entsprechender Phone-Stand)
 — bitte in die Store-Ankündigung bzw. Release-Notes übernehmen:**
 1. **Die Werkseinstellung ändert ihr Verhalten.** Bisher galt bei
    ausgeschaltetem Notausgang-Schalter „amtlich zuerst, Berechnung als
@@ -229,7 +231,10 @@ Phone und Wear teilen sich die applicationId `de.gebetszeiten` — Play verlangt
 **paketweit eindeutige versionCodes über alle Bundles**. Die Phone-App hatte
 15..19 schon verbraucht, daher kollidierte Wear-versionCode 15.
 - **Phone:** weiter fortlaufend (20, 21, …) — bleibt dauerhaft **unter 1000**.
-- **Wear:** eigener **1000er-Block** (1015, 1016, …).
+- **Wear:** eigener **1000er-Block** (1015, 1016, 1017, …). Ein Code, der einmal
+  hochgeladen wurde, ist verbraucht — auch wenn die Version nie ausgerollt
+  wurde. Beim Nachbessern eines abgewiesenen Uploads also weiterzaehlen,
+  nicht denselben Code erneut versuchen.
 
 ### 7. Nach dem Einreichen
 - Prüfung dauert typischerweise 1–7 Tage (erste App eines neuen Kontos eher länger).

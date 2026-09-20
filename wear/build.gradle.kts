@@ -32,8 +32,18 @@ android {
         // Wear nutzt den 1000er-Block: Phone und Uhr teilen sich das Paket
         // de.gebetszeiten, Play verlangt paketweit eindeutige versionCodes —
         // die Phone-App hat 15..n laengst verbraucht. Phone bleibt < 1000.
-        versionCode = 1016
-        versionName = "0.1.16"
+        // 1016 ist verbrannt: Play reserviert einen Versionscode, sobald
+        // ein Artefakt damit hochgeladen wurde — auch wenn es nie
+        // ausgerollt wurde. Das erste 1016-Bundle scheiterte an
+        // targetSdk 34 und liegt seitdem unbenutzbar in der
+        // Artefakt-Bibliothek.
+        //
+        // Der Name zieht mit, weil dieses Modul Code und Name gekoppelt
+        // fuehrt (1015 = 0.1.15, 1016 = 0.1.16). Zwei Artefakte mit
+        // demselben Namen und verschiedenen Codes waeren in der
+        // Bibliothek spaeter nicht mehr auseinanderzuhalten.
+        versionCode = 1017
+        versionName = "0.1.17"
     }
 
     signingConfigs {
