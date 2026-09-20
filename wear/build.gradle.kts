@@ -18,7 +18,17 @@ android {
     defaultConfig {
         applicationId = "de.gebetszeiten"
         minSdk = 30
-        targetSdk = 34
+        // Gleiches Ziel wie die Phone-App. Stand hier bis zum 20.09.2026 auf
+        // 34 und wurde von Play abgewiesen: „derzeit auf API-Ebene 34
+        // ausgerichtet, sollte jedoch eine API-Mindestebene von 35 haben".
+        // Der compileSdk stand da laengst auf 36 — zurueckgeblieben war nur
+        // das Ziel, und weil das Wear-Bundle seit Monaten nicht neu
+        // hochgeladen wurde, fiel es nie auf.
+        //
+        // 36 statt der geforderten 35, damit Telefon und Uhr dasselbe Ziel
+        // haben: zwei Module desselben Pakets mit verschiedenen Zielen sind
+        // genau die Asymmetrie, die diesen Rueckstand ueberhaupt erzeugt hat.
+        targetSdk = 36
         // Wear nutzt den 1000er-Block: Phone und Uhr teilen sich das Paket
         // de.gebetszeiten, Play verlangt paketweit eindeutige versionCodes —
         // die Phone-App hat 15..n laengst verbraucht. Phone bleibt < 1000.
