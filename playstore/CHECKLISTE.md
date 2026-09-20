@@ -13,10 +13,42 @@ Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
 | Wear-Bundle (AAB, signiert, aktueller Stand laut git tag) | `wear/build/outputs/bundle/onlineRelease/wear-online-release.aab` |
 | App-Icon 512×512 | `playstore/icon_512.png` |
 | Feature-Graphic 1024×500 | `playstore/feature_1024x500.png` |
-| Phone-Screenshots (9:16) | `playstore/screenshots/phone/` |
-| Wear-Screenshots (1:1) | `playstore/screenshots/wear/` |
-| Listing-Texte | `playstore/listing_de.md` |
+| Phone-Screenshots (16:9) | `fastlane/metadata/android/de-DE/images/phoneScreenshots/` |
+| Wear-Screenshots (1:1) | `fastlane/metadata/android/de-DE/images/wearScreenshots/` |
+| Kurz- und Vollbeschreibung | `fastlane/metadata/android/de-DE/` (en-US daneben) |
+| Was ist neu | `fastlane/metadata/android/<sprache>/changelogs/<versionCode>.txt` |
+| Alles, was nur in der Console steht | `playstore/listing_de.md` |
 | Datenschutzerklärung (URL fürs Pflichtfeld) | https://github.com/killingmelo/gebetszeiten/blob/main/PRIVACY.md |
+
+## Stand dieses Uploads (20.09.2026)
+
+Alles unten Genannte ist an diesem Tag gebaut und nachgesehen worden, nicht
+angenommen:
+
+| | Telefon | Uhr |
+|---|---|---|
+| Version | 0.2.0 (versionCode 22) | 0.1.16 (versionCode 1016) |
+| Bundle | 17 MB | 9 MB |
+| Signatur | `jarsigner -verify` bestanden | bestanden |
+| Paket | `de.gebetszeiten` | `de.gebetszeiten` |
+| INTERNET | ja (online-Flavor) | ja (holt selbst ab) |
+| Standort-Berechtigung | keine | keine |
+| Amtliche Tabellen im Bundle | 947 | 947 |
+
+Testlauf über alle Module und beide Flavors beider Anwendungen: **1115 Tests,
+0 Fehler**. `:app:lintOnlineRelease`: **0 Fehler**, 17 Warnungen, 1 Hinweis.
+
+Am Emulator durchgespielt: Ersteinrichtung bei frischer Installation **und**
+beim Update über die Vorfassung, Ortssuche, Erlaubnis-Dialog, Dauerzeile auf
+dem Sperrbildschirm, Neustart ohne erneute Ersteinrichtung, App-Symbol auf dem
+Startbildschirm.
+
+**Was dieses Release für Bestandsnutzer ändert** — gehört in die Release-Notiz
+und steht in `changelogs/22.txt`: Die App zeigt für Tage ohne amtliche Zeiten
+künftig einen Hinweis statt einer berechneten Zahl. Wer den alten Schalter
+„immer rechnen" an hatte, bekommt nach der Migration „Lücken füllen" — sein
+Gerät ruft dadurch regelmäßig ab, wo es das vorher nie tat. Beides ist
+beabsichtigt und bestätigt.
 
 ## Schritte (nur du kannst sie machen)
 
@@ -31,11 +63,24 @@ Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
 - „App erstellen" → Name **Gebetszeiten**, Standardsprache **Deutsch**,
   App (kein Spiel), **kostenlos**.
 
-### 3. Store-Eintrag (Texte aus `listing_de.md` kopieren)
-- App-Name, Kurz- und Vollbeschreibung einfügen.
-- Icon (`icon_512.png`), Feature-Graphic (`feature_1024x500.png`),
-  Phone-Screenshots hochladen.
+### 3. Store-Eintrag
+- Kurz- und Vollbeschreibung aus `fastlane/metadata/android/de-DE/` einfügen
+  (englische Fassung aus `en-US/` daneben). **Nicht** aus `listing_de.md` —
+  dort stehen seit dem 20.09.2026 nur noch App-Name, Kategorie und Kontakt.
+  Bis dahin gab es die Texte doppelt, und beide Fassungen beschrieben eine
+  App, die es nicht mehr gibt: rein offline rechnend, ohne INTERNET.
+- „Was ist neu" aus `changelogs/22.txt` (Telefon) bzw. `changelogs/1016.txt`
+  (Uhr), je Sprache. Play kürzt bei 500 Zeichen.
+- Icon (`icon_512.png`), Feature-Graphic (`feature_1024x500.png`) und die
+  Screenshots aus `fastlane/…/images/` hochladen.
 - Kategorie **Lifestyle**, Kontakt-E-Mail, Datenschutz-URL (oben) eintragen.
+
+**Screenshots gelten nur für den Stand, aus dem sie stammen.** Die jetzigen
+sind vom 20.09.2026 (v0.2.0) und zeigen Ersteinrichtung, Heute, Monat, Qibla
+sowie zwei Ansichten der Uhr. Wer die Oberfläche ändert, macht sie neu:
+aufnehmen nach `build/roh/phoneScreenshots/` bzw. `…/wearScreenshots/`, dann
+`python playstore/make_screenshots.py` — das beschneidet auf das von Play
+erlaubte Verhältnis (höchstens 2:1) und legt sie an die Stelle oben.
 
 ### 4. Formulare (Antworten vorbereitet)
 **Datensicherheit (Data Safety) — Stand Online-First:**

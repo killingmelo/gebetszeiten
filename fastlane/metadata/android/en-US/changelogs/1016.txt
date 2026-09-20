@@ -1,0 +1,3 @@
+• The watch now fetches its official times itself instead of waiting for the phone — even with no paired device nearby.
+• Official times or none at all, as on the phone: without coverage you get a notice, not an estimate. The fallback can be set on the watch.
+• Tile and complication recover on their own after a place change or a restart.

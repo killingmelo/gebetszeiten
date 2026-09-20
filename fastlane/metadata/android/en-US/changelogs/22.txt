@@ -1,0 +1,6 @@
+• Official times or none at all: where nothing official exists you get a notice, not a silent estimate. Prefer an estimate? Turn on the fallback in the settings.
+• The bundled tables for Germany cover from today again.
+• One-time setup: place, display, reminders.
+• Optional: time remaining as a status-bar icon and on the lock screen.
+• If notifications are off, the app now says so.
+• The app icon finally shows the crescent.

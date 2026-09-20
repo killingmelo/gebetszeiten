@@ -1,23 +1,58 @@
 Gebetszeiten ist eine bewusst minimalistische App für Android und Wear OS, die
-auf drei Dinge optimiert ist: Akkuverbrauch, Datenschutz und Übersichtlichkeit.
+auf drei Dinge optimiert ist: Verlässlichkeit der Zeiten, Datenschutz und
+Akkuverbrauch.
 
-Datenschutz „by Construction": Die Standardvariante besitzt weder die INTERNET-
-noch eine Standort-Berechtigung. Die App kann technisch nichts senden und nichts
-tracken. Den Ort wählst du manuell (Stadt aus einer Offline-Liste oder
-Koordinaten). Es gibt kein Tracking, keine Werbung, keine Analytics.
+AMTLICHE ZEITEN ODER GAR KEINE
 
-Akkusparend: kein Polling, kein Hintergrunddienst, kein periodisches Refresh. Das
-Widget aktualisiert sich ereignisgetrieben zu den Gebetszeiten; auf der Uhr
-rendert das System die Anzeige, ohne die App aufzuwecken.
+Die App zeigt keine Gebetszeit an, für die sie nicht bürgen kann. Sie holt die
+amtlichen Zeiten der türkischen Diyanet und prüft sie gegen zwei unabhängige
+Quellen; stimmen die Quellen nicht überein, sagt sie das. Liegt für einen Tag
+nichts Amtliches vor, steht dort ein Hinweis statt einer Zahl — keine still
+untergeschobene Schätzung.
 
-Funktionen:
-* Offline-Berechnung nach Diyanet-Methode (Fajr 18°, Isha 17°), gegen die
-  offizielle Diyanet-Jahrestabelle kalibriert.
-* Mitlaufender Tagesüberblick mit Fortschritt des laufenden Gebets.
-* Hanafi-Makruh-Zeiten und freiwillige Gebete (Duha, Awwabin, Tahajjud) – optional.
-* Hijri-Datum, einstellbare Schriftgröße und hoher Kontrast.
-* Stille Erinnerungen pro Gebet (kein Ton/keine Vibration als Standard).
-* Homescreen-Widget und Wear-OS-Tile/Complication für das nächste Gebet.
+Wer das nicht will, schaltet in den Einstellungen einen Notausgang ein: dann
+rechnet die App für solche Tage selbst (Diyanet-Methode, Fajr 18°, Isha 17°).
+Amtliche Zeiten haben trotzdem immer Vorrang.
 
-Eine optionale Variante kann auf Wunsch die exakten offiziellen Diyanet-Zeiten
-online abgleichen; nur diese Variante hat die INTERNET-Berechtigung.
+Für Deutschland sind amtliche Tabellen eingebaut. Sie gelten auch ohne Netz und
+decken über 940 Orte ab.
+
+DATENSCHUTZ
+
+Kein Konto, kein Tracking, keine Werbung, keine Analytics, keine
+Standort-Berechtigung — den Ort tippst du ein, die App fragt nie, wo du bist.
+Gesendet wird ausschließlich die Standort-Kennung, für die Zeiten abgerufen
+werden; technisch bedingt sieht der Server dabei die IP-Adresse. Der
+Online-Abgleich lässt sich abschalten, dann gelten die eingebauten Tabellen.
+
+Aus dem Quellcode ist zusätzlich eine Variante ganz ohne INTERNET-Berechtigung
+baubar.
+
+AKKU
+
+Kein Polling, kein Hintergrunddienst, kein periodisches Aktualisieren. Die App
+wacht zu den Gebetsübergängen auf, sonst nicht — im Normalfall rund ein Dutzend
+Mal am Tag. Das Widget aktualisiert sich ereignisgetrieben.
+
+Optional zeigt die App die verbleibende Zeit bis zum nächsten Gebet als Symbol
+in der Statusleiste und als dauerhafte Zeile auf dem Sperrbildschirm. Das kostet
+mehr Weckvorgänge, und die Einstellung sagt genau, wie viele.
+
+FUNKTIONEN
+
+* Mitlaufender Tagesüberblick mit Fortschritt des laufenden Gebets
+* Monatsübersicht und Qibla-Kompass
+* Hanafi-Makruh-Zeiten und freiwillige Gebete (Duha, Awwabin, Tahajjud) —
+  optional
+* Gemeinschaftsgebetszeit (Cemaat) fürs Morgengebet, Vorlauf einstellbar
+* Favoriten-Orte für den schnellen Wechsel, ohne neu zu suchen
+* Hijri-Datum, einstellbare Schriftgröße, hoher Kontrast, AMOLED-Schwarz
+* Stille Erinnerungen je Gebet (Ton und Vibration sind nicht die Vorgabe)
+* Homescreen-Widget sowie Kachel und Komplikation für Wear OS
+
+WEAR OS
+
+Die Uhr zeigt das nächste Gebet als Kachel und als Komplikation. Sie übernimmt
+die Zeiten vom gekoppelten Telefon und holt sie, wenn nötig, selbst — dafür hat
+sie eine eigene Internet-Berechtigung und keinen eigenen Schalter dafür. Ohne
+Netz greift sie auf dieselben eingebauten Tabellen zurück.

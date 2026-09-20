@@ -1,23 +1,56 @@
-Prayer Times is a deliberately minimal app for Android and Wear OS, optimised for
-three things: battery life, privacy, and clarity.
+Prayer Times is a deliberately minimal app for Android and Wear OS, optimised
+for three things: times you can rely on, privacy, and battery life.
 
-Privacy by construction: the default build has neither the INTERNET nor any
-location permission. The app technically cannot send anything or track you. You
-pick your location manually (a city from an offline list, or coordinates). No
-tracking, no ads, no analytics.
+OFFICIAL TIMES OR NONE AT ALL
 
-Battery-friendly: no polling, no background service, no periodic refresh. The
-widget updates event-driven at prayer transitions; on the watch the system
-renders the display without waking the app.
+The app never shows a prayer time it cannot vouch for. It fetches the official
+times published by Turkey's Diyanet and checks them against two independent
+sources; if the sources disagree, it says so. When nothing official exists for a
+day, you get a clear notice instead of a number — no quietly substituted
+estimate.
 
-Features:
-* Offline calculation using the Diyanet method (Fajr 18°, Isha 17°), calibrated
-  against the official Diyanet yearly table.
-* A running day overview that shows the progress of the current prayer.
-* Hanafi makruh times and voluntary prayers (Duha, Awwabin, Tahajjud) – optional.
-* Hijri date, adjustable font size and high contrast.
-* Silent per-prayer reminders (no sound/vibration by default).
-* Home-screen widget and Wear OS tile/complication for the next prayer.
+If you would rather have an estimate than nothing, a setting turns on a
+fallback: the app then computes those days itself (Diyanet method, Fajr 18°,
+Isha 17°). Official times still always win.
 
-An optional build can fetch the exact official Diyanet times online; only that
-build carries the INTERNET permission.
+Official tables for Germany are bundled with the app. They work without a
+network and cover more than 940 places.
+
+PRIVACY
+
+No account, no tracking, no ads, no analytics, no location permission — you type
+your city, the app never asks where you are. The only thing sent is the identifier
+of the place whose times are being fetched; as with any request, the server sees
+your IP address. The online sync can be switched off, and the bundled tables take
+over.
+
+A variant without the INTERNET permission at all can be built from source.
+
+BATTERY
+
+No polling, no background service, no periodic refresh. The app wakes at prayer
+transitions and otherwise stays asleep — roughly a dozen times a day in the
+default configuration. The widget updates event-driven.
+
+Optionally the app shows the time remaining until the next prayer as an icon in
+the status bar and as a persistent line on the lock screen. That costs more
+wake-ups, and the setting says exactly how many.
+
+FEATURES
+
+* Live day overview with progress through the current prayer
+* Month view and qibla compass
+* Hanafi makruh periods and voluntary prayers (Duha, Awwabin, Tahajjud) —
+  optional
+* Congregational time (cemaat) for the dawn prayer, lead time adjustable
+* Favourite places for switching without searching again
+* Hijri date, adjustable text size, high contrast, AMOLED black
+* Silent per-prayer reminders (sound and vibration are not the default)
+* Home screen widget plus a Wear OS tile and complication
+
+WEAR OS
+
+The watch shows the next prayer as a tile and as a complication. It takes the
+times from the paired phone and fetches them itself when needed — for which it
+carries its own internet permission and has no separate switch. Without a
+network it falls back on the same bundled tables.
