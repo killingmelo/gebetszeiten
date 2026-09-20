@@ -76,12 +76,16 @@ class OnboardingStateTest {
             "markOnboardingDone setzt den Merker nicht",
             rumpf.replace(Regex("""\s+"""), "").contains("it[Keys.ONBOARDING_DONE]=true"),
         )
-        // Genau zwei Erwaehnungen im Schreibsinn: die Aufloesung beim Lesen
-        // und diese eine Zuweisung. Eine dritte waere ein zweiter Schreiber.
+        // Genau eine Zuweisung im ganzen Repository. Eine zweite waere ein
+        // zweiter Schreiber — und der koennte die Ersteinrichtung
+        // wegschreiben, bevor sie jemand gesehen hat.
+        //
+        // `(?!=)` schliesst den Vergleich `== null` aus, mit dem die
+        // Kohorten-Erkennung fragt, ob der Merker noch fehlt.
         assertEquals(
             "ONBOARDING_DONE wird an mehr als einer Stelle zugewiesen",
             1,
-            Regex("""ONBOARDING_DONE\]\s*=""").findAll(text).count(),
+            Regex("""ONBOARDING_DONE\]\s*=(?!=)""").findAll(text).count(),
         )
     }
 

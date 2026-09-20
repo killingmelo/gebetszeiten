@@ -150,7 +150,15 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(
                     LocalDensity provides Density(density.density, density.fontScale * settings.fontScale),
                 ) {
-                    MainScreen(viewModel)
+                    // Das Tor. Solange die Ersteinrichtung nicht beantwortet
+                    // ist, gibt es keine Hauptansicht — und weil bis dahin
+                    // nichts gespeichert wird, verhaelt sich die App im
+                    // Hintergrund weiter genau wie vorher.
+                    if (settings.onboardingDone) {
+                        MainScreen(viewModel)
+                    } else {
+                        Onboarding(settings) { viewModel.completeOnboarding(it) }
+                    }
                 }
             }
         }

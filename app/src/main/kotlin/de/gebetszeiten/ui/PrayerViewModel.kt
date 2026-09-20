@@ -42,6 +42,23 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * Der Abschluss der Ersteinrichtung — speichern, merken, planen.
+     *
+     * Alle drei gehoeren zusammen. Fehlte [SettingsRepository.markOnboardingDone],
+     * kaeme die Ersteinrichtung beim naechsten Start wieder; fehlte das
+     * Neuplanen in [save], erschiene die gerade gewaehlte Anzeige erst zum
+     * naechsten Gebet — derselbe stille Ausfall wie beim frueher leeren
+     * Berechtigungs-Rueckruf. `OnboardingWiringTest` haelt das fest.
+     */
+    fun completeOnboarding(value: AppSettings) {
+        viewModelScope.launch {
+            repository.save(value)
+            repository.markOnboardingDone()
+            reschedule(value)
+        }
+    }
+
     /** Make sure the channel, alarm chain and widget are live (called on launch). */
     fun ensureScheduled() {
         viewModelScope.launch {

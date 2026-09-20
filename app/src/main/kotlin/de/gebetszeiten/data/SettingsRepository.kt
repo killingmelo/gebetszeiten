@@ -107,6 +107,10 @@ data class AppSettings(
      * noch nicht da.
      */
     val onboardingDone: Boolean = true,
+    /** Ob die Ersteinrichtung eine NEUINSTALLATION vor sich hat (sonst einen
+     *  Bestandsnutzer). Entscheidet nur ueber den Wortlaut, nicht ueber
+     *  Verhalten — siehe `SettingsRepository.settings`. */
+    val onboardingFresh: Boolean = true,
 ) {
     /**
      * True, wenn irgendeine Oberflaeche die Anzeige-Weckkette braucht
@@ -355,9 +359,24 @@ class SettingsRepository(private val context: Context) {
         val FAVORITES = stringPreferencesKey("favorites")
         val PAUSE_NOTICE_SHOWN = booleanPreferencesKey("pause_notice_shown")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
+        val ONBOARDING_FRESH = booleanPreferencesKey("onboarding_fresh")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
+        // GANZ OBEN, vor jedem `edit`: ein leerer Store heisst
+        // Neuinstallation. Danach ist er es nicht mehr — die Migrationen
+        // unten schreiben ihre Merker.
+        //
+        // Der Wert entscheidet AUSSCHLIESSLICH ueber den Wortlaut der
+        // Ersteinrichtung („So richtest du sie ein" gegen „Nichts hat sich
+        // geaendert — aber das hier gibt es"). Liegt er daneben, liest jemand
+        // einen leicht unpassenden Satz; es haengt kein Verhalten daran. Das
+        // ist der Grund, warum hier keine Paketmanager-Heuristik steht: sie
+        // waere Aufwand fuer eine Formulierung.
+        val storeWasEmpty = prefs.asMap().isEmpty()
+        if (prefs[Keys.ONBOARDING_DONE] == null && prefs[Keys.ONBOARDING_FRESH] == null) {
+            context.dataStore.edit { it[Keys.ONBOARDING_FRESH] = storeWasEmpty }
+        }
         // Migration: aus den vier alten Reglern wird einer. Die Rechnung
         // steht als reine Funktion oben — hier gaebe es keinen Test dafuer.
         val countdownMigrated = prefs[Keys.COUNTDOWN_MIGRATED] ?: false
@@ -458,6 +477,8 @@ class SettingsRepository(private val context: Context) {
             // der Store gelesen ist. Wer den Schluessel nicht hat, war noch
             // nicht in der Ersteinrichtung.
             onboardingDone = prefs[Keys.ONBOARDING_DONE] ?: false,
+            // `true` als Rueckfall: wer keinen Merker hat, ist im Zweifel neu.
+            onboardingFresh = prefs[Keys.ONBOARDING_FRESH] ?: storeWasEmpty,
         )
     }
 
