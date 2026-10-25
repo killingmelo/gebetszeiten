@@ -5,6 +5,7 @@ import de.gebetszeiten.core.prayertimes.officialtimes.OfficialTimesFetcher
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.net.CompositeDiyanetFetcher
+import de.gebetszeiten.net.create
 import java.time.LocalDate
 
 /** Online flavor: official times come from Diyanet (direct, proxy fallback). */

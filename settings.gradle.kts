@@ -23,6 +23,7 @@ dependencyResolutionManagement {
 rootProject.name = "Gebetszeiten"
 
 include(":core-prayertimes")
+include(":net-diyanet-core")
 include(":net-diyanet")
 include(":app")
 include(":wear")

@@ -37,6 +37,7 @@ tasks.withType<Test>().configureEach {
 }
 
 dependencies {
+    api(project(":net-diyanet-core"))
     implementation(project(":core-prayertimes"))
     implementation(libs.androidx.core.ktx)
     // Nicht im Versionskatalog: `androidx.core.ktx` und `:core-prayertimes`

@@ -1,6 +1,6 @@
 package de.gebetszeiten.net
 
-import android.content.Context
+import de.gebetszeiten.core.prayertimes.officialtimes.DiyanetPlace
 import de.gebetszeiten.core.prayertimes.officialtimes.FetchResult
 import de.gebetszeiten.core.prayertimes.officialtimes.OfficialTimesFetcher
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
@@ -62,9 +62,7 @@ class CompositeDiyanetFetcher(
     private val proxy: suspend (Int) -> Map<LocalDate, SixTimes>,
     private val ezanvakti: suspend (Int) -> Map<LocalDate, SixTimes>,
     private val now: () -> Long = System::currentTimeMillis,
-    private val log: (String, Exception) -> Unit = { msg, e ->
-        android.util.Log.w("DiyanetFetch", msg, e)
-    },
+    private val log: (String, Exception) -> Unit = { _, _ -> },
 ) : OfficialTimesFetcher {
 
     override suspend fun fetch(
@@ -153,24 +151,29 @@ class CompositeDiyanetFetcher(
 
     companion object {
         /**
-         * [bundledLocationId] kommt vom Aufrufer, nicht aus einer eigenen
-         * Referenz auf `BundledOfficialSource` hier: dieses Modul haengt nur
-         * an `:core-prayertimes`, nicht an `:app` — das DE-Bundle liegt aber
-         * im `app`-Modul (geteilt zwischen beiden Flavors). Dieselbe
+         * Plattformneutrale Fabrik. [nearestPlace] (Koordinatenindex) und
+         * [bundledLocationId] (DE-Bundle) kommen vom Aufrufer: dieses Modul
+         * kennt weder Android-Assets noch das `app`-Modul. Dieselbe
          * Modulgrenze, aus demselben Grund, wie `cachedId` schon vorher
-         * (`OfficialTimesCache` ist App-seitig) ausserhalb blieb.
+         * (`OfficialTimesCache` ist App-seitig) ausserhalb blieb. Die
+         * Android-Fabrik mit `Context` steht in `:net-diyanet`
+         * (`AndroidFetcherFactory.kt`).
          */
         fun create(
-            context: Context,
+            nearestPlace: suspend (lat: Double, lng: Double) -> DiyanetPlace?,
             bundledLocationId: suspend (lat: Double, lng: Double) -> Int?,
+            log: (String, Exception) -> Unit = { _, _ -> },
         ): CompositeDiyanetFetcher {
-            val proxyFetcher = DiyanetProxyFetcher()
+            val proxyFetcher = DiyanetProxyFetcher(
+                onNoMatch = { city ->
+                    log("Namenssuche ohne Treffer fuer '$city'", IllegalStateException("kein Treffer"))
+                },
+            )
             return CompositeDiyanetFetcher(
                 resolveId = { lat, lng, city, preferredLocationId ->
                     resolveLocationIdChain(
                         bundledId = bundledLocationId(lat, lng),
-                        indexPlace = DiyanetPlaceIndex
-                            .nearest(context, lat, lng),
+                        indexPlace = nearestPlace(lat, lng),
                         // Kommt vom Aufrufer statt aus einem eigenen
                         // Cache-Zugriff hier: `OfficialTimesCache` ist
                         // App-seitig (DataStore), die Netzschicht soll sie
@@ -195,6 +198,7 @@ class CompositeDiyanetFetcher(
                 direct = DiyanetDirectFetcher()::fetchYear,
                 proxy = proxyFetcher::fetchById,
                 ezanvakti = EzanVaktiFetcher()::fetchById,
+                log = log,
             )
         }
     }
@@ -237,7 +241,7 @@ class CompositeDiyanetFetcher(
  * Ausnahme etwas. Wer hier umsortiert, bekommt also kein rotes Signal —
  * dieser Absatz ist das einzige Signal.
  */
-internal fun fetchErrorText(e: Exception): String = when (e) {
+fun fetchErrorText(e: Exception): String = when (e) {
     is SocketTimeoutException -> "Zeitüberschreitung"
     is UnknownHostException -> "Kein Netz"
     is SSLException -> "Verschlüsselung fehlgeschlagen"
@@ -270,9 +274,9 @@ private fun shortenForStatusLine(text: String): String =
  * lokal und in Millisekunden fertig. [searchByName] bleibt ein Lambda: der
  * einzige Netzaufruf der Kette darf nur laufen, wenn er gebraucht wird.
  */
-internal suspend fun resolveLocationIdChain(
+suspend fun resolveLocationIdChain(
     bundledId: Int?,
-    indexPlace: de.gebetszeiten.core.prayertimes.officialtimes.DiyanetPlace?,
+    indexPlace: DiyanetPlace?,
     cachedId: Int?,
     searchByName: suspend () -> Int?,
 ): Int? = bundledId ?: indexPlace?.diyanetId ?: cachedId ?: searchByName()

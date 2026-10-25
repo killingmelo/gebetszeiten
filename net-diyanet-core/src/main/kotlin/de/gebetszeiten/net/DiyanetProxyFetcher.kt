@@ -14,7 +14,11 @@ import java.time.LocalTime
  * namazvakitleri.diyanet.gov.tr — liefert ein 31-Tage-Fenster für eine
  * bekannte Diyanet-ID, dazu eine Namenssuche zum Auflösen der ID.
  */
-class DiyanetProxyFetcher {
+class DiyanetProxyFetcher(
+    /** Meldung bei Namenssuche ohne Treffer (Parameter: Ortsname) — der
+     *  Aufrufer entscheidet, wohin sie geloggt wird; hier gibt es kein Android. */
+    private val onNoMatch: (String) -> Unit = {},
+) {
 
     private val base = "https://prayertimes.api.abdus.dev/api/diyanet"
 
@@ -27,9 +31,9 @@ class DiyanetProxyFetcher {
     fun resolveLocationId(city: String): Int? {
         val q = URLEncoder.encode(city.trim(), "UTF-8")
         val id = pickLocationId(httpGet("$base/search?q=$q"), city)
-        // Loggen hier, NICHT in pickLocationId: die Auswahlfunktion bleibt
-        // damit frei von Android und in JVM-Tests aufrufbar.
-        if (id == null) android.util.Log.w("DiyanetFetch", "Namenssuche ohne Treffer fuer '$city'")
+        // Melden hier, NICHT in pickLocationId: die Auswahlfunktion bleibt
+        // damit frei von Nebenwirkungen und in JVM-Tests aufrufbar.
+        if (id == null) onNoMatch(city)
         return id
     }
 

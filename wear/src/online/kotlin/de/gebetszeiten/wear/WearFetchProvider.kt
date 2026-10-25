@@ -3,6 +3,7 @@ package de.gebetszeiten.wear
 import android.content.Context
 import de.gebetszeiten.core.prayertimes.officialtimes.OfficialTimesFetcher
 import de.gebetszeiten.net.CompositeDiyanetFetcher
+import de.gebetszeiten.net.create
 
 /** Online-Flavor der Uhr: sie ruft selbst ab, ueber dieselben drei Quellen
  *  wie das Telefon. Auf Wear OS leitet das System die Anfrage ueber Bluetooth
