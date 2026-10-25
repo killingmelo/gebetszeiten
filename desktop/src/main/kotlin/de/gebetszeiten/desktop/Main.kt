@@ -2,6 +2,7 @@ package de.gebetszeiten.desktop
 
 import de.gebetszeiten.desktop.taskbar.Win32Taskbar
 import de.gebetszeiten.desktop.taskbar.runFieldDemo
+import de.gebetszeiten.desktop.ui.runSettingsDemo
 import de.gebetszeiten.desktop.ui.runTrayDemo
 
 /**
@@ -19,5 +20,9 @@ fun main(args: Array<String>) {
         runTrayDemo(args)
         return
     }
-    System.err.println("Gebetszeiten: Hauptprogramm folgt (Task 10). Proben: --demo-field, --demo-tray")
+    if (args.contains("--demo-settings")) {
+        runSettingsDemo(args)
+        return
+    }
+    System.err.println("Gebetszeiten: Hauptprogramm folgt (Task 10). Proben: --demo-field, --demo-tray, --demo-settings")
 }
