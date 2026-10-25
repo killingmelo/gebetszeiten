@@ -1,6 +1,6 @@
 package de.gebetszeiten.desktop.ui
 
-import de.gebetszeiten.core.prayertimes.officialtimes.parseDiyanetPlaces
+import de.gebetszeiten.desktop.data.loadPlaces
 import de.gebetszeiten.desktop.data.SettingsStore
 import java.io.File
 import java.nio.file.Files
@@ -30,6 +30,5 @@ fun runSettingsDemo(args: Array<String>) {
 }
 
 private object SettingsDemoResources {
-    fun places() = (SettingsDemoResources::class.java.classLoader.getResourceAsStream("official/locations-world.tsv")
-        ?.bufferedReader(Charsets.UTF_8)?.useLines { parseDiyanetPlaces(it) }).orEmpty()
+    fun places() = loadPlaces { SettingsDemoResources::class.java.classLoader.getResourceAsStream(it) }
 }

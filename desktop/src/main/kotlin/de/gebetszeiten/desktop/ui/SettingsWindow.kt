@@ -40,7 +40,44 @@ private val LEAD_CHOICES = listOf(0, 5, 10, 15, 20, 30)
 private val REMINDER_PRAYERS = listOf(Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA)
 
 /**
- * Einstellungsfenster. Speichern schreibt ueber [store] und meldet das
+ * Einstellungsfenster. Der Konstruktor merkt sich nur die Argumente; alle
+ * Swing-Komponenten entstehen beim ersten [show] auf dem EDT, egal von welchem
+ * Thread aus aufgerufen wird. Speichern schreibt ueber [store] und meldet das
+ * Ergebnis an [onSaved]; das Neuladen der Zeiten ist Sache des Aufrufers.
+ * [applyAutostart] setzt den Windows-Autostart (in Handproben ein No-op).
+ */
+class SettingsWindow(
+    private val store: SettingsStore,
+    private val places: List<DiyanetPlace>,
+    private val onSaved: (DesktopSettings) -> Unit,
+    private val applyAutostart: (Boolean) -> Unit = { on -> Autostart.currentExe()?.let { Autostart.set(on, it) } },
+) {
+    @Volatile private var ui: SettingsUi? = null
+
+    /** Baut das Fenster beim ersten Mal (auf dem EDT) und zeigt es; ein offenes wird nach vorn geholt. */
+    fun show() = onEdt(wait = false) { ui().showNow() }
+
+    val isShowing: Boolean get() = ui?.isShowing == true
+
+    fun snapshot(): BufferedImage? = ui?.snapshot()
+
+    internal fun searchAndSelectFirst(text: String): DiyanetPlace? = ui?.searchAndSelectFirst(text)
+
+    internal fun saveOnEdt() = ui?.saveOnEdt() ?: Unit
+
+    private fun ui(): SettingsUi = ui ?: SettingsUi(store, places, onSaved, applyAutostart).also { ui = it }
+
+    private fun onEdt(wait: Boolean, block: () -> Unit) {
+        when {
+            SwingUtilities.isEventDispatchThread() -> block()
+            wait -> SwingUtilities.invokeAndWait(block)
+            else -> SwingUtilities.invokeLater(block)
+        }
+    }
+}
+
+/**
+ * Der eigentliche Fensteraufbau; nur auf dem EDT erzeugen. Speichern schreibt ueber [store] und meldet das
  * Ergebnis an [onSaved]; das Neuladen der Zeiten ist Sache des Aufrufers.
  * [applyAutostart] setzt den Windows-Autostart (in Handproben ein No-op, damit
  * nie in die echte Registry geschrieben wird).
@@ -48,7 +85,7 @@ private val REMINDER_PRAYERS = listOf(Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Pra
  * Der Prozess laeuft mit `sun.java2d.uiScale=1`, deshalb ist jedes Mass ueber
  * [scaled] gerechnet; die Schriften skaliert [installScaledDefaults].
  */
-class SettingsWindow(
+internal class SettingsUi(
     private val store: SettingsStore,
     private val places: List<DiyanetPlace>,
     private val onSaved: (DesktopSettings) -> Unit,
@@ -89,13 +126,12 @@ class SettingsWindow(
         })
     }
 
-    fun show() {
-        SwingUtilities.invokeLater {
-            frame.pack()
-            frame.setLocationRelativeTo(null)
-            frame.isVisible = true
-            frame.toFront()
-        }
+    /** Nur auf dem EDT aufrufen. */
+    fun showNow() {
+        frame.pack()
+        frame.setLocationRelativeTo(null)
+        frame.isVisible = true
+        frame.toFront()
     }
 
     val isShowing: Boolean get() = frame.isShowing

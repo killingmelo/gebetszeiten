@@ -1,6 +1,7 @@
 package de.gebetszeiten.desktop.data
 
 import de.gebetszeiten.core.prayertimes.officialtimes.DiyanetPlace
+import de.gebetszeiten.core.prayertimes.officialtimes.OfficialLocation
 import de.gebetszeiten.core.prayertimes.officialtimes.displayName
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -81,5 +82,25 @@ class PlaceSearchTest {
         assertTrue(isPackagedExe(win("c:", "gebetszeiten.EXE")))
         assertFalse(isPackagedExe(win("C:", "Program Files", "Java", "bin", "java.exe")))
         assertFalse(isPackagedExe(null))
+    }
+}
+
+class PlaceIndexTest {
+    private val deList = listOf(
+        OfficialLocation(11024, "N" + 252.toChar() + "rnberg", 49.45, 11.08, "t0"),
+    )
+
+    @Test
+    fun germanNameReplacesAssetName() {
+        val places = listOf(
+            DiyanetPlace(11024, "NURNBERG", "BAYERN", "DE", 49.45, 11.08),
+            DiyanetPlace(9541, "ISPARTA", "ISPARTA", "TR", 37.76, 30.55),
+        )
+        val merged = withGermanNames(places, deList)
+        assertEquals("N" + 252.toChar() + "rnberg", merged[0].name)
+        assertEquals("N" + 252.toChar() + "rnberg", merged[0].displayName())
+        assertEquals(places[1], merged[1])
+        // Die Suche findet den Umlaut-Namen weiter ohne Umlaut.
+        assertEquals(listOf(11024), searchPlaces(merged, "nurnberg").map { it.diyanetId })
     }
 }
