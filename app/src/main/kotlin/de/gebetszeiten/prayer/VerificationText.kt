@@ -1,9 +1,10 @@
 package de.gebetszeiten.prayer
 
-import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
 import de.gebetszeiten.core.prayertimes.officialtimes.SourceResult
 import de.gebetszeiten.core.prayertimes.officialtimes.Verification
 import de.gebetszeiten.core.prayertimes.officialtimes.VerificationNote
+import de.gebetszeiten.core.prayertimes.officialtimes.emptyResultError as coreEmptyResultError
+import de.gebetszeiten.core.prayertimes.officialtimes.fetchErrorSummary as coreFetchErrorSummary
 
 private const val PREFIX = "Gegenprüfung: "
 
@@ -89,52 +90,12 @@ fun verificationLine(verification: Verification?): String? {
     }
 }
 
-/**
- * Was schiefging, Quelle fuer Quelle: `"Direktabruf: HTTP 503 · Proxy:
- * Zeitüberschreitung · ezanvakti: HTTP 404"`. In `SourceId`-Reihenfolge;
- * `null`, wenn keiner scheiterte.
- *
- * GESCHEITERT heisst, was `SourceResult` zusichert: leerer Zeitplan UND ein
- * [SourceResult.error]. Wer Zeiten geliefert hat, ist kein Fehlschlag —
- * auch wenn unterwegs etwas schiefging (ein Blatt von zwoelf fehlte etwa);
- * er kann sogar das Quorum gewonnen haben, und ihn dann als Fehler zu
- * melden waere genau die Art Behauptung, die diese Zeile vermeiden soll.
- *
- * Damit kann die Statuszeile sagen, WAS schiefging, statt nur dass etwas
- * schiefging.
- */
-fun fetchErrorSummary(candidates: List<SourceResult>): String? =
-    candidates.filter { it.schedule.isEmpty() && it.error != null }
-        .sortedBy { it.source.ordinal }
-        .joinToString(" · ") { "${sourceLabel(it.source)}: ${it.error}" }
-        .takeIf { it.isNotEmpty() }
+/** Weiterleitung an die gemeinsame Fassung in `core` (Text und Begruendung dort);
+ *  bleibt hier unter demselben Namen, damit Aufrufer und Tests unveraendert sind. */
+fun fetchErrorSummary(candidates: List<SourceResult>): String? = coreFetchErrorSummary(candidates)
 
-/**
- * Der Fehlertext fuer einen Abruf, der KEINE Zeiten gebracht hat — das, was
- * `refreshOfficial` in diesem Fall als `lastError` ablegt.
- *
- * Hat mindestens eine Quelle geworfen, steht deren Zusammenfassung dort
- * ([fetchErrorSummary], „Direktabruf: HTTP 503 · Proxy:
- * Zeitüberschreitung"): sie sagt, WAS schiefging, statt nur dass etwas
- * schiefging. Ist sie `null`, hat KEINE Quelle geworfen — dann hat schlicht
- * keine etwas geliefert (kein Diyanet-Standort aufloesbar, oder leere
- * Antworten), und dafuer ist das Literal die richtige Auskunft.
- *
- * Zwei Zeilen, und trotzdem eine eigene Funktion: im `suspend`-Rumpf von
- * `refreshOfficial` (Context, Netz, DataStore) laesst sich der Rueckfall
- * ohne Robolectric nicht pruefen — hier schon, und genau das Weglassen des
- * `?:`-Zweiges hat eine Pruefrunde ueberlebt.
- */
-fun emptyResultError(errorSummary: String?): String =
-    errorSummary ?: "Keine amtlichen Zeiten erhalten (Standort oder Netz)"
-
-/** Klartextnamen der Quellen — kurz, weil sie in einer Zeile mit ihrem
- *  Fehlergrund stehen. */
-private fun sourceLabel(source: SourceId): String = when (source) {
-    SourceId.DIRECT -> "Direktabruf"
-    SourceId.PROXY_ABDUS -> "Proxy"
-    SourceId.EZANVAKTI -> "ezanvakti"
-}
+/** Weiterleitung an die gemeinsame Fassung in `core`. */
+fun emptyResultError(errorSummary: String?): String = coreEmptyResultError(errorSummary)
 
 private fun sourceCount(count: Int): String = if (count == 1) "1 Quelle" else "$count Quellen"
 

@@ -1,9 +1,9 @@
 package de.gebetszeiten.desktop.data
 
 import de.gebetszeiten.core.prayertimes.officialtimes.OfficialTimesFetcher
-import de.gebetszeiten.core.prayertimes.officialtimes.SourceId
-import de.gebetszeiten.core.prayertimes.officialtimes.SourceResult
 import de.gebetszeiten.core.prayertimes.officialtimes.chooseTarget
+import de.gebetszeiten.core.prayertimes.officialtimes.emptyResultError
+import de.gebetszeiten.core.prayertimes.officialtimes.fetchErrorSummary
 import de.gebetszeiten.net.fetchErrorText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -60,22 +60,4 @@ class Refresher(
     private companion object {
         const val TIMEOUT_MS = 25_000L
     }
-}
-
-/** Was schiefging, Quelle fuer Quelle ("Direktabruf: HTTP 503 · Proxy: ...").
- *  Gleicher Text wie `fetchErrorSummary` der Handy-App; `null`, wenn keine
- *  Quelle scheiterte. */
-internal fun fetchErrorSummary(candidates: List<SourceResult>): String? =
-    candidates.filter { it.schedule.isEmpty() && it.error != null }
-        .sortedBy { it.source.ordinal }
-        .joinToString(" · ") { "${sourceLabel(it.source)}: ${it.error}" }
-        .takeIf { it.isNotEmpty() }
-
-internal fun emptyResultError(errorSummary: String?): String =
-    errorSummary ?: "Keine amtlichen Zeiten erhalten (Standort oder Netz)"
-
-private fun sourceLabel(source: SourceId): String = when (source) {
-    SourceId.DIRECT -> "Direktabruf"
-    SourceId.PROXY_ABDUS -> "Proxy"
-    SourceId.EZANVAKTI -> "ezanvakti"
 }
