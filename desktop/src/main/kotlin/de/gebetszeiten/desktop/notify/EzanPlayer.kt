@@ -9,8 +9,8 @@ import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.Clip
 import javax.sound.sampled.FloatControl
 import javax.sound.sampled.LineEvent
-import javax.sound.sampled.SourceDataLine
 import kotlin.math.log10
+import kotlin.math.roundToInt
 
 /**
  * Spielt den Ezan: `.mp3` ueber JLayer auf eigenem Thread, `.wav` ueber einen
@@ -29,13 +29,14 @@ class EzanPlayer {
     fun play(file: Path, volumePercent: Int) {
         stop()
         if (!Files.isRegularFile(file)) return
+        if (volumePercent <= 0) return // 0 % = stumm, nichts abspielen
         val name = file.fileName.toString().lowercase()
         runCatching {
             when {
                 name.endsWith(".mp3") -> playMp3(file, volumePercent)
                 name.endsWith(".wav") -> playWav(file, volumePercent)
             }
-        }.onFailure { stop() }
+        }.onFailure { logAudio("Wiedergabe von $name", it); stop() }
     }
 
     fun stop() {
@@ -52,10 +53,10 @@ class EzanPlayer {
 
     private fun playMp3(file: Path, volumePercent: Int) {
         val input = BufferedInputStream(Files.newInputStream(file))
-        val player = AdvancedPlayer(input, GainDevice(gainDb(volumePercent)))
+        val player = AdvancedPlayer(input, GainDevice(volumeFactor(volumePercent)))
         val gen = synchronized(lock) { mp3 = player; generation }
         Thread({
-            runCatching { player.play() }
+            runCatching { player.play() }.onFailure { logAudio("MP3", it) }
             runCatching { input.close() }
             synchronized(lock) { if (generation == gen && mp3 === player) mp3 = null }
         }, "ezan-mp3").apply { isDaemon = true }.start()
@@ -65,10 +66,9 @@ class EzanPlayer {
         val stream = AudioSystem.getAudioInputStream(file.toFile())
         val c = AudioSystem.getClip()
         c.open(stream)
-        runCatching {
-            val gain = c.getControl(FloatControl.Type.MASTER_GAIN) as FloatControl
-            gain.value = gainDb(volumePercent).coerceIn(gain.minimum, gain.maximum)
-        }
+        // Ohne Lautstaerkeregelung lieber still als mit 100 %: Fehler -> play() faengt, loggt, stoppt.
+        val gain = c.getControl(FloatControl.Type.MASTER_GAIN) as FloatControl
+        gain.value = gainDb(volumePercent).coerceIn(gain.minimum, gain.maximum)
         val gen = synchronized(lock) { clip = c; generation }
         c.addLineListener { e ->
             if (e.type == LineEvent.Type.STOP) {
@@ -79,25 +79,39 @@ class EzanPlayer {
         c.start()
     }
 
-    /** JLayer-Ausgabe mit Lautstaerke: setzt MASTER_GAIN, sobald die Leitung offen ist. */
-    private class GainDevice(private val db: Float) : JavaSoundAudioDevice() {
-        override fun createSource() {
-            super.createSource()
-            // JLayer 1.0.1.4 hat keinen Lautstaerke-Zugriff; die offene Leitung steckt im privaten Feld.
-            runCatching {
-                val field = JavaSoundAudioDevice::class.java.getDeclaredField("source").apply { isAccessible = true }
-                val line = field.get(this) as? SourceDataLine ?: return@runCatching
-                val gain = line.getControl(FloatControl.Type.MASTER_GAIN) as FloatControl
-                gain.value = db.coerceIn(gain.minimum, gain.maximum)
-            }
-        }
-    }
-
-    private companion object {
-        /** 100 % = unveraendert (0 dB), darunter logarithmisch bis -60 dB bei 0 %. */
-        fun gainDb(percent: Int): Float {
-            val p = percent.coerceIn(0, 100)
-            return if (p == 0) -60f else (20 * log10(p / 100.0)).toFloat().coerceAtLeast(-60f)
+    /**
+     * JLayer-Ausgabe mit Lautstaerke: skaliert die dekodierten PCM-Samples vor
+     * dem Schreiben auf die Leitung (kein Zugriff auf JLayer-Interna noetig).
+     */
+    private class GainDevice(private val factor: Double) : JavaSoundAudioDevice() {
+        override fun writeImpl(samples: ShortArray, offs: Int, len: Int) {
+            scaleSamples(samples, offs, len, factor)
+            super.writeImpl(samples, offs, len)
         }
     }
 }
+
+/**
+ * Lautstaerke 0..100 % als linearer Faktor auf die Amplitude: quadratisch
+ * ((p/100)^2), das kommt der empfundenen Lautstaerke naeher als linear.
+ * 0 % = 0.0 (still), 100 % = 1.0 (unveraendert), 20 % = 0.04 (-28 dB).
+ */
+fun volumeFactor(percent: Int): Double {
+    val p = percent.coerceIn(0, 100) / 100.0
+    return p * p
+}
+
+/** Skaliert [len] Samples ab [offs] in place, begrenzt auf den Short-Bereich. */
+fun scaleSamples(samples: ShortArray, offs: Int, len: Int, factor: Double) {
+    for (i in offs until offs + len) {
+        samples[i] = (samples[i] * factor).roundToInt()
+            .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+    }
+}
+
+private fun logAudio(what: String, e: Throwable) {
+    System.err.println("Ezan: $what: ${e.javaClass.simpleName}: ${e.message}")
+}
+
+/** dB fuer MASTER_GAIN (WAV), aus demselben [volumeFactor]; min. -60 dB. */
+private fun gainDb(percent: Int): Float = (20 * log10(volumeFactor(percent))).toFloat().coerceAtLeast(-60f)
