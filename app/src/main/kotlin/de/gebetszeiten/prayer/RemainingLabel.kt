@@ -1,52 +1,19 @@
 package de.gebetszeiten.prayer
 
 import java.time.Duration
+import de.gebetszeiten.core.prayertimes.display.isUrgent as coreIsUrgent
+import de.gebetszeiten.core.prayertimes.display.remainingStepLabel as coreRemainingStepLabel
+import de.gebetszeiten.core.prayertimes.display.remainingStepShort as coreRemainingStepShort
 
-/**
- * Floor-rounded remaining-time step for widget and persistent notification.
- *
- * A live Chronometer redraws EVERY SECOND while the home/lock screen is
- * visible — thousands of renders per day. These coarse, honest steps
- * ("noch 2+ Std" = more than 2h left) change only at a handful of moments,
- * each driven by one exact alarm, so the surfaces stay completely static
- * in between.
- */
-fun remainingStepLabel(remaining: Duration): String {
-    val short = remainingStepShort(remaining)
-    return if (short.isEmpty()) "jetzt" else "noch $short"
-}
+// Die Stufenlogik samt Begruendungen lebt in core-prayertimes
+// (`...core.prayertimes.display.RemainingSteps`), damit Telefon und Desktop
+// dieselben Texte zeigen. Hier nur die bisherigen Namen.
 
-/** Bare step ("2+ Std", "20+ Min", "7 Min"); empty in the final minute. */
-fun remainingStepShort(remaining: Duration): String {
-    val safe = if (remaining.isNegative) Duration.ZERO else remaining
-    return when {
-        safe.toHours() >= 1 -> "${safe.toHours()}+ Std"
-        // 10-minute floor steps below an hour: 27 min → "20+ Min".
-        // Precision grows as the prayer approaches — coarse far out is fine,
-        // misleading close up is not.
-        safe.toMinutes() >= 10 -> "${(safe.toMinutes() / 10) * 10}+ Min"
-        // Final 10 minutes: the exact number IS the urgency signal.
-        safe.toMinutes() >= 1 -> "${safe.toMinutes()} Min"
-        else -> ""
-    }
-}
+/** Siehe `core.prayertimes.display.remainingStepLabel`. */
+fun remainingStepLabel(remaining: Duration): String = coreRemainingStepLabel(remaining)
 
-/**
- * True in the final minutes before the prayer — surfaces switch to their
- * urgency colour.
- *
- * Negative Restzeit wird wie null behandelt, genau wie in
- * [remainingStepShort]: „jetzt" ist dringend. Ein `!isNegative`-Guard liess
- * die Farbe genau im Moment des Gebets ausblinken — eine Sekunde davor stand
- * „jetzt" in der Dringlichkeitsfarbe, eine Sekunde danach weiter „jetzt",
- * aber in Normalfarbe.
- *
- * Einziger Aufrufer ist das Widget ([de.gebetszeiten.widget.NextPrayerWidget]);
- * die Dauerbenachrichtigung liest es nicht. Das Ausblinken betraf also nur
- * die Widget-Farbe — die Commit-Nachricht zu f8eca75 nennt faelschlich auch
- * die Benachrichtigung.
- */
-fun isUrgent(remaining: Duration): Boolean {
-    val safe = if (remaining.isNegative) Duration.ZERO else remaining
-    return safe.toMinutes() < 10
-}
+/** Siehe `core.prayertimes.display.remainingStepShort`. */
+fun remainingStepShort(remaining: Duration): String = coreRemainingStepShort(remaining)
+
+/** Siehe `core.prayertimes.display.isUrgent` (einziger App-Aufrufer: das Widget). */
+fun isUrgent(remaining: Duration): Boolean = coreIsUrgent(remaining)
