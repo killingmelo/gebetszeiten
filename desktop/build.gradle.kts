@@ -32,3 +32,41 @@ sourceSets {
         resources.srcDir(rootProject.file("net-diyanet/src/main/assets"))
     }
 }
+
+// Programmordner mit Gebetszeiten.exe: build/package/Gebetszeiten/ (kein MSI,
+// das braeuchte WiX). jpackage kommt aus einer Java-Toolchain mit vollem JDK;
+// das JBR von Android Studio hat keins. Auf dem Entwicklungs-PC ist das
+// Temurin 25 (Gradle findet es selbst), anderes JDK per -PjpackageJdk=<Version>.
+// Die gebundelte Laufzeit erzeugt jpackage mit eben diesem JDK.
+val jpackageJdk = providers.gradleProperty("jpackageJdk").orElse("25").map { JavaLanguageVersion.of(it) }
+val jpackageLauncher = javaToolchains.launcherFor { languageVersion.set(jpackageJdk) }
+
+tasks.register<Exec>("packageApp") {
+    group = "distribution"
+    description = "Baut desktop/build/package/Gebetszeiten/Gebetszeiten.exe (jpackage app-image)."
+    dependsOn("installDist")
+    val libDir = layout.buildDirectory.dir("install/desktop/lib")
+    val icon = layout.projectDirectory.file("src/main/resources/icon.ico")
+    val dest = layout.buildDirectory.dir("package")
+    val launcher = jpackageLauncher
+    inputs.dir(libDir)
+    inputs.file(icon)
+    outputs.dir(dest.map { it.dir("Gebetszeiten") })
+    doFirst {
+        val jpackage = launcher.get().executablePath.asFile.parentFile.resolve("jpackage.exe")
+        check(jpackage.isFile) { "Kein jpackage in ${jpackage.parentFile} (volles JDK noetig, -PjpackageJdk=<Version>)" }
+        // jpackage ueberschreibt kein vorhandenes Programmbild.
+        dest.get().dir("Gebetszeiten").asFile.deleteRecursively()
+        executable = jpackage.absolutePath
+        args(
+            "--type", "app-image",
+            "--name", "Gebetszeiten",
+            "--input", libDir.get().asFile.absolutePath,
+            "--main-jar", "desktop.jar",
+            "--main-class", "de.gebetszeiten.desktop.MainKt",
+            "--icon", icon.asFile.absolutePath,
+            "--dest", dest.get().asFile.absolutePath,
+            "--java-options", "-Dfile.encoding=UTF-8",
+        )
+    }
+}
