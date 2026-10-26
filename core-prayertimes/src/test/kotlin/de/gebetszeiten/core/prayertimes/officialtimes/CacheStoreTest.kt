@@ -178,7 +178,131 @@ class CacheStoreTest {
 
         assertEquals(1, result.size)
         assertEquals(2000L, result[0].header.updatedEpochMs)
+        // Ein Eintrag, nicht zwei — sein Zeitplan ist aber die Vereinigung,
+        // nicht der neue allein (siehe die Jahreswechsel-Tests unten).
+        assertEquals(oldPlan + newPlan, ScheduleText.parse(result[0].body))
+    }
+
+    /** Am 26.10.2026 beobachtet (Nuernberg, ID 11024): die Jahresseite von
+     *  Diyanet liefert ab Ende Oktober nur noch das FOLGEjahr. `put` ersetzte
+     *  den Eintrag — der Rest von 2026 war weg, ausserhalb Deutschlands
+     *  (kein mitgeliefertes Jahr) stand bis Silvester „Keine Zeiten" da. */
+    @Test
+    fun `put behaelt beim Jahreswechsel die restlichen Tage des laufenden Jahres`() {
+        val plan2026 = schedule(LocalDate.of(2026, 1, 1), 365)
+        val plan2027 = schedule(LocalDate.of(2027, 1, 1), 365)
+        val existing = listOf(RawEntry(header(updatedEpochMs = 500L), ScheduleText.serialize(plan2026)))
+
+        val result = CacheStore.put(
+            entries = existing,
+            added = CacheEntry(header(updatedEpochMs = 2000L), plan2027),
+            pinnedCoords = emptyList(),
+        )
+
+        assertEquals(1, result.size)
+        val merged = ScheduleText.parse(result[0].body)
+        assertEquals(plan2026[LocalDate.of(2026, 12, 31)], merged[LocalDate.of(2026, 12, 31)])
+        assertEquals(plan2026[LocalDate.of(2026, 10, 26)], merged[LocalDate.of(2026, 10, 26)])
+        assertEquals(plan2027[LocalDate.of(2027, 1, 1)], merged[LocalDate.of(2027, 1, 1)])
+        assertEquals(730, merged.size)
+        // Kopf aus dem vereinigten Zeitplan abgeleitet, nicht aus dem neuen.
+        assertEquals(LocalDate.of(2026, 1, 1), result[0].header.firstDate)
+        assertEquals(LocalDate.of(2027, 12, 31), result[0].header.lastDate)
+        assertEquals(2000L, result[0].header.updatedEpochMs)
+    }
+
+    @Test
+    fun `put - bei Ueberschneidung gewinnt je Tag der neue Abruf`() {
+        val day = LocalDate.of(2026, 10, 26)
+        val oldPlan = mapOf(day to sixTimes(1), day.plusDays(1) to sixTimes(1))
+        val newPlan = mapOf(day to sixTimes(3))
+        val existing = listOf(RawEntry(header(updatedEpochMs = 500L), ScheduleText.serialize(oldPlan)))
+
+        val result = CacheStore.put(
+            entries = existing,
+            added = CacheEntry(header(updatedEpochMs = 2000L), newPlan),
+            pinnedCoords = emptyList(),
+        )
+
+        val merged = ScheduleText.parse(result[0].body)
+        assertEquals(sixTimes(3), merged[day])
+        // Ein kuerzerer Abruf (etwa nur 31 Tage einer Kontrollquelle) laesst
+        // die uebrige Abdeckung stehen, statt sie abzuschneiden.
+        assertEquals(sixTimes(1), merged[day.plusDays(1)])
+    }
+
+    @Test
+    fun `put verwirft alte Tage, die mehr als ein Jahr vor dem neuen Zeitplan liegen`() {
+        val plan2026 = schedule(LocalDate.of(2026, 1, 1), 365)
+        val plan2027 = schedule(LocalDate.of(2027, 1, 1), 365)
+        val plan2028 = schedule(LocalDate.of(2028, 1, 1), 366)
+        var entries = listOf(RawEntry(header(updatedEpochMs = 500L), ScheduleText.serialize(plan2026)))
+        entries = CacheStore.put(entries, CacheEntry(header(updatedEpochMs = 1000L), plan2027), emptyList())
+
+        val result = CacheStore.put(entries, CacheEntry(header(updatedEpochMs = 2000L), plan2028), emptyList())
+
+        // Ein Jahr Ruecklauf bleibt (2027), alles davor faellt — der Eintrag
+        // waechst nicht jeden Herbst um ein weiteres Jahr.
+        val merged = ScheduleText.parse(result[0].body)
+        assertEquals(LocalDate.of(2027, 1, 1), result[0].header.firstDate)
+        assertEquals(LocalDate.of(2028, 12, 31), result[0].header.lastDate)
+        assertEquals(365 + 366, merged.size)
+    }
+
+    @Test
+    fun `put vereinigt NICHT, wenn beide Eintraege verschiedene Diyanet-IDs tragen`() {
+        val oldPlan = schedule(LocalDate.of(2026, 1, 1), 365)
+        val newPlan = schedule(LocalDate.of(2027, 1, 1), 365)
+        val existing = listOf(
+            RawEntry(header(locationId = 11024, updatedEpochMs = 500L), ScheduleText.serialize(oldPlan)),
+        )
+
+        val result = CacheStore.put(
+            entries = existing,
+            // ~500 m daneben, aber ein anderer Diyanet-Standort: die alten
+            // Tage gehoeren zu einem anderen Ort und duerfen nicht bleiben.
+            added = CacheEntry(header(lat = 49.4566, locationId = 11025, updatedEpochMs = 2000L), newPlan),
+            pinnedCoords = emptyList(),
+        )
+
+        assertEquals(1, result.size)
         assertEquals(newPlan, ScheduleText.parse(result[0].body))
+        assertEquals(11025, result[0].header.locationId)
+    }
+
+    @Test
+    fun `put vereinigt, wenn eine Seite keine Diyanet-ID kennt (Uhr-Sync)`() {
+        // `WearOfficialCache.applySync` legt den Plan vom Telefon ohne ID ab.
+        val oldPlan = schedule(LocalDate.of(2026, 1, 1), 365)
+        val newPlan = schedule(LocalDate.of(2027, 1, 1), 365)
+        val existing = listOf(
+            RawEntry(header(locationId = 11024, updatedEpochMs = 500L), ScheduleText.serialize(oldPlan)),
+        )
+
+        val result = CacheStore.put(
+            entries = existing,
+            added = CacheEntry(header(locationId = null, updatedEpochMs = 2000L), newPlan),
+            pinnedCoords = emptyList(),
+        )
+
+        assertEquals(oldPlan + newPlan, ScheduleText.parse(result[0].body))
+    }
+
+    @Test
+    fun `put - ein leerer Versuchseintrag vereinigt sich mit dem vorhandenen Zeitplan`() {
+        // Kein Zeitplan im neuen Eintrag darf den alten nicht loeschen — wer
+        // einen Eintrag wirklich leeren will, gibt es nicht.
+        val oldPlan = schedule(LocalDate.of(2026, 10, 1), 30)
+        val existing = listOf(RawEntry(header(updatedEpochMs = 500L), ScheduleText.serialize(oldPlan)))
+
+        val result = CacheStore.put(
+            entries = existing,
+            added = CacheEntry(header(updatedEpochMs = 2000L, lastError = "kaputt"), emptyMap()),
+            pinnedCoords = emptyList(),
+        )
+
+        assertEquals(oldPlan, ScheduleText.parse(result[0].body))
+        assertEquals("kaputt", result[0].header.lastError)
     }
 
     @Test
@@ -567,7 +691,8 @@ class CacheStoreTest {
 
         assertEquals(1, result.size)
         assertEquals(2_000L, result[0].header.updatedEpochMs)
-        assertEquals(neuerPlan, ScheduleText.parse(result[0].body))
+        // Der alte Tag aus `rawWithPlan` bleibt (Vereinigung, nicht Ersatz).
+        assertEquals(schedule(LocalDate.of(2026, 1, 1), 1) + neuerPlan, ScheduleText.parse(result[0].body))
     }
 
     @Test
