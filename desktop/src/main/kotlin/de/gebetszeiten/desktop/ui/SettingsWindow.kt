@@ -102,6 +102,7 @@ internal class SettingsUi(
     private val reminderBoxes = REMINDER_PRAYERS.associateWith { JCheckBox(it.germanName()) }
     private val leadCombo = JComboBox(LEAD_CHOICES.map { if (it == 0) "Zur Gebetszeit" else "$it Min vorher" }.toTypedArray())
     private val showKaraha = JCheckBox("Karaha anzeigen")
+    private val exactRemaining = JCheckBox("Restzeit minutengenau anzeigen")
     private val karahaWarning = JCheckBox("Vor Karaha warnen")
     private val ezanField = JTextField()
     private val fajrField = JTextField()
@@ -178,6 +179,7 @@ internal class SettingsUi(
             add(JLabel("Vorlauf"))
             add(leadCombo)
         })
+        add(exactRemaining)
         add(showKaraha)
         add(karahaWarning)
 
@@ -261,6 +263,7 @@ internal class SettingsUi(
         REMINDER_PRAYERS.forEach { reminderBoxes.getValue(it).isSelected = it in s.reminders }
         leadCombo.selectedIndex = LEAD_CHOICES.indexOf(s.leadMinutes).takeIf { it >= 0 } ?: 0
         showKaraha.isSelected = s.showKaraha
+        exactRemaining.isSelected = s.exactRemaining
         karahaWarning.isSelected = s.karahaWarning
         ezanField.text = s.ezanFile.orEmpty()
         fajrField.text = s.fajrEzanFile.orEmpty()
@@ -311,6 +314,7 @@ internal class SettingsUi(
         leadMinutes = LEAD_CHOICES[leadCombo.selectedIndex.coerceAtLeast(0)],
         karahaWarning = karahaWarning.isSelected,
         showKaraha = showKaraha.isSelected,
+        exactRemaining = exactRemaining.isSelected,
         ezanFile = ezanField.text.takeIf { it.isNotBlank() },
         fajrEzanFile = fajrField.text.takeIf { it.isNotBlank() },
         ezanVolume = volume.value,

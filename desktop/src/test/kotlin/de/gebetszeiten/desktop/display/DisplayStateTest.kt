@@ -38,6 +38,50 @@ class DisplayStateTest {
     }
 
     @Test
+    fun exactShowsMinutes() {
+        val s = displayState(at(day, 15, 3), times(), null, showKaraha = true, exact = true)
+        assertEquals("Asr", s.line1)
+        assertEquals("noch 27 Min", s.line2)
+        assertEquals("Noch 27 Min bis Asr", s.tooltip)
+    }
+
+    @Test
+    fun exactShowsHoursAndMinutes() {
+        val s = displayState(at(day, 10, 46), times(), null, showKaraha = false, exact = true)
+        assertEquals("noch 2 Std 14 Min", s.line2)
+    }
+
+    @Test
+    fun exactFullHourHasNoMinutes() {
+        val s = displayState(at(day, 11, 0), times(), null, showKaraha = false, exact = true)
+        assertEquals("noch 2 Std", s.line2)
+    }
+
+    @Test
+    fun exactRoundsUpAndChangesAtNextMinute() {
+        // 26 Min 40 s Rest -> „27 Min" bis 15:04:00, dann „26 Min".
+        val s = displayState(at(day, 15, 3, 20), times(), null, showKaraha = true, exact = true)
+        assertEquals("noch 27 Min", s.line2)
+        assertEquals(at(day, 15, 4).plusNanos(BOUNDARY_SETTLE_MS * 1_000_000), s.nextChangeAt)
+    }
+
+    @Test
+    fun exactLastSecondsSayOneMinute() {
+        val s = displayState(at(day, 15, 29, 30), times(), null, showKaraha = true, exact = true)
+        assertEquals("noch 1 Min", s.line2)
+        assertEquals("Noch 1 Min bis Asr", s.tooltip)
+        assertEquals(at(day, 15, 30), s.nextChangeAt)
+    }
+
+    @Test
+    fun exactKarahaStillReplacesLine2() {
+        val t = times(dhuhr = at(day, 13, 21))
+        val s = displayState(at(day, 12, 50), t, null, showKaraha = true, exact = true)
+        assertEquals("⚠️ Karaha ab 13:01", s.line2)
+        assertEquals("Noch 31 Min bis Dhuhr · ⚠️ Karaha ab 13:01", s.tooltip)
+    }
+
+    @Test
     fun urgentLastTenMinutes() {
         val s = displayState(at(day, 15, 23), times(), null, showKaraha = true)
         assertEquals("noch 7 Min", s.line2)

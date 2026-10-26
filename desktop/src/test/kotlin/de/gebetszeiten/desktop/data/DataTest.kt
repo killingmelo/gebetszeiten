@@ -51,6 +51,7 @@ class DataTest {
             leadMinutes = 10,
             karahaWarning = true,
             showKaraha = false,
+            exactRemaining = true,
             ezanFile = "C:\\Ezan\\ezan.mp3",
             fajrEzanFile = "C:\\Ezan\\fajr.mp3",
             ezanVolume = 35,

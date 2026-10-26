@@ -43,6 +43,7 @@ class SettingsStore(private val dir: Path) {
             leadMinutes = p.int("leadMinutes")?.takeIf { it >= 0 } ?: d.leadMinutes,
             karahaWarning = p.bool("karahaWarning") ?: d.karahaWarning,
             showKaraha = p.bool("showKaraha") ?: d.showKaraha,
+            exactRemaining = p.bool("exactRemaining") ?: d.exactRemaining,
             ezanFile = p.text("ezanFile"),
             fajrEzanFile = p.text("fajrEzanFile"),
             ezanVolume = p.int("ezanVolume")?.takeIf { it in 0..100 } ?: d.ezanVolume,
@@ -64,6 +65,7 @@ class SettingsStore(private val dir: Path) {
         put("leadMinutes", s.leadMinutes)
         put("karahaWarning", s.karahaWarning)
         put("showKaraha", s.showKaraha)
+        put("exactRemaining", s.exactRemaining)
         put("ezanFile", s.ezanFile)
         put("fajrEzanFile", s.fajrEzanFile)
         put("ezanVolume", s.ezanVolume)

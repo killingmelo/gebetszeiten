@@ -2,13 +2,14 @@ package de.gebetszeiten.desktop.display
 
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
 import de.gebetszeiten.core.prayertimes.Karaha
+import de.gebetszeiten.core.prayertimes.display.BOUNDARY_SETTLE_MS
 import de.gebetszeiten.core.prayertimes.display.displayStepBoundaries
+import de.gebetszeiten.core.prayertimes.display.durationLabel
 import de.gebetszeiten.core.prayertimes.display.germanName
 import de.gebetszeiten.core.prayertimes.display.isUrgent
 import de.gebetszeiten.core.prayertimes.display.karahaLine
 import de.gebetszeiten.core.prayertimes.display.nextDisplayBoundary
 import de.gebetszeiten.core.prayertimes.display.nextPrayer
-import de.gebetszeiten.core.prayertimes.display.remainingStepLabel
 import de.gebetszeiten.core.prayertimes.display.remainingStepShort
 import java.time.Duration
 import java.time.Instant
@@ -42,12 +43,18 @@ private val NO_TIMES_STATE = DisplayState(
  * Handy-App. Karaha-Fenster stammen nur aus [today]; nach Isha gibt es bis zum
  * Sonnenaufgang des Folgetags keines — der Tageswechsel steckt in
  * [DisplayState.nextChangeAt] (naechste Mitternacht).
+ *
+ * [exact] schaltet von den Stufen der Handy-App („noch 20+ Min") auf die
+ * minutengenaue Restzeit („noch 27 Min", „noch 2 Std 14 Min"). Aufgerundet,
+ * damit in der letzten Minute „1 Min" steht statt „0 Min"; neu gezeichnet
+ * wird dann einmal je Minute, nie im Sekundentakt.
  */
 fun displayState(
     now: ZonedDateTime,
     today: DailyPrayerTimes?,
     tomorrow: DailyPrayerTimes?,
     showKaraha: Boolean,
+    exact: Boolean = false,
 ): DisplayState {
     if (today == null) return NO_TIMES_STATE
     val next = nextPrayer(today, tomorrow, now) ?: return NO_TIMES_STATE
@@ -66,22 +73,35 @@ fun displayState(
         else -> Tone.NORMAL
     }
 
-    val short = remainingStepShort(remaining)
+    // Minutengenau: aufgerundete Restminuten; die Anzeige wechselt, sobald
+    // der Rest auf eine volle Minute weniger faellt.
+    val exactMinutes = if (exact) Math.ceilDiv(remaining.toMillis().coerceAtLeast(0), 60_000L) else 0L
+    val short = when {
+        !exact -> remainingStepShort(remaining)
+        exactMinutes > 0 -> durationLabel(exactMinutes)
+        else -> ""
+    }
     val base = if (short.isEmpty()) "$name jetzt" else "Noch $short bis $name"
     val tooltip = if (karaha != null) "$base · ${karaha.text}" else base
 
     val nowMs = now.toInstant().toEpochMilli()
     val candidates = buildList {
         add(next.time)
-        nextDisplayBoundary(displayStepBoundaries(next.time.toInstant().toEpochMilli(), nowMs), nowMs)
-            ?.let { add(Instant.ofEpochMilli(it).atZone(now.zone)) }
+        if (exact) {
+            if (exactMinutes > 1) {
+                add(next.time.minusMinutes(exactMinutes - 1).plusNanos(BOUNDARY_SETTLE_MS * 1_000_000))
+            }
+        } else {
+            nextDisplayBoundary(displayStepBoundaries(next.time.toInstant().toEpochMilli(), nowMs), nowMs)
+                ?.let { add(Instant.ofEpochMilli(it).atZone(now.zone)) }
+        }
         if (showKaraha) addAll(Karaha.boundaries(windows))
         add(now.toLocalDate().plusDays(1).atStartOfDay(now.zone))
     }
 
     return DisplayState(
         line1 = name,
-        line2 = karaha?.text ?: remainingStepLabel(remaining),
+        line2 = karaha?.text ?: if (short.isEmpty()) "jetzt" else "noch $short",
         tone = tone,
         tooltip = tooltip,
         nextChangeAt = candidates.filter { it.isAfter(now) }.minOrNull(),

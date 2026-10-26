@@ -139,7 +139,7 @@ class DesktopApp(private val dir: Path) {
             sourceLine(today != null, cache.get(now.toLocalDate(), lat, lng) != null, cache.updatedEpochMs(lat, lng), now.zone)
         } ?: sourceLine(false, false, null, now.zone)
 
-        val state = displayState(now, today, tomorrow, s.showKaraha)
+        val state = displayState(now, today, tomorrow, s.showKaraha, s.exactRemaining)
         if (state != lastState) {
             lastState = state
             if (s.taskbarField) field.show(state)

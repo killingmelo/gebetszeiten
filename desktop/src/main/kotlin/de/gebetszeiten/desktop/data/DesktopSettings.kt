@@ -15,6 +15,8 @@ data class DesktopSettings(
     val leadMinutes: Int = 0,
     val karahaWarning: Boolean = false,
     val showKaraha: Boolean = true,
+    /** Restzeit minutengenau („noch 27 Min") statt in Stufen („noch 20+ Min"). */
+    val exactRemaining: Boolean = false,
     val ezanFile: String? = null,
     val fajrEzanFile: String? = null,
     val ezanVolume: Int = 70,
