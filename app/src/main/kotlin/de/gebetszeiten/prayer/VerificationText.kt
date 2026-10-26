@@ -11,9 +11,10 @@ private const val PREFIX = "Gegenprüfung: "
 /**
  * Eine Zeile Klartext zum Prueferzeugnis, zusaetzlich zur bestehenden
  * Statuszeile (siehe [officialStatusText]). Reine Funktion, kein Android,
- * keine Uhr — die deutschen Worte leben hier und nicht in
- * `core-prayertimes`, das ausdruecklich frei von Oberflaechen-Sprache
- * bleibt.
+ * keine Uhr — die deutschen Worte der Gegenpruefung leben hier. Die
+ * deutschen Abruf-Fehlertexte ([fetchErrorSummary], [emptyResultError])
+ * liegen dagegen inzwischen in `core-prayertimes`, damit Handy und Desktop
+ * sie teilen; die Funktionen unten leiten nur weiter.
  *
  * `null` bei `null` UND bei [VerificationNote.NONE]: hat gar keine Quelle
  * geliefert, hat die bestehende Statuszeile ihre eigenen Worte fuer „nichts

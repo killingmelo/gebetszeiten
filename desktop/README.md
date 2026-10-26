@@ -74,3 +74,7 @@ oder Umgebungsvariable `GEBETSZEITEN_DATA_DIR=<Ordner>` (die Eigenschaft gewinnt
   falsch sitzen oder fehlen; dann „Feld in der Taskleiste“ im Tray-Menü aus- und
   wieder einschalten, notfalls abschalten – die Zeiten bleiben im Tray-Symbol.
 - Benachrichtigungen erscheinen über das Tray-Symbol (`TrayIcon.displayMessage`).
+  Sie haben keine Stopp-Taste: Ein laufender Ezan wird über „Ezan stoppen“ im
+  Tray-Menü beendet.
+- „Nicht stören“ wird über eine undokumentierte Windows-Schnittstelle erkannt; falls
+  der Ezan trotzdem spielt: Ezan-Datei leeren oder Lautstärke senken.

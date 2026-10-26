@@ -16,8 +16,10 @@ dependencies {
     testImplementation(libs.junit)
 }
 
-// Der Desktop laeuft auf einem eigenen JDK 21 (jpackage, Task 10); die
-// Bibliotheken darunter bleiben bei Java 17.
+// Bytecode fuer Java 21; die Bibliotheken darunter bleiben bei Java 17. Die
+// gepackte Laufzeit stammt nicht von dieser Toolchain, sondern vom vollen JDK
+// fuer jpackage (lokal derzeit Temurin 25, per -PjpackageJdk=<Version>
+// waehlbar, siehe packageApp).
 kotlin {
     jvmToolchain(21)
 }
@@ -70,6 +72,8 @@ tasks.register<Exec>("packageApp") {
             "--icon", icon.asFile.absolutePath,
             "--dest", dest.get().asFile.absolutePath,
             "--java-options", "-Dfile.encoding=UTF-8",
+            // JNA laedt native Bibliotheken; ab Java 24 sonst Warnung, spaeter Sperre.
+            "--java-options", "--enable-native-access=ALL-UNNAMED",
         )
     }
 }

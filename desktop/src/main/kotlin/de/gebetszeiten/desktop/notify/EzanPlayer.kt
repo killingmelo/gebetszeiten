@@ -67,8 +67,14 @@ class EzanPlayer {
         val c = AudioSystem.getClip()
         c.open(stream)
         // Ohne Lautstaerkeregelung lieber still als mit 100 %: Fehler -> play() faengt, loggt, stoppt.
-        val gain = c.getControl(FloatControl.Type.MASTER_GAIN) as FloatControl
-        gain.value = gainDb(volumePercent).coerceIn(gain.minimum, gain.maximum)
+        // Der Clip ist da noch nicht in [clip]; stop() saehe ihn nicht, also hier schliessen.
+        try {
+            val gain = c.getControl(FloatControl.Type.MASTER_GAIN) as FloatControl
+            gain.value = gainDb(volumePercent).coerceIn(gain.minimum, gain.maximum)
+        } catch (e: Throwable) {
+            runCatching { c.close() }
+            throw e
+        }
         val gen = synchronized(lock) { clip = c; generation }
         c.addLineListener { e ->
             if (e.type == LineEvent.Type.STOP) {

@@ -36,7 +36,7 @@ fun runTrayDemo(args: Array<String>) {
         onStopEzan = { println("Ezan stoppen") },
         onQuit = { System.exit(0) },
     )
-    println("tray.available=${tray.available} quiet=${FocusState.quiet()} scale=${systemScale()}")
+    println("tray.available=${tray.available} quiet=${FocusState.quiet()} ${FocusState.describe()} scale=${systemScale()}")
     tray.update(DisplayState("Asr", "noch 20+ Min", Tone.NORMAL, "Noch 20+ Min bis Asr", null))
     val now = ZonedDateTime.now()
     tray.toast(NotifyEvent(now, EventKind.PRAYER, Prayer.ASR, "Asr", "Es ist Zeit für Asr", false))
