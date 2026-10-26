@@ -36,6 +36,11 @@ class DesktopCache(private val file: Path) {
     fun cachedLocationId(lat: Double, lng: Double): Int? =
         CacheStore.select(readEntries(), lat, lng)?.header?.locationId
 
+    /** Zeitpunkt des letzten erfolgreichen Abrufs fuer (lat,lng), oder null. */
+    @Synchronized
+    fun updatedEpochMs(lat: Double, lng: Double): Long? =
+        CacheStore.select(readEntries(), lat, lng)?.header?.updatedEpochMs
+
     /** Erfolgreichen Abruf ablegen; das Versuchsprotokoll des Ortes bleibt. */
     @Synchronized
     fun putAll(

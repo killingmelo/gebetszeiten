@@ -128,6 +128,12 @@ internal class SettingsUi(
 
     /** Nur auf dem EDT aufrufen. */
     fun showNow() {
+        // Geschlossen und neu geoeffnet: frisch laden, das Tray-Menue kann
+        // inzwischen etwas geaendert haben (Feld in der Taskleiste).
+        if (!frame.isShowing) {
+            current = store.load()
+            load(current)
+        }
         frame.pack()
         frame.setLocationRelativeTo(null)
         frame.isVisible = true
