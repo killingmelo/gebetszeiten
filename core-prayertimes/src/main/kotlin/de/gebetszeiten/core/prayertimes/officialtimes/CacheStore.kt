@@ -292,7 +292,11 @@ object CacheStore {
      * Prueferzeugnis beschreiben den NEUEN Abruf. Die uebernommenen Tage
      * behalten den Stand, mit dem sie damals abgelegt wurden — dieselbe
      * Haltung wie in [resolveQuorum]: geprueft ist der Abruf, nicht jeder
-     * seiner Tage einzeln.
+     * seiner Tage einzeln. Das gilt auch, wenn der ALTE Abruf ein
+     * Konflikt-Zeugnis trug (`CONFLICT_*`): seine Tage waren genau die, die
+     * die App damals als amtlich angezeigt hat. Sie fallen zu lassen, hiesse
+     * an diesen Tagen „Keine Zeiten" — der Fehler, den diese Funktion
+     * behebt —, und ueberlappende Tage ersetzt der neue Abruf ohnehin.
      *
      * Geparst wird NUR der Rumpf dieses einen Eintrags; alle anderen
      * bleiben ungeparste Teilstrings (Begruendung bei [serializeRaw]).

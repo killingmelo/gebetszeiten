@@ -291,7 +291,10 @@ class CacheStoreTest {
     @Test
     fun `put - ein leerer Versuchseintrag vereinigt sich mit dem vorhandenen Zeitplan`() {
         // Kein Zeitplan im neuen Eintrag darf den alten nicht loeschen — wer
-        // einen Eintrag wirklich leeren will, gibt es nicht.
+        // einen Eintrag wirklich leeren will, gibt es nicht. Heute nimmt
+        // diesen Weg kein Aufrufer: `withAttempt` und `recordAttempt` der Uhr
+        // rufen `put` mit leerem Plan nur, wenn es noch KEINEN Eintrag gibt.
+        // Der Test haelt fest, dass es so harmlos bliebe, wenn doch.
         val oldPlan = schedule(LocalDate.of(2026, 10, 1), 30)
         val existing = listOf(RawEntry(header(updatedEpochMs = 500L), ScheduleText.serialize(oldPlan)))
 
