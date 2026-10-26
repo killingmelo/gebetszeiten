@@ -190,7 +190,9 @@ object CacheStore {
 
     /** [added] einfuegen oder den passenden Eintrag ersetzen (Identitaet
      *  ueber `stampMatches` — eine Ortsverschiebung um ~1 km aktualisiert
-     *  den bestehenden Eintrag, statt einen Platz zu verbrauchen).
+     *  den bestehenden Eintrag, statt einen Platz zu verbrauchen). Ersetzt
+     *  wird der Kopf; der Zeitplan VEREINIGT sich mit dem alten, je Tag
+     *  gewinnt der neue (Regeln und Ausnahmen bei [mergedWithPrevious]).
      *  Angeheftete Eintraege werden NIE verdraengt.
      *
      *  Nicht angeheftete Eintraege werden GETRENNT begrenzt, je nachdem ob
@@ -232,11 +234,12 @@ object CacheStore {
         pinnedCoords: List<Pair<Double, Double>>,
         maxUnpinned: Int = 5,
     ): List<RawEntry> {
-        val newEntry = toRawEntry(added)
+        fun matches(entry: RawEntry) =
+            stampMatches(entry.header.latitude, entry.header.longitude, added.header.latitude, added.header.longitude)
 
-        val withoutMatch = entries.filterNot {
-            stampMatches(it.header.latitude, it.header.longitude, newEntry.header.latitude, newEntry.header.longitude)
-        }
+        val newEntry = toRawEntry(mergedWithPrevious(entries.firstOrNull { matches(it) }, added))
+
+        val withoutMatch = entries.filterNot { matches(it) }
         val result = withoutMatch + newEntry
 
         fun isPinned(entry: RawEntry) = pinnedCoords.any { (pLat, pLng) ->
@@ -253,6 +256,66 @@ object CacheStore {
         // in einer Funktion, und der Unterschied waere genau dann zu spueren,
         // wenn er am wenigsten auffaellt.
         return result.filterNot { entry -> evicted.any { it === entry } }
+    }
+
+    /** Wie weit alte Tage VOR dem neuen Zeitplan erhalten bleiben (siehe
+     *  [mergedWithPrevious]). Ein Jahr reicht fuer den Jahreswechsel; mehr
+     *  liesse den Eintrag jeden Herbst um ein weiteres Jahr wachsen. */
+    private const val KEEP_BEFORE_NEW_YEARS = 1L
+
+    /**
+     * Der Zeitplan, den [put] ablegt: der neue, ergaenzt um die Tage des
+     * vorhandenen Eintrags [previous] am selben Ort. Je Tag gewinnt der neue
+     * Abruf.
+     *
+     * Warum nicht einfach ersetzen: am 26.10.2026 (Nuernberg, ID 11024)
+     * lieferte die Jahresseite von Diyanet nur noch das FOLGEjahr, der Proxy
+     * antwortete 404, und ohne zweite Kontrollquelle fuellt
+     * [resolveQuorum] keine Luecke. Ersetzen warf die restlichen Tage von
+     * 2026 weg — die einzigen amtlichen Zeiten, die es fuer diese Wochen
+     * noch gab. Ausserhalb Deutschlands (kein mitgeliefertes Jahr) stand bis
+     * Silvester „Keine Zeiten" da. Dasselbe gilt fuer jeden kuerzeren Abruf,
+     * etwa 31 Tage einer Kontrollquelle ueber einem vollen Jahresplan.
+     *
+     * Was NICHT uebernommen wird:
+     * - alles, wenn beide Eintraege eine Diyanet-ID tragen und sie sich
+     *   unterscheiden. Dann ist der Ort innerhalb der ~1-km-Toleranz in
+     *   einen anderen Diyanet-Standort gerutscht, und die alten Tage gehoeren
+     *   zu einem anderen Ort. Kennt eine Seite keine ID (der Uhr-Sync legt
+     *   ohne ab, siehe `WearOfficialCache.applySync`), gilt der Ort als
+     *   derselbe — sonst verloere die Uhr bei jedem Sync ihren Vorlauf.
+     * - Tage, die mehr als [KEEP_BEFORE_NEW_YEARS] Jahr vor dem ersten Tag
+     *   des neuen Zeitplans liegen. `put` kennt kein „heute" (reine
+     *   Funktion ohne Uhr), die Grenze haengt deshalb am neuen Zeitplan.
+     *
+     * Der Kopf bleibt der von [added]: `updatedEpochMs` und das
+     * Prueferzeugnis beschreiben den NEUEN Abruf. Die uebernommenen Tage
+     * behalten den Stand, mit dem sie damals abgelegt wurden — dieselbe
+     * Haltung wie in [resolveQuorum]: geprueft ist der Abruf, nicht jeder
+     * seiner Tage einzeln. Das gilt auch, wenn der ALTE Abruf ein
+     * Konflikt-Zeugnis trug (`CONFLICT_*`): seine Tage waren genau die, die
+     * die App damals als amtlich angezeigt hat. Sie fallen zu lassen, hiesse
+     * an diesen Tagen „Keine Zeiten" — der Fehler, den diese Funktion
+     * behebt —, und ueberlappende Tage ersetzt der neue Abruf ohnehin.
+     *
+     * Geparst wird NUR der Rumpf dieses einen Eintrags; alle anderen
+     * bleiben ungeparste Teilstrings (Begruendung bei [serializeRaw]).
+     * [ScheduleText.parse] ist tolerant, ein beschaedigter alter Rumpf
+     * ergibt also schlicht keine alten Tage, statt den Abruf zu verlieren.
+     */
+    private fun mergedWithPrevious(previous: RawEntry?, added: CacheEntry): CacheEntry {
+        // Bewusst NICHT ueber `previous.header.lastDate`: der Rumpf zaehlt,
+        // nicht was der Kopf ueber ihn behauptet.
+        if (previous == null) return added
+        val oldId = previous.header.locationId
+        val newId = added.header.locationId
+        if (oldId != null && newId != null && oldId != newId) return added
+
+        val keepFrom = added.schedule.keys.minOrNull()?.minusYears(KEEP_BEFORE_NEW_YEARS)
+        val kept = ScheduleText.parse(previous.body)
+            .filterKeys { keepFrom == null || !it.isBefore(keepFrom) }
+        if (kept.isEmpty()) return added
+        return added.copy(schedule = kept + added.schedule)
     }
 
     /** Die Eintraege aus [group], die ueber [keep] hinausgehen: die

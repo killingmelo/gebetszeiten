@@ -114,7 +114,9 @@ class OfficialTimesCache(private val context: Context) {
     }
 
     /** Erfolgreichen Abruf ablegen. Ein vorhandener Eintrag fuer denselben
-     *  Ort wird ersetzt, sein Versuchsprotokoll aber uebernommen — frueher
+     *  Ort bekommt den neuen Kopf und behaelt seine uebrigen Tage (je Tag
+     *  gewinnt der neue Abruf, siehe [CacheStore.put]); sein
+     *  Versuchsprotokoll wird uebernommen — frueher
      *  fasste `putAll` die Versuchs-Schluessel ebenfalls nicht an.
      *
      *  [pinnedCoords] wird UEBERGEBEN, nicht hier gelesen: der Cache kennt

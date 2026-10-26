@@ -13,7 +13,10 @@ package de.gebetszeiten.core.prayertimes.officialtimes
  * Prueferzeugnis. Es beschreibt den Abruf, der DIESE Zeiten brachte —
  * uebernaehme man das alte, klebte eine Pruefnotiz an einem Zeitplan, den
  * sie nie gesehen hat („bestätigt" ueber ungeprueft ersetzte Zeiten). Ein
- * Abruf ohne Zeugnis setzt es folgerichtig auf `null`.
+ * Abruf ohne Zeugnis setzt es folgerichtig auf `null`. Tage, die `put` aus
+ * dem alten Eintrag uebernimmt (Jahreswechsel, siehe
+ * `CacheStore.mergedWithPrevious`), behalten den Stand ihres eigenen
+ * Abrufs — das Zeugnis spricht fuer den neuen Abruf, nicht fuer sie.
  *
  * Reine Funktion, damit genau diese Unterscheidung im Test steht und nicht
  * nur im Kommentar. Liegt in `core`, damit App und Desktop dieselbe Regel
