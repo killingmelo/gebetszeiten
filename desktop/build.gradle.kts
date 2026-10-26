@@ -6,6 +6,9 @@ plugins {
 dependencies {
     implementation(project(":core-prayertimes"))
     implementation(project(":net-diyanet-core"))
+    // net-diyanet-core kennt org.json nur compileOnly (Android bringt es mit);
+    // auf der Desktop-JVM muss die Bibliothek mit ins Paket.
+    implementation("org.json:json:20240303")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("net.java.dev.jna:jna-platform:5.14.0")
     implementation("com.googlecode.soundlibs:jlayer:1.0.1.4")

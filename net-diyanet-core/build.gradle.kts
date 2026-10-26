@@ -7,9 +7,12 @@ plugins {
 dependencies {
     api(project(":core-prayertimes"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
-    // Auf Android bringt die Plattform org.json mit, auf der JVM (Desktop,
-    // Unit-Tests) nicht — daher die Bibliothek.
-    implementation("org.json:json:20240303")
+    // Auf Android bringt die Plattform org.json mit; die Bibliothek darf
+    // daher nicht ueber net-diyanet in App und Uhr wandern. Nur zum
+    // Uebersetzen und fuer die eigenen Tests — zur Laufzeit liefert sie der
+    // Desktop selbst (desktop/build.gradle.kts).
+    compileOnly("org.json:json:20240303")
+    testImplementation("org.json:json:20240303")
 
     testImplementation(libs.junit)
 }
