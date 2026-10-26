@@ -354,6 +354,26 @@ class SourceQuorumTest {
         assertEquals(5, outcome.schedule.size)
     }
 
+    @Test fun `A5c Ende Oktober - mit Monats-Tabelle ueberlappt der Direktabruf EzanVakti und wird geprueft`() {
+        // Lage am 26.10.2026: die Jahres-Tabelle zeigt schon 2027, EzanVakti
+        // liefert 31 Tage ab heute. Nur die Jahres-Tabelle hat keine
+        // Schnittmenge (UNVERIFIED_SINGLE, wie A5b); zusammen mit der
+        // Monats-Tabelle (heute bis +30 Tage) wird sie geprueft.
+        val today = LocalDate.of(2026, 10, 26)
+        val nextYear = plan(days = 365, from = LocalDate.of(2027, 1, 1))
+        val ezanvakti = ezan(plan(days = 31, from = today))
+
+        val yearOnly = resolve(direct(nextYear), ezanvakti)
+        assertEquals(VerificationNote.UNVERIFIED_SINGLE, yearOnly.verification.note)
+
+        val outcome = resolve(direct(plan(days = 31, from = today) + nextYear), ezanvakti)
+        assertEquals(VerificationNote.VERIFIED, outcome.verification.note)
+        assertEquals(SourceId.DIRECT, outcome.verification.chosen)
+        assertEquals(listOf(SourceId.EZANVAKTI), outcome.verification.confirmedBy)
+        assertEquals(31, outcome.verification.comparedDays)
+        assertEquals(31 + 365, outcome.schedule.size)
+    }
+
     @Test fun `A6 ein gescheiterter Direktabruf mit leerem Zeitplan gilt als nicht geliefert`() {
         val outcome = resolve(
             SourceResult(SourceId.DIRECT, emptyMap(), error = "HTTP 503"),
