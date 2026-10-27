@@ -1,5 +1,6 @@
 package de.gebetszeiten.net
 
+import de.gebetszeiten.core.prayertimes.HijriDay
 import de.gebetszeiten.core.prayertimes.officialtimes.parseOfficialTimes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -88,6 +89,35 @@ class DiyanetYearPageParserTest {
             "<td>01 Ocak 2027 Cuma</td>",
         ).replace("<td>18:18</td>", "<td>19:59</td>")
         assertEquals(LocalTime.of(18, 15), DiyanetYearPageParser.parse(html).getValue(LocalDate.of(2027, 1, 1)).isha)
+    }
+
+    @Test
+    fun `liest das Hicri-Datum jedes Tages`() {
+        val hijri = DiyanetYearPageParser.parseHijri(resource("diyanet-11024.html"))
+        assertEquals(HijriDay(12, 7, 1447), hijri[LocalDate.of(2026, 1, 1)])
+        assertEquals(HijriDay(11, 9, 1447), hijri[LocalDate.of(2026, 3, 1)])
+        assertEquals(HijriDay(22, 7, 1448), hijri[LocalDate.of(2026, 12, 31)])
+        assertEquals(365, hijri.keys.count { it.year == 2026 })
+    }
+
+    @Test
+    fun `unlesbares Hicri-Datum fehlt nur selbst, nichts wird geraten`() {
+        val html = resource("diyanet-11024.html").replace("<td>12 Recep 1447</td>", "<td>12 Foo 1447</td>")
+        val hijri = DiyanetYearPageParser.parseHijri(html)
+        assertEquals(null, hijri[LocalDate.of(2026, 1, 1)])
+        assertEquals(HijriDay(13, 7, 1447), hijri[LocalDate.of(2026, 1, 2)])
+        assertEquals(emptyMap<LocalDate, HijriDay>(), DiyanetYearPageParser.parseHijri("<html></html>"))
+    }
+
+    @Test
+    fun `Hicri-Monatsnamen mit und ohne Umlaute`() {
+        assertEquals(3, HijriDay.monthOf("Rebiulevvel"))
+        assertEquals(3, HijriDay.monthOf("Rebiülevvel"))
+        assertEquals(8, HijriDay.monthOf("Şaban"))
+        assertEquals(10, HijriDay.monthOf("ŞEVVAL"))
+        assertEquals(null, HijriDay.monthOf("Ramadan"))
+        assertEquals("27. Ramaḍān 1447", HijriDay(27, 9, 1447).text())
+        assertEquals("16. Ǧumādā l-ūlā 1448", HijriDay(16, 5, 1448).text())
     }
 
     @Test

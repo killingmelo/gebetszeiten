@@ -2,12 +2,12 @@
 <resources>
     <string name="app_name">Gebetszeiten</string>
 
-    <string name="prayer_fajr">Fajr</string>
+    <string name="prayer_fajr">Faǧr</string>
     <string name="prayer_sunrise">Sonnenaufgang</string>
-    <string name="prayer_dhuhr">Dhuhr</string>
-    <string name="prayer_asr">Asr</string>
-    <string name="prayer_maghrib">Maghrib</string>
-    <string name="prayer_isha">Isha</string>
+    <string name="prayer_dhuhr">Ẓuhr</string>
+    <string name="prayer_asr">ʿAṣr</string>
+    <string name="prayer_maghrib">Maġrib</string>
+    <string name="prayer_isha">ʿIšāʾ</string>
 
     <string name="location_title">Ort</string>
     <string name="city_label">Stadt</string>
@@ -68,18 +68,18 @@
     <string name="times_show_earlier">Frühere Zeiten anzeigen</string>
     <string name="times_hide_later">Weitere ausblenden</string>
     <string name="times_show_later">Weitere Zeiten anzeigen</string>
-    <string name="times_tomorrow_fajr">Morgen · Fajr %1$s</string>
+    <string name="times_tomorrow_fajr">Morgen · Faǧr %1$s</string>
 
     <!-- Prayer-status content descriptions -->
     <string name="status_current">, aktuelles Gebet</string>
     <string name="status_next">, nächstes Gebet</string>
     <string name="status_past">, vergangen</string>
     <string name="desc_prayer_current">%1$s, %2$s, aktuelles Gebet, noch %3$s</string>
-    <string name="desc_prayer_current_makruh">, Makruh %1$s %2$s bis %3$s</string>
+    <string name="desc_prayer_current_makruh">, makrūh %1$s %2$s bis %3$s</string>
     <string name="desc_prayer">%1$s, %2$s%3$s</string>
     <string name="desc_nafl_remaining">%1$s, freiwilliges Gebet, noch %2$s</string>
     <string name="desc_nafl_range">%1$s, freiwilliges Gebet, %2$s bis %3$s</string>
-    <string name="desc_makruh">Makruh-Zeit %1$s, %2$s bis %3$s</string>
+    <string name="desc_makruh">Makrūh-Zeit %1$s, %2$s bis %3$s</string>
     <string name="desc_makruh_current">, aktuell</string>
     <string name="desc_makruh_countdown">, %1$s</string>
     <string name="desc_nafl_tip">Tipp: %1$s, freiwilliges Gebet, %2$s bis %3$s</string>
@@ -87,38 +87,38 @@
     <string name="remaining_inline">noch %1$s</string>
 
     <!-- Inline labels -->
-    <string name="karaha_active_prefix">⛔ Karaha · </string>
-    <string name="karaha_warn_prefix">⚠ Karaha · </string>
-    <string name="makruh_chip">Makruh · %1$s · %2$s–%3$s</string>
+    <string name="karaha_active_prefix">⛔ Karāha · </string>
+    <string name="karaha_warn_prefix">⚠ Karāha · </string>
+    <string name="makruh_chip">Makrūh · %1$s · %2$s–%3$s</string>
     <string name="makruh_chip_countdown"> · %1$s</string>
     <string name="nafl_range_inline">%1$s · %2$s–%3$s</string>
 
     <!-- Makruh / Nafl explanations -->
-    <string name="karaha_sunrise_title">İşrak (nach Sonnenaufgang)</string>
-    <string name="karaha_sunrise_text">Makruh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein (freiwilliges) Gebet; danach beginnen İşrak/Duha. (Hanafi)</string>
-    <string name="karaha_zeval_title">Zeval / İstiva (Zenit)</string>
-    <string name="karaha_zeval_text">Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)</string>
-    <string name="karaha_isfirar_title">İsfirar-ı şems (vor Sonnenuntergang)</string>
-    <string name="karaha_isfirar_text">Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)</string>
-    <string name="nafl_awwabin_title">Awwabin (Evvabin)</string>
-    <string name="nafl_awwabin_text">Freiwilliges Gebet nach dem Maghrib- bis zum Isha-Gebet — empfohlen sind 6 Rekat. (Sunna/Mustahab)</string>
-    <string name="nafl_tahajjud_title">Tahajjud</string>
-    <string name="nafl_tahajjud_text">Freiwilliges Nachtgebet im letzten Drittel der Nacht (nach dem Schlaf, vor Fajr). Besonders verdienstvoll. (Sunna/Mustahab)</string>
+    <string name="karaha_sunrise_title">Išrāq (nach Sonnenaufgang)</string>
+    <string name="karaha_sunrise_text">Makrūh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein (freiwilliges) Gebet; danach beginnen Išrāq/Ḍuḥā. (ḥanafitisch)</string>
+    <string name="karaha_zeval_title">Zawāl / Istiwāʾ (Zenit)</string>
+    <string name="karaha_zeval_text">Makrūh-Zeit kurz vor dem Höchststand der Sonne bis Ẓuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (ḥanafitisch)</string>
+    <string name="karaha_isfirar_title">Iṣfirār aš-šams (vor Sonnenuntergang)</string>
+    <string name="karaha_isfirar_text">Makrūh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maġrib. Nur das heutige ʿAṣr darf hier noch (verspätet) gebetet werden. (ḥanafitisch)</string>
+    <string name="nafl_awwabin_title">Auwābīn</string>
+    <string name="nafl_awwabin_text">Freiwilliges Gebet nach dem Maġrib- bis zum ʿIšāʾ-Gebet — empfohlen sind 6 Rakʿa. (Sunna/mustaḥabb)</string>
+    <string name="nafl_tahajjud_title">Tahaǧǧud</string>
+    <string name="nafl_tahajjud_text">Freiwilliges Nachtgebet im letzten Drittel der Nacht (nach dem Schlaf, vor Faǧr). Besonders verdienstvoll. (Sunna/mustaḥabb)</string>
 
     <!-- Block labels -->
     <string name="makruh_zenit">Zenit</string>
     <string name="makruh_before_sunset">vor Sonnenuntergang</string>
     <string name="makruh_after_sunrise">nach Sonnenaufgang</string>
-    <string name="nafl_awwabin">Awwabin</string>
-    <string name="nafl_tahajjud">Tahajjud</string>
-    <string name="nafl_duha">Duha (Kuşluk)</string>
+    <string name="nafl_awwabin">Auwābīn</string>
+    <string name="nafl_tahajjud">Tahaǧǧud</string>
+    <string name="nafl_duha">Ḍuḥā</string>
 
     <!-- Cemaat (Gemeinschaftsgebet morgens, abgeleitet) -->
-    <string name="cemaat_label">Gemeinschaftsgebet (Cemaat)</string>
+    <string name="cemaat_label">Gemeinschaftsgebet (Ǧamāʿa)</string>
     <string name="cemaat_time_inline">%1$s · %2$s</string>
     <string name="desc_cemaat">Tipp: %1$s um %2$s</string>
-    <string name="cemaat_explain_title">Gemeinschaftsgebet (Cemaat)</string>
-    <string name="cemaat_explain_text">Übliche Zeit des Sabah-Gemeinschaftsgebets in der Moschee: kurz vor Sonnenaufgang (Diyanet-Praxis ≈30 Min davor). Die Zeit wird aus dem Sonnenaufgang berechnet — der Vorlauf ist in den Einstellungen anpassbar. Keine amtliche Diyanet-Angabe; die eigene Moschee kann abweichen.</string>
+    <string name="cemaat_explain_title">Gemeinschaftsgebet (Ǧamāʿa)</string>
+    <string name="cemaat_explain_text">Übliche Zeit des Faǧr-Gemeinschaftsgebets in der Moschee: kurz vor Sonnenaufgang (Diyanet-Praxis ≈30 Min davor). Die Zeit wird aus dem Sonnenaufgang berechnet — der Vorlauf ist in den Einstellungen anpassbar. Keine amtliche Diyanet-Angabe; die eigene Moschee kann abweichen.</string>
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
@@ -152,10 +152,10 @@
     <string name="no_times_fetch_now">Jetzt abrufen</string>
     <string name="no_times_enable_calculation">Berechnung einschalten</string>
     <string name="settings_section_display">Anzeige</string>
-    <string name="settings_show_makruh">Makruh-Zeiten anzeigen</string>
-    <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>
-    <string name="settings_show_cemaat">Gemeinschaftsgebet (Cemaat) morgens anzeigen</string>
-    <string name="settings_cemaat_hint">Zeigt unter Fajr die übliche Moschee-Gemeinschaftszeit: Sonnenaufgang minus Vorlauf (Diyanet-Praxis ≈30 Min). Berechnet, keine amtliche Zeit — die eigene Moschee kann abweichen.</string>
+    <string name="settings_show_makruh">Makrūh-Zeiten anzeigen</string>
+    <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karāha-Zeit „⚠️ Karāha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>
+    <string name="settings_show_cemaat">Gemeinschaftsgebet (Ǧamāʿa) morgens anzeigen</string>
+    <string name="settings_cemaat_hint">Zeigt unter Faǧr die übliche Moschee-Gemeinschaftszeit: Sonnenaufgang minus Vorlauf (Diyanet-Praxis ≈30 Min). Berechnet, keine amtliche Zeit — die eigene Moschee kann abweichen.</string>
     <string name="settings_cemaat_offset">Vorlauf vor Sonnenaufgang</string>
     <string name="cemaat_offset_chip">%1$d Min</string>
     <string name="settings_calculation_fallback">Berechnung als Notausgang</string>

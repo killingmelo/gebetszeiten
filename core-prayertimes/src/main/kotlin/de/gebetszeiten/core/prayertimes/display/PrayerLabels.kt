@@ -2,12 +2,12 @@ package de.gebetszeiten.core.prayertimes.display
 
 import de.gebetszeiten.core.prayertimes.Prayer
 
-/** Deutscher Anzeigename — identisch mit `prayer_*` in den App-Strings. */
+/** Anzeigename in DMG-Umschrift — identisch mit `prayer_*` in den App-Strings. */
 fun Prayer.germanName(): String = when (this) {
-    Prayer.FAJR -> "Fajr"
+    Prayer.FAJR -> "Faǧr"
     Prayer.SUNRISE -> "Sonnenaufgang"
-    Prayer.DHUHR -> "Dhuhr"
-    Prayer.ASR -> "Asr"
-    Prayer.MAGHRIB -> "Maghrib"
-    Prayer.ISHA -> "Isha"
+    Prayer.DHUHR -> "Ẓuhr"
+    Prayer.ASR -> "ʿAṣr"
+    Prayer.MAGHRIB -> "Maġrib"
+    Prayer.ISHA -> "ʿIšāʾ"
 }

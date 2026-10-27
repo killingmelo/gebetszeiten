@@ -1,5 +1,6 @@
 package de.gebetszeiten.net
 
+import de.gebetszeiten.core.prayertimes.HijriDay
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -12,13 +13,15 @@ import java.time.LocalDate
  */
 class DiyanetDirectFetcher {
     suspend fun fetchYear(locationId: Int): Map<LocalDate, SixTimes> =
-        withContext(Dispatchers.IO) {
-            DiyanetYearPageParser.parse(
-                httpGet(
-                    "https://namazvakitleri.diyanet.gov.tr/tr-TR/$locationId",
-                    accept = "text/html",
-                    readTimeoutMs = 20_000,
-                ),
-            )
-        }
+        withContext(Dispatchers.IO) { DiyanetYearPageParser.parse(page(locationId)) }
+
+    /** Das Hicri-Datum je Tag von derselben Seite (Kalender ist ortsunabhaengig). */
+    suspend fun fetchHijri(locationId: Int): Map<LocalDate, HijriDay> =
+        withContext(Dispatchers.IO) { DiyanetYearPageParser.parseHijri(page(locationId)) }
+
+    private fun page(locationId: Int): String = httpGet(
+        "https://namazvakitleri.diyanet.gov.tr/tr-TR/$locationId",
+        accept = "text/html",
+        readTimeoutMs = 20_000,
+    )
 }

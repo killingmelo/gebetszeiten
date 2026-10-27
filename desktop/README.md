@@ -2,8 +2,23 @@
 
 Kleines Windows-11-Programm: ein Feld links neben der Uhr zeigt das nächste Gebet und
 die Restzeit (bzw. die Karaha-Zeile), genau wie die Benachrichtigung der Handy-App.
-Dazu ein Tray-Symbol (Heutige Zeiten, Einstellungen, Feld an/aus, Ezan stoppen, Beenden),
-Erinnerungen als Windows-Benachrichtigung und optional ein Ezan.
+Dazu ein Tray-Symbol (Heutige Zeiten, Einstellungen, Feld an/aus, Töne 1 Stunde aus,
+Ezan stoppen, Benachrichtigung testen, Beenden), Erinnerungen als eigenes Banner oder
+Windows-Benachrichtigung mit Tönen, optional ein Ezan.
+
+Erinnerungen und Hinweise:
+
+- Gebetszeit, Vorlauf, „Gebetszeit endet“ (X Min vor Ende; ʿAṣr endet mit der Iṣfirār-Karāha),
+  Karāha-Warnung.
+- Ǧumʿa (Donnerstagabend, Freitagmorgen, vor dem Ǧumʿa-Gebet), Sunna-Fasten am Vorabend
+  (Mo/Do, al-Ayyām al-Bīḍ), Ḍuḥā und Tahaǧǧud.
+- Aus dem Hiǧra-Kalender: besondere Nächte (Qadr, Barāʾa, Miʿrāǧ, Raġāʾib, Maulid),
+  Ramaḍān (Saḥūr, Ifṭār), ʿĀšūrāʾ, ʿArafa, ʿĪd al-Fiṭr/al-Aḍḥā, Hiǧra-Neujahr. Das
+  Hiǧra-Datum kommt nur von der Diyanet-Seite (`hijri.txt`); fehlt es, gibt es keine
+  Hiǧra-Hinweise. Alle Begriffe in DMG-Umschrift.
+- Lesetexte zu jedem Anlass aus `src/main/resources/hinweise/texte.tsv` (aus Shamela,
+  arabisch + sinngemäße Übersetzung + Quelle), täglich wechselnd.
+- Tageshinweise (Ǧumʿa, ʿĪd …) werden nachgeholt, wenn das Programm erst später startet.
 
 Nur amtliche Diyanet-Zeiten: abgerufene Zeiten aus dem Cache, sonst die mitgelieferte
 Tabelle. Ohne beides zeigt das Feld „Keine Zeiten“, nie eine berechnete Zahl.
@@ -34,7 +49,8 @@ keins. Standard ist eine Java-25-Toolchain (auf dem Entwicklungs-PC Temurin 25 u
 - Autostart: Häkchen in den Einstellungen; setzt `HKCU\...\CurrentVersion\Run\Gebetszeiten`.
   Wirkt nur aus der gepackten `Gebetszeiten.exe`, nie aus Gradle/IDE.
 - Entwicklungslauf ohne Paket: `.\gradlew.bat :desktop:run`. Handproben:
-  `--demo-field`, `--demo-tray`, `--demo-settings`.
+  `--demo-field`, `--demo-tray` (mit `--shot=popup.png --banner-shot=banner.png`),
+  `--demo-settings` (mit `--shot=s.png`: ein Bild je Reiter).
 
 ## Wo die Daten liegen
 
@@ -44,6 +60,7 @@ Standard `%APPDATA%\Gebetszeiten\`:
 |---|---|
 | `settings.properties` | Einstellungen (UTF-8) |
 | `cache.txt` | abgerufene Diyanet-Zeiten |
+| `hijri.txt` | Hiǧra-Datum je Tag von der Diyanet-Seite (heute bis +30 Tage, täglich nachgeholt) |
 | `lock` | Einzelinstanz-Sperre |
 | `gebetszeiten.log` | Protokoll des letzten Laufs (die .exe hat keine Konsole) |
 
@@ -64,8 +81,11 @@ oder Umgebungsvariable `GEBETSZEITEN_DATA_DIR=<Ordner>` (die Eigenschaft gewinnt
 - Explorer-Neustart: Der Wächter erkennt ihn an einem neuen `Shell_TrayWnd`-Handle
   (oder an einem fehlenden Tray-Symbol) und legt das Tray-Symbol neu an; das Feld
   hängt sich über `reattachIfNeeded` neu ein.
-- Ezan nur, wenn Windows nicht auf „Nicht stören“/Fokus steht; die Benachrichtigung
-  kommt immer. „Ezan stoppen“ im Tray-Menü beendet ihn.
+- Ezan und Töne nur, wenn Windows nicht auf „Nicht stören“/Fokus steht und nicht
+  „Töne 1 Stunde aus“ gewählt ist; die Anzeige kommt immer. „Ezan stoppen“ im Banner
+  oder im Tray-Menü beendet ihn.
+- Farben folgen Windows hell/dunkel (`AppsUseLightTheme`): Popup und Banner bei jedem
+  Öffnen, das Einstellungsfenster beim Programmstart.
 
 ## Bekannte Grenzen
 
@@ -73,8 +93,9 @@ oder Umgebungsvariable `GEBETSZEITEN_DATA_DIR=<Ordner>` (die Eigenschaft gewinnt
   Taskleiste, deren Aufbau Windows nicht zusagt. Nach einem großen Update kann es
   falsch sitzen oder fehlen; dann „Feld in der Taskleiste“ im Tray-Menü aus- und
   wieder einschalten, notfalls abschalten – die Zeiten bleiben im Tray-Symbol.
-- Benachrichtigungen erscheinen über das Tray-Symbol (`TrayIcon.displayMessage`).
-  Sie haben keine Stopp-Taste: Ein laufender Ezan wird über „Ezan stoppen“ im
-  Tray-Menü beendet.
+- Windows-Benachrichtigungen (Einstellung „Windows-Benachrichtigung“) kommen über das
+  Tray-Symbol (`TrayIcon.displayMessage`), haben keine Stopp-Taste und Windows spielt
+  dazu seinen eigenen Ton. Wer nur den Programmton will: in Windows unter
+  Benachrichtigungen den Ton für „Java“/„Gebetszeiten“ abschalten, oder das Banner nehmen.
 - „Nicht stören“ wird über eine undokumentierte Windows-Schnittstelle erkannt; falls
   der Ezan trotzdem spielt: Ezan-Datei leeren oder Lautstärke senken.

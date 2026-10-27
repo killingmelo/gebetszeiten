@@ -1,6 +1,7 @@
 package de.gebetszeiten.prayer
 
 import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
+import de.gebetszeiten.core.prayertimes.Nafile
 import java.time.ZonedDateTime
 
 /** The three Hanafi makruh (karaha) windows during which prayer is disliked. */
@@ -56,21 +57,18 @@ object IslamicWindows {
     /** [nextFajr] is the following day's Fajr, used for the last-third night.
      *  Pass null when it's unavailable (e.g. the last day of bundled coverage) -
      *  the Tahajjud window is then left out rather than guessed. */
+    // Rechnung im Kern (geteilt mit dem Desktop), hier nur umverpackt.
     fun nafl(times: DailyPrayerTimes, nextFajr: ZonedDateTime?): NaflTimes {
-        val duhaStart = times.sunrise.plusMinutes(ISRAK_AFTER_SUNRISE_MIN)
-        val duhaEnd = times.dhuhr.minusMinutes(ZEVAL_BEFORE_DHUHR_MIN)
-        // Last third of the night (sunset → next dawn).
-        val tahajjudStart = nextFajr?.let { fajr ->
-            val nightSeconds = java.time.Duration.between(times.maghrib, fajr).seconds
-            times.maghrib.plusSeconds(nightSeconds * 2 / 3)
-        }
+        val duha = Nafile.duha(times)
+        val awwabin = Nafile.awwabin(times)
+        val tahajjud = Nafile.tahajjud(times, nextFajr)
         return NaflTimes(
-            duhaStart = duhaStart,
-            duhaEnd = duhaEnd,
-            awwabinStart = times.maghrib,
-            awwabinEnd = times.isha,
-            tahajjudStart = tahajjudStart,
-            tahajjudEnd = nextFajr,
+            duhaStart = duha.start,
+            duhaEnd = duha.end,
+            awwabinStart = awwabin.start,
+            awwabinEnd = awwabin.end,
+            tahajjudStart = tahajjud?.start,
+            tahajjudEnd = tahajjud?.end,
         )
     }
 }

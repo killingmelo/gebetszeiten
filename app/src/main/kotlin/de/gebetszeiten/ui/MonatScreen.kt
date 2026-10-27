@@ -44,7 +44,7 @@ import java.util.Locale
 private val HM_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 private const val DATE_WEIGHT = 1.5f
 /** Prayer names for the accessibility (TalkBack) row description. */
-private val ROW_PRAYERS = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
+private val ROW_PRAYERS = listOf("Faǧr", "Ẓuhr", "ʿAṣr", "Maġrib", "ʿIšāʾ")
 
 /** [hasTimes] false heisst: [PrayerProvider.daily] lieferte an diesem Tag
  *  `null` (Aufgabe 9) - [times] ist dann trotzdem fuenf Eintraege lang

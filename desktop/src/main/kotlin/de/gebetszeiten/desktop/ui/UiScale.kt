@@ -47,6 +47,9 @@ private var defaultsInstalled = false
 fun installScaledDefaults() {
     if (defaultsInstalled) return
     defaultsInstalled = true
+    // Farben nach Windows hell/dunkel, einmal pro Prozess (Popup und Banner lesen bei jedem Oeffnen neu).
+    runCatching { Theme.installMetal(Theme.current()) }
+        .onFailure { System.err.println("Farbschema: ${it.javaClass.simpleName}: ${it.message}") }
     val scale = systemScale()
     if (scale == 1.0) return
     val defaults = UIManager.getLookAndFeelDefaults()

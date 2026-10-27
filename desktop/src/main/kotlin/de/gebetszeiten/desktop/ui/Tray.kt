@@ -24,8 +24,11 @@ class Tray(
     onToggleField: () -> Unit,
     onStopEzan: () -> Unit,
     onQuit: () -> Unit,
+    onMuteHour: (Boolean) -> Unit = {},
+    onTestBanner: () -> Unit = {},
 ) {
     private val fieldItem = CheckboxMenuItem("Feld in der Taskleiste", true)
+    private val muteItem = CheckboxMenuItem("Töne 1 Stunde aus", false)
     private val stopItem = MenuItem("Ezan stoppen").apply { isEnabled = false }
     private var icon: TrayIcon? = null
 
@@ -39,8 +42,11 @@ class Tray(
             menu.addSeparator()
             fieldItem.addItemListener { onToggleField() }
             menu.add(fieldItem)
+            muteItem.addItemListener { onMuteHour(muteItem.state) }
+            menu.add(muteItem)
             stopItem.addActionListener { onStopEzan() }
             menu.add(stopItem)
+            menu.add(MenuItem("Benachrichtigung testen").apply { addActionListener { onTestBanner() } })
             menu.addSeparator()
             menu.add(MenuItem("Beenden").apply { addActionListener { onQuit() } })
 
@@ -64,12 +70,18 @@ class Tray(
         icon?.toolTip = state.tooltip.take(127)
     }
 
-    /** Toast ueber Windows; den Ton macht Windows selbst, kein Extra-Piepen. */
-    fun toast(e: NotifyEvent) = onEdt {
-        icon?.displayMessage(e.title, e.text, TrayIcon.MessageType.NONE)
+    /**
+     * Windows-Benachrichtigung; den eigenen Ton spielt der Aufrufer. Mit
+     * [excerpt] (Lesetext gekuerzt) als zweiter Absatz.
+     */
+    fun toast(e: NotifyEvent, excerpt: String? = null) = onEdt {
+        val text = excerpt?.let { "${e.text}\n\n$it" } ?: e.text
+        icon?.displayMessage(e.title, text, TrayIcon.MessageType.NONE)
     }
 
     fun setFieldChecked(on: Boolean) = onEdt { fieldItem.state = on }
+
+    fun setMuted(on: Boolean) = onEdt { muteItem.state = on }
 
     /** Ezan stoppen ist nur waehrend der Wiedergabe bedienbar. */
     fun setEzanPlaying(playing: Boolean) = onEdt { stopItem.isEnabled = playing }

@@ -20,8 +20,8 @@
          Untertext wie am Telefon ("Berechnung als Notausgang"). -->
     <string name="settings_calculation_fallback">Ersatzberechnung: An</string>
     <string name="settings_calculation_fallback_off">Ersatzberechnung: Aus</string>
-    <string name="cemaat_on">Cemaat morgens: An</string>
-    <string name="cemaat_off">Cemaat morgens: Aus</string>
+    <string name="cemaat_on">Ǧamāʿa morgens: An</string>
+    <string name="cemaat_off">Ǧamāʿa morgens: Aus</string>
 
     <!-- Leerfall (Task 16): weder amtliche Zeiten noch eine eingeschaltete
          Ersatzberechnung liefern etwas. Zwei Formen, je EINMAL definiert
@@ -43,7 +43,7 @@
     <string name="no_times_notice_short">—</string>
 
     <!-- MainActivity: derived congregation row label -->
-    <string name="label_cemaat">Cemaat (Gemeinschaft)</string>
+    <string name="label_cemaat">Ǧamāʿa (Gemeinschaft)</string>
 
     <!-- MainActivity: sunrise row label -->
     <string name="label_sonnenaufgang">Sonnenaufgang</string>
@@ -55,8 +55,8 @@
     <string name="desc_hero_time_clock">um %1$s Uhr</string>
 
     <!-- MainActivity: Karaha warning templates -->
-    <string name="karaha_active">⚠️ Karaha bis %1$s</string>
-    <string name="karaha_soon">⚠️ Karaha ab %1$s</string>
+    <string name="karaha_active">⚠️ Karāha bis %1$s</string>
+    <string name="karaha_soon">⚠️ Karāha ab %1$s</string>
 
     <!-- MainActivity: content descriptions -->
     <string name="desc_naechstes_gebet">Nächstes Gebet: %1$s</string>

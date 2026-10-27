@@ -39,8 +39,8 @@ class DisplayTest {
 
     @Test fun karahaTexts() {
         val w = Karaha.Window(Karaha.Kind.ZEVAL, at(13, 1), at(13, 21))
-        assertEquals(KarahaLine("⚠️ Karaha bis 13:21", true), karahaLine(Karaha.Status.Active(w)))
-        assertEquals(KarahaLine("⚠️ Karaha ab 13:01", false), karahaLine(Karaha.Status.Soon(w)))
+        assertEquals(KarahaLine("⚠️ Karāha bis 13:21", true), karahaLine(Karaha.Status.Active(w)))
+        assertEquals(KarahaLine("⚠️ Karāha ab 13:01", false), karahaLine(Karaha.Status.Soon(w)))
         assertNull(karahaLine(Karaha.Status.None))
     }
 
@@ -60,12 +60,12 @@ class DisplayTest {
     }
 
     @Test fun germanNames() {
-        assertEquals("Asr", Prayer.ASR.germanName())
+        assertEquals("ʿAṣr", Prayer.ASR.germanName())
         assertEquals("Sonnenaufgang", Prayer.SUNRISE.germanName())
-        assertEquals("Fajr", Prayer.FAJR.germanName())
-        assertEquals("Dhuhr", Prayer.DHUHR.germanName())
-        assertEquals("Maghrib", Prayer.MAGHRIB.germanName())
-        assertEquals("Isha", Prayer.ISHA.germanName())
+        assertEquals("Faǧr", Prayer.FAJR.germanName())
+        assertEquals("Ẓuhr", Prayer.DHUHR.germanName())
+        assertEquals("Maġrib", Prayer.MAGHRIB.germanName())
+        assertEquals("ʿIšāʾ", Prayer.ISHA.germanName())
     }
 
     @Test fun boundariesCountAndSettle() {

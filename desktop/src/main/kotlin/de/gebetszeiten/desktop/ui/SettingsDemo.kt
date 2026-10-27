@@ -22,7 +22,15 @@ fun runSettingsDemo(args: Array<String>) {
     val hit = window.searchAndSelectFirst("nurnberg")
     println("erster Treffer: $hit")
     Thread.sleep(500)
-    if (shot != null) window.snapshot()?.let { javax.imageio.ImageIO.write(it, "png", File(shot)) }
+    // --shot=x.png: ein Bild je Reiter (x-0.png … x-4.png).
+    if (shot != null) {
+        for (tab in 0..4) {
+            window.selectTab(tab)
+            Thread.sleep(300)
+            window.snapshot()?.let { javax.imageio.ImageIO.write(it, "png", File(shot.removeSuffix(".png") + "-$tab.png")) }
+        }
+        window.selectTab(0)
+    }
     window.saveOnEdt()
     println("--- settings.properties ---")
     println(Files.readString(dir.resolve("settings.properties")))
