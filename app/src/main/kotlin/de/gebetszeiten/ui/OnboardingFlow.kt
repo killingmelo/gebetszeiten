@@ -76,11 +76,11 @@ fun onboardingCopy(step: OnboardingStep, fresh: Boolean): OnboardingCopy = when 
         headline = if (fresh) {
             "Dein nächstes Gebet im Blick"
         } else {
-            "Das gibt es, gefunden hat es kaum jemand"
+            "Diese Anzeige kennen bisher nur wenige."
         },
         detail = "Eine stille, dauerhafte Benachrichtigung zeigt das nächste " +
             "Gebet auf dem Sperrbildschirm, mit einem Symbol oben in der " +
-            "Statusleiste. Wichtig zu wissen: Solange der Erinnerungsstil " +
+            "Statusleiste. Solange der Erinnerungsstil " +
             "„Still“ ist, ersetzt diese eine Zeile die einzelnen Meldungen zur " +
             "Gebetszeit. Sie ändert sich dann, statt neu aufzutauchen.",
     )

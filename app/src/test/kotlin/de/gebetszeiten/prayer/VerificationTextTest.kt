@@ -105,7 +105,7 @@ class VerificationTextTest {
             ),
         )
 
-        assertEquals("Gegenprüfung: 2 von 31 Tagen weichen ab, max. 1 Min: mögliche Korrektur", line)
+        assertEquals("Gegenprüfung: 2 von 31 Tagen weichen ab, max. 1 Min, mögliche Korrektur", line)
     }
 
     @Test fun `DRIFT mit einem abweichenden Tag sagt weicht ab, nicht weichen ab`() {
@@ -119,7 +119,7 @@ class VerificationTextTest {
             ),
         )
 
-        assertEquals("Gegenprüfung: 1 von 31 Tagen weicht ab, max. 1 Min: mögliche Korrektur", line)
+        assertEquals("Gegenprüfung: 1 von 31 Tagen weicht ab, max. 1 Min, mögliche Korrektur", line)
     }
 
     @Test fun `DRIFT ueber einen einzigen verglichenen Tag sagt von 1 Tag`() {
@@ -133,7 +133,7 @@ class VerificationTextTest {
             ),
         )
 
-        assertEquals("Gegenprüfung: 1 von 1 Tag weicht ab, max. 2 Min: mögliche Korrektur", line)
+        assertEquals("Gegenprüfung: 1 von 1 Tag weicht ab, max. 2 Min, mögliche Korrektur", line)
     }
 
     @Test fun `CONFLICT_OVERRIDDEN benennt die kuerzere Abdeckung`() {
@@ -210,7 +210,7 @@ class VerificationTextTest {
     @Test fun `UNVERIFIED_SINGLE sagt, dass die Gegenpruefung nicht moeglich war`() {
         val line = verificationLine(verification(VerificationNote.UNVERIFIED_SINGLE))
 
-        assertEquals("Gegenprüfung: nicht möglich: nur eine Quelle erreichbar", line)
+        assertEquals("Gegenprüfung nicht möglich, nur eine Quelle erreichbar", line)
     }
 
     // --- fetchErrorSummary

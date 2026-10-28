@@ -192,7 +192,7 @@ object PrayerProvider {
                     // Ort ohne Zeitplan — `DueLocation.hopeless` ausloesen,
                     // also die Auswahl bremsen. Dass nur eine Quelle
                     // erreichbar war, sagt ohnehin die Pruefnotiz
-                    // ("nicht möglich — nur eine Quelle erreichbar").
+                    // ("Gegenprüfung nicht möglich, nur eine Quelle erreichbar").
                     cache.recordAttempt(null, now, targetLat, targetLng, pinned)
                     if (stampMatches(active.first, active.second, targetLat, targetLng)) {
                         fetchedActive = result.schedule

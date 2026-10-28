@@ -37,7 +37,7 @@ fun verificationLine(verification: Verification?): String? {
 
         VerificationNote.DRIFT ->
             PREFIX + "${v.differingDays} von ${daysDative(v.comparedDays)} " +
-                "${differVerb(v.differingDays)} ab, max. ${v.maxAbsMinutes} Min: mögliche Korrektur"
+                "${differVerb(v.differingDays)} ab, max. ${v.maxAbsMinutes} Min, mögliche Korrektur"
 
         // „beiden Kontrollquellen" ist keine Annahme, sondern zugesichert:
         // CONFLICT_OVERRIDDEN entsteht nur aus GENAU ZWEI untereinander
@@ -85,7 +85,8 @@ fun verificationLine(verification: Verification?): String? {
                 "(${daysNominative(v.comparedDays)} verglichen)"
 
         VerificationNote.UNVERIFIED_SINGLE ->
-            PREFIX + "nicht möglich: nur eine Quelle erreichbar"
+            // Ohne Doppelpunkt: „Gegenprüfung: nicht möglich: …“ hatte zwei.
+            "Gegenprüfung nicht möglich, nur eine Quelle erreichbar"
 
         VerificationNote.NONE -> null
     }

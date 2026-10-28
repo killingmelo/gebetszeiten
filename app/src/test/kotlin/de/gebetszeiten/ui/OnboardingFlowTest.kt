@@ -80,7 +80,7 @@ class OnboardingFlowTest {
     @Test fun `der neue Nutzer liest nirgends, es habe sich etwas geaendert`() {
         OnboardingStep.values().forEach { s ->
             val text = onboardingCopy(s, fresh = true).let { it.headline + " " + it.detail }
-            listOf("geändert", "wie bisher", "gefunden hat es").forEach {
+            listOf("geändert", "wie bisher", "bisher nur wenige").forEach {
                 assertFalse("$s behauptet gegenueber Neuinstallationen „$it\": $text", text.contains(it))
             }
         }
@@ -95,6 +95,15 @@ class OnboardingFlowTest {
             val text = onboardingCopy(OnboardingStep.ANZEIGE, fresh).detail
             assertTrue("die Folge fehlt (fresh=$fresh): $text", text.contains("ersetzt"))
             assertTrue("der Stil wird nicht genannt (fresh=$fresh): $text", text.contains("Still"))
+        }
+    }
+
+    @Test fun `der Anzeige-Schritt fuer Bestandsnutzer ohne Fuellwoerter`() {
+        val c = onboardingCopy(OnboardingStep.ANZEIGE, fresh = false)
+        assertEquals("Diese Anzeige kennen bisher nur wenige.", c.headline)
+        listOf(true, false).forEach { fresh ->
+            val text = onboardingCopy(OnboardingStep.ANZEIGE, fresh).detail
+            assertFalse("Fuellwort im Satz (fresh=$fresh): $text", text.contains("Wichtig zu wissen"))
         }
     }
 
