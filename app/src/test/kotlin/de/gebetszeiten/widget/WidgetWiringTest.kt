@@ -78,6 +78,29 @@ class WidgetWiringTest {
         assertTrue("Kontrast auf dem Foto nur $ratio", ratio >= 4.5)
     }
 
+    @Test fun `Systemzaehler traegt den Akzent aus den Ressourcen`() {
+        val xml = File("src/main/res/layout/widget_chronometer.xml").readText()
+        assertTrue("widget_chronometer.xml nutzt widget_chrono_text nicht", xml.contains("@color/widget_chrono_text"))
+        assertEquals("#FF224228", farbe("src/main/res/values/colors.xml", "widget_chrono_text"))
+        assertEquals("#FF849671", farbe("src/main/res/values-night/colors.xml", "widget_chrono_text"))
+    }
+
+    @Test fun `Dringlichkeitsrot erreicht 4,5 zu 1 auf dem Grund`() {
+        fun argb(hex: String?) = Color(java.lang.Long.parseLong(hex!!.removePrefix("#"), 16))
+        val tag = argb(farbe("src/main/res/values/colors.xml", "widget_urgent"))
+        val nacht = argb(farbe("src/main/res/values-night/colors.xml", "widget_urgent"))
+        assertEquals(de.gebetszeiten.ui.theme.Palette.Day.error, tag)
+        assertEquals(de.gebetszeiten.ui.theme.Palette.Night.error, nacht)
+        assertTrue(contrastRatio(tag, de.gebetszeiten.ui.theme.Palette.Day.canvas) >= 4.5)
+        assertTrue(contrastRatio(nacht, de.gebetszeiten.ui.theme.Palette.Night.canvas) >= 4.5)
+    }
+
+    @Test fun `laufendes Gebet in der Reihe wird TalkBack angesagt`() {
+        val text = ohneKommentare(widget)
+        assertTrue("status_current fehlt im Widget", text.contains("R.string.status_current"))
+        assertTrue("semantics fehlt im Widget", text.contains("contentDescription ="))
+    }
+
     @Test fun `Dringlichkeit auf dem Foto steht hell auf rotem Feld`() {
         val ratio = contrastRatio(WidgetPhotoStyle.Text, de.gebetszeiten.ui.theme.Palette.Day.error)
         assertTrue("Kontrast auf dem roten Feld nur $ratio", ratio >= 4.5)

@@ -32,6 +32,8 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.material3.ColorProviders
+import androidx.glance.semantics.contentDescription
+import androidx.glance.semantics.semantics
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -70,13 +72,16 @@ class NextPrayerWidget : GlanceAppWidget() {
 
     private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
 
-    // Zwei Stufen: klein nur der Abschnitt, groß (wenn der Nutzer das Widget
-    // so weit aufzieht) mit Foto und Tagesreihe. Glance zeichnet nur bei den
-    // ohnehin vorhandenen Ereignissen neu; Größenwechsel erledigt das System.
-    override val sizeMode: SizeMode = SizeMode.Responsive(setOf(COMPACT, FULL))
+    // Zwei Stufen: klein nur der Abschnitt, groß (ab [FULL], wenn der Nutzer
+    // das Widget so weit aufzieht) mit Foto und Tagesreihe. `Exact` statt
+    // `Responsive`, weil das kleine Widget seine echte Höhe kennen muss, um
+    // bei großer Schrift eine Zeile wegzulassen (compactLines); bei
+    // `Responsive` lieferte LocalSize nur die Stufe (40 dp). Glance zeichnet
+    // dafür bei einer Größenänderung neu; sonst nur bei den ohnehin
+    // vorhandenen Ereignissen.
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     private companion object {
-        val COMPACT = DpSize(110.dp, 40.dp)
         val FULL = DpSize(220.dp, 120.dp)
         val CORNER = 24.dp
     }
@@ -234,7 +239,20 @@ class NextPrayerWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.Start,
         ) {
-            HeroText(context, title, countdown, nextLine, karahaLine, onPhoto = false)
+            // Bei großer Schrift passt nicht alles in 2×1: lieber eine Zeile
+            // weglassen als die letzte abschneiden (siehe compactLines).
+            val fit = compactLines(
+                heightDp = LocalSize.current.height.value,
+                fontScale = context.resources.configuration.fontScale,
+                countdown = countdown.show,
+                karaha = karahaLine != null,
+                next = nextLine != null,
+            )
+            HeroText(
+                context, title, countdown,
+                nextLine.takeIf { fit.next }, karahaLine.takeIf { fit.karaha },
+                onPhoto = false,
+            )
         }
     }
 
@@ -301,7 +319,7 @@ class NextPrayerWidget : GlanceAppWidget() {
                     when {
                         onPhoto -> setTextColor(R.id.widget_chrono, WidgetPhotoStyle.Text.toArgb())
                         // Final minutes: same urgency cue the STEPS countdown gets
-                        // (the EXACT chronometer otherwise stayed textColorPrimary).
+                        // (sonst Akzent aus @color/widget_chrono_text).
                         countdown.urgent -> setTextColor(R.id.widget_chrono, context.getColor(R.color.widget_urgent))
                     }
                 }
@@ -427,7 +445,12 @@ class NextPrayerWidget : GlanceAppWidget() {
                         entry.faded -> GlanceTheme.colors.onSurfaceVariant
                         else -> GlanceTheme.colors.onSurface
                     }
-                    Column(modifier = GlanceModifier.defaultWeight()) {
+                    // TalkBack: das laufende Gebet wird als solches angesagt.
+                    val spoken = "${entry.label} ${entry.time}" +
+                        if (entry.current) context.getString(R.string.status_current) else ""
+                    Column(
+                        modifier = GlanceModifier.defaultWeight().semantics { contentDescription = spoken },
+                    ) {
                         Text(
                             text = entry.label,
                             style = TextStyle(

@@ -38,3 +38,26 @@ internal fun nextDisplayBoundary(boundaries: List<Long>, nowMs: Long): Long? =
  */
 internal fun displayStepCount(targetMs: Long, nowMs: Long): Int =
     displayStepBoundaries(targetMs, nowMs).count { it > nowMs + BOUNDARY_MIN_LEAD_MS }
+
+/**
+ * Wann das Widget seinen Titel wechselt, ohne dass ein Gebet beginnt: Beginn
+ * von Ḍuḥā und Beginn der Zawāl-Zeit (je mit [BOUNDARY_SETTLE_MS]).
+ *
+ * Nur bei ausgeschalteter Karāha-Anzeige noetig — eingeschaltet liefern die
+ * Karāha-Grenzen genau diese Zeitpunkte schon (Ende Israk = Beginn Ḍuḥā,
+ * Beginn Zeval) — und nur, wenn ueberhaupt ein Widget liegt; sonst kostet
+ * die Grenze zwei Weckvorgaenge am Tag fuer nichts. [widgetPlaced] wird von
+ * aussen hereingereicht (Glance), damit diese Funktion ohne `Context` testbar
+ * bleibt.
+ */
+internal fun widgetTitleBoundaries(
+    karaha: de.gebetszeiten.prayer.KarahaTimes,
+    nafl: de.gebetszeiten.prayer.NaflTimes,
+    showKaraha: Boolean,
+    widgetPlaced: Boolean,
+): List<Long> =
+    if (showKaraha || !widgetPlaced) {
+        emptyList()
+    } else {
+        listOf(nafl.duhaStart, karaha.zevalStart).map { it.toInstant().toEpochMilli() + BOUNDARY_SETTLE_MS }
+    }
