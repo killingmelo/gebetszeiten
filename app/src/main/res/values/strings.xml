@@ -40,6 +40,7 @@
     <!-- Qibla -->
     <string name="qibla_bearing">%1$d° · %2$s</string>
     <string name="qibla_distance">Kaaba · %1$s km</string>
+    <string name="qibla_compass_desc">Kompass mit Qibla-Pfeil, Richtung %1$d° %2$s</string>
     <string name="qibla_no_compass">Kompass nicht verfügbar — Qibla liegt bei %1$d° %2$s</string>
     <string name="compass_n">N</string>
     <string name="compass_e">O</string>
@@ -50,7 +51,6 @@
     <string name="month_prev">Vorheriger Monat</string>
     <string name="month_next">Nächster Monat</string>
     <string name="month_loading">lädt…</string>
-    <string name="month_maghrib_short">Magh.</string>
 
     <!-- Tabs / App-Bar -->
     <string name="tab_today">Heute</string>
@@ -60,6 +60,9 @@
 
     <!-- DateNavigator -->
     <string name="date_today">Heute</string>
+    <string name="widget_preview_title">ʿIšāʾ · 21:31</string>
+    <string name="widget_preview_remaining">noch 1 Std 12 Min</string>
+    <string name="date_jump_today">zu heute springen</string>
     <string name="date_prev_day">Vorheriger Tag</string>
     <string name="date_next_day">Nächster Tag</string>
 

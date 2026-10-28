@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,7 +82,12 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Canvas(modifier = Modifier.size(240.dp)) {
+        val compassDesc = stringResource(R.string.qibla_compass_desc, bearing.roundToInt(), cardinal)
+        Canvas(
+            modifier = Modifier
+                .size(240.dp)
+                .semantics { contentDescription = compassDesc },
+        ) {
             rotate(animated) {
                 drawCompassRose(ring, north, compassLabels)
                 rotate(bearing.toFloat(), pivot = center) {

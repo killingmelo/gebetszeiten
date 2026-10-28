@@ -6,8 +6,11 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 internal val LightColors = lightColorScheme(
     primary = md_primary_light,
@@ -25,6 +28,16 @@ internal val LightColors = lightColorScheme(
     surfaceVariant = md_surfaceVariant_light,
     onSurfaceVariant = md_onSurfaceVariant_light,
     outline = md_outline_light,
+    surfaceContainerLowest = md_surfaceContainerLowest_light,
+    surfaceContainerLow = md_surfaceContainerLow_light,
+    surfaceContainer = md_surfaceContainer_light,
+    surfaceContainerHigh = md_surfaceContainerHigh_light,
+    surfaceContainerHighest = md_surfaceContainerHighest_light,
+    surfaceDim = md_surfaceDim_light,
+    surfaceBright = md_surface_light,
+    inverseSurface = md_inverseSurface_light,
+    inverseOnSurface = md_inverseOnSurface_light,
+    inversePrimary = md_inversePrimary_light,
 )
 
 internal val DarkColors = darkColorScheme(
@@ -43,6 +56,16 @@ internal val DarkColors = darkColorScheme(
     surfaceVariant = md_surfaceVariant_dark,
     onSurfaceVariant = md_onSurfaceVariant_dark,
     outline = md_outline_dark,
+    surfaceContainerLowest = md_surfaceContainerLowest_dark,
+    surfaceContainerLow = md_surfaceContainerLow_dark,
+    surfaceContainer = md_surfaceContainer_dark,
+    surfaceContainerHigh = md_surfaceContainerHigh_dark,
+    surfaceContainerHighest = md_surfaceContainerHighest_dark,
+    surfaceDim = md_background_dark,
+    surfaceBright = md_surfaceBright_dark,
+    inverseSurface = md_inverseSurface_dark,
+    inverseOnSurface = md_inverseOnSurface_dark,
+    inversePrimary = md_inversePrimary_dark,
 )
 
 private val LightHighContrast = lightColorScheme(
@@ -61,6 +84,16 @@ private val LightHighContrast = lightColorScheme(
     surfaceVariant = Color(0xFFDDE6E0),
     onSurfaceVariant = Color(0xFF1A1A1A),
     outline = Color(0xFF3A3A3A),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF4F7F5),
+    surfaceContainer = Color(0xFFEDF1EE),
+    surfaceContainerHigh = Color(0xFFE5EAE7),
+    surfaceContainerHighest = Color(0xFFDDE6E0),
+    surfaceDim = Color(0xFFD5DAD7),
+    surfaceBright = Color(0xFFFFFFFF),
+    inverseSurface = Color(0xFF1A1C1B),
+    inverseOnSurface = Color(0xFFFFFFFF),
+    inversePrimary = Color(0xFFA7F2DA),
 )
 
 private val DarkHighContrast = darkColorScheme(
@@ -79,6 +112,16 @@ private val DarkHighContrast = darkColorScheme(
     surfaceVariant = Color(0xFF2A302C),
     onSurfaceVariant = Color(0xFFE8E8E8),
     outline = Color(0xFFB8B8B8),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF0A0D0B),
+    surfaceContainer = Color(0xFF141815),
+    surfaceContainerHigh = Color(0xFF1C211E),
+    surfaceContainerHighest = Color(0xFF252B27),
+    surfaceDim = Color(0xFF000000),
+    surfaceBright = Color(0xFF353B37),
+    inverseSurface = Color(0xFFFFFFFF),
+    inverseOnSurface = Color(0xFF000000),
+    inversePrimary = Color(0xFF0A5C46),
 )
 
 /** True when the high-contrast scheme is active (read by accent colours). */
@@ -101,6 +144,20 @@ fun GebetszeitenTheme(
         darkTheme -> DarkColors
         highContrast -> LightHighContrast
         else -> LightColors
+    }
+    // Seit targetSdk 35 zeichnet die App unter die Systemleisten; deren
+    // Symbole muessen der App-Hell/Dunkel-Wahl folgen (die auch gegen die
+    // Systemeinstellung erzwungen sein kann) — sonst stehen im hellen Modus
+    // weisse Uhr und Akku auf hellem Grund.
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
     }
     CompositionLocalProvider(
         LocalHighContrast provides highContrast,

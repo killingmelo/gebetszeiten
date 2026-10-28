@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -124,7 +126,7 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
                 stringResource(R.string.prayer_fajr),
                 stringResource(R.string.prayer_dhuhr),
                 stringResource(R.string.prayer_asr),
-                stringResource(R.string.month_maghrib_short),
+                stringResource(R.string.prayer_maghrib),
                 stringResource(R.string.prayer_isha),
             )
             headers.forEach {
@@ -133,6 +135,8 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
                 )
             }
         }
@@ -140,7 +144,17 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
         if (list == null) {
             Text(stringResource(R.string.month_loading), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            // Im laufenden Monat beim heutigen Tag oeffnen (zwei Zeilen
+            // Vorlauf) — sonst lag „heute" ab Monatsmitte unter dem Rand.
+            val listState = rememberLazyListState()
+            LaunchedEffect(list, month) {
+                if (month == YearMonth.from(today)) {
+                    listState.scrollToItem((today.dayOfMonth - 3).coerceAtLeast(0))
+                } else {
+                    listState.scrollToItem(0)
+                }
+            }
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(list) { row ->
                     val isToday = row.date == today
                     val bg = if (isToday) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent
@@ -156,13 +170,13 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
                         Text(
                             dateLabel(row.date),
                             Modifier.weight(DATE_WEIGHT),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
                         )
                         row.times.forEach { time ->
                             Text(
                                 time, Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
                                 textAlign = TextAlign.Center,
                             )

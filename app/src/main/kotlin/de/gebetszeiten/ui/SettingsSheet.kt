@@ -5,7 +5,9 @@ package de.gebetszeiten.ui
 // Quellen-Badges weiter wächst.
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -29,6 +31,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -118,7 +122,7 @@ private fun RecentPlacesRow(
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         places.forEach { c ->
             FilterChip(
                 // Identität über die Koordinaten, wie bei withRecentPlace:
@@ -243,7 +247,10 @@ private fun FavoritesRow(
                                 // Die Klickfläche liegt außen und ist damit
                                 // größer als das Symbol; mehr gibt die
                                 // 32-dp-Höhe eines Chips nicht her.
-                                .clickable(onClickLabel = removeLabel) { onRemove(c) }
+                                // 48-dp-Trefferflaeche fuer das Kreuz; der Chip
+                                // waechst dafuer etwas in der Hoehe.
+                                .minimumInteractiveComponentSize()
+                                .clickable(role = Role.Button, onClickLabel = removeLabel) { onRemove(c) }
                                 .padding(3.dp)
                                 .size(18.dp),
                         )
@@ -474,6 +481,10 @@ internal fun LocationSettings(
                 useOnline = settings.useOnline,
                 calculationFillsGaps = settings.calculationFillsGaps,
                 currentCity = settings.city,
+                // Kein Autofokus: sonst oeffnet jeder Besuch der Einstellungen
+                // die Tastatur, die auf kleinen Handys fast das ganze Blatt
+                // verdeckt — auch wenn man gar keinen Ort sucht.
+                autoFocus = false,
                 whenEmpty = {
                     // Der aktuelle Ort als City. Das Land kennen die Einstellungen
                     // nicht — es bleibt leer, `recentPlaceLabel` liest es nicht.
@@ -631,7 +642,7 @@ internal fun LocationSettings(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(stringResource(R.string.settings_cemaat_offset), style = MaterialTheme.typography.bodyLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(15, 20, 30, 45, 60).forEach { v ->
                         FilterChip(
                             selected = settings.cemaatOffsetMinutes == v,
@@ -719,7 +730,7 @@ internal fun LocationSettings(
             }
 
             Text(stringResource(R.string.settings_style), style = MaterialTheme.typography.bodyLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
                     stringResource(R.string.reminder_style_silent) to AppSettings.STYLE_SILENT,
                     stringResource(R.string.reminder_style_vibrate) to AppSettings.STYLE_VIBRATE,
@@ -739,7 +750,7 @@ internal fun LocationSettings(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(stringResource(R.string.lead_off) to 0, stringResource(R.string.lead_5) to 5, stringResource(R.string.lead_10) to 10, stringResource(R.string.lead_15) to 15, stringResource(R.string.lead_30) to 30).forEach { (label, v) ->
                     FilterChip(
                         selected = settings.reminderLeadMinutes == v,
@@ -753,7 +764,7 @@ internal fun LocationSettings(
 
         SettingsSection(stringResource(R.string.settings_section_appearance)) {
             Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.bodyLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
                     stringResource(R.string.theme_system) to AppSettings.THEME_SYSTEM,
                     stringResource(R.string.theme_light) to AppSettings.THEME_LIGHT,
@@ -773,7 +784,7 @@ internal fun LocationSettings(
             )
 
             Text(stringResource(R.string.settings_hijri), style = MaterialTheme.typography.bodyLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(-2, -1, 0, 1, 2).forEach { v ->
                     FilterChip(
                         selected = settings.hijriOffsetDays == v,
@@ -802,7 +813,7 @@ internal fun LocationSettings(
 private fun CountdownModeSelector(label: String, value: String, onChange: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
                 stringResource(R.string.countdown_off) to AppSettings.COUNTDOWN_OFF,
                 stringResource(R.string.countdown_steps) to AppSettings.PRECISION_STEPS,
@@ -822,7 +833,7 @@ private fun CountdownModeSelector(label: String, value: String, onChange: (Strin
 private fun FontSizeSelector(value: Float, onChange: (Float) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(stringResource(R.string.font_size), style = MaterialTheme.typography.bodyLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(stringResource(R.string.font_normal) to 1f, stringResource(R.string.font_large) to 1.2f, stringResource(R.string.font_xlarge) to 1.4f).forEach { (label, v) ->
                 FilterChip(
                     selected = abs(value - v) < 0.01f,
@@ -886,12 +897,17 @@ private fun BatteryOptimizationCard() {
 
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    // Die ganze Zeile schaltet (nicht nur der Schalter): groessere
+    // Trefferflaeche, und TalkBack liest Beschriftung und Zustand als EIN
+    // Element statt Text und namenlosen Schalter getrennt.
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }

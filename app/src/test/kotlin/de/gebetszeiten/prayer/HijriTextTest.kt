@@ -6,15 +6,19 @@ import org.junit.Test
 import java.time.LocalDate
 
 class HijriTextTest {
-    @Test fun usesInternationalTransliterationForDhulHijja() {
-        assertEquals("23. Dhul-Hijja 1447", hijriText(LocalDate.of(2026, 6, 9), 0))
+    @Test fun usesDmgTransliterationForDhuLHigga() {
+        assertEquals("23. Ḏū l-Ḥiǧǧa 1447", hijriText(LocalDate.of(2026, 6, 9), 0))
     }
 
     @Test fun shortFormDropsYear() {
-        assertEquals("23. Dhul-Hijja", hijriTextShort(LocalDate.of(2026, 6, 9), 0))
+        assertEquals("23. Ḏū l-Ḥiǧǧa", hijriTextShort(LocalDate.of(2026, 6, 9), 0))
+    }
+
+    @Test fun jumadaUlaInDmg() {
+        assertEquals("17. Ǧumādā l-ūlā 1448", hijriText(LocalDate.of(2026, 10, 28), 0))
     }
 
     @Test fun offsetShiftsDay() {
-        assertTrue(hijriText(LocalDate.of(2026, 6, 9), -1).startsWith("22. Dhul-Hijja"))
+        assertTrue(hijriText(LocalDate.of(2026, 6, 9), -1).startsWith("22. Ḏū l-Ḥiǧǧa"))
     }
 }

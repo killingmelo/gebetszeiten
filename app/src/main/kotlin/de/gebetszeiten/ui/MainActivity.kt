@@ -121,6 +121,10 @@ import java.util.Locale
 
 private val HM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
+/** Verblasste (vorbeigegangene) Nafl-, Ǧamāʿa- und Makrūh-Zeilen. 0.9 haelt
+ *  auch das Amber auf der hellen Karte ueber 4,5:1 (0.75 waren 3,4:1). */
+private const val FADED_ALPHA = 0.9f
+
 private data class DayInfo(
     val times: DailyPrayerTimes,
     val karaha: KarahaTimes,
@@ -617,9 +621,16 @@ private fun DateNavigator(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        // Tipp auf die Mitte springt zurueck auf heute — nur anbieten, wenn
+        // ein anderer Tag gewaehlt ist, und mit Ansage fuer TalkBack.
+        val todayLabel = stringResource(R.string.date_jump_today)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.clickable(onClick = onToday),
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(enabled = !isToday, role = Role.Button, onClickLabel = todayLabel, onClick = onToday)
+                .padding(vertical = 4.dp),
         ) {
             Text(
                 text = if (isToday) stringResource(R.string.date_today) else date.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)),
@@ -993,15 +1004,21 @@ private fun TimesCard(
 
 @Composable
 private fun ExpanderRow(text: String, onClick: () -> Unit) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
+    // Volle 48 dp Hoehe und Knopf-Rolle: vorher ~32 dp und fuer TalkBack nur Text.
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-    )
+            .heightIn(min = 48.dp)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
 }
 
 /** Vertical timeline: primary entries (prayers + Duha) sit on a rail as nodes;
@@ -1090,13 +1107,16 @@ private fun Timeline(
                 // interval length is written faintly into the gap — except the
                 // first gap, where the next prayer's countdown already shows it.
                 val gapMin = prev?.let { Duration.between(it, block.sortAt).toMinutes().coerceAtLeast(0) }
-                val gapDp = gapMin?.let { (it * 0.34).dp.coerceIn(22.dp, 132.dp) } ?: 4.dp
+                // Obergrenze 80 dp (vorher 132): auf kleinen Handys schob die lange
+                // Strecke Ḍuḥā→Ẓuhr sonst alles Weitere aus dem Bild.
+                val gapDp = gapMin?.let { (it * 0.34).dp.coerceIn(22.dp, 80.dp) } ?: 4.dp
                 if (gapMin != null && gapMin >= 30 && index >= 2) {
                     Box(modifier = Modifier.fillMaxWidth().height(gapDp)) {
                         Text(
                             text = durationLabel(gapMin),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            // 0.8 statt 0.6: mit 0.6 nur 3,0:1 auf der hellen Karte.
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                             modifier = Modifier.align(Alignment.CenterStart),
                         )
                     }
@@ -1118,7 +1138,8 @@ private fun Timeline(
                         val foreground = when {
                             isSelected && nextT != null -> MaterialTheme.colorScheme.onPrimaryContainer
                             isNext -> primary
-                            isPast -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            // 0.8 haelt auf der hellen Karte 4,9:1 (0.6 waren 3,0:1).
+                            isPast -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             else -> MaterialTheme.colorScheme.onSurface
                         }
                         val weight = if (isSelected || isNext) FontWeight.Bold else FontWeight.Normal
@@ -1239,7 +1260,7 @@ private fun Timeline(
                     }
                     is NaflBlock -> {
                         val faded = highlight && block.end.isBefore(now)
-                        val c = green.copy(alpha = if (faded) 0.75f else 1f)
+                        val c = green.copy(alpha = if (faded) FADED_ALPHA else 1f)
                         if (block.forenoon) {
                             // Duha = forenoon entry (replaces Sunrise). İşrak makruh
                             // chip sits above it; when current the pill fills with
@@ -1347,7 +1368,7 @@ private fun MakruhChipRow(
     countdown: KarahaCountdown.State?,
     onKaraha: (Pair<String, String>) -> Unit,
 ) {
-    val c = amber.copy(alpha = if (faded) 0.75f else 1f)
+    val c = amber.copy(alpha = if (faded) FADED_ALPHA else 1f)
     val desc = stringResource(R.string.desc_makruh, block.label, block.start.format(HM), block.end.format(HM)) +
         (if (selected) stringResource(R.string.desc_makruh_current) else "") +
         (countdown?.let { stringResource(R.string.desc_makruh_countdown, it.text) } ?: "")
@@ -1452,7 +1473,7 @@ private fun ProgressPill(
 /** Abgeleitete Cemaat-Punktzeit unter Fajr — Aufbau wie NaflTipRow, aber ohne Bereich. */
 @Composable
 private fun CemaatTipRow(block: CemaatTip, green: Color, faded: Boolean, onInfo: (Pair<String, String>) -> Unit) {
-    val c = green.copy(alpha = if (faded) 0.75f else 1f)
+    val c = green.copy(alpha = if (faded) FADED_ALPHA else 1f)
     val desc = stringResource(R.string.desc_cemaat, block.label, block.time.format(HM))
     val explainLabel = stringResource(R.string.show_explanation)
     Row(
@@ -1478,7 +1499,7 @@ private fun CemaatTipRow(block: CemaatTip, green: Color, faded: Boolean, onInfo:
 /** Compact green nafl "tip" attached under a prayer (e.g. Awwabin on Maghrib). */
 @Composable
 private fun NaflTipRow(block: NaflBlock, green: Color, faded: Boolean, onInfo: (Pair<String, String>) -> Unit) {
-    val c = green.copy(alpha = if (faded) 0.75f else 1f)
+    val c = green.copy(alpha = if (faded) FADED_ALPHA else 1f)
     val desc = stringResource(R.string.desc_nafl_tip, block.label, block.start.format(HM), block.end.format(HM))
     val explainLabel = stringResource(R.string.show_explanation)
     var mod = Modifier.padding(start = 12.dp)

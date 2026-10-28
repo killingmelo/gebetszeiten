@@ -2,6 +2,8 @@ package de.gebetszeiten.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -250,7 +252,7 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
         )
     }
     Text(stringResource(R.string.settings_style), style = MaterialTheme.typography.bodyLarge)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(
             stringResource(R.string.reminder_style_silent) to AppSettings.STYLE_SILENT,
             stringResource(R.string.reminder_style_vibrate) to AppSettings.STYLE_VIBRATE,
@@ -269,7 +271,7 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(
             stringResource(R.string.lead_off) to 0,
             stringResource(R.string.lead_5) to 5,
@@ -288,12 +290,19 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
 
 @Composable
 private fun ToggleLine(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    // Wie ToggleRow in den Einstellungen: die ganze Zeile schaltet.
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = checked,
+                role = androidx.compose.ui.semantics.Role.Switch,
+                onValueChange = onChange,
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
         Text(label, modifier = Modifier.weight(1f))
-        androidx.compose.material3.Switch(checked = checked, onCheckedChange = onChange)
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = null)
     }
 }
