@@ -1,6 +1,7 @@
 package de.gebetszeiten.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -9,120 +10,70 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-internal val LightColors = lightColorScheme(
-    primary = md_primary_light,
-    onPrimary = md_onPrimary_light,
-    primaryContainer = md_primaryContainer_light,
-    onPrimaryContainer = md_onPrimaryContainer_light,
-    secondary = md_secondary_light,
-    onSecondary = md_onSecondary_light,
-    secondaryContainer = md_secondaryContainer_light,
-    onSecondaryContainer = md_onSecondaryContainer_light,
-    background = md_background_light,
-    onBackground = md_onBackground_light,
-    surface = md_surface_light,
-    onSurface = md_onSurface_light,
-    surfaceVariant = md_surfaceVariant_light,
-    onSurfaceVariant = md_onSurfaceVariant_light,
-    outline = md_outline_light,
-    surfaceContainerLowest = md_surfaceContainerLowest_light,
-    surfaceContainerLow = md_surfaceContainerLow_light,
-    surfaceContainer = md_surfaceContainer_light,
-    surfaceContainerHigh = md_surfaceContainerHigh_light,
-    surfaceContainerHighest = md_surfaceContainerHighest_light,
-    surfaceDim = md_surfaceDim_light,
-    surfaceBright = md_surface_light,
-    inverseSurface = md_inverseSurface_light,
-    inverseOnSurface = md_inverseOnSurface_light,
-    inversePrimary = md_inversePrimary_light,
-)
+/** Material-Schema aus den Tokens; `containers` sind die fünf Flächenstufen (niedrigste bis höchste). */
+private fun schemeOf(
+    t: Tokens,
+    other: Tokens,
+    dark: Boolean,
+    containers: List<Color>,
+    bright: Color,
+): ColorScheme {
+    val primaryContainer = t.accent.copy(alpha = 0.12f).compositeOver(t.canvas)
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = t.accent,
+        onPrimary = t.canvas,
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = t.ink,
+        secondary = t.stone,
+        onSecondary = t.canvas,
+        secondaryContainer = t.surface,
+        onSecondaryContainer = t.ink,
+        tertiary = t.gold,
+        onTertiary = t.canvas,
+        tertiaryContainer = t.surface,
+        onTertiaryContainer = t.ink,
+        background = t.canvas,
+        onBackground = t.ink,
+        surface = t.canvas,
+        onSurface = t.ink,
+        surfaceVariant = t.surface,
+        onSurfaceVariant = t.stone,
+        outline = t.stone,
+        outlineVariant = t.hairline,
+        surfaceContainerLowest = containers[0],
+        surfaceContainerLow = containers[1],
+        surfaceContainer = containers[2],
+        surfaceContainerHigh = containers[3],
+        surfaceContainerHighest = containers[4],
+        surfaceDim = t.canvas,
+        surfaceBright = bright,
+        inverseSurface = t.ink,
+        inverseOnSurface = t.canvas,
+        inversePrimary = other.accent,
+        error = t.error,
+        onError = t.canvas,
+    )
+}
 
-internal val DarkColors = darkColorScheme(
-    primary = md_primary_dark,
-    onPrimary = md_onPrimary_dark,
-    primaryContainer = md_primaryContainer_dark,
-    onPrimaryContainer = md_onPrimaryContainer_dark,
-    secondary = md_secondary_dark,
-    onSecondary = md_onSecondary_dark,
-    secondaryContainer = md_secondaryContainer_dark,
-    onSecondaryContainer = md_onSecondaryContainer_dark,
-    background = md_background_dark,
-    onBackground = md_onBackground_dark,
-    surface = md_surface_dark,
-    onSurface = md_onSurface_dark,
-    surfaceVariant = md_surfaceVariant_dark,
-    onSurfaceVariant = md_onSurfaceVariant_dark,
-    outline = md_outline_dark,
-    surfaceContainerLowest = md_surfaceContainerLowest_dark,
-    surfaceContainerLow = md_surfaceContainerLow_dark,
-    surfaceContainer = md_surfaceContainer_dark,
-    surfaceContainerHigh = md_surfaceContainerHigh_dark,
-    surfaceContainerHighest = md_surfaceContainerHighest_dark,
-    surfaceDim = md_background_dark,
-    surfaceBright = md_surfaceBright_dark,
-    inverseSurface = md_inverseSurface_dark,
-    inverseOnSurface = md_inverseOnSurface_dark,
-    inversePrimary = md_inversePrimary_dark,
+private val DayContainers = List(5) { Palette.Day.surface }
+private val NightContainers = listOf(
+    Color(0xFF0B0B0C), Color(0xFF0F0F10), Color(0xFF131315), Color(0xFF161618), Color(0xFF19191C),
 )
+private val DayHcContainers = List(5) { Palette.DayHc.surface }
+private val NightHcContainers = List(5) { Palette.NightHc.surface }
 
-private val LightHighContrast = lightColorScheme(
-    primary = Color(0xFF0A5C46),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFF0E7A5F),
-    onPrimaryContainer = Color(0xFFFFFFFF),
-    secondary = Color(0xFF2C4A3E),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFBFE3D2),
-    onSecondaryContainer = Color(0xFF00150C),
-    background = Color(0xFFFFFFFF),
-    onBackground = Color(0xFF000000),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF000000),
-    surfaceVariant = Color(0xFFDDE6E0),
-    onSurfaceVariant = Color(0xFF1A1A1A),
-    outline = Color(0xFF3A3A3A),
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFF4F7F5),
-    surfaceContainer = Color(0xFFEDF1EE),
-    surfaceContainerHigh = Color(0xFFE5EAE7),
-    surfaceContainerHighest = Color(0xFFDDE6E0),
-    surfaceDim = Color(0xFFD5DAD7),
-    surfaceBright = Color(0xFFFFFFFF),
-    inverseSurface = Color(0xFF1A1C1B),
-    inverseOnSurface = Color(0xFFFFFFFF),
-    inversePrimary = Color(0xFFA7F2DA),
-)
+internal val LightColors = schemeOf(Palette.Day, Palette.Night, false, DayContainers, Palette.Day.surface)
+internal val DarkColors = schemeOf(Palette.Night, Palette.Day, true, NightContainers, Palette.Night.surface)
+private val LightHighContrast = schemeOf(Palette.DayHc, Palette.NightHc, false, DayHcContainers, Palette.DayHc.surface)
+private val DarkHighContrast = schemeOf(Palette.NightHc, Palette.DayHc, true, NightHcContainers, Palette.NightHc.surface)
 
-private val DarkHighContrast = darkColorScheme(
-    primary = Color(0xFFA7F2DA),
-    onPrimary = Color(0xFF00150C),
-    primaryContainer = Color(0xFF00513A),
-    onPrimaryContainer = Color(0xFFFFFFFF),
-    secondary = Color(0xFFCEE9DA),
-    onSecondary = Color(0xFF00150C),
-    secondaryContainer = Color(0xFF2C463C),
-    onSecondaryContainer = Color(0xFFFFFFFF),
-    background = Color(0xFF000000),
-    onBackground = Color(0xFFFFFFFF),
-    surface = Color(0xFF000000),
-    onSurface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFF2A302C),
-    onSurfaceVariant = Color(0xFFE8E8E8),
-    outline = Color(0xFFB8B8B8),
-    surfaceContainerLowest = Color(0xFF000000),
-    surfaceContainerLow = Color(0xFF0A0D0B),
-    surfaceContainer = Color(0xFF141815),
-    surfaceContainerHigh = Color(0xFF1C211E),
-    surfaceContainerHighest = Color(0xFF252B27),
-    surfaceDim = Color(0xFF000000),
-    surfaceBright = Color(0xFF353B37),
-    inverseSurface = Color(0xFFFFFFFF),
-    inverseOnSurface = Color(0xFF000000),
-    inversePrimary = Color(0xFF0A5C46),
-)
+/** Die Farbrollen der aktiven Palette; alle Bildschirme lesen sie hier. */
+val LocalTokens = staticCompositionLocalOf { Palette.Day }
 
 /** True when the high-contrast scheme is active (read by accent colours). */
 val LocalHighContrast = staticCompositionLocalOf { false }
@@ -131,8 +82,8 @@ val LocalHighContrast = staticCompositionLocalOf { false }
  *  colours so they don't depend on the raw system setting. */
 val LocalIsDark = staticCompositionLocalOf { false }
 
-/** Branded calm-green theme. Keeps a consistent identity (no dynamic color),
- *  follows the system light/dark setting, with an optional high-contrast mode. */
+/** Oura-Stil (Creme/Waldgrün, nachts Schwarz). Keine dynamischen Farben,
+ *  folgt der System-Einstellung hell/dunkel, mit optionalem Hochkontrast. */
 @Composable
 fun GebetszeitenTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -144,6 +95,12 @@ fun GebetszeitenTheme(
         darkTheme -> DarkColors
         highContrast -> LightHighContrast
         else -> LightColors
+    }
+    val tokens = when {
+        darkTheme && highContrast -> Palette.NightHc
+        darkTheme -> Palette.Night
+        highContrast -> Palette.DayHc
+        else -> Palette.Day
     }
     // Seit targetSdk 35 zeichnet die App unter die Systemleisten; deren
     // Symbole muessen der App-Hell/Dunkel-Wahl folgen (die auch gegen die
@@ -162,7 +119,8 @@ fun GebetszeitenTheme(
     CompositionLocalProvider(
         LocalHighContrast provides highContrast,
         LocalIsDark provides darkTheme,
+        LocalTokens provides tokens,
     ) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = AppTypography, content = content)
     }
 }

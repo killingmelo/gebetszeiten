@@ -9,6 +9,21 @@ Dieses Dokument ist Ouras Stilreferenz (unten unverändert) mit folgenden Abweic
   - Arabisch: Noto Naskh Arabic, Regular (400).
   - Ressourcen: `R.font.serif_light`, `serif_regular`, `sans_regular`, `sans_medium`, `sans_semibold`, `naskh_regular`.
 - **Nachtgrund ist #000000.** Nachts: Grund #000000, Fläche #19191c, Text #f7f1e8, Nebentext #a8a5a0, Haarlinie #232326.
+- **Palette, wie im Code verwendet** (`ui/theme/Color.kt`, geprüft von `PaletteContrastTest`: Tag/Nacht mindestens 4,5:1, Hochkontrast mindestens 7:1, jeweils für Text, Nebentext, Akzent, Gold und Fehler auf Grund und Fläche). Wo die Spec den Test nicht bestand, ist der Wert minimal abgedunkelt bzw. aufgehellt (Spalten mit \*).
+
+  | Token | Tag | Nacht | Hochkontrast Tag | Hochkontrast Nacht |
+  |---|---|---|---|---|
+  | canvas | #f7f1e8 | #000000 | #ffffff | #000000 |
+  | surface | #ffffff | #19191c | #ffffff | #000000 |
+  | ink | #1c1b1a | #f7f1e8 | #000000 | #ffffff |
+  | stone | #4a4741 | #a8a5a0 | #33312d | #d0ccc5 |
+  | hairline | #e1dcd3 | #232326 | #6b6760 | #8a8780 |
+  | accent | #224228 | #849671 | #224228 | #9db08a |
+  | gold | #966417 \* (Spec #af751b: 3,5:1 auf Creme) | #ddaa61 | #795113 | #ddaa61 |
+  | ochre | #bc924c | #bc924c | #795113 | #ddaa61 |
+  | error | #cd341f \* (Spec #e33a22: 3,8:1) | #e54b35 \* (Spec #e33a22: 4,1:1 auf Fläche) | #a62a19 | #eb705f |
+
+  Ocker ist Zierfarbe (kein Textkontrast gefordert). Nachts sind die Flächenstufen #0b0b0c bis #19191c. Aschgrau #838280 wird nicht verwendet.
 - **Schreibregeln.** In sichtbaren Texten kein Gedankenstrich und kein Halbgeviertstrich (U+2014, U+2013), auch nicht in Zeitspannen („11:45 bis 12:05“); keine KI-Floskeln.
 - **DMG-Umschrift.** Alle Begriffe in DMG (Faǧr, Šurūq, Ẓuhr, ʿAṣr, Maġrib, ʿIšāʾ, Ḍuḥā, Makrūh, Zawāl), nie türkisch oder englisch. ʿ = U+02BF, ʾ = U+02BE. Jede Schrift muss alle DMG-Zeichen enthalten (`FontCoverageTest`).
 - **Zeiten.** Nur amtliche Diyanet-Zeiten; Bilder und Sonnenuhr zeigen keine Uhrzeiten.
