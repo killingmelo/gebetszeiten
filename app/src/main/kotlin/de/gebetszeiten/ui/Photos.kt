@@ -3,6 +3,8 @@ package de.gebetszeiten.ui
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import de.gebetszeiten.R
+import de.gebetszeiten.prayer.HeroState
+import de.gebetszeiten.prayer.Moment
 import de.gebetszeiten.prayer.PhotoKey
 
 /** Das gebündelte Titelbild (Unsplash-Platzhalter) zu einem Abschnitt des Tages. */
@@ -26,6 +28,12 @@ fun photoCaptionRes(key: PhotoKey): Int = when (key) {
     PhotoKey.MAGHRIB -> R.string.photo_caption_maghrib
     PhotoKey.ISHA -> R.string.photo_caption_isha
 }
+
+/** Die Unterschrift auf „Heute“: während Zawāl zeigt das Ẓuhr-Foto, aber die
+ *  Sonne hat den Zenit noch nicht überschritten, daher ein eigener Satz. */
+@StringRes
+fun captionResFor(state: HeroState): Int =
+    if (state.moment == Moment.ZAWAL) R.string.photo_caption_zawal else photoCaptionRes(state.photo)
 
 /** Die TalkBack-Beschreibung: sagt schlicht, was auf dem Foto zu sehen ist. */
 @StringRes

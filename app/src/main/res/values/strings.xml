@@ -184,6 +184,7 @@
     <!-- Titelbilder (Unsplash-Platzhalter) -->
     <string name="photo_caption_fajr">Das Licht breitet sich am Horizont aus.</string>
     <string name="photo_caption_shuruq">Die Sonne ist aufgegangen.</string>
+    <string name="photo_caption_zawal">Die Sonne steht nahe ihrem Höchststand.</string>
     <string name="photo_caption_zuhr">Die Sonne hat den Zenit überschritten, der Schatten wächst wieder.</string>
     <string name="photo_caption_asr">Die Schatten sind lang geworden.</string>
     <string name="photo_caption_maghrib">Die Sonnenscheibe ist hinter dem Horizont verschwunden.</string>

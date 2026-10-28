@@ -72,7 +72,6 @@ import de.gebetszeiten.prayer.IslamicWindows
 import de.gebetszeiten.prayer.KarahaTimes
 import de.gebetszeiten.prayer.Moment
 import de.gebetszeiten.prayer.NaflTimes
-import de.gebetszeiten.prayer.PhotoKey
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.prayer.Section
 import de.gebetszeiten.prayer.dataCreditRes
@@ -231,7 +230,7 @@ internal fun HeuteScreen(
                 cemaatOffsetMinutes = settings.cemaatOffsetMinutes,
             )
             Spacer(Modifier.height(8.dp))
-            Photo(hero.photo, t)
+            Photo(hero, t)
             // An anderen Tagen kein Titel und keine Restzeit: nur Foto und Liste.
             if (isToday) {
                 Spacer(Modifier.height(20.dp))
@@ -356,7 +355,8 @@ private fun DateLine(
 
 /** Foto des Abschnitts, 10:7 mit Radius 24 dp, darunter die Bildunterschrift. */
 @Composable
-private fun Photo(key: PhotoKey, t: Tokens) {
+private fun Photo(hero: HeroState, t: Tokens) {
+    val key = hero.photo
     Image(
         painter = painterResource(photoRes(key)),
         contentDescription = stringResource(photoDescriptionRes(key)),
@@ -368,7 +368,7 @@ private fun Photo(key: PhotoKey, t: Tokens) {
             .clip(RoundedCornerShape(24.dp)),
     )
     Text(
-        text = stringResource(photoCaptionRes(key)),
+        text = stringResource(captionResFor(hero)),
         style = MaterialTheme.typography.bodyMedium,
         color = t.stone,
         modifier = Modifier.padding(start = GUTTER, end = GUTTER, top = 8.dp),
