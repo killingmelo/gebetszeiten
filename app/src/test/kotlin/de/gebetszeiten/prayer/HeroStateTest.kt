@@ -88,6 +88,8 @@ class HeroStateTest {
         assertNotNull(near.makruh)
         assertFalse(near.makruh!!.state.active)
         assertEquals(karaha.zevalEnd, near.makruh!!.end)
+        // Die bevorstehende Zeile nennt den Beginn („Makrūh ab 11:45“).
+        assertEquals(karaha.zevalStart, near.makruh!!.start)
         assertNull(at(t(11, 20)).makruh)
     }
 

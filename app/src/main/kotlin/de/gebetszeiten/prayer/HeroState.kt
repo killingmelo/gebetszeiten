@@ -13,7 +13,7 @@ enum class PhotoKey { FAJR, SHURUQ, ZUHR, ASR, MAGHRIB, ISHA }
 
 data class Upcoming(val prayer: Prayer, val at: ZonedDateTime)
 
-data class MakruhLine(val end: ZonedDateTime, val state: KarahaCountdown.State)
+data class MakruhLine(val start: ZonedDateTime, val end: ZonedDateTime, val state: KarahaCountdown.State)
 
 data class HeroState(
     val moment: Moment,
@@ -46,7 +46,7 @@ private fun makruhLine(karaha: KarahaTimes, now: ZonedDateTime): MakruhLine? {
     for ((start, end) in windows) {
         val state = KarahaCountdown.state(now, start, end) ?: continue
         val soon = Duration.between(now, start) <= Duration.ofMinutes(MAKRUH_LEAD_MINUTES)
-        if (state.active || soon) return MakruhLine(end, state)
+        if (state.active || soon) return MakruhLine(start, end, state)
     }
     return null
 }

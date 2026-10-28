@@ -1,0 +1,16 @@
+<!-- Reiter „Zeiten verstehen“: halbe Sonne über dem Horizont, Strichstärke 2 wie ic_today/ic_month/ic_qibla -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Horizont -->
+    <path android:strokeColor="#FF000000" android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M3,18H21" />
+    <!-- Sonnenscheibe -->
+    <path android:strokeColor="#FF000000" android:strokeWidth="2"
+        android:pathData="M7,18A5,5 0,0 1,17 18" />
+    <!-- Strahlen -->
+    <path android:strokeColor="#FF000000" android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M12,7V10M4.22,10.22L6.34,12.34M19.78,10.22L17.66,12.34" />
+</vector>
