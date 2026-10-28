@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Nur amtliche Diyanet-Zeiten; Bilder und Sonnenuhr liefern keine Uhrzeiten. Für ʿAṣr mit doppeltem Schatten wird keine Uhrzeit angezeigt.
-- DMG-Umschrift für alle Begriffe (Faǧr, Šurūq, Ẓuhr, ʿAṣr, Maġrib, ʿIšāʾ, Ḍuḥā, Auwābīn, Taḥaǧǧud, Ǧamāʿa, Makrūh, Zawāl). ʿ = U+02BF, ʾ = U+02BE.
+- DMG-Umschrift für alle Begriffe (Faǧr, Šurūq, Ẓuhr, ʿAṣr, Maġrib, ʿIšāʾ, Ḍuḥā, Auwābīn, Tahaǧǧud, Ǧamāʿa, Makrūh, Zawāl). ʿ = U+02BF, ʾ = U+02BE.
 - Sichtbare Texte: kein „—“ (U+2014), kein „–“ (U+2013), auch nicht in Zeitspannen („11:45 bis 12:05“); keine KI-Floskeln.
 - Zitate nur aus Shamela-Werkzeug-Ergebnissen; Matn und Fußnote getrennt; deutsche Übersetzung als eigene Übersetzung gekennzeichnet.
 - Kontrast Text ≥ 4,5:1 (Hochkontrast ≥ 7:1); Tippziele ≥ 48 dp; TalkBack-Beschreibungen; Schriftskalierung bis 1,4 ohne Abschneiden; jede Bewegung über `rememberAnimationsEnabled()`.
@@ -229,7 +229,7 @@ fun dayRows(
 ): List<DayRow>
 ```
 
-Reihenfolge nach Zeit: Faǧr, Ǧamāʿa (`SideRow(JAMAA, sunrise minus Offset, null)`, nur wenn showCemaat), Šurūq als `PrayerRow(SUNRISE)`, Makrūh Aufgang (`SideRow(SHURUQ_MAKRUH, sunriseStart, sunriseEnd)`), Ḍuḥā (`SideRow(DUHA, …)`), Makrūh Zenit (`SideRow(ZUHR, zevalStart, zevalEnd)`, verweist auf den Ẓuhr-Abschnitt mit Zawāl), Ẓuhr, ʿAṣr, Makrūh Vergilben (`ISFIRAR_MAKRUH`), Maġrib, Auwābīn, ʿIšāʾ, Taḥaǧǧud (nur wenn Start/Ende vorhanden), Faǧr Folgetag (`nextDay = true`, nur wenn isToday und now ≥ isha und nextFajr vorhanden). Makrūh-Zeilen nur bei showKaraha. `current` genau für die Zeile des `heroState(...).moment` (DHUHR→Ẓuhr-Zeile usw.; SHURUQ→Šurūq-Zeile; DUHA→Ḍuḥā-Zeile; ISHA vor Faǧr→keine Zeile current, da Vortag).
+Reihenfolge nach Zeit: Faǧr, Ǧamāʿa (`SideRow(JAMAA, sunrise minus Offset, null)`, nur wenn showCemaat), Šurūq als `PrayerRow(SUNRISE)`, Makrūh Aufgang (`SideRow(SHURUQ_MAKRUH, sunriseStart, sunriseEnd)`), Ḍuḥā (`SideRow(DUHA, …)`), Makrūh Zenit (`SideRow(ZUHR, zevalStart, zevalEnd)`, verweist auf den Ẓuhr-Abschnitt mit Zawāl), Ẓuhr, ʿAṣr, Makrūh Vergilben (`ISFIRAR_MAKRUH`), Maġrib, Auwābīn, ʿIšāʾ, Tahaǧǧud (nur wenn Start/Ende vorhanden), Faǧr Folgetag (`nextDay = true`, nur wenn isToday und now ≥ isha und nextFajr vorhanden). Makrūh-Zeilen nur bei showKaraha. `current` genau für die Zeile des `heroState(...).moment` (DHUHR→Ẓuhr-Zeile usw.; SHURUQ→Šurūq-Zeile; DUHA→Ḍuḥā-Zeile; ISHA vor Faǧr→keine Zeile current, da Vortag).
 
 - [ ] **Step 1: Failing tests:** `fullDayAlwaysListed` (5 Pflichtgebete + Šurūq vorhanden, auch um 13:20), `pastFlagsBefore1320`, `nextDayFajrAppearsAfterIsha` (21:40, letzte Zeile nextDay true, 05:11), `noNextDayFajrOnLastCoveredDay` (nextFajr null), `makruhRowsHiddenWhenSwitchedOff`, `jamaaOnlyWhenEnabled` (Zeit 06:20 bei Offset 30), `exactlyOneCurrentAt1320`.
 - [ ] **Step 2: FAIL.** **Step 3: implementieren.** **Step 4: grün.**

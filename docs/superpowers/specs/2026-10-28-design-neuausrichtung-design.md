@@ -128,7 +128,7 @@ harten Schatten.
   Restzeit eine goldene Zeile, z. B. „Makrūh bis 12:05, noch 8 Min“. Keine Farbflächen.
 - **Liste** *(Entscheidung Claude)*: immer der ganze Tag; nach ʿIšāʾ als letzte Zeile der Faǧr
   des Folgetags (sofern vorhanden). Das bisherige Auf-/Zuklappen entfällt.
-- Makrūh-Zeiten, Ḍuḥā, Auwābīn, Taḥaǧǧud und Ǧamāʿa erscheinen als schlichte Nebenzeilen an
+- Makrūh-Zeiten, Ḍuḥā, Auwābīn, Tahaǧǧud und Ǧamāʿa erscheinen als schlichte Nebenzeilen an
   ihrem Platz in der Liste, ohne Chips und ohne Farbflächen; Antippen führt zum passenden Abschnitt
   in „Zeiten verstehen“ (ersetzt die bisherigen Erklärungsdialoge).
 - Nach ʿIšāʾ zählt die Restzeit bis Faǧr des Folgetags; fehlt dieser (letzter abgedeckter Tag),
@@ -145,7 +145,7 @@ harten Schatten.
   „bei Shamela automatisch nummeriert“, wo zutreffend).
 - Abschnitte: Faǧr, Šurūq und Makrūh beim Aufgang, Ḍuḥā, Ẓuhr und Zawāl, ʿAṣr (einfacher und
   doppelter Schatten; Satz, dass die angezeigte Zeit die amtliche Diyanet-Zeit ist), Makrūh beim
-  Vergilben, Maġrib, ʿIšāʾ, Taḥaǧǧud, Auwābīn, Ǧamāʿa am Morgen.
+  Vergilben, Maġrib, ʿIšāʾ, Tahaǧǧud, Auwābīn, Ǧamāʿa am Morgen.
 - Sonnenuhr (im ʿAṣr- und Ẓuhr-Abschnitt): horizontale Sonnenuhr, berechnet für die Breite des
   eingestellten Orts, mit Datumsbögen (21. Dez, Tagundnachtgleiche, 21. Juni), Mittagslinie,
   ʿAṣr-Kurven für einfachen und doppelten Schatten, heutigem Sonnenpfad und aktueller
