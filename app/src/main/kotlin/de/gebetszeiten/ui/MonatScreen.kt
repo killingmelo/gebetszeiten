@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -49,17 +50,17 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val HM_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-private const val DATE_WEIGHT = 1.5f
+private const val DATE_WEIGHT = 1.3f
 /** Prayer names for the accessibility (TalkBack) row description. */
-private val ROW_PRAYERS = listOf("Faǧr", "Ẓuhr", "ʿAṣr", "Maġrib", "ʿIšāʾ")
+private val ROW_PRAYERS = listOf("Faǧr", "Šurūq", "Ẓuhr", "ʿAṣr", "Maġrib", "ʿIšāʾ")
 
 /** Seitenrand der Tabelle; der Punkt für „heute“ sitzt darin. */
-private val MONTH_GUTTER = 24.dp
+private val MONTH_GUTTER = 16.dp
 
 /** Zeichen in einer Zelle ohne Zeit: ein ruhiger Punkt statt eines Strichs. */
 private const val NO_TIME_MARK = "·"
 
-/** [times] ist immer fünf Einträge lang, damit die Tabelle nicht aus der
+/** [times] ist immer sechs Einträge lang (Faǧr, Šurūq, Ẓuhr, ʿAṣr, Maġrib, ʿIšāʾ), damit die Tabelle nicht aus der
  *  Spur läuft; `null` heißt: [PrayerProvider.daily] lieferte an diesem Tag
  *  keine Zeiten. */
 private data class MonatRow(val date: LocalDate, val times: List<String?>) {
@@ -81,12 +82,13 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
             // Keine Zeiten unter den aktuellen Einstellungen: die Zeitspalten
             // dieses Tages bleiben leer, statt einen Wert zu erfinden.
             val times = PrayerProvider.daily(context, settings, date, zone)
-                ?.let { listOf(it.fajr, it.dhuhr, it.asr, it.maghrib, it.isha).map { time -> time.format(HM_MONTH) } }
-                ?: List(5) { null }
+                ?.let { listOf(it.fajr, it.sunrise, it.dhuhr, it.asr, it.maghrib, it.isha).map { time -> time.format(HM_MONTH) } }
+                ?: List(6) { null }
             MonatRow(date, times)
         }
     }
     val list = rows
+    val fontScale = LocalDensity.current.fontScale
 
     Column(modifier = Modifier.padding(inner).fillMaxSize()) {
         Row(
@@ -141,6 +143,7 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
             Text("", Modifier.weight(DATE_WEIGHT))
             val headers = listOf(
                 stringResource(R.string.prayer_fajr),
+                stringResource(R.string.moment_shuruq),
                 stringResource(R.string.prayer_dhuhr),
                 stringResource(R.string.prayer_asr),
                 stringResource(R.string.prayer_maghrib),
@@ -149,12 +152,15 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
             headers.forEach {
                 Text(
                     it.uppercase(Locale.GERMAN), Modifier.weight(1f),
-                    // Etwas engere Sperrung als sonst: fünf Spalten teilen sich die Breite.
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.6.sp),
+                    // Enge Sperrung und kleinere Schrift: sechs Spalten teilen sich
+                    // die Breite. Bei großer Systemschrift darf der Kopf umbrechen
+                    // statt abgeschnitten zu werden.
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = cappedSp(10, HEADER_SCALE_CAP, fontScale),
+                        letterSpacing = 0.2.sp,
+                    ),
                     color = t.stone,
                     textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    softWrap = false,
                 )
             }
         }
@@ -196,7 +202,7 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
                             // Punkt im Seitenrand wie auf „Heute“, damit die Spalten bündig bleiben.
                             .drawBehind {
                                 if (isToday) {
-                                    drawCircle(accent, radius = 3.dp.toPx(), center = Offset(-12.dp.toPx(), size.height / 2))
+                                    drawCircle(accent, radius = 3.dp.toPx(), center = Offset(-8.dp.toPx(), size.height / 2))
                                 }
                             }
                             .clearAndSetSemantics { contentDescription = rowDesc },
@@ -213,11 +219,15 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
                             Text(
                                 time ?: NO_TIME_MARK,
                                 Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                                // bodySmall: sechs Zeitspalten auf 360 dp; bei großer
+                                // Schrift lieber umbrechen als abschneiden.
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFeatureSettings = "tnum",
+                                    fontSize = cappedSp(12, TIME_SCALE_CAP, fontScale),
+                                ),
                                 fontWeight = weight,
                                 color = if (time == null) t.stone else t.ink,
                                 textAlign = TextAlign.Center,
-                                maxLines = 1,
                             )
                         }
                     }
@@ -226,6 +236,15 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
         }
     }
 }
+
+/** Grenzen, bis zu denen die Systemschrift in den Zeitspalten mitwächst; darüber
+ *  bräche eine Zeit mitten in den Ziffern um. Das Datum links wächst weiter mit. */
+private const val TIME_SCALE_CAP = 1.2f
+private const val HEADER_SCALE_CAP = 1.1f
+
+/** [baseSp] Sp, aber so, dass die Systemschrift höchstens bis [cap] wirkt. */
+private fun cappedSp(baseSp: Int, cap: Float, fontScale: Float) =
+    (baseSp * minOf(fontScale, cap) / fontScale).sp
 
 /** „Mo 1.“: Wochentag-Kürzel und Tag. */
 private fun dateLabel(date: LocalDate): String {

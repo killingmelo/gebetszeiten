@@ -83,6 +83,10 @@ class NextPrayerWidget : GlanceAppWidget() {
 
     private companion object {
         val FULL = DpSize(220.dp, 120.dp)
+
+        /** Ab dieser Breite steht Šurūq als sechster Eintrag in der Zeitzeile;
+         *  schmaler bleiben es die fünf Pflichtgebete. */
+        val SHURUQ_MIN_WIDTH = 280.dp
         val CORNER = 24.dp
     }
 
@@ -165,14 +169,25 @@ class NextPrayerWidget : GlanceAppWidget() {
             cemaatOffsetMinutes = 0,
         )
             .filterIsInstance<DayRow.PrayerRow>()
-            .filter { it.prayer != Prayer.SUNRISE && !it.nextDay }
+            .filter { !it.nextDay }
             .map {
-                DayEntry(
-                    label = context.getString(it.prayer.labelRes()),
-                    time = it.at.format(timeFormat),
-                    current = it.current,
-                    faded = it.past && !it.current,
-                )
+                if (it.prayer == Prayer.SUNRISE) {
+                    // Šurūq ist kein Gebet: nie „aktuell“, nur verblassen wie die anderen.
+                    DayEntry(
+                        label = context.getString(R.string.moment_shuruq),
+                        time = it.at.format(timeFormat),
+                        current = false,
+                        faded = it.past,
+                        optional = true,
+                    )
+                } else {
+                    DayEntry(
+                        label = context.getString(it.prayer.labelRes()),
+                        time = it.at.format(timeFormat),
+                        current = it.current,
+                        faded = it.past && !it.current,
+                    )
+                }
             }
         val photo = Photo(photoRes(hero.photo), context.getString(photoDescriptionRes(hero.photo)))
 
@@ -193,7 +208,14 @@ class NextPrayerWidget : GlanceAppWidget() {
         }
     }
 
-    private data class DayEntry(val label: String, val time: String, val current: Boolean, val faded: Boolean)
+    private data class DayEntry(
+        val label: String,
+        val time: String,
+        val current: Boolean,
+        val faded: Boolean,
+        /** Nur bei genug Breite sichtbar (Šurūq). */
+        val optional: Boolean = false,
+    )
 
     private data class Photo(val res: Int, val description: String)
 
@@ -439,7 +461,8 @@ class NextPrayerWidget : GlanceAppWidget() {
             Row(
                 modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                entries.forEach { entry ->
+                val showShuruq = LocalSize.current.width >= SHURUQ_MIN_WIDTH
+                entries.filter { showShuruq || !it.optional }.forEach { entry ->
                     val color = when {
                         entry.current -> GlanceTheme.colors.primary
                         entry.faded -> GlanceTheme.colors.onSurfaceVariant
