@@ -62,69 +62,22 @@
     <string name="settings_icon_desc">Einstellungen</string>
 
     <!-- DateNavigator -->
-    <string name="date_today">Heute</string>
     <string name="widget_preview_title">ʿIšāʾ · 21:31</string>
     <string name="widget_preview_remaining">noch 1 Std 12 Min</string>
     <string name="date_jump_today">zu heute springen</string>
     <string name="date_prev_day">Vorheriger Tag</string>
     <string name="date_next_day">Nächster Tag</string>
 
-    <!-- Timeline expander / labels -->
-    <string name="times_hide_earlier">Frühere ausblenden</string>
-    <string name="times_show_earlier">Frühere Zeiten anzeigen</string>
-    <string name="times_hide_later">Weitere ausblenden</string>
-    <string name="times_show_later">Weitere Zeiten anzeigen</string>
-    <string name="times_tomorrow_fajr">Morgen · Faǧr %1$s</string>
-
     <!-- Prayer-status content descriptions -->
     <string name="status_current">, aktuelles Gebet</string>
-    <string name="status_next">, nächstes Gebet</string>
     <string name="status_past">, vergangen</string>
-    <string name="desc_prayer_current">%1$s, %2$s, aktuelles Gebet, noch %3$s</string>
-    <string name="desc_prayer_current_makruh">, makrūh %1$s %2$s bis %3$s</string>
     <string name="desc_prayer">%1$s, %2$s%3$s</string>
-    <string name="desc_nafl_remaining">%1$s, freiwilliges Gebet, noch %2$s</string>
-    <string name="desc_nafl_range">%1$s, freiwilliges Gebet, %2$s bis %3$s</string>
-    <string name="desc_makruh">Makrūh-Zeit %1$s, %2$s bis %3$s</string>
-    <string name="desc_makruh_current">, aktuell</string>
-    <string name="desc_makruh_countdown">, %1$s</string>
-    <string name="desc_nafl_tip">Tipp: %1$s, freiwilliges Gebet, %2$s bis %3$s</string>
     <string name="show_explanation">Erklärung anzeigen</string>
-    <string name="remaining_inline">noch %1$s</string>
-
-    <!-- Inline labels -->
-    <string name="karaha_active_prefix">⛔ Karāha · </string>
-    <string name="karaha_warn_prefix">⚠ Karāha · </string>
-    <string name="makruh_chip">Makrūh · %1$s · %2$s bis %3$s</string>
-    <string name="makruh_chip_countdown"> · %1$s</string>
-    <string name="nafl_range_inline">%1$s · %2$s bis %3$s</string>
-
-    <!-- Makruh / Nafl explanations -->
-    <string name="karaha_sunrise_title">Išrāq (nach Sonnenaufgang)</string>
-    <string name="karaha_sunrise_text">Makrūh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein (freiwilliges) Gebet; danach beginnen Išrāq/Ḍuḥā. (ḥanafitisch)</string>
-    <string name="karaha_zeval_title">Zawāl / Istiwāʾ (Zenit)</string>
-    <string name="karaha_zeval_text">Makrūh-Zeit kurz vor dem Höchststand der Sonne bis Ẓuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (ḥanafitisch)</string>
-    <string name="karaha_isfirar_title">Iṣfirār aš-šams (vor Sonnenuntergang)</string>
-    <string name="karaha_isfirar_text">Makrūh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maġrib. Nur das heutige ʿAṣr darf hier noch (verspätet) gebetet werden. (ḥanafitisch)</string>
-    <string name="nafl_awwabin_title">Auwābīn</string>
-    <string name="nafl_awwabin_text">Freiwilliges Gebet nach dem Maġrib- bis zum ʿIšāʾ-Gebet. Empfohlen sind 6 Rakʿa. (Sunna/mustaḥabb)</string>
-    <string name="nafl_tahajjud_title">Tahaǧǧud</string>
-    <string name="nafl_tahajjud_text">Freiwilliges Nachtgebet im letzten Drittel der Nacht (nach dem Schlaf, vor Faǧr). Besonders verdienstvoll. (Sunna/mustaḥabb)</string>
 
     <!-- Block labels -->
-    <string name="makruh_zenit">Zenit</string>
-    <string name="makruh_before_sunset">vor Sonnenuntergang</string>
-    <string name="makruh_after_sunrise">nach Sonnenaufgang</string>
     <string name="nafl_awwabin">Auwābīn</string>
     <string name="nafl_tahajjud">Tahaǧǧud</string>
     <string name="nafl_duha">Ḍuḥā</string>
-
-    <!-- Cemaat (Gemeinschaftsgebet morgens, abgeleitet) -->
-    <string name="cemaat_label">Gemeinschaftsgebet (Ǧamāʿa)</string>
-    <string name="cemaat_time_inline">%1$s · %2$s</string>
-    <string name="desc_cemaat">Tipp: %1$s um %2$s</string>
-    <string name="cemaat_explain_title">Gemeinschaftsgebet (Ǧamāʿa)</string>
-    <string name="cemaat_explain_text">Übliche Zeit des Faǧr-Gemeinschaftsgebets in der Moschee: kurz vor Sonnenaufgang (Diyanet-Praxis ≈30 Min davor). Die Zeit wird aus dem Sonnenaufgang berechnet. Der Vorlauf ist in den Einstellungen anpassbar. Keine amtliche Diyanet-Angabe; die eigene Moschee kann abweichen.</string>
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
@@ -167,7 +120,7 @@
     <string name="settings_calculation_fallback">Berechnung als Notausgang</string>
     <string name="settings_calculation_fallback_hint">Wenn für einen Tag keine amtlichen Diyanet-Zeiten vorliegen, die lokale astronomische Berechnung verwenden. Amtliche Zeiten haben immer Vorrang. Ist dies aus, zeigt die App für solche Tage gar keine Zeiten.</string>
     <string name="settings_remaining">Restzeit</string>
-    <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit. Eine Einstellung für alles: App, Widget, Sperrbildschirm und das Symbol in der Statusleiste. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
+    <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit in Widget, Sperrbildschirm und Symbol in der Statusleiste. In der App steht die Restzeit immer. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
     <string name="settings_remaining_all">Überall</string>
     <string name="settings_remaining_cost">Stufen kostet je Gebetsintervall bis zu 14 feste Weckvorgänge: die letzten neun Minuten einzeln, davor die Zehnminuten-Marken, plus einen je angefangener Stunde; je nach Intervall etwa 13 bis 25. Genau kostet fast dieselben, sobald die dauerhafte Anzeige läuft: Den Text zählt dort das System, aber das Symbol in der Statusleiste stellt nur die App weiter. Etwas billiger ist Genau trotzdem, weil das Widget dabei ohne die App auskommt. Ohne dauerhafte Anzeige kostet Genau gar nichts, und Aus kostet nie welche.</string>
     <string name="settings_lockscreen_hint">Auf dem Sperrbildschirm erscheint die Restzeit erst, wenn die dauerhafte Anzeige eingeschaltet ist.</string>
@@ -249,6 +202,7 @@
     <string name="hero_makruh_until">Makrūh bis %1$s</string>
     <string name="hero_makruh_from">Makrūh ab %1$s</string>
     <string name="row_next_day">morgen</string>
+    <string name="desc_prayer_next_day">%1$s, morgen, %2$s</string>
     <string name="side_jamaa">Ǧamāʿa</string>
     <string name="side_makruh_sunrise">Makrūh beim Aufgang</string>
     <string name="side_makruh_zawal">Makrūh im Zawāl</string>
@@ -256,6 +210,4 @@
 
     <string name="photo_credit">Foto: %1$s, Unsplash</string>
 
-    <!-- Dialog -->
-    <string name="understood">Verstanden</string>
 </resources>

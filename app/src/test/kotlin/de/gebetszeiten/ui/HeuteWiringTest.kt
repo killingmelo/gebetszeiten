@@ -45,9 +45,18 @@ class HeuteWiringTest {
 
     @Test fun `HeuteScreen nutzt die gemeinsame Zeitlogik`() {
         val text = ohneKommentare(heute)
-        listOf("heroState(", "dayRows(", "onExplain(", "photoRes(", "timeRange(", "COUNTDOWN_OFF").forEach {
+        listOf("heroState(", "dayRows(", "onExplain(", "photoRes(", "timeRange(").forEach {
             assertTrue("HeuteScreen.kt enthaelt $it nicht", text.contains(it))
         }
+    }
+
+    @Test fun `noch steht auf Heute unabhaengig von der Restzeit-Einstellung`() {
+        // Die Einstellung steht ab Werk auf „aus“; sie gilt nur für Widget,
+        // Sperrbildschirm und Statusleiste. Die Hauptansicht beantwortet
+        // „wie viel Zeit habe ich noch“ immer.
+        val text = ohneKommentare(heute)
+        assertFalse("HeuteScreen.kt liest countdownMode", text.contains("countdownMode"))
+        assertFalse("HeuteScreen.kt liest COUNTDOWN_OFF", text.contains("COUNTDOWN_OFF"))
     }
 
     @Test fun `kein Gedanken- oder Halbgeviertstrich in HeuteScreen`() {

@@ -86,7 +86,6 @@ import de.gebetszeiten.prayer.timeRange
 import de.gebetszeiten.ui.theme.LocalTokens
 import de.gebetszeiten.ui.theme.Tokens
 import kotlinx.coroutines.delay
-import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -236,12 +235,9 @@ internal fun HeuteScreen(
             // An anderen Tagen kein Titel und keine Restzeit: nur Foto und Liste.
             if (isToday) {
                 Spacer(Modifier.height(20.dp))
-                Hero(
-                    hero = hero,
-                    showRemaining = settings.countdownMode != AppSettings.COUNTDOWN_OFF,
-                    showKaraha = settings.showKaraha,
-                    t = t,
-                )
+                // „noch …“ steht hier immer; die Restzeit-Einstellung gilt nur
+                // für Widget, Sperrbildschirm und Statusleiste.
+                Hero(hero = hero, showKaraha = settings.showKaraha, t = t)
             }
             Spacer(Modifier.height(24.dp))
             DayList(rows, onExplain, t)
@@ -391,11 +387,9 @@ private fun momentLabelRes(moment: Moment): Int = when (moment) {
     Moment.ISHA -> R.string.prayer_isha
 }
 
-/** Ganze angebrochene Minuten zählen mit: um 13:20:30 bis 14:38 ist „noch 1 Std 18 Min“. */
-private fun ceilMinutes(d: Duration): Long = ((d.seconds + 59) / 60).coerceAtLeast(0)
 
 @Composable
-private fun Hero(hero: HeroState, showRemaining: Boolean, showKaraha: Boolean, t: Tokens) {
+private fun Hero(hero: HeroState, showKaraha: Boolean, t: Tokens) {
     Column(Modifier.padding(horizontal = GUTTER)) {
         Text(
             text = stringResource(momentLabelRes(hero.moment)),
@@ -404,13 +398,14 @@ private fun Hero(hero: HeroState, showRemaining: Boolean, showKaraha: Boolean, t
             modifier = Modifier.semantics { heading() },
         )
         val remaining = hero.remaining
-        if (remaining != null && showRemaining) {
+        if (remaining != null) {
             val lead = stringResource(R.string.hero_remaining_lead)
             Text(
                 text = buildAnnotatedString {
                     append("$lead ")
                     withStyle(SpanStyle(fontWeight = FontWeight.Normal)) {
-                        append(durationLabel(ceilMinutes(remaining)))
+                        // Abgerundet wie KarahaCountdown, damit beide Zeilen dieselbe Minute zeigen.
+                        append(durationLabel(remaining.toMinutes().coerceAtLeast(0)))
                     }
                 },
                 style = MaterialTheme.typography.headlineSmall,
@@ -438,10 +433,9 @@ private fun Hero(hero: HeroState, showRemaining: Boolean, showKaraha: Boolean, t
             } else {
                 stringResource(R.string.hero_makruh_from, makruh.start.format(HM))
             }
-            // „noch …“ bzw. „in …“ kommt fertig aus KarahaCountdown; bei
-            // ausgeschalteter Restzeit bleibt nur die Uhrzeit.
+            // „noch …“ bzw. „in …“ kommt fertig aus KarahaCountdown.
             Text(
-                text = if (showRemaining) "$head, ${makruh.state.text}" else head,
+                text = "$head, ${makruh.state.text}",
                 style = MaterialTheme.typography.bodyLarge,
                 color = t.gold,
                 modifier = Modifier.padding(top = 4.dp),
@@ -484,7 +478,7 @@ private fun PrayerLine(row: DayRow.PrayerRow, t: Tokens) {
         else -> ""
     }
     val description = if (row.nextDay) {
-        "$name, $nextDay, $time"
+        stringResource(R.string.desc_prayer_next_day, name, time)
     } else {
         stringResource(R.string.desc_prayer, name, time, status)
     }
