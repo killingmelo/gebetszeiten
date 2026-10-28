@@ -246,6 +246,10 @@ object PrayerNotifier {
         // Nicht das Abrufziel aus `PrayerProvider.refreshOfficial` — das ist
         // seit Task 6 ein anderer Ort, und die Zeiten hier kommen vom aktiven.
         city: String? = null,
+        // Foto des laufenden Abschnitts aus [ongoingPhotoAt] (wie „Heute“,
+        // kennt den Zawāl). Ohne Vorgabewert, damit kein Aufrufer es vergisst;
+        // null nur ohne Tageszeiten.
+        photo: de.gebetszeiten.prayer.PhotoKey?,
     ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
@@ -315,7 +319,7 @@ object PrayerNotifier {
             .apply {
                 // Kleines Foto des laufenden Abschnitts; aufgeklappt bleibt
                 // es beim Text, der Inhalt ist hier wichtiger als ein Bild.
-                val photo = photoRes(ongoingPhotoKey(activeSince?.prayer, next.prayer))
+                val photo = photoRes(photo ?: ongoingPhotoKey(activeSince?.prayer, next.prayer))
                 decodePhoto(context, photo, LARGE_ICON_WIDTH)?.let { setLargeIcon(it) }
             }
             .setContentTitle(texts.title)

@@ -57,11 +57,43 @@ class PrayerIconsTest {
     fun `Foto der Daueranzeige folgt dem laufenden Abschnitt`() {
         assertEquals(PhotoKey.ASR, ongoingPhotoKey(active = Prayer.ASR, next = Prayer.MAGHRIB))
         assertEquals(PhotoKey.ISHA, ongoingPhotoKey(active = Prayer.ISHA, next = Prayer.FAJR))
-        // Zwischen Šurūq und Ẓuhr gibt es kein laufendes Gebet (die
-        // Aufrufer filtern SUNRISE heraus): das ist der Šurūq-Abschnitt.
+        // Rückfall ohne Tageszeiten: zwischen Šurūq und Ẓuhr gibt es kein
+        // laufendes Gebet (die Aufrufer filtern SUNRISE heraus). Den Zawāl
+        // kennt erst [ongoingPhoto].
         assertEquals(PhotoKey.SHURUQ, ongoingPhotoKey(active = null, next = Prayer.DHUHR))
         // Vor Faǧr kennt der Tag noch kein laufendes Gebet: es ist Nacht.
         assertEquals(PhotoKey.ISHA, ongoingPhotoKey(active = null, next = Prayer.FAJR))
+    }
+
+    // Fixture wie HeroStateTest: Nürnberg, 28.10.2026, Ẓuhr 12:05, Zawāl ab 11:45.
+    private val zone = java.time.ZoneId.of("Europe/Berlin")
+    private fun t(h: Int, m: Int, day: Int = 28) = java.time.ZonedDateTime.of(2026, 10, day, h, m, 0, 0, zone)
+    private val times = de.gebetszeiten.core.prayertimes.DailyPrayerTimes(
+        date = t(0, 0).toLocalDate(),
+        zone = zone,
+        fajr = t(5, 10),
+        sunrise = t(6, 50),
+        dhuhr = t(12, 5),
+        asr = t(14, 38),
+        maghrib = t(17, 9),
+        isha = t(18, 37),
+    )
+
+    @Test
+    fun `Foto der Daueranzeige im Zawal ist das Ẓuhr-Foto`() {
+        // Zwischen Zawāl-Beginn und Ẓuhr zeigt „Heute“ das Ẓuhr-Foto; die
+        // Daueranzeige zeigte bisher das Šurūq-Foto.
+        assertEquals(PhotoKey.ZUHR, ongoingPhoto(times, nextFajr = t(5, 11, day = 29), now = t(11, 50)))
+    }
+
+    @Test
+    fun `Foto der Daueranzeige am Vormittag ist das Šurūq-Foto`() {
+        assertEquals(PhotoKey.SHURUQ, ongoingPhoto(times, nextFajr = t(5, 11, day = 29), now = t(9, 0)))
+    }
+
+    @Test
+    fun `Foto der Daueranzeige vor Faǧr ist die Nacht`() {
+        assertEquals(PhotoKey.ISHA, ongoingPhoto(times, nextFajr = t(5, 11, day = 29), now = t(3, 0)))
     }
 
     @Test

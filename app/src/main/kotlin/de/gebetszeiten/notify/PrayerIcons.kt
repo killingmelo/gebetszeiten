@@ -3,7 +3,11 @@ package de.gebetszeiten.notify
 import androidx.annotation.DrawableRes
 import de.gebetszeiten.R
 import de.gebetszeiten.core.prayertimes.Prayer
+import de.gebetszeiten.core.prayertimes.DailyPrayerTimes
+import de.gebetszeiten.prayer.IslamicWindows
 import de.gebetszeiten.prayer.PhotoKey
+import de.gebetszeiten.prayer.heroState
+import java.time.ZonedDateTime
 
 /**
  * Das Statusleisten-Symbol einer Gebets-Meldung (Eintritt, Vorlauf). Jedes
@@ -33,7 +37,37 @@ fun photoKeyFor(prayer: Prayer): PhotoKey = when (prayer) {
 }
 
 /**
- * Das Foto für die Daueranzeige: der Abschnitt, der GERADE läuft.
+ * Das Foto für die Daueranzeige, genau wie auf „Heute“: aus [heroState].
+ * Damit zeigt die Anzeige im Zawāl (Zawāl-Beginn bis Ẓuhr) das Ẓuhr-Foto
+ * und nicht mehr das Šurūq-Foto.
+ */
+fun ongoingPhoto(today: DailyPrayerTimes, nextFajr: ZonedDateTime?, now: ZonedDateTime): PhotoKey =
+    heroState(
+        today,
+        IslamicWindows.karaha(today),
+        IslamicWindows.nafl(today, nextFajr),
+        nextFajr,
+        now,
+        isToday = true,
+    ).photo
+
+/** [ongoingPhoto] für die Aufrufer von [PrayerNotifier.updateOngoing]; null
+ *  ohne Tageszeiten (dann greift [ongoingPhotoKey]). */
+suspend fun ongoingPhotoAt(
+    context: android.content.Context,
+    settings: de.gebetszeiten.data.AppSettings,
+    zone: java.time.ZoneId,
+    now: ZonedDateTime,
+): PhotoKey? {
+    val date = now.withZoneSameInstant(zone).toLocalDate()
+    val today = de.gebetszeiten.prayer.PrayerProvider.daily(context, settings, date, zone) ?: return null
+    val nextFajr = de.gebetszeiten.prayer.PrayerProvider.daily(context, settings, date.plusDays(1), zone)?.fajr
+    return ongoingPhoto(today, nextFajr, now)
+}
+
+/**
+ * Rückfall, wenn keine Tageszeiten vorliegen: das Foto für die Daueranzeige
+ * aus laufendem und nächstem Gebet. Den Zawāl kennt nur [ongoingPhoto].
  *
  * [active] ist bei allen Aufrufern ohne Sonnenaufgang gefiltert und darum an
  * zwei Stellen leer: zwischen Šurūq und Ẓuhr (dann ist Šurūq der Abschnitt)

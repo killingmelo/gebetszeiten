@@ -87,6 +87,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         val active = PrayerProvider.currentlyActive(app, value, zone, now)
             ?.takeIf { it.prayer != de.gebetszeiten.core.prayertimes.Prayer.SUNRISE }
         val next = PrayerProvider.nextPrayer(app, value, zone, now)
+        val photo = de.gebetszeiten.notify.ongoingPhotoAt(app, value, zone, now)
         // Die Daueranzeige dekodiert ein Foto; das gehoert nicht auf den
         // Hauptthread, auf dem `viewModelScope` laeuft.
         withContext(Dispatchers.Default) {
@@ -104,6 +105,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
                 // nach einem Ortswechsel also sofort der neue, passend zu den
                 // Zeiten daneben.
                 city = value.city,
+                photo = photo,
             )
         }
         PrayerNotifier.updatePauseNotice(app, hasTimes = next != null)
