@@ -62,7 +62,7 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
             ),
             Quote(
                 arabic = "والأوقات الثلاثة يكره فيها النافلة كراهة تحريم ولو كان لها سبب كالمنذور وركعتي الطواف",
-                german = "In den drei Zeiten ist freiwilliges Gebet verpönt im Grad des Verbots (Karāhat taḥrīm), auch wenn es einen Anlass hat, etwa ein gelobtes Gebet oder die zwei Rakʿa nach dem Umlauf um die Kaʿba.",
+                german = "In den drei Zeiten ist freiwilliges Gebet streng verpönt, dem Verbot nahe (Karāhat taḥrīm), auch wenn es einen Anlass hat, etwa ein gelobtes Gebet oder die zwei Rakʿa nach dem Umlauf um die Kaʿba.",
                 source = "$MARAQI, S. 76",
             ),
         ),
@@ -80,7 +80,7 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
             ),
             Quote(
                 arabic = "وقت \"الضحى\" وابتداؤه من ارتفاع الشمس إلى قبل زوالها",
-                german = "Die Zeit des Ḍuḥā beginnt mit dem Steigen der Sonne und reicht bis kurz vor ihrem Zawāl.",
+                german = "Die Zeit des Ḍuḥā beginnt mit dem Steigen der Sonne und reicht bis vor ihrem Zawāl.",
                 source = "$MARAQI, S. 149",
             ),
         ),
@@ -116,7 +116,7 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
             ),
             Quote(
                 arabic = "ووقت الظهر من زوال الشمس الى أن يصير ظل كل شيء مثليه أو مثله سوى ظل الاستواء واختار الثاني الطحاوي وهو قول الصاحبين ووقت العصر من ابتداء الزيادة على المثل أو المثلين الى غروب الشمس",
-                german = "Die Zeit des Ẓuhr reicht vom Zawāl der Sonne, bis der Schatten jedes Dinges doppelt oder einfach so lang ist wie das Ding, ohne den Schatten beim Höchststand. Das Zweite hat aṭ-Ṭaḥāwī gewählt, und es ist die Ansicht der beiden Gefährten [Abū Yūsuf und Muḥammad]. Die Zeit des ʿAṣr reicht vom Beginn des Überschreitens des einfachen oder doppelten Schattens bis zum Sonnenuntergang.",
+                german = "Die Zeit des Ẓuhr reicht vom Zawāl der Sonne, bis der Schatten jedes Dinges doppelt oder einfach so lang ist wie das Ding, ohne den Schatten beim Höchststand. Das Zweite hat aṭ-Ṭaḥāwī gewählt, und es ist die Ansicht der beiden Schüler [Abū Ḥanīfas: Abū Yūsuf und Muḥammad]. Die Zeit des ʿAṣr reicht vom Beginn des Überschreitens des einfachen oder doppelten Schattens bis zum Sonnenuntergang.",
                 source = "$MARAQI, S. 72",
             ),
         ),
@@ -135,7 +135,7 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
             ),
             Quote(
                 arabic = "\"ما لم تتغير الشمس\" بذهاب ضوئها فلا يتحير فيه البصر وهو الصحيح والتأخير إلى التغير مكروه تحريما",
-                german = "[Den ʿAṣr aufzuschieben ist empfohlen,] solange sich die Sonne nicht verändert hat, indem ihr Glanz schwindet und der Blick nicht mehr geblendet wird. Das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist verpönt im Grad des Verbots.",
+                german = "[Den ʿAṣr aufzuschieben ist empfohlen,] solange sich die Sonne nicht verändert hat, indem ihr Glanz schwindet und der Blick nicht mehr geblendet wird. Das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist streng verpönt, dem Verbot nahe (Makrūh taḥrīman).",
                 source = "$MARAQI, S. 74",
             ),
         ),

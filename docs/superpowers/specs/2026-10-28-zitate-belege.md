@@ -78,7 +78,7 @@ Kontext: دخولها" أي الأوقات المكروهة **[Zitat]** "و" ا�
 
 Kontext: … كما ح عصر اليوم عند الغروب مع الكراهة **[Zitat]** ويكره التنفل بعد طلوع الفجر …
 
-Übersetzung: In den drei Zeiten ist freiwilliges Gebet verpönt im Grad des Verbots (Karāhat taḥrīm), auch wenn es einen Anlass hat, etwa ein gelobtes Gebet oder die zwei Rakʿa nach dem Umlauf um die Kaʿba.
+Übersetzung: In den drei Zeiten ist freiwilliges Gebet streng verpönt, dem Verbot nahe (Karāhat taḥrīm), auch wenn es einen Anlass hat, etwa ein gelobtes Gebet oder die zwei Rakʿa nach dem Umlauf um die Kaʿba.
 
 ## DUHA: „Ḍuḥā“
 
@@ -96,7 +96,7 @@ Kontext: **[Zitat]** وندب صلاة الليل وصلاة الاستخارة 
 
 Kontext: … فلذا قلنا ندب أربع "فصاعد في" **[Zitat]** فيزيد على الأربع اثنتي عشرة ركعة …
 
-Übersetzung: Die Zeit des Ḍuḥā beginnt mit dem Steigen der Sonne und reicht bis kurz vor ihrem Zawāl.
+Übersetzung: Die Zeit des Ḍuḥā beginnt mit dem Steigen der Sonne und reicht bis vor ihrem Zawāl.
 
 ## ZUHR: „Ẓuhr und Zawāl“ (mit Sonnenuhr)
 
@@ -145,7 +145,7 @@ Kontext: وأول وقت الظهر إذا زالت الشمس **[Zitat]** وآ�
 
 Kontext: … الى قبيل طلوع الشمس **[Zitat]** والمغرب منه الى غروب الشفق …
 
-Übersetzung: Die Zeit des Ẓuhr reicht vom Zawāl der Sonne, bis der Schatten jedes Dinges doppelt oder einfach so lang ist wie das Ding, ohne den Schatten beim Höchststand. Das Zweite hat aṭ-Ṭaḥāwī gewählt, und es ist die Ansicht der beiden Gefährten [Abū Yūsuf und Muḥammad]. Die Zeit des ʿAṣr reicht vom Beginn des Überschreitens des einfachen oder doppelten Schattens bis zum Sonnenuntergang.
+Übersetzung: Die Zeit des Ẓuhr reicht vom Zawāl der Sonne, bis der Schatten jedes Dinges doppelt oder einfach so lang ist wie das Ding, ohne den Schatten beim Höchststand. Das Zweite hat aṭ-Ṭaḥāwī gewählt, und es ist die Ansicht der beiden Schüler [Abū Ḥanīfas: Abū Yūsuf und Muḥammad]. Die Zeit des ʿAṣr reicht vom Beginn des Überschreitens des einfachen oder doppelten Schattens bis zum Sonnenuntergang.
 
 („الصاحبين“ sind laut Kommentar derselben Seite „أبي يوسف ومحمد“; die Klammer stützt sich darauf.)
 
@@ -165,7 +165,7 @@ Kontext: … أي تميل إلى جهة الغرب "و" **[Zitat]** لقول ع
 
 Kontext: "و" يستحب "تأخير" صلاة "العصر" صيفا وشتاء … ويتمكن من النفل قبله **[Zitat]** قال رسول الله ﷺ: "تلك صلاة المنافقين" …
 
-Übersetzung: [Den ʿAṣr aufzuschieben ist empfohlen,] solange sich die Sonne nicht verändert hat, indem ihr Glanz schwindet und der Blick nicht mehr geblendet wird. Das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist verpönt im Grad des Verbots.
+Übersetzung: [Den ʿAṣr aufzuschieben ist empfohlen,] solange sich die Sonne nicht verändert hat, indem ihr Glanz schwindet und der Blick nicht mehr geblendet wird. Das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist streng verpönt, dem Verbot nahe (Makrūh taḥrīman).
 
 ## MAGHRIB: „Maġrib“
 
@@ -276,5 +276,5 @@ Kontext: … وقال ﵇: "نوروا بالفجر يبارك لكم" **[Zitat]
   drei bevorzugten Werken belegt ist.
 - Stellen mit den Sonder-Ligaturen ﵀ ﵁ ﵇ (Unicode 14) wurden gemieden, weil ältere
   Android-Schriften sie nicht darstellen. ﷺ (U+FDFA) kommt einmal vor (Auwābīn).
-- Bitte besonders prüfen: „كراهة تحريم“ / „مكروه تحريما“ als „verpönt im Grad des Verbots“,
-  „المفتى به“ als „Ansicht, nach der die Fatwā gegeben wird“, „الصاحبين“ als „die beiden Gefährten“.
+- Bitte besonders prüfen: „كراهة تحريم“ / „مكروه تحريما“ als „streng verpönt, dem Verbot nahe“ (Karāhat taḥrīm / Makrūh taḥrīman; eigene Kategorie unterhalb von ḥarām),
+  „المفتى به“ als „Ansicht, nach der die Fatwā gegeben wird“, „الصاحبين“ als „die beiden Schüler [Abū Ḥanīfas]“.
