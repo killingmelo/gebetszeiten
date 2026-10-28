@@ -11,10 +11,13 @@ import java.time.LocalDate
 class HeuteLogicTest {
 
     @Test fun `kleiner Bildschirm bekommt ein flacheres Foto`() {
-        assertEquals(16f / 9f, photoAspectFor(screenHeightDp = 640), 0.0001f)
-        assertEquals(16f / 9f, photoAspectFor(screenHeightDp = 719), 0.0001f)
-        assertEquals(10f / 7f, photoAspectFor(screenHeightDp = 720), 0.0001f)
-        assertEquals(10f / 7f, photoAspectFor(screenHeightDp = 915), 0.0001f)
+        // 360×640: 16:9 wäre 184 dp, gedeckelt auf ein Viertel der Höhe.
+        assertEquals(160, compactPhotoHeightDp(screenWidthDp = 360, screenHeightDp = 640))
+        assertEquals(179, compactPhotoHeightDp(screenWidthDp = 360, screenHeightDp = 719))
+        // Schmal und nicht ganz so klein: 16:9 ist schon flacher als ein Viertel.
+        assertEquals(126, compactPhotoHeightDp(screenWidthDp = 256, screenHeightDp = 700))
+        assertNull(compactPhotoHeightDp(screenWidthDp = 360, screenHeightDp = 720))
+        assertNull(compactPhotoHeightDp(screenWidthDp = 412, screenHeightDp = 915))
     }
 
     @Test fun `Abstand unter dem Foto schrumpft auf kleinem Bildschirm`() {

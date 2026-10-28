@@ -26,6 +26,6 @@ fun dmgTitle(text: String): AnnotatedString = buildAnnotatedString {
 
 private val DMG_HALF_RING = SpanStyle(
     fontWeight = FontWeight.Normal,
-    fontSize = 1.2.em,
-    baselineShift = BaselineShift(-0.08f),
+    fontSize = 1.15.em,
+    baselineShift = BaselineShift(-0.18f),
 )

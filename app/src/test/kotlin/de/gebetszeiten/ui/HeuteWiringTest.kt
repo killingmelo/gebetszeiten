@@ -68,13 +68,13 @@ class HeuteWiringTest {
     @Test fun `kleiner Bildschirm, Mitternacht, Ǧamāʿa und DMG-Titel sind verdrahtet`() {
         val text = ohneKommentare(heute)
         listOf(
-            "photoAspectFor(screenHeightDp)",
+            "compactPhotoHeightDp(configuration.screenWidthDp, screenHeightDp)",
             "heroGapDp(screenHeightDp)",
             "rolledSelectedDate(",
             "prayerStatusRes(",
             "R.string.status_jamaa_derived",
             "dmgTitle(stringResource(momentLabelRes(hero.moment)))",
         ).forEach { assertTrue("HeuteScreen.kt enthaelt $it nicht", text.contains(it)) }
-        assertFalse("festes 10:7 im Foto", text.contains("aspectRatio(10f / 7f)"))
+        assertTrue("Foto ohne Hoehenwahl", text.contains("Modifier.height(heightDp.dp)"))
     }
 }

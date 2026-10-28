@@ -98,7 +98,8 @@ private val HM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 private val GUTTER = 24.dp
 
 /** Das Foto sitzt etwas breiter als der Text (wie im Entwurf `fotos-oura.html`). */
-private val PHOTO_INSET = 16.dp
+private const val PHOTO_INSET_DP = 16
+private val PHOTO_INSET = PHOTO_INSET_DP.dp
 
 /** Nebenzeilen stehen um so viel eingerückt unter ihrem Gebet. */
 private val SIDE_INDENT = 16.dp
@@ -107,9 +108,16 @@ private val SIDE_INDENT = 16.dp
  *  „dann …“ und die Makrūh-Zeile ohne Scrollen sichtbar bleiben (360×640). */
 private const val COMPACT_HEIGHT_DP = 720
 
-/** Seitenverhältnis des Fotos: 10:7 wie im Entwurf, auf kleinen Bildschirmen 16:9. */
-internal fun photoAspectFor(screenHeightDp: Int): Float =
-    if (screenHeightDp < COMPACT_HEIGHT_DP) 16f / 9f else 10f / 7f
+/**
+ * Feste Fotohöhe in dp auf kleinen Bildschirmen, sonst null (dann 10:7 wie im
+ * Entwurf). 16:9 allein reichte auf 360×640 nicht: die Makrūh-Zeile lag noch
+ * knapp unter dem Rand. Deshalb höchstens ein Viertel der Bildschirmhöhe.
+ */
+internal fun compactPhotoHeightDp(screenWidthDp: Int, screenHeightDp: Int): Int? {
+    if (screenHeightDp >= COMPACT_HEIGHT_DP) return null
+    val sixteenByNine = (screenWidthDp - 2 * PHOTO_INSET_DP) * 9 / 16
+    return minOf(sixteenByNine, screenHeightDp / 4)
+}
 
 /** Abstand zwischen Bildunterschrift und Titel in dp. */
 internal fun heroGapDp(screenHeightDp: Int): Int = if (screenHeightDp < COMPACT_HEIGHT_DP) 12 else 20
@@ -189,7 +197,9 @@ internal fun HeuteScreen(
         }
     }
     val isToday = selectedDate == LocalDate.now(zone)
-    val screenHeightDp = LocalConfiguration.current.screenHeightDp
+    val configuration = LocalConfiguration.current
+    val screenHeightDp = configuration.screenHeightDp
+    val photoHeightDp = compactPhotoHeightDp(configuration.screenWidthDp, screenHeightDp)
 
     val dayInfo by produceState<DayInfo?>(null, settings, tick, selectedDate) {
         // Keine Zeiten unter den aktuellen Einstellungen: `dayInfo` bleibt
@@ -268,7 +278,7 @@ internal fun HeuteScreen(
                 cemaatOffsetMinutes = settings.cemaatOffsetMinutes,
             )
             Spacer(Modifier.height(8.dp))
-            Photo(hero, photoAspectFor(screenHeightDp), t)
+            Photo(hero, photoHeightDp, t)
             // An anderen Tagen kein Titel und keine Restzeit: nur Foto und Liste.
             if (isToday) {
                 Spacer(Modifier.height(heroGapDp(screenHeightDp).dp))
@@ -392,9 +402,10 @@ private fun DateLine(
     }
 }
 
-/** Foto des Abschnitts ([aspect], siehe [photoAspectFor]) mit Radius 24 dp, darunter die Bildunterschrift. */
+/** Foto des Abschnitts, 10:7 oder [heightDp] hoch (siehe [compactPhotoHeightDp]),
+ *  Radius 24 dp, darunter die Bildunterschrift. */
 @Composable
-private fun Photo(hero: HeroState, aspect: Float, t: Tokens) {
+private fun Photo(hero: HeroState, heightDp: Int?, t: Tokens) {
     val key = hero.photo
     Image(
         painter = painterResource(photoRes(key)),
@@ -403,7 +414,7 @@ private fun Photo(hero: HeroState, aspect: Float, t: Tokens) {
         modifier = Modifier
             .padding(horizontal = PHOTO_INSET)
             .fillMaxWidth()
-            .aspectRatio(aspect)
+            .then(if (heightDp != null) Modifier.height(heightDp.dp) else Modifier.aspectRatio(10f / 7f))
             .clip(RoundedCornerShape(24.dp)),
     )
     Text(
