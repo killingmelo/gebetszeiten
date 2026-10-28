@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -269,10 +268,10 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
             stringResource(R.string.reminder_style_vibrate) to AppSettings.STYLE_VIBRATE,
             stringResource(R.string.reminder_style_sound) to AppSettings.STYLE_SOUND,
         ).forEach { (label, v) ->
-            FilterChip(
+            SelectChip(
                 selected = draft.reminderStyle == v,
                 onClick = { onChange(draft.copy(reminderStyle = v)) },
-                label = { Text(label) },
+                label = label,
             )
         }
     }
@@ -290,10 +289,10 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
             stringResource(R.string.lead_15) to 15,
             stringResource(R.string.lead_30) to 30,
         ).forEach { (label, v) ->
-            FilterChip(
+            SelectChip(
                 selected = draft.reminderLeadMinutes == v,
                 onClick = { onChange(draft.copy(reminderLeadMinutes = v)) },
-                label = { Text(label) },
+                label = label,
             )
         }
     }

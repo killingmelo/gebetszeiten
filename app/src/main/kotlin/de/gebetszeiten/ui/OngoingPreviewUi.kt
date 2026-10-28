@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -73,10 +72,10 @@ internal fun CountdownPreview(
                 stringResource(R.string.countdown_steps) to AppSettings.PRECISION_STEPS,
                 stringResource(R.string.countdown_exact) to AppSettings.PRECISION_EXACT,
             ).forEach { (label, value) ->
-                FilterChip(
+                SelectChip(
                     selected = selected == value,
                     onClick = { onSelect(value) },
-                    label = { Text(label) },
+                    label = label,
                 )
             }
         }

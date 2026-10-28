@@ -89,6 +89,27 @@ class RestyleWiringTest {
         assertTrue("settings_remaining_all nennt das Widget nicht: $wert", wert.contains("Widget"))
     }
 
+    @Test fun `alle Auswahl-Chips laufen ueber SelectChip`() {
+        listOf("SettingsSheet.kt", "Onboarding.kt", "OngoingPreviewUi.kt").forEach {
+            assertFalse("$it baut noch einen eigenen FilterChip", quelltext(it).contains("FilterChip("))
+        }
+        val chip = quelltext("SelectChip.kt")
+        assertTrue("der gewählte Chip trägt kein Häkchen", chip.contains("R.drawable.ic_check"))
+        assertTrue("der gewählte Chip hat keinen Akzentrand", chip.contains("selectedBorderColor = t.accent"))
+    }
+
+    @Test fun `Nord-Buchstabe nicht in Gold`() {
+        // Gold erreicht als Text nur 3,5:1; nur die Marke darf gold sein.
+        assertFalse(quelltext("QiblaScreen.kt").contains("northLetter = t.gold"))
+    }
+
+    @Test fun `der letzte Abschnitt hat keine Haarlinie`() {
+        assertTrue(
+            quelltext("SettingsSheet.kt")
+                .contains("SettingsSection(stringResource(R.string.settings_section_about), divider = false)"),
+        )
+    }
+
     @Test fun `das Einstellungsblatt liegt auf dem Grund`() {
         val text = quelltext("MainActivity.kt").replace(Regex("""\s+"""), "")
         val blatt = text.substringAfter("ModalBottomSheet(", missingDelimiterValue = "").substringBefore("LocationSettings(")

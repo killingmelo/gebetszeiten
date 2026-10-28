@@ -76,6 +76,9 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
     val ring = t.stone
     val accent = t.accent
     val north = t.gold
+    // Gold erreicht als Text nur 3,5:1; der Buchstabe N steht deshalb in
+    // Tinte, nur die Nordmarke ist gold.
+    val northLetter = t.ink
     // Die Himmelsrichtungen in Inter wie der übrige Text (der native Canvas
     // kennt sonst nur die Systemschrift).
     val context = LocalContext.current
@@ -100,7 +103,7 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
                 .semantics { contentDescription = compassDesc },
         ) {
             rotate(animated) {
-                drawCompassRose(ring, north, compassLabels, letterFace, northFace)
+                drawCompassRose(ring, north, northLetter, compassLabels, letterFace, northFace)
                 rotate(bearing.toFloat(), pivot = center) {
                     drawQiblaArrow(accent)
                 }
@@ -131,11 +134,12 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
     }
 }
 
-/** Ring + N/O/S/W-Ticks; N-Tick in [north] hervorgehoben, Buchstaben in Inter. [labels] are the
+/** Ring + N/O/S/W-Ticks; N-Tick in [north] hervorgehoben, der Buchstabe N in [northLetter], Buchstaben in Inter. [labels] are the
  *  localized cardinal letters (N/E/S/W order). */
 private fun DrawScope.drawCompassRose(
     ring: Color,
     north: Color,
+    northLetter: Color,
     labels: List<String>,
     letterFace: Typeface?,
     northFace: Typeface?,
@@ -147,7 +151,7 @@ private fun DrawScope.drawCompassRose(
     val textOffsetFromCenter = r - 34.dp.toPx()
     val textSize = 16.sp.toPx()
     val ringArgb = ring.toArgb()
-    val northArgb = north.toArgb()
+    val northLetterArgb = northLetter.toArgb()
 
     // Allocate a single Paint once and mutate per-letter properties inside the loop
     // to avoid creating a new Paint object on every frame (4× per redraw previously).
@@ -167,7 +171,7 @@ private fun DrawScope.drawCompassRose(
                 strokeWidth = if (isNorth) 4.dp.toPx() else 1.5.dp.toPx(),
             )
             // Reuse the single Paint; only mutate per-letter properties.
-            cardinalPaint.color = if (isNorth) northArgb else ringArgb
+            cardinalPaint.color = if (isNorth) northLetterArgb else ringArgb
             cardinalPaint.typeface = if (isNorth) northFace else letterFace
             // In the rotated frame, "north" is always at (center.x, center.y - textOffsetFromCenter).
             drawContext.canvas.nativeCanvas.drawText(

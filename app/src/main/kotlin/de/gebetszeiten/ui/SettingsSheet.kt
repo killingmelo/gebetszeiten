@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -87,14 +86,18 @@ import java.time.LocalDate
 import java.util.Locale
 
 /** Ein Abschnitt im Stil von „Heute“: Großbuchstaben-Überschrift, Inhalt,
- *  eine Haarlinie darunter. Keine Karte, keine Fläche. */
+ *  eine Haarlinie darunter (außer beim letzten, [divider] = false). Keine Karte, keine Fläche. */
 @Composable
-private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun SettingsSection(
+    title: String,
+    divider: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     val t = LocalTokens.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .hairlineBelow(t.hairline)
+            .then(if (divider) Modifier.hairlineBelow(t.hairline) else Modifier)
             .padding(top = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         content = {
@@ -140,7 +143,7 @@ private fun RecentPlacesRow(
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         places.forEach { c ->
-            FilterChip(
+            SelectChip(
                 // Identität über die Koordinaten, wie bei withRecentPlace:
                 // zwei gleichnamige Orte dürfen nicht beide als aktiv
                 // erscheinen. Steht der aktive Ort gar nicht in den letzten
@@ -150,7 +153,7 @@ private fun RecentPlacesRow(
                 onClick = { onPick(c) },
                 // Gleichnamige Orte (Esenköy in Yalova und in Aydın) bekommen
                 // die Region angehängt, damit die Chips unterscheidbar bleiben.
-                label = { Text(recentPlaceLabel(c, places)) },
+                label = recentPlaceLabel(c, places),
             )
         }
     }
@@ -244,10 +247,10 @@ private fun FavoritesRow(
                 // gewählten Orten, keine zweite. Einmal berechnet, weil auch
                 // die Sprachausgabe des Schließen-Symbols sie braucht.
                 val label = recentPlaceLabel(c, cities)
-                FilterChip(
+                SelectChip(
                     selected = stampMatches(c.latitude, c.longitude, currentLat, currentLng),
                     onClick = { onPick(c) },
-                    label = { Text(label) },
+                    label = label,
                     // Schließen-Symbol je Chip: ohne es kostet das Entfernen
                     // eines fremden Favoriten ZWEI komplette Ortswechsel (hin,
                     // Stern aus, zurück) — und bei voller Liste ist es der
@@ -660,10 +663,10 @@ internal fun LocationSettings(
                 Text(stringResource(R.string.settings_cemaat_offset), style = MaterialTheme.typography.bodyLarge)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(15, 20, 30, 45, 60).forEach { v ->
-                        FilterChip(
+                        SelectChip(
                             selected = settings.cemaatOffsetMinutes == v,
                             onClick = { commit { copy(cemaatOffsetMinutes = v) } },
-                            label = { Text(stringResource(R.string.cemaat_offset_chip, v)) },
+                            label = stringResource(R.string.cemaat_offset_chip, v),
                         )
                     }
                 }
@@ -752,10 +755,10 @@ internal fun LocationSettings(
                     stringResource(R.string.reminder_style_vibrate) to AppSettings.STYLE_VIBRATE,
                     stringResource(R.string.reminder_style_sound) to AppSettings.STYLE_SOUND,
                 ).forEach { (label, v) ->
-                    FilterChip(
+                    SelectChip(
                         selected = settings.reminderStyle == v,
                         onClick = { commit { copy(reminderStyle = v) } },
-                        label = { Text(label) },
+                        label = label,
                     )
                 }
             }
@@ -768,10 +771,10 @@ internal fun LocationSettings(
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(stringResource(R.string.lead_off) to 0, stringResource(R.string.lead_5) to 5, stringResource(R.string.lead_10) to 10, stringResource(R.string.lead_15) to 15, stringResource(R.string.lead_30) to 30).forEach { (label, v) ->
-                    FilterChip(
+                    SelectChip(
                         selected = settings.reminderLeadMinutes == v,
                         onClick = { commit { copy(reminderLeadMinutes = v) } },
-                        label = { Text(label) },
+                        label = label,
                     )
                 }
             }
@@ -786,10 +789,10 @@ internal fun LocationSettings(
                     stringResource(R.string.theme_light) to AppSettings.THEME_LIGHT,
                     stringResource(R.string.theme_dark) to AppSettings.THEME_DARK,
                 ).forEach { (label, v) ->
-                    FilterChip(
+                    SelectChip(
                         selected = settings.themeMode == v,
                         onClick = { commit { copy(themeMode = v) } },
-                        label = { Text(label) },
+                        label = label,
                     )
                 }
             }
@@ -802,10 +805,10 @@ internal fun LocationSettings(
             Text(stringResource(R.string.settings_hijri), style = MaterialTheme.typography.bodyLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(-2, -1, 0, 1, 2).forEach { v ->
-                    FilterChip(
+                    SelectChip(
                         selected = settings.hijriOffsetDays == v,
                         onClick = { commit { copy(hijriOffsetDays = v) } },
-                        label = { Text(if (v > 0) "+$v" else "$v") },
+                        label = if (v > 0) "+$v" else "$v",
                     )
                 }
             }
@@ -845,7 +848,7 @@ private val FONT_NAMES = listOf("Noto Serif Display", "Inter", "Noto Naskh Arabi
  */
 @Composable
 private fun AboutSection() {
-    SettingsSection(stringResource(R.string.settings_section_about)) {
+    SettingsSection(stringResource(R.string.settings_section_about), divider = false) {
         Text(stringResource(R.string.about_photos), style = MaterialTheme.typography.titleMedium)
         PHOTO_CREDITS.forEach { credit ->
             CreditLine(
@@ -883,10 +886,10 @@ private fun CountdownModeSelector(label: String, value: String, onChange: (Strin
                 stringResource(R.string.countdown_steps) to AppSettings.PRECISION_STEPS,
                 stringResource(R.string.countdown_exact) to AppSettings.PRECISION_EXACT,
             ).forEach { (chip, v) ->
-                FilterChip(
+                SelectChip(
                     selected = value == v,
                     onClick = { onChange(v) },
-                    label = { Text(chip) },
+                    label = chip,
                 )
             }
         }
@@ -899,10 +902,10 @@ private fun FontSizeSelector(value: Float, onChange: (Float) -> Unit) {
         Text(stringResource(R.string.font_size), style = MaterialTheme.typography.bodyLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(stringResource(R.string.font_normal) to 1f, stringResource(R.string.font_large) to 1.2f, stringResource(R.string.font_xlarge) to 1.4f).forEach { (label, v) ->
-                FilterChip(
+                SelectChip(
                     selected = abs(value - v) < 0.01f,
                     onClick = { onChange(v) },
-                    label = { Text(label) },
+                    label = label,
                 )
             }
         }

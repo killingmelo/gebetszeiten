@@ -51,4 +51,31 @@ val AppTypography = Typography(
         fontFamily = SansFamily, fontWeight = FontWeight.SemiBold,
         fontSize = 11.sp, lineHeight = 16.sp, letterSpacing = 1.2.sp,
     ),
+    // Die übrigen Material-Rollen in Inter, damit Knöpfe, Chips, Textfelder
+    // und Kleintext nicht auf Roboto zurückfallen. Größen wie die Material-Vorgabe.
+    headlineMedium = TextStyle(
+        fontFamily = SansFamily, fontWeight = FontWeight.Normal,
+        fontSize = 28.sp, lineHeight = 36.sp,
+    ),
+    titleLarge = TextStyle(
+        fontFamily = SansFamily, fontWeight = FontWeight.Normal,
+        fontSize = 22.sp, lineHeight = 28.sp,
+    ),
+    titleSmall = TextStyle(
+        fontFamily = SansFamily, fontWeight = FontWeight.Medium,
+        fontSize = 14.sp, lineHeight = 20.sp,
+    ),
+    bodySmall = TextStyle(
+        fontFamily = SansFamily, fontWeight = FontWeight.Normal,
+        fontSize = 12.sp, lineHeight = 16.sp,
+    ),
+    // Knöpfe und Chips
+    labelLarge = TextStyle(
+        fontFamily = SansFamily, fontWeight = FontWeight.Medium,
+        fontSize = 14.sp, lineHeight = 20.sp,
+    ),
+    labelMedium = TextStyle(
+        fontFamily = SansFamily, fontWeight = FontWeight.Medium,
+        fontSize = 12.sp, lineHeight = 16.sp,
+    ),
 )
