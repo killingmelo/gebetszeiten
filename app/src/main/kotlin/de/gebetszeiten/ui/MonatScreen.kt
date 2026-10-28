@@ -53,7 +53,7 @@ private val ROW_PRAYERS = listOf("Faǧr", "Ẓuhr", "ʿAṣr", "Maġrib", "ʿIš
  *  ("—" je Spalte), damit die Tabelle nicht aus der Spur laeuft. */
 private data class MonatRow(val date: LocalDate, val times: List<String>, val hasTimes: Boolean)
 
-private const val NO_TIME = "—"
+private const val NO_TIME = "-"
 
 @Composable
 internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {

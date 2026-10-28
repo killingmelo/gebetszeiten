@@ -79,7 +79,7 @@ class CoverageWarningTest {
         val bald = coverageWarning(heute.plusDays(10), heute)!!
         val abgelaufen = coverageWarning(heute.minusDays(10), heute)!!
         listOf(bald, abgelaufen).forEach {
-            assertTrue(it, it.contains("ohne Netz"))
+            assertTrue(it, it.contains("ohne Netz", ignoreCase = true))
             assertTrue(it, it.contains("eigene Berechnung"))
             assertTrue(it, !it.contains("Asset"))
             assertTrue(it, !it.contains("coverage"))

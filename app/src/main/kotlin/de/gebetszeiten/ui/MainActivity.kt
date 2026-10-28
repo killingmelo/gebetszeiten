@@ -109,6 +109,7 @@ import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.prayer.durationLabel
 import de.gebetszeiten.prayer.hijriText
 import de.gebetszeiten.prayer.labelRes
+import de.gebetszeiten.prayer.timeRange
 import de.gebetszeiten.ui.theme.GebetszeitenTheme
 import de.gebetszeiten.ui.theme.LocalHighContrast
 import kotlinx.coroutines.delay
@@ -1296,7 +1297,7 @@ private fun Timeline(
                                                     Text(block.label, style = MaterialTheme.typography.titleMedium, color = onpc, fontWeight = FontWeight.Bold)
                                                 }
                                                 Spacer(Modifier.width(8.dp))
-                                                Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = onpc, softWrap = false)
+                                                Text(timeRange(block.start.format(HM), block.end.format(HM)), style = MaterialTheme.typography.labelMedium, color = onpc, softWrap = false)
                                             }
                                             if (showRemaining) {
                                                 Text(stringResource(R.string.remaining_inline, durationLabel(remMin)), style = MaterialTheme.typography.labelMedium, color = onpc.copy(alpha = 0.85f), modifier = Modifier.padding(top = 1.dp))
@@ -1322,7 +1323,7 @@ private fun Timeline(
                                             Text(block.label, style = MaterialTheme.typography.titleMedium, color = c)
                                         }
                                         Spacer(Modifier.width(8.dp))
-                                        Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.titleMedium, color = c, softWrap = false)
+                                        Text(timeRange(block.start.format(HM), block.end.format(HM)), style = MaterialTheme.typography.titleMedium, color = c, softWrap = false)
                                     }
                                 }
                             }
@@ -1346,7 +1347,7 @@ private fun Timeline(
                                     Text(block.label, style = MaterialTheme.typography.labelMedium, color = c)
                                 }
                                 Spacer(Modifier.width(8.dp))
-                                Text("${block.start.format(HM)}–${block.end.format(HM)}", style = MaterialTheme.typography.labelMedium, color = c, softWrap = false)
+                                Text(timeRange(block.start.format(HM), block.end.format(HM)), style = MaterialTheme.typography.labelMedium, color = c, softWrap = false)
                             }
                         }
                     }

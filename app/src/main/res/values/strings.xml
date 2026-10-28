@@ -31,7 +31,7 @@
     <string name="pre_reminder_title">%1$s in %2$d Min</string>
     <string name="pre_reminder_text">um %1$s</string>
     <string name="pause_notice_title">Keine amtlichen Zeiten</string>
-    <string name="pause_notice_text">Erinnerungen pausiert — zum Beheben antippen</string>
+    <string name="pause_notice_text">Erinnerungen pausiert, zum Beheben antippen</string>
     <string name="data_credit">Städtedaten: GeoNames (CC BY 4.0) · Berechnung: Diyanet-Methode (offline)</string>
     <string name="data_credit_official">Amtliche Diyanet-Zeiten · %1$s</string>
     <string name="data_credit_calculated">Berechnet · Diyanet-Methode</string>
@@ -41,7 +41,7 @@
     <string name="qibla_bearing">%1$d° · %2$s</string>
     <string name="qibla_distance">Kaaba · %1$s km</string>
     <string name="qibla_compass_desc">Kompass mit Qibla-Pfeil, Richtung %1$d° %2$s</string>
-    <string name="qibla_no_compass">Kompass nicht verfügbar — Qibla liegt bei %1$d° %2$s</string>
+    <string name="qibla_no_compass">Kompass nicht verfügbar. Qibla liegt bei %1$d° %2$s</string>
     <string name="compass_n">N</string>
     <string name="compass_e">O</string>
     <string name="compass_s">S</string>
@@ -92,9 +92,9 @@
     <!-- Inline labels -->
     <string name="karaha_active_prefix">⛔ Karāha · </string>
     <string name="karaha_warn_prefix">⚠ Karāha · </string>
-    <string name="makruh_chip">Makrūh · %1$s · %2$s–%3$s</string>
+    <string name="makruh_chip">Makrūh · %1$s · %2$s bis %3$s</string>
     <string name="makruh_chip_countdown"> · %1$s</string>
-    <string name="nafl_range_inline">%1$s · %2$s–%3$s</string>
+    <string name="nafl_range_inline">%1$s · %2$s bis %3$s</string>
 
     <!-- Makruh / Nafl explanations -->
     <string name="karaha_sunrise_title">Išrāq (nach Sonnenaufgang)</string>
@@ -104,7 +104,7 @@
     <string name="karaha_isfirar_title">Iṣfirār aš-šams (vor Sonnenuntergang)</string>
     <string name="karaha_isfirar_text">Makrūh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maġrib. Nur das heutige ʿAṣr darf hier noch (verspätet) gebetet werden. (ḥanafitisch)</string>
     <string name="nafl_awwabin_title">Auwābīn</string>
-    <string name="nafl_awwabin_text">Freiwilliges Gebet nach dem Maġrib- bis zum ʿIšāʾ-Gebet — empfohlen sind 6 Rakʿa. (Sunna/mustaḥabb)</string>
+    <string name="nafl_awwabin_text">Freiwilliges Gebet nach dem Maġrib- bis zum ʿIšāʾ-Gebet. Empfohlen sind 6 Rakʿa. (Sunna/mustaḥabb)</string>
     <string name="nafl_tahajjud_title">Tahaǧǧud</string>
     <string name="nafl_tahajjud_text">Freiwilliges Nachtgebet im letzten Drittel der Nacht (nach dem Schlaf, vor Faǧr). Besonders verdienstvoll. (Sunna/mustaḥabb)</string>
 
@@ -121,13 +121,13 @@
     <string name="cemaat_time_inline">%1$s · %2$s</string>
     <string name="desc_cemaat">Tipp: %1$s um %2$s</string>
     <string name="cemaat_explain_title">Gemeinschaftsgebet (Ǧamāʿa)</string>
-    <string name="cemaat_explain_text">Übliche Zeit des Faǧr-Gemeinschaftsgebets in der Moschee: kurz vor Sonnenaufgang (Diyanet-Praxis ≈30 Min davor). Die Zeit wird aus dem Sonnenaufgang berechnet — der Vorlauf ist in den Einstellungen anpassbar. Keine amtliche Diyanet-Angabe; die eigene Moschee kann abweichen.</string>
+    <string name="cemaat_explain_text">Übliche Zeit des Faǧr-Gemeinschaftsgebets in der Moschee: kurz vor Sonnenaufgang (Diyanet-Praxis ≈30 Min davor). Die Zeit wird aus dem Sonnenaufgang berechnet. Der Vorlauf ist in den Einstellungen anpassbar. Keine amtliche Diyanet-Angabe; die eigene Moschee kann abweichen.</string>
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
     <string name="settings_instant_apply">Änderungen werden sofort übernommen.</string>
     <string name="settings_city">Stadt</string>
-    <string name="city_no_results">Keine Treffer – Schreibweise prüfen oder Koordinaten manuell eingeben.</string>
+    <string name="city_no_results">Keine Treffer. Schreibweise prüfen oder Koordinaten manuell eingeben.</string>
     <string name="city_searching_online">Online-Suche…</string>
     <string name="city_results_online">Online gefunden (Open-Meteo/GeoNames):</string>
     <string name="city_suggestions_toggle">Ortsvorschläge ein- oder ausblenden</string>
@@ -137,7 +137,7 @@
     <string name="favorites_add">Als Favorit merken</string>
     <string name="favorites_remove">Favorit entfernen</string>
     <string name="favorites_remove_named">%1$s als Favorit entfernen</string>
-    <string name="favorites_full">Favoriten voll — höchstens %1$d</string>
+    <string name="favorites_full">Favoriten voll: höchstens %1$d</string>
     <string name="favorites_switch">Favoriten-Ort wechseln</string>
     <string name="coords_show">Koordinaten manuell eingeben</string>
     <string name="coords_hide">Manuelle Eingabe schließen</string>
@@ -158,15 +158,15 @@
     <string name="settings_show_makruh">Makrūh-Zeiten anzeigen</string>
     <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karāha-Zeit „⚠️ Karāha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>
     <string name="settings_show_cemaat">Gemeinschaftsgebet (Ǧamāʿa) morgens anzeigen</string>
-    <string name="settings_cemaat_hint">Zeigt unter Faǧr die übliche Moschee-Gemeinschaftszeit: Sonnenaufgang minus Vorlauf (Diyanet-Praxis ≈30 Min). Berechnet, keine amtliche Zeit — die eigene Moschee kann abweichen.</string>
+    <string name="settings_cemaat_hint">Zeigt unter Faǧr die übliche Moschee-Gemeinschaftszeit: Sonnenaufgang minus Vorlauf (Diyanet-Praxis ≈30 Min). Berechnet, keine amtliche Zeit. Die eigene Moschee kann abweichen.</string>
     <string name="settings_cemaat_offset">Vorlauf vor Sonnenaufgang</string>
     <string name="cemaat_offset_chip">%1$d Min</string>
     <string name="settings_calculation_fallback">Berechnung als Notausgang</string>
     <string name="settings_calculation_fallback_hint">Wenn für einen Tag keine amtlichen Diyanet-Zeiten vorliegen, die lokale astronomische Berechnung verwenden. Amtliche Zeiten haben immer Vorrang. Ist dies aus, zeigt die App für solche Tage gar keine Zeiten.</string>
     <string name="settings_remaining">Restzeit</string>
-    <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit — eine Einstellung für alles: App, Widget, Sperrbildschirm und das Symbol in der Statusleiste. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
+    <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit. Eine Einstellung für alles: App, Widget, Sperrbildschirm und das Symbol in der Statusleiste. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
     <string name="settings_remaining_all">Überall</string>
-    <string name="settings_remaining_cost">Stufen kostet je Gebetsintervall bis zu 14 feste Weckvorgänge — die letzten neun Minuten einzeln, davor die Zehnminuten-Marken — plus einen je angefangener Stunde; je nach Intervall etwa 13 bis 25. Genau kostet fast dieselben, sobald die dauerhafte Anzeige läuft: Den Text zählt dort das System, aber das Symbol in der Statusleiste stellt nur die App weiter. Etwas billiger ist Genau trotzdem, weil das Widget dabei ohne die App auskommt. Ohne dauerhafte Anzeige kostet Genau gar nichts, und Aus kostet nie welche.</string>
+    <string name="settings_remaining_cost">Stufen kostet je Gebetsintervall bis zu 14 feste Weckvorgänge: die letzten neun Minuten einzeln, davor die Zehnminuten-Marken, plus einen je angefangener Stunde; je nach Intervall etwa 13 bis 25. Genau kostet fast dieselben, sobald die dauerhafte Anzeige läuft: Den Text zählt dort das System, aber das Symbol in der Statusleiste stellt nur die App weiter. Etwas billiger ist Genau trotzdem, weil das Widget dabei ohne die App auskommt. Ohne dauerhafte Anzeige kostet Genau gar nichts, und Aus kostet nie welche.</string>
     <string name="settings_lockscreen_hint">Auf dem Sperrbildschirm erscheint die Restzeit erst, wenn die dauerhafte Anzeige eingeschaltet ist.</string>
     <string name="settings_wear_hint">Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).</string>
     <string name="settings_official_online">Offizielle Diyanet-Zeiten (online)</string>
@@ -177,12 +177,12 @@
     <string name="onboarding_place_current">Aktuell eingestellt: %1$s</string>
 
     <!-- Ersteinrichtung: Vorschau der Dauerzeile -->
-    <string name="onboarding_preview_same_icon">Das Symbol ist bei „Stufen“ und „Genau“ dasselbe — verschieden ist nur der Text darunter.</string>
+    <string name="onboarding_preview_same_icon">Das Symbol ist bei „Stufen“ und „Genau“ dasselbe. Verschieden ist nur der Text darunter.</string>
     <string name="onboarding_preview_statusbar_desc">Vorschau: Symbol in der Statusleiste</string>
     <string name="onboarding_preview_statusbar_hint">so sieht es oben in der Statusleiste aus</string>
     <string name="onboarding_preview_expand">▾ antippen zum Aufklappen</string>
     <string name="onboarding_preview_collapse">▴ antippen zum Zuklappen</string>
-    <string name="onboarding_preview_example">Beispielwerte — für deinen Ort liegen noch keine Zeiten vor.</string>
+    <string name="onboarding_preview_example">Beispielwerte. Für deinen Ort liegen noch keine Zeiten vor.</string>
 
     <!-- Hinweisstreifen, wenn Benachrichtigungen blockiert sind -->
     <string name="notification_block_title">Benachrichtigungen sind aus</string>
@@ -200,7 +200,7 @@
     <string name="lead_15">15 Min</string>
     <string name="lead_30">30 Min</string>
     <string name="settings_persistent">Dauerhafte Anzeige (Sperrbildschirm)</string>
-    <string name="settings_persistent_hint">Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet — sichtbar auch auf dem Sperrbildschirm. Für sich allein kostet sie keinen zusätzlichen Akku: Sie wird nur zu den Gebetszeiten neu geschrieben. Zusammen mit der Restzeit kommen Weckvorgänge dazu, weil dann auch das Symbol in der Statusleiste weitergestellt werden muss.</string>
+    <string name="settings_persistent_hint">Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet, sichtbar auch auf dem Sperrbildschirm. Für sich allein kostet sie keinen zusätzlichen Akku: Sie wird nur zu den Gebetszeiten neu geschrieben. Zusammen mit der Restzeit kommen Weckvorgänge dazu, weil dann auch das Symbol in der Statusleiste weitergestellt werden muss.</string>
     <string name="settings_section_appearance">Darstellung</string>
     <string name="settings_theme">Design</string>
     <string name="theme_system">System</string>

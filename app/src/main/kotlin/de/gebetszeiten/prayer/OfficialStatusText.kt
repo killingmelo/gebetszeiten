@@ -79,7 +79,7 @@ fun officialStatusText(
         // Notausgang aus, keine amtliche Quelle da (Aufgabe 15) — dann zeigt
         // die App fuer diesen Ort/Tag gar keine Zeiten (siehe noTimesNotice).
         TimesSourceBadge.None ->
-            lines += "Quelle: keine — Notausgang aus"
+            lines += "Quelle: keine, Notausgang aus"
     }
     // "Abgedeckt bis" beschreibt die Abdeckung des ONLINE-CACHES — nur
     // zeigen, wenn der Cache auch die aktive Quelle ist. Sonst (Bundled,
@@ -184,12 +184,12 @@ fun coverageWarning(
     // `isBefore(today)` und nicht `<=`: der letzte abgedeckte Tag IST noch
     // abgedeckt. „Endeten am heute" waere am letzten Tag eine Falschaussage.
     return if (coverageEnd.isBefore(today)) {
-        "Offline-Reserve: gebündelte amtliche Zeiten endeten am $ende — " +
-            "ohne Netz tragen jetzt die zuvor geladenen amtlichen Zeiten, " +
+        "Offline-Reserve: gebündelte amtliche Zeiten endeten am $ende. " +
+            "Ohne Netz tragen jetzt die zuvor geladenen amtlichen Zeiten, " +
             "und wo keine vorliegen, die eigene Berechnung."
     } else {
-        "Offline-Reserve: gebündelte amtliche Zeiten nur noch bis $ende — " +
-            "danach tragen ohne Netz die zuvor geladenen amtlichen Zeiten, " +
+        "Offline-Reserve: gebündelte amtliche Zeiten nur noch bis $ende. " +
+            "Danach tragen ohne Netz die zuvor geladenen amtlichen Zeiten, " +
             "und wo keine vorliegen, die eigene Berechnung."
     }
 }
