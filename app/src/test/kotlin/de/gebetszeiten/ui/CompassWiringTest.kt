@@ -40,4 +40,17 @@ class CompassWiringTest {
         assertTrue(screen.contains("qibla_compass_interference"))
         assertFalse(screen.contains("rememberDeviceAzimuth()"))
     }
+
+    @Test fun richtungOhneVerwaistenPunktUndScrollbar() {
+        // Gradzahl und Himmelsrichtung getrennt, TalkBack liest beides als eine Einheit.
+        assertTrue(screen.contains("R.string.qibla_bearing_desc"))
+        assertTrue(screen.contains("clearAndSetSemantics"))
+        val strings = File("src/main/res/values/strings.xml").readText()
+        val bearing = Regex("""<string name="qibla_bearing">([^<]*)</string>""").find(strings)!!.groupValues[1]
+        assertFalse("qibla_bearing enthaelt noch ·: $bearing", bearing.contains("·"))
+        // Bei Schriftgröße 1,4 scrollen statt abschneiden, mittig solange es passt.
+        assertTrue(screen.contains("verticalScroll(rememberScrollState())"))
+        assertTrue(screen.contains("heightIn(min = maxHeight)"))
+        assertTrue(screen.contains("BoxWithConstraints("))
+    }
 }

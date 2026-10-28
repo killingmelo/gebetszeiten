@@ -38,7 +38,8 @@
     <string name="snackbar_official_loaded">Amtliche Zeiten für %1$s geladen</string>
 
     <!-- Qibla -->
-    <string name="qibla_bearing">%1$d° · %2$s</string>
+    <string name="qibla_bearing">%1$d°</string>
+    <string name="qibla_bearing_desc">%1$d Grad, %2$s</string>
     <string name="qibla_distance">Kaaba · %1$s km</string>
     <string name="qibla_compass_desc">Kompass mit Qibla-Pfeil, Richtung %1$d° %2$s</string>
     <string name="qibla_compass_inaccurate">Kompass ungenau. Handy in Form einer Acht bewegen.</string>
@@ -76,6 +77,9 @@
     <!-- Prayer-status content descriptions -->
     <string name="status_current">, aktuelles Gebet</string>
     <string name="status_past">, vergangen</string>
+    <!-- Šurūq ist kein Gebet: die laufende Zeile heißt „jetzt“, nicht „aktuelles Gebet“. -->
+    <string name="status_now">, jetzt</string>
+    <string name="status_jamaa_derived">, berechnet, keine amtliche Zeit</string>
     <string name="desc_prayer">%1$s, %2$s%3$s</string>
     <string name="show_explanation">Erklärung anzeigen</string>
 

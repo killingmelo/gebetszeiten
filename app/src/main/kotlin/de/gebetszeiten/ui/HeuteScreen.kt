@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
@@ -102,6 +103,33 @@ private val PHOTO_INSET = 16.dp
 /** Nebenzeilen stehen um so viel eingerückt unter ihrem Gebet. */
 private val SIDE_INDENT = 16.dp
 
+/** Unter dieser Bildschirmhöhe (dp) wird das Foto flacher, damit Titel, „noch …“,
+ *  „dann …“ und die Makrūh-Zeile ohne Scrollen sichtbar bleiben (360×640). */
+private const val COMPACT_HEIGHT_DP = 720
+
+/** Seitenverhältnis des Fotos: 10:7 wie im Entwurf, auf kleinen Bildschirmen 16:9. */
+internal fun photoAspectFor(screenHeightDp: Int): Float =
+    if (screenHeightDp < COMPACT_HEIGHT_DP) 16f / 9f else 10f / 7f
+
+/** Abstand zwischen Bildunterschrift und Titel in dp. */
+internal fun heroGapDp(screenHeightDp: Int): Int = if (screenHeightDp < COMPACT_HEIGHT_DP) 12 else 20
+
+/**
+ * Der gewählte Tag nach einem Tageswechsel: war „heute“ gewählt, rückt er auf
+ * den neuen Tag mit; ein anderer Tag, den der Nutzer gerade ansieht, bleibt.
+ */
+internal fun rolledSelectedDate(selected: LocalDate, previousToday: LocalDate, today: LocalDate): LocalDate =
+    if (selected == previousToday) today else selected
+
+/** TalkBack-Zusatz einer Gebetszeile. Šurūq ist kein Gebet und heißt „jetzt“. */
+@StringRes
+internal fun prayerStatusRes(prayer: Prayer, current: Boolean, faded: Boolean): Int? = when {
+    current && prayer == Prayer.SUNRISE -> R.string.status_now
+    current -> R.string.status_current
+    faded -> R.string.status_past
+    else -> null
+}
+
 private data class DayInfo(
     val times: DailyPrayerTimes,
     val karaha: KarahaTimes,
@@ -151,7 +179,17 @@ internal fun HeuteScreen(
     }
 
     var selectedDate by remember { mutableStateOf(LocalDate.now(zone)) }
+    // Bleibt die App über Mitternacht offen, rückt „heute“ beim nächsten Tick mit.
+    var lastToday by remember { mutableStateOf(LocalDate.now(zone)) }
+    LaunchedEffect(tick) {
+        val today = LocalDate.now(zone)
+        if (today != lastToday) {
+            selectedDate = rolledSelectedDate(selectedDate, lastToday, today)
+            lastToday = today
+        }
+    }
     val isToday = selectedDate == LocalDate.now(zone)
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp
 
     val dayInfo by produceState<DayInfo?>(null, settings, tick, selectedDate) {
         // Keine Zeiten unter den aktuellen Einstellungen: `dayInfo` bleibt
@@ -230,10 +268,10 @@ internal fun HeuteScreen(
                 cemaatOffsetMinutes = settings.cemaatOffsetMinutes,
             )
             Spacer(Modifier.height(8.dp))
-            Photo(hero, t)
+            Photo(hero, photoAspectFor(screenHeightDp), t)
             // An anderen Tagen kein Titel und keine Restzeit: nur Foto und Liste.
             if (isToday) {
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(heroGapDp(screenHeightDp).dp))
                 // „noch …“ steht hier immer; die Restzeit-Einstellung gilt nur
                 // für Widget, Sperrbildschirm und Statusleiste.
                 Hero(hero = hero, showKaraha = settings.showKaraha, t = t)
@@ -354,9 +392,9 @@ private fun DateLine(
     }
 }
 
-/** Foto des Abschnitts, 10:7 mit Radius 24 dp, darunter die Bildunterschrift. */
+/** Foto des Abschnitts ([aspect], siehe [photoAspectFor]) mit Radius 24 dp, darunter die Bildunterschrift. */
 @Composable
-private fun Photo(hero: HeroState, t: Tokens) {
+private fun Photo(hero: HeroState, aspect: Float, t: Tokens) {
     val key = hero.photo
     Image(
         painter = painterResource(photoRes(key)),
@@ -365,7 +403,7 @@ private fun Photo(hero: HeroState, t: Tokens) {
         modifier = Modifier
             .padding(horizontal = PHOTO_INSET)
             .fillMaxWidth()
-            .aspectRatio(10f / 7f)
+            .aspectRatio(aspect)
             .clip(RoundedCornerShape(24.dp)),
     )
     Text(
@@ -380,7 +418,7 @@ private fun Photo(hero: HeroState, t: Tokens) {
 private fun Hero(hero: HeroState, showKaraha: Boolean, t: Tokens) {
     Column(Modifier.padding(horizontal = GUTTER)) {
         Text(
-            text = stringResource(momentLabelRes(hero.moment)),
+            text = dmgTitle(stringResource(momentLabelRes(hero.moment))),
             style = MaterialTheme.typography.displayLarge,
             color = t.ink,
             modifier = Modifier.semantics { heading() },
@@ -460,11 +498,7 @@ private fun PrayerLine(row: DayRow.PrayerRow, t: Tokens) {
     }
     val time = row.at.format(HM)
     val nextDay = stringResource(R.string.row_next_day)
-    val status = when {
-        row.current -> stringResource(R.string.status_current)
-        faded -> stringResource(R.string.status_past)
-        else -> ""
-    }
+    val status = prayerStatusRes(row.prayer, row.current, faded)?.let { stringResource(it) } ?: ""
     val description = if (row.nextDay) {
         stringResource(R.string.desc_prayer_next_day, name, time)
     } else {
@@ -530,7 +564,10 @@ private fun SideLine(row: DayRow.SideRow, onExplain: (Section) -> Unit, t: Token
         isMakruh(row.kind) -> t.gold
         else -> t.ink
     }
-    val status = if (row.past) stringResource(R.string.status_past) else ""
+    // Die Ǧamāʿa-Zeit ist abgeleitet (Sonnenaufgang minus Vorlauf), das sagt
+    // TalkBack dazu, damit sie nicht als amtliche Zeit gilt.
+    val derived = if (row.kind == Section.JAMAA) stringResource(R.string.status_jamaa_derived) else ""
+    val status = derived + if (row.past) stringResource(R.string.status_past) else ""
     val description = stringResource(R.string.desc_prayer, label, time, status)
     val explainLabel = stringResource(R.string.show_explanation)
     Row(
