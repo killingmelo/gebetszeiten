@@ -54,8 +54,9 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
     val cardinal = QiblaMath.cardinal(bearing)
     val km = String.format(Locale.GERMAN, "%,d", distance.roundToInt())
 
-    val azimuth = rememberDeviceAzimuth()
-    val live = azimuth != null
+    val heading = rememberDeviceAzimuth(settings.latitude, settings.longitude)
+    val azimuth = heading?.azimuth
+    val live = heading != null
 
     // Fix 3: keep a continuous angle to avoid long-arc spin on 0↔360 wrap.
     // State write is in LaunchedEffect (effects phase), NOT during composition.
@@ -131,6 +132,22 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
                 textAlign = TextAlign.Center,
             )
         }
+        if (heading != null && !heading.reliable) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                stringResource(R.string.qibla_compass_inaccurate),
+                style = MaterialTheme.typography.bodyMedium,
+                color = t.ink,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.qibla_compass_interference),
+            style = MaterialTheme.typography.bodySmall,
+            color = t.stone,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

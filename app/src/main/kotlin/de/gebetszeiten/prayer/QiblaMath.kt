@@ -43,6 +43,10 @@ object QiblaMath {
         return DIRS[(norm / 45.0).roundToInt() % 8]
     }
 
+    /** Magnetisches Azimut + Missweisung (Ost positiv) = Azimut zu geografisch Nord, 0..360. */
+    fun trueAzimuth(magneticAzimuth: Float, declinationDeg: Float): Float =
+        normalizeDegrees(magneticAzimuth + declinationDeg)
+
     /** Winkel auf 0..360 normalisieren. */
     fun normalizeDegrees(deg: Float): Float = ((deg % 360f) + 360f) % 360f
 }
