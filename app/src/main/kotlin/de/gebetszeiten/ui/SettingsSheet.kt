@@ -4,6 +4,8 @@ package de.gebetszeiten.ui
 // herausgelöst (dort waren es 1.623 Zeilen), weil die Ortswahl mit den
 // Quellen-Badges weiter wächst.
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,16 +14,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -43,12 +45,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -71,26 +76,37 @@ import de.gebetszeiten.data.withFavorite
 import de.gebetszeiten.data.withRecentPlace
 import de.gebetszeiten.data.withoutFavorite
 import de.gebetszeiten.official.OfficialTimesProvider
+import de.gebetszeiten.prayer.PhotoKey
 import de.gebetszeiten.prayer.TimesSourceBadge
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.prayer.timesSourceBadge
+import de.gebetszeiten.ui.theme.LocalTokens
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import java.time.LocalDate
 import java.util.Locale
 
+/** Ein Abschnitt im Stil von „Heute“: Großbuchstaben-Überschrift, Inhalt,
+ *  eine Haarlinie darunter. Keine Karte, keine Fläche. */
 @Composable
 private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                content()
-            },
-        )
-    }
+    val t = LocalTokens.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hairlineBelow(t.hairline)
+            .padding(top = 20.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = {
+            Text(
+                title.uppercase(Locale.GERMAN),
+                style = MaterialTheme.typography.labelSmall,
+                color = t.stone,
+                modifier = Modifier.semantics { heading() },
+            )
+            content()
+        },
+    )
 }
 
 /** Stadtname mit fett hervorgehobenem, übereinstimmendem Wortanfang. */
@@ -119,7 +135,7 @@ private fun RecentPlacesRow(
 ) {
     Text(
         stringResource(R.string.city_recent),
-        style = MaterialTheme.typography.labelMedium,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -184,7 +200,7 @@ private fun FavoritesRow(
     ) {
         Text(
             stringResource(R.string.favorites_title),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         // Der Stern bleibt immer sichtbar und bedienbar — auch bei voller
@@ -209,7 +225,7 @@ private fun FavoritesRow(
             // Die Zahl kommt aus FAVORITES_MAX, damit der Text nicht lügt,
             // sobald jemand die Konstante anfasst.
             stringResource(R.string.favorites_full, FAVORITES_MAX),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
         )
     }
@@ -282,7 +298,7 @@ private fun FavoritesRow(
         lines.forEach { line ->
             Text(
                 line,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -312,7 +328,7 @@ private fun ManualCoordinatesFields(
     if (latErr || lngErr) {
         Text(
             stringResource(R.string.settings_coordinate_error),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
         )
     }
@@ -413,7 +429,7 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, re
         }
         Text(
             statusText ?: stringResource(R.string.status_loading),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (settings.canFetchOfficial()) {
@@ -459,15 +475,15 @@ internal fun LocationSettings(
             // Ohne imePadding reicht der Scroll-Viewport hinter die Tastatur —
             // Inhalt unterhalb der Tastaturkante wäre unerreichbar.
             .imePadding()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = 24.dp)
             .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineSmall)
         Text(
             stringResource(R.string.settings_instant_apply),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
         )
 
         // Sektions-Titel nennt den aktiven Ort — das Stadt-Feld selbst ist ein
@@ -629,7 +645,7 @@ internal fun LocationSettings(
             if (settings.showKaraha) {
                 Text(
                     stringResource(R.string.settings_makruh_hint),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -638,7 +654,7 @@ internal fun LocationSettings(
             if (settings.showCemaat) {
                 Text(
                     stringResource(R.string.settings_cemaat_hint),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(stringResource(R.string.settings_cemaat_offset), style = MaterialTheme.typography.bodyLarge)
@@ -658,18 +674,18 @@ internal fun LocationSettings(
             }
             Text(
                 stringResource(R.string.settings_calculation_fallback_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Text(stringResource(R.string.settings_remaining), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
             Text(
                 stringResource(R.string.settings_remaining_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            // Ein Regler statt vier: App, Widget, Sperrbildschirm und Symbol
-            // folgen ihm gemeinsam.
+            // Ein Regler statt vier: Widget, Sperrbildschirm und Symbol folgen
+            // ihm gemeinsam. Die App zeigt die Restzeit immer.
             CountdownModeSelector(stringResource(R.string.settings_remaining_all), settings.countdownMode) {
                 commit { copy(countdownMode = it) }
             }
@@ -685,12 +701,12 @@ internal fun LocationSettings(
             }
             Text(
                 stringResource(R.string.settings_persistent_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 stringResource(R.string.settings_remaining_cost),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             // Der Hinweis, der mit den vier alten Reglern verschwand: er
@@ -700,13 +716,13 @@ internal fun LocationSettings(
             if (settings.countdownMode != AppSettings.COUNTDOWN_OFF && !settings.persistentNotification) {
                 Text(
                     stringResource(R.string.settings_lockscreen_hint),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
                 stringResource(R.string.settings_wear_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (OfficialTimesProvider.isOnline) {
@@ -720,7 +736,7 @@ internal fun LocationSettings(
         SettingsSection(stringResource(R.string.settings_section_reminders)) {
             Text(
                 stringResource(R.string.settings_reminders_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             listOf(Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA).forEach { p ->
@@ -747,7 +763,7 @@ internal fun LocationSettings(
             Text(stringResource(R.string.settings_lead), style = MaterialTheme.typography.bodyLarge)
             Text(
                 stringResource(R.string.settings_lead_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -779,7 +795,7 @@ internal fun LocationSettings(
             }
             Text(
                 stringResource(R.string.settings_amoled_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
@@ -795,7 +811,7 @@ internal fun LocationSettings(
             }
             Text(
                 stringResource(R.string.settings_hijri_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
@@ -805,10 +821,58 @@ internal fun LocationSettings(
         }
 
         BatteryOptimizationCard()
+
+        AboutSection()
     }
 }
 
-/** Aus / Stufen / Genau — der eine Restzeit-Regler fuer alle Flaechen. */
+/** Der Name des Abschnitts, zu dem ein Foto gehört. */
+private fun photoLabelRes(key: PhotoKey): Int = when (key) {
+    PhotoKey.FAJR -> R.string.prayer_fajr
+    PhotoKey.SHURUQ -> R.string.moment_shuruq
+    PhotoKey.ZUHR -> R.string.prayer_dhuhr
+    PhotoKey.ASR -> R.string.prayer_asr
+    PhotoKey.MAGHRIB -> R.string.prayer_maghrib
+    PhotoKey.ISHA -> R.string.prayer_isha
+}
+
+/** Die gebündelten Schriften; ihre Lizenztexte liegen unter `assets/licenses/`. */
+private val FONT_NAMES = listOf("Noto Serif Display", "Inter", "Noto Naskh Arabic")
+
+/**
+ * „Über“: wer die Fotos gemacht hat und unter welcher Lizenz die Schriften
+ * stehen. Die Unsplash-Lizenz verlangt die Nennung nicht, sie ist aber fair.
+ */
+@Composable
+private fun AboutSection() {
+    SettingsSection(stringResource(R.string.settings_section_about)) {
+        Text(stringResource(R.string.about_photos), style = MaterialTheme.typography.titleMedium)
+        PHOTO_CREDITS.forEach { credit ->
+            CreditLine(
+                stringResource(photoLabelRes(credit.key)),
+                stringResource(R.string.photo_credit, credit.photographer),
+            )
+        }
+        Text(
+            stringResource(R.string.about_fonts),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        val license = stringResource(R.string.about_font_license)
+        FONT_NAMES.forEach { CreditLine(it, license) }
+    }
+}
+
+@Composable
+private fun CreditLine(name: String, detail: String) {
+    // Eine Einheit für TalkBack: Name und Nennung gehören zusammen.
+    Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
+        Text(name, style = MaterialTheme.typography.bodyLarge)
+        Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Aus / Stufen / Genau: der eine Restzeit-Regler fuer Widget, Sperrbildschirm und Statusleiste. */
 @Composable
 private fun CountdownModeSelector(label: String, value: String, onChange: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -870,16 +934,24 @@ private fun BatteryOptimizationCard() {
     }
     if (exempt) return
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        modifier = Modifier.fillMaxWidth(),
+    // Fläche (surface) mit Haarlinie: der einzige Block im Blatt, der zum
+    // Handeln auffordert, hebt sich so vom Grund ab, ohne Karte zu sein.
+    val t = LocalTokens.current
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = Modifier
+            .padding(top = 24.dp)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(t.surface)
+            .border(1.dp, t.hairline, shape),
     ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.battery_title), style = MaterialTheme.typography.titleSmall)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.battery_title), style = MaterialTheme.typography.titleMedium, color = t.ink)
             Text(
                 stringResource(R.string.battery_body),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                style = MaterialTheme.typography.bodyMedium,
+                color = t.stone,
             )
             Button(onClick = {
                 context.startActivity(
@@ -903,6 +975,7 @@ private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,

@@ -281,8 +281,9 @@ private suspend fun officialCacheName(
     return place?.displayName() ?: settings.city
 }
 
-/** Haarlinie an der Unterkante, ab [inset] (Nebenzeilen beginnen eingerückt). */
-private fun Modifier.hairlineBelow(color: Color, inset: Dp = 0.dp): Modifier = drawBehind {
+/** Haarlinie an der Unterkante, ab [inset] (Nebenzeilen beginnen eingerückt).
+ *  Auch Monat, Einstellungen und Ersteinrichtung ziehen ihre Linien hiermit. */
+internal fun Modifier.hairlineBelow(color: Color, inset: Dp = 0.dp): Modifier = drawBehind {
     val stroke = 1.dp.toPx()
     val y = size.height - stroke / 2
     drawLine(color, Offset(inset.toPx(), y), Offset(size.width, y), stroke)

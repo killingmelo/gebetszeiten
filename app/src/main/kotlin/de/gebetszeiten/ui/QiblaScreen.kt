@@ -1,6 +1,7 @@
 package de.gebetszeiten.ui
 
 import android.graphics.Paint
+import android.graphics.Typeface
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -34,12 +35,15 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.core.content.res.ResourcesCompat
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.gebetszeiten.R
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.prayer.QiblaMath
+import de.gebetszeiten.ui.theme.LocalTokens
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -67,9 +71,16 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
         label = "compass",
     )
 
-    val ring = MaterialTheme.colorScheme.onSurfaceVariant
-    val accent = MaterialTheme.colorScheme.primary
-    val north = MaterialTheme.colorScheme.error
+    // Ring und Beschriftung in Nebentext, Nord in Gold, der Pfeil im Akzent.
+    val t = LocalTokens.current
+    val ring = t.stone
+    val accent = t.accent
+    val north = t.gold
+    // Die Himmelsrichtungen in Inter wie der übrige Text (der native Canvas
+    // kennt sonst nur die Systemschrift).
+    val context = LocalContext.current
+    val letterFace = remember { ResourcesCompat.getFont(context, R.font.sans_medium) }
+    val northFace = remember { ResourcesCompat.getFont(context, R.font.sans_semibold) }
     val compassLabels = listOf(
         stringResource(R.string.compass_n),
         stringResource(R.string.compass_e),
@@ -89,7 +100,7 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
                 .semantics { contentDescription = compassDesc },
         ) {
             rotate(animated) {
-                drawCompassRose(ring, north, compassLabels)
+                drawCompassRose(ring, north, compassLabels, letterFace, northFace)
                 rotate(bearing.toFloat(), pivot = center) {
                     drawQiblaArrow(accent)
                 }
@@ -98,30 +109,40 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
         Spacer(Modifier.height(24.dp))
         Text(
             stringResource(R.string.qibla_bearing, bearing.roundToInt(), cardinal),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.displayLarge,
+            color = t.ink,
+            textAlign = TextAlign.Center,
         )
         Text(
             stringResource(R.string.qibla_distance, km),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = t.stone,
+            modifier = Modifier.padding(top = 8.dp),
         )
         if (!live) {
             Spacer(Modifier.height(12.dp))
             Text(
                 stringResource(R.string.qibla_no_compass, bearing.roundToInt(), cardinal),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                color = t.stone,
+                textAlign = TextAlign.Center,
             )
         }
     }
 }
 
-/** Ring + N/O/S/W-Ticks; N-Tick in [north] hervorgehoben. [labels] are the
+/** Ring + N/O/S/W-Ticks; N-Tick in [north] hervorgehoben, Buchstaben in Inter. [labels] are the
  *  localized cardinal letters (N/E/S/W order). */
-private fun DrawScope.drawCompassRose(ring: Color, north: Color, labels: List<String>) {
+private fun DrawScope.drawCompassRose(
+    ring: Color,
+    north: Color,
+    labels: List<String>,
+    letterFace: Typeface?,
+    northFace: Typeface?,
+) {
     val r = size.minDimension / 2f
-    drawCircle(ring.copy(alpha = 0.5f), radius = r, style = Stroke(width = 3.dp.toPx()))
+    // Feiner Ring wie die Haarlinien der übrigen Ansichten.
+    drawCircle(ring, radius = r - 1.dp.toPx(), style = Stroke(width = 1.5.dp.toPx()))
 
     val textOffsetFromCenter = r - 34.dp.toPx()
     val textSize = 16.sp.toPx()
@@ -143,11 +164,11 @@ private fun DrawScope.drawCompassRose(ring: Color, north: Color, labels: List<St
                 color = if (isNorth) north else ring,
                 start = Offset(center.x, center.y - r),
                 end = Offset(center.x, center.y - r + (if (isNorth) 22.dp.toPx() else 14.dp.toPx())),
-                strokeWidth = if (isNorth) 5.dp.toPx() else 3.dp.toPx(),
+                strokeWidth = if (isNorth) 4.dp.toPx() else 1.5.dp.toPx(),
             )
             // Reuse the single Paint; only mutate per-letter properties.
             cardinalPaint.color = if (isNorth) northArgb else ringArgb
-            cardinalPaint.isFakeBoldText = isNorth
+            cardinalPaint.typeface = if (isNorth) northFace else letterFace
             // In the rotated frame, "north" is always at (center.x, center.y - textOffsetFromCenter).
             drawContext.canvas.nativeCanvas.drawText(
                 labels[i],

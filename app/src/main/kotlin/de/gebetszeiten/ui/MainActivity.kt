@@ -352,6 +352,9 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
             // Voll geöffnet: halb expandiert bleibt mit offener Tastatur
             // kaum Platz für die Ortsvorschläge.
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            // Grund (canvas) statt der Material-Flächenstufe: nachts schwarz
+            // wie die übrigen Ansichten, tags Creme.
+            containerColor = MaterialTheme.colorScheme.background,
         ) {
             val officialRefreshes by viewModel.officialRefreshes.collectAsState()
             LocationSettings(

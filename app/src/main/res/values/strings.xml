@@ -51,6 +51,7 @@
     <string name="month_prev">Vorheriger Monat</string>
     <string name="month_next">Nächster Monat</string>
     <string name="month_loading">lädt…</string>
+    <string name="month_no_time">keine Zeit</string>
 
     <!-- Tabs / App-Bar -->
     <string name="tab_today">Heute</string>
@@ -121,7 +122,7 @@
     <string name="settings_calculation_fallback_hint">Wenn für einen Tag keine amtlichen Diyanet-Zeiten vorliegen, die lokale astronomische Berechnung verwenden. Amtliche Zeiten haben immer Vorrang. Ist dies aus, zeigt die App für solche Tage gar keine Zeiten.</string>
     <string name="settings_remaining">Restzeit</string>
     <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit in Widget, Sperrbildschirm und Symbol in der Statusleiste. In der App steht die Restzeit immer. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
-    <string name="settings_remaining_all">Überall</string>
+    <string name="settings_remaining_all">Widget, Sperrbildschirm und Statusleiste</string>
     <string name="settings_remaining_cost">Stufen kostet je Gebetsintervall bis zu 14 feste Weckvorgänge: die letzten neun Minuten einzeln, davor die Zehnminuten-Marken, plus einen je angefangener Stunde; je nach Intervall etwa 13 bis 25. Genau kostet fast dieselben, sobald die dauerhafte Anzeige läuft: Den Text zählt dort das System, aber das Symbol in der Statusleiste stellt nur die App weiter. Etwas billiger ist Genau trotzdem, weil das Widget dabei ohne die App auskommt. Ohne dauerhafte Anzeige kostet Genau gar nichts, und Aus kostet nie welche.</string>
     <string name="settings_lockscreen_hint">Auf dem Sperrbildschirm erscheint die Restzeit erst, wenn die dauerhafte Anzeige eingeschaltet ist.</string>
     <string name="settings_wear_hint">Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).</string>
@@ -211,5 +212,9 @@
     <string name="side_makruh_isfirar">Makrūh beim Vergilben</string>
 
     <string name="photo_credit">Foto: %1$s, Unsplash</string>
+    <string name="settings_section_about">Über</string>
+    <string name="about_photos">Fotos</string>
+    <string name="about_fonts">Schriften</string>
+    <string name="about_font_license">SIL Open Font License 1.1</string>
 
 </resources>

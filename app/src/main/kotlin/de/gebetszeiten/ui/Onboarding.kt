@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -37,7 +38,9 @@ import de.gebetszeiten.notify.NotificationBlock
 import de.gebetszeiten.notify.PREVIEW_EXAMPLE_MINUTES
 import de.gebetszeiten.notify.ongoingPreviewRows
 import de.gebetszeiten.prayer.labelRes
+import de.gebetszeiten.ui.theme.LocalTokens
 import java.time.Duration
+import java.util.Locale
 
 /**
  * Die Ersteinrichtung: Vollbild, drei Schritte, Pflicht.
@@ -77,6 +80,7 @@ internal fun Onboarding(
     // Geste ab, ohne etwas zu tun: hinaus fuehrt sie nicht.
     BackHandler { previousStep(step)?.let { step = it } }
 
+    val t = LocalTokens.current
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -87,28 +91,35 @@ internal fun Onboarding(
                 // Emulator gesehen). `safeDrawing` deckt Statusleiste,
                 // Navigationsleiste, Display-Ausschnitt UND Tastatur ab.
                 .safeDrawingPadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // Schrittzahl als Großbuchstaben-Zeile wie die Abschnittsköpfe auf „Heute“.
             Text(
                 stringResource(
                     R.string.onboarding_progress,
                     OnboardingStep.values().indexOf(step) + 1,
                     OnboardingStep.values().size,
-                ),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ).uppercase(Locale.GERMAN),
+                style = MaterialTheme.typography.labelSmall,
+                color = t.stone,
             )
-            Text(copy.headline, style = MaterialTheme.typography.headlineSmall)
+            Text(copy.headline, style = MaterialTheme.typography.headlineSmall, color = t.ink)
             Text(
                 copy.detail,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = t.stone,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .hairlineBelow(t.hairline)
+                    .padding(bottom = 16.dp),
             )
 
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    // Haarlinie über den Knöpfen: der Inhalt endet sichtbar hier.
+                    .hairlineBelow(t.hairline)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -145,7 +156,7 @@ internal fun Onboarding(
 private fun OnboardingPlaceStep(draft: AppSettings, onChange: (AppSettings) -> Unit) {
     Text(
         stringResource(R.string.onboarding_place_current, draft.city),
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodyLarge,
     )
     PlacePicker(
         useOnline = draft.useOnline,
@@ -217,7 +228,7 @@ private fun OnboardingDisplayStep(draft: AppSettings, onChange: (AppSettings) ->
     if (block != NotificationBlock.NONE) {
         Text(
             de.gebetszeiten.notify.notificationBlockText(block).orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
         )
         Button(
@@ -268,7 +279,7 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
     Text(stringResource(R.string.settings_lead), style = MaterialTheme.typography.bodyLarge)
     Text(
         stringResource(R.string.settings_lead_hint),
-        style = MaterialTheme.typography.bodySmall,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -294,6 +305,8 @@ private fun ToggleLine(label: String, checked: Boolean, onChange: (Boolean) -> U
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .hairlineBelow(LocalTokens.current.hairline)
             .toggleable(
                 value = checked,
                 role = androidx.compose.ui.semantics.Role.Switch,
@@ -302,7 +315,7 @@ private fun ToggleLine(label: String, checked: Boolean, onChange: (Boolean) -> U
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
-        Text(label, modifier = Modifier.weight(1f))
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         androidx.compose.material3.Switch(checked = checked, onCheckedChange = null)
     }
 }
