@@ -86,7 +86,7 @@ class NextPrayerWidget : GlanceAppWidget() {
 
         /** Ab dieser Breite steht Šurūq als sechster Eintrag in der Zeitzeile;
          *  schmaler bleiben es die fünf Pflichtgebete. */
-        val SHURUQ_MIN_WIDTH = 280.dp
+        val SHURUQ_MIN_WIDTH = 300.dp
         val CORNER = 24.dp
     }
 

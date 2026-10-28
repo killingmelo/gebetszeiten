@@ -55,5 +55,10 @@ class ShuruqWiringTest {
         assertTrue("onEnabled fehlt", text.contains("override fun onEnabled("))
         assertTrue("scheduleNext wird nicht gerufen", text.contains("PrayerAlarmScheduler.scheduleNext("))
         assertTrue("nicht im Hintergrund (goAsync)", text.contains("goAsync()"))
+        assertTrue("Exceptions werden nicht abgefangen", text.contains("catch (e: Exception)"))
+        assertTrue(
+            "finish() steht nicht in einem finally-Block",
+            Regex("""finally\s*\{[^}]*pending\.finish\(\)""").containsMatchIn(text),
+        )
     }
 }

@@ -1,6 +1,7 @@
 package de.gebetszeiten.widget
 
 import android.content.Context
+import android.util.Log
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import de.gebetszeiten.alarm.PrayerAlarmScheduler
@@ -21,6 +22,9 @@ class NextPrayerWidgetReceiver : GlanceAppWidgetReceiver() {
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 PrayerAlarmScheduler.scheduleNext(context, SettingsRepository(context).current(), ZoneId.systemDefault())
+            } catch (e: Exception) {
+                // Eine Neuplanung darf den Prozess nie abstürzen lassen.
+                Log.w("NextPrayerWidgetReceiver", "Neuplanung nach dem Platzieren fehlgeschlagen", e)
             } finally {
                 pending.finish()
             }
