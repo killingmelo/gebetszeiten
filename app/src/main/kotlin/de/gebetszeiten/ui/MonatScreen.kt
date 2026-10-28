@@ -211,9 +211,15 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
                         Text(
                             dateLabel(row.date),
                             Modifier.weight(DATE_WEIGHT),
-                            style = MaterialTheme.typography.bodyMedium,
+                            // Gedeckelt wie die Zeitspalten: bei 1,4 brach „Mi 28.“
+                            // sonst in zwei Zeilen um.
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = cappedSp(14, TIME_SCALE_CAP, fontScale),
+                            ),
                             fontWeight = weight,
                             color = t.ink,
+                            maxLines = 1,
+                            softWrap = false,
                         )
                         row.times.forEach { time ->
                             Text(
@@ -237,8 +243,9 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
     }
 }
 
-/** Grenzen, bis zu denen die Systemschrift in den Zeitspalten mitwächst; darüber
- *  bräche eine Zeit mitten in den Ziffern um. Das Datum links wächst weiter mit. */
+/** Grenzen, bis zu denen die Systemschrift in den Zeitspalten und im Datum links
+ *  mitwächst; darüber bräche eine Zeit mitten in den Ziffern um und das Datum in
+ *  zwei Zeilen. */
 private const val TIME_SCALE_CAP = 1.2f
 private const val HEADER_SCALE_CAP = 1.1f
 

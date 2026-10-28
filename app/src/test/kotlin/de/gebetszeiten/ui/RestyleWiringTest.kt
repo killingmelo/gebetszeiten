@@ -38,6 +38,15 @@ class RestyleWiringTest {
         return text.substring(start, ende)
     }
 
+    @Test fun `Monat-Datum bricht bei grosser Schrift nicht um`() {
+        val text = quelltext("MonatScreen.kt").replace(Regex("""\s+"""), " ")
+        assertTrue(
+            "Datumszelle ohne gedeckelte Schrift und eine Zeile",
+            Regex("""dateLabel\(row\.date\), Modifier\.weight\(DATE_WEIGHT\),.*?cappedSp\(14, TIME_SCALE_CAP, fontScale\).*?maxLines = 1, softWrap = false""")
+                .containsMatchIn(text),
+        )
+    }
+
     @Test fun `Monat markiert heute ohne Farbflaeche`() {
         val text = quelltext("MonatScreen.kt")
         assertFalse("MonatScreen.kt nutzt noch primaryContainer", text.contains("primaryContainer"))
