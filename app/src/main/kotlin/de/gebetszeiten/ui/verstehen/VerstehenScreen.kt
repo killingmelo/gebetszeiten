@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -36,8 +37,11 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.prayer.Section
+import de.gebetszeiten.ui.dmgTitle
 import de.gebetszeiten.ui.photoDescriptionRes
 import de.gebetszeiten.ui.photoRes
 import de.gebetszeiten.ui.theme.LocalTokens
@@ -74,11 +78,17 @@ fun VerstehenScreen(
         }
     }
 
-    // Die Schattenspitze wandert: einmal pro Minute neu (Daten, keine Animation)
-    val now by produceState(ZonedDateTime.now()) {
-        while (true) {
-            delay(60_000L - System.currentTimeMillis() % 60_000L)
-            value = ZonedDateTime.now()
+    // Die Schattenspitze wandert: einmal pro Minute neu (Daten, keine Animation).
+    // Nur im Vordergrund, wie auf „Heute“: sonst lief die Schleife im
+    // zwischengespeicherten Hintergrundprozess weiter.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val now by produceState(ZonedDateTime.now(), lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            value = ZonedDateTime.now() // sofort auffrischen, wenn die App wieder sichtbar wird
+            while (true) {
+                delay(60_000L - System.currentTimeMillis() % 60_000L)
+                value = ZonedDateTime.now()
+            }
         }
     }
 
@@ -124,7 +134,7 @@ private fun EntryBlock(entry: VerstehenEntry, settings: AppSettings, now: ZonedD
             Spacer(Modifier.height(20.dp))
         }
         Text(
-            entry.title,
+            dmgTitle(entry.title),
             style = MaterialTheme.typography.headlineSmall,
             color = t.ink,
             modifier = Modifier.semantics { heading() },

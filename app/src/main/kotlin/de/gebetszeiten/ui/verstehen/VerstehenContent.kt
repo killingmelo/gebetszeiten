@@ -1,5 +1,6 @@
 package de.gebetszeiten.ui.verstehen
 
+import de.gebetszeiten.core.prayertimes.Karaha
 import de.gebetszeiten.prayer.PhotoKey
 import de.gebetszeiten.prayer.Section
 
@@ -67,11 +68,14 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
             ),
         ),
         showsSundial = false,
+        note = "Die angezeigte Spanne rechnet die App: vom Sonnenaufgang bis " +
+            "${Karaha.ISRAK_AFTER_SUNRISE_MIN} Minuten danach.",
     ),
     VerstehenEntry(
         section = Section.DUHA,
         title = "Ḍuḥā",
-        photo = PhotoKey.SHURUQ,
+        // Kein Foto: Šurūq direkt davor zeigt dasselbe.
+        photo = null,
         quotes = listOf(
             Quote(
                 arabic = "وندب ركعتان بعد الوضوء قبل جفافه وأربع فصاعدا في الضحى",
@@ -103,6 +107,8 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
             ),
         ),
         showsSundial = true,
+        note = "Die angezeigte Spanne rechnet die App: von " +
+            "${Karaha.ZEVAL_BEFORE_DHUHR_MIN} Minuten vor Ẓuhr bis Ẓuhr.",
     ),
     VerstehenEntry(
         section = Section.ASR,
@@ -126,7 +132,8 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
     VerstehenEntry(
         section = Section.ISFIRAR_MAKRUH,
         title = "Makrūh beim Vergilben der Sonne",
-        photo = PhotoKey.ASR,
+        // Kein Foto: ʿAṣr direkt davor zeigt dasselbe.
+        photo = null,
         quotes = listOf(
             Quote(
                 arabic = "الثالث \"عند اصفرارها\" وضعفها حتى تقدر العين على مقابلتها \"إلى أن تغرب\"",
@@ -140,6 +147,8 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
             ),
         ),
         showsSundial = false,
+        note = "Die angezeigte Spanne rechnet die App: von " +
+            "${Karaha.ISFIRAR_BEFORE_MAGHRIB_MIN} Minuten vor Maġrib bis Maġrib.",
     ),
     VerstehenEntry(
         section = Section.MAGHRIB,
@@ -162,7 +171,8 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
     VerstehenEntry(
         section = Section.AWWABIN,
         title = "Auwābīn",
-        photo = PhotoKey.MAGHRIB,
+        // Kein Foto: Maġrib direkt davor zeigt dasselbe.
+        photo = null,
         quotes = listOf(
             Quote(
                 arabic = "ندب \"ست\" ركعات \"بعد المغرب\" لقوله ﷺ: \"من صلى بعد المغرب ست ركعات كتب من الأوابين\"",
@@ -198,7 +208,8 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
     VerstehenEntry(
         section = Section.TAHAJJUD,
         title = "Tahaǧǧud",
-        photo = PhotoKey.ISHA,
+        // Kein Foto: ʿIšāʾ direkt davor zeigt dasselbe.
+        photo = null,
         quotes = listOf(
             Quote(
                 arabic = "\"وندب صلاة الليل\" خصوصا آخره كما ذكرناه وأقل ما ينبغي أن يتنفل بالليل ثمان ركعات كذا في الجوهرة",
@@ -230,5 +241,8 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
             ),
         ),
         showsSundial = false,
+        note = "Die Ǧamāʿa-Zeit ist keine amtliche Zeit. Sie ergibt sich aus dem " +
+            "Sonnenaufgang minus dem Vorlauf aus den Einstellungen. Die eigene " +
+            "Moschee kann abweichen.",
     ),
 )

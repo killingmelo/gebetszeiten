@@ -61,4 +61,15 @@ class VerstehenWiringTest {
             assertFalse("$name nutzt DateTimeFormatter", text.contains("DateTimeFormatter"))
         }
     }
+
+    @Test
+    fun minutenSchleifeNurImVordergrund() {
+        val text = quelltext("VerstehenScreen.kt")
+        assertTrue("repeatOnLifecycle fehlt", text.contains("repeatOnLifecycle(Lifecycle.State.STARTED)"))
+    }
+
+    @Test
+    fun titelMitDmgAuszeichnung() {
+        assertTrue(quelltext("VerstehenScreen.kt").contains("dmgTitle(entry.title)"))
+    }
 }

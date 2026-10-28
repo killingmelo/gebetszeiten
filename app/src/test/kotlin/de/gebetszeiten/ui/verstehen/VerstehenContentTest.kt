@@ -65,6 +65,43 @@ class VerstehenContentTest {
     }
 
     @Test
+    fun jamaaSagtDassSieNichtAmtlichIst() {
+        val jamaa = VERSTEHEN.single { it.section == Section.JAMAA }
+        assertEquals(
+            "Die Ǧamāʿa-Zeit ist keine amtliche Zeit. Sie ergibt sich aus dem Sonnenaufgang " +
+                "minus dem Vorlauf aus den Einstellungen. Die eigene Moschee kann abweichen.",
+            jamaa.note,
+        )
+    }
+
+    @Test
+    fun makruhSpannenNennenIhreHerleitung() {
+        // Die Minuten kommen aus core Karaha.kt; ändert sich dort eine Zahl,
+        // muss der Hinweis mitwandern.
+        val erwartet = mapOf(
+            Section.SHURUQ_MAKRUH to "45 Minuten",
+            Section.ZUHR to "20 Minuten",
+            Section.ISFIRAR_MAKRUH to "40 Minuten",
+        )
+        for ((section, minuten) in erwartet) {
+            val note = VERSTEHEN.single { it.section == section }.note
+            assertNotNull("$section ohne Hinweis", note)
+            assertTrue("$section: $note", note!!.contains(minuten))
+            assertTrue("$section: $note", note.startsWith("Die angezeigte Spanne rechnet die App"))
+        }
+    }
+
+    @Test
+    fun keineZweiGleichenFotosHintereinander() {
+        val fotos = VERSTEHEN.map { it.photo }
+        fotos.zipWithNext().forEachIndexed { i, (a, b) ->
+            assertTrue("Eintrag ${i + 1} und ${i + 2} zeigen dasselbe Foto $a", a == null || a != b)
+        }
+        val ohneFoto = VERSTEHEN.filter { it.photo == null }.map { it.section }.toSet()
+        assertEquals(setOf(Section.DUHA, Section.ISFIRAR_MAKRUH, Section.AWWABIN, Section.TAHAJJUD), ohneFoto)
+    }
+
+    @Test
     fun titelNichtLeer() {
         for (e in VERSTEHEN) assertTrue("${e.section}: Titel leer", e.title.isNotBlank())
     }
