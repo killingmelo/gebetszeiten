@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="widget_preview_bg">#FF121613</color>
-    <color name="widget_preview_text">#FFE1E3DF</color>
-    <color name="widget_preview_accent">#FF8BD6BB</color>
+    <!-- Nacht: Grund schwarz, Tinte creme, Akzent salbeigrün (Palette.Night). -->
+    <color name="widget_preview_bg">#FF000000</color>
+    <color name="widget_preview_text">#FFF7F1E8</color>
+    <color name="widget_preview_accent">#FF849671</color>
 </resources>

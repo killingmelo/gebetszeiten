@@ -376,20 +376,6 @@ private fun Photo(hero: HeroState, t: Tokens) {
     )
 }
 
-/** Titel des Abschnitts: Šurūq, Ḍuḥā und Zawāl haben keine Gebetszeile, aber einen Namen. */
-@StringRes
-private fun momentLabelRes(moment: Moment): Int = when (moment) {
-    Moment.FAJR -> R.string.prayer_fajr
-    Moment.SHURUQ -> R.string.moment_shuruq
-    Moment.DUHA -> R.string.nafl_duha
-    Moment.ZAWAL -> R.string.moment_zawal
-    Moment.DHUHR -> R.string.prayer_dhuhr
-    Moment.ASR -> R.string.prayer_asr
-    Moment.MAGHRIB -> R.string.prayer_maghrib
-    Moment.ISHA -> R.string.prayer_isha
-}
-
-
 @Composable
 private fun Hero(hero: HeroState, showKaraha: Boolean, t: Tokens) {
     Column(Modifier.padding(horizontal = GUTTER)) {

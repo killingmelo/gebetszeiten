@@ -65,8 +65,10 @@
     <string name="settings_icon_desc">Einstellungen</string>
 
     <!-- DateNavigator -->
-    <string name="widget_preview_title">ʿIšāʾ · 21:31</string>
-    <string name="widget_preview_remaining">noch 1 Std 12 Min</string>
+    <!-- Widget-Vorschau in der Auswahl: Beispielwerte wie das kleine Widget -->
+    <string name="widget_preview_title">ʿAṣr</string>
+    <string name="widget_preview_remaining">noch 1+ Std</string>
+    <string name="widget_preview_next">dann Maġrib um 17:42</string>
     <string name="date_jump_today">zu heute springen</string>
     <string name="date_prev_day">Vorheriger Tag</string>
     <string name="date_next_day">Nächster Tag</string>

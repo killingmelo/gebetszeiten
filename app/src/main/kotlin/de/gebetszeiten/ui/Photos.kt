@@ -35,6 +35,19 @@ fun photoCaptionRes(key: PhotoKey): Int = when (key) {
 fun captionResFor(state: HeroState): Int =
     if (state.moment == Moment.ZAWAL) R.string.photo_caption_zawal else photoCaptionRes(state.photo)
 
+/** Titel des Abschnitts (Heute und Widget): Šurūq, Ḍuḥā und Zawāl haben keine Gebetszeile, aber einen Namen. */
+@StringRes
+internal fun momentLabelRes(moment: Moment): Int = when (moment) {
+    Moment.FAJR -> R.string.prayer_fajr
+    Moment.SHURUQ -> R.string.moment_shuruq
+    Moment.DUHA -> R.string.nafl_duha
+    Moment.ZAWAL -> R.string.moment_zawal
+    Moment.DHUHR -> R.string.prayer_dhuhr
+    Moment.ASR -> R.string.prayer_asr
+    Moment.MAGHRIB -> R.string.prayer_maghrib
+    Moment.ISHA -> R.string.prayer_isha
+}
+
 /** Die TalkBack-Beschreibung: sagt schlicht, was auf dem Foto zu sehen ist. */
 @StringRes
 fun photoDescriptionRes(key: PhotoKey): Int = when (key) {
