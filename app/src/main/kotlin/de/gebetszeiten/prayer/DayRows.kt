@@ -47,6 +47,8 @@ fun dayRows(
             Moment.FAJR -> Prayer.FAJR
             Moment.SHURUQ -> Prayer.SUNRISE
             Moment.DUHA -> null
+            // Zawāl ist makrūh und keine Gebetszeile; Ẓuhr beginnt erst danach.
+            Moment.ZAWAL -> null
             Moment.DHUHR -> Prayer.DHUHR
             Moment.ASR -> Prayer.ASR
             Moment.MAGHRIB -> Prayer.MAGHRIB

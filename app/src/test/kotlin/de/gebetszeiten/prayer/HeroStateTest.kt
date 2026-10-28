@@ -119,4 +119,24 @@ class HeroStateTest {
         assertNull(s.makruh)
         assertNull(s.next)
     }
+
+    @Test fun `at1150IsZawalUntilDhuhr`() {
+        val s = at(t(11, 50))
+        assertEquals(Moment.ZAWAL, s.moment)
+        assertEquals(PhotoKey.ZUHR, s.photo)
+        assertEquals(Duration.ofMinutes(15), s.remaining)
+        assertEquals(Upcoming(Prayer.DHUHR, t(12, 5)), s.next)
+        assertNotNull(s.makruh)
+        assertTrue(s.makruh!!.state.active)
+        assertEquals(karaha.zevalEnd, s.makruh!!.end)
+    }
+
+    @Test fun `zawalBeginsExactlyAtZevalStartAndEndsAtDhuhr`() {
+        // Ḍuḥā endet dort, wo die Zawāl-Zeit beginnt.
+        assertEquals(nafl.duhaEnd, karaha.zevalStart)
+        assertEquals(Moment.DUHA, at(karaha.zevalStart.minusMinutes(1)).moment)
+        assertEquals(Moment.ZAWAL, at(karaha.zevalStart).moment)
+        assertEquals(t(11, 45), karaha.zevalStart)
+        assertEquals(Moment.DHUHR, at(t(12, 5)).moment)
+    }
 }

@@ -105,4 +105,9 @@ class DayRowsTest {
         val current = rows(t(7, 0)).prayers().single { it.current }
         assertEquals(Prayer.SUNRISE, current.prayer)
     }
+
+    @Test fun `noCurrentRowDuringZawal`() {
+        // Zawāl ist makrūh und keine Gebetszeile; Ẓuhr beginnt erst 12:05.
+        assertTrue(rows(t(11, 50)).prayers().none { it.current })
+    }
 }

@@ -6,7 +6,7 @@ import java.time.Duration
 import java.time.ZonedDateTime
 
 /** Der Abschnitt des Tages, in dem man sich gerade befindet. */
-enum class Moment { FAJR, SHURUQ, DUHA, DHUHR, ASR, MAGHRIB, ISHA }
+enum class Moment { FAJR, SHURUQ, DUHA, ZAWAL, DHUHR, ASR, MAGHRIB, ISHA }
 
 /** Welches Titelbild zum Moment gehört. */
 enum class PhotoKey { FAJR, SHURUQ, ZUHR, ASR, MAGHRIB, ISHA }
@@ -30,7 +30,7 @@ private const val MAKRUH_LEAD_MINUTES = 15L
 private fun photoFor(moment: Moment) = when (moment) {
     Moment.FAJR -> PhotoKey.FAJR
     Moment.SHURUQ, Moment.DUHA -> PhotoKey.SHURUQ
-    Moment.DHUHR -> PhotoKey.ZUHR
+    Moment.ZAWAL, Moment.DHUHR -> PhotoKey.ZUHR
     Moment.ASR -> PhotoKey.ASR
     Moment.MAGHRIB -> PhotoKey.MAGHRIB
     Moment.ISHA -> PhotoKey.ISHA
@@ -83,8 +83,15 @@ fun heroState(
             until = today.dhuhr
             next = Upcoming(Prayer.DHUHR, today.dhuhr)
         }
-        now.isBefore(today.dhuhr) -> {
+        now.isBefore(karaha.zevalStart) -> {
             moment = Moment.DUHA
+            until = today.dhuhr
+            next = Upcoming(Prayer.DHUHR, today.dhuhr)
+        }
+        // Ab Beginn der Zawāl-Zeit (= Ende des Ḍuḥā-Fensters) ist Ḍuḥā vorbei
+        // und die Zeit makrūh; der Titel sagt das, bis Ẓuhr beginnt.
+        now.isBefore(today.dhuhr) -> {
+            moment = Moment.ZAWAL
             until = today.dhuhr
             next = Upcoming(Prayer.DHUHR, today.dhuhr)
         }

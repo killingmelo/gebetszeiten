@@ -196,6 +196,7 @@
     <string name="photo_description_isha">Foto: Sternenhimmel bei Nacht</string>
     <!-- Heute: Titel, Restzeit, nächstes Gebet, Liste -->
     <string name="moment_shuruq">Šurūq</string>
+    <string name="moment_zawal">Zawāl</string>
     <string name="hero_remaining_lead">noch</string>
     <string name="hero_next_lead">dann</string>
     <string name="hero_next_at">%1$s um %2$s</string>
