@@ -72,7 +72,7 @@ Kontext: دخولها" أي الأوقات المكروهة **[Zitat]** "و" ا�
 
 Übersetzung: Die erste [der verpönten Zeiten] ist beim Aufgang der Sonne, bis sie gestiegen ist und hell wird, etwa eine oder zwei Speerlängen hoch.
 
-**2.** book_id 412, page_id 85 (S. 76), Grundtext
+**2.** book_id 412, page_id 85 (S. 76), Grundtext **Nicht mehr in der App** (am 28.10.2026 entfernt, weil es ohne Kontext eher verwirrt).
 
 > والأوقات الثلاثة يكره فيها النافلة كراهة تحريم ولو كان لها سبب كالمنذور وركعتي الطواف
 
@@ -82,7 +82,7 @@ Kontext: … كما ح عصر اليوم عند الغروب مع الكراهة
 
 ## DUHA: „Ḍuḥā“
 
-**1.** book_id 412, page_id 174 (S. 149), Grundtext
+**1.** book_id 412, page_id 174 (S. 149), Grundtext **Nicht mehr in der App** (am 28.10.2026 entfernt, weil es ohne Kontext eher verwirrt).
 
 > وندب ركعتان بعد الوضوء قبل جفافه وأربع فصاعدا في الضحى
 
@@ -139,7 +139,7 @@ Kontext: وأول وقت الظهر إذا زالت الشمس **[Zitat]** وآ�
 
 Übersetzung: Nach Abū Ḥanīfa endet ihre Zeit [die des Ẓuhr], wenn der Schatten jedes Dinges doppelt so lang ist wie das Ding, ohne den Schatten zur Zeit des Zawāl. Abū Yūsuf und Muḥammad sagen: wenn der Schatten jedes Dinges so lang ist wie das Ding. Die Zeit des ʿAṣr beginnt, wenn die Zeit des Ẓuhr endet, nach beiden Ansichten.
 
-**2.** book_id 412, page_id 80 (S. 72), Grundtext
+**2.** book_id 412, page_id 80 (S. 72), Grundtext **Nicht mehr in der App** (am 28.10.2026 entfernt, weil es ohne Kontext eher verwirrt).
 
 > ووقت الظهر من زوال الشمس الى أن يصير ظل كل شيء مثليه أو مثله سوى ظل الاستواء واختار الثاني الطحاوي وهو قول الصاحبين ووقت العصر من ابتداء الزيادة على المثل أو المثلين الى غروب الشمس
 
@@ -159,7 +159,7 @@ Kontext: … أي تميل إلى جهة الغرب "و" **[Zitat]** لقول ع
 
 Übersetzung: Die dritte [verpönte Zeit] ist, wenn sie gelb und schwach wird, so dass das Auge ihrem Anblick standhält, bis sie untergeht.
 
-**2.** book_id 412, page_id 82 (S. 74), Kommentar
+**2.** book_id 412, page_id 82 (S. 74), Kommentar **Nicht mehr in der App** (am 28.10.2026 entfernt, weil es ohne Kontext eher verwirrt).
 
 > "ما لم تتغير الشمس" بذهاب ضوئها فلا يتحير فيه البصر وهو الصحيح والتأخير إلى التغير مكروه تحريما
 
@@ -177,7 +177,7 @@ Kontext: … ووقت العصر من ابتداء الزيادة على الم�
 
 Übersetzung: Die Zeit des Maġrib reicht von ihm [dem Sonnenuntergang] bis zum Verschwinden der roten Abenddämmerung, nach der Ansicht, nach der die Fatwā gegeben wird.
 
-**2.** book_id 412, page_id 83 (S. 75), Grundtext
+**2.** book_id 412, page_id 83 (S. 75), Grundtext **Nicht mehr in der App** (am 28.10.2026 entfernt, weil es ohne Kontext eher verwirrt).
 
 > وتعجيل المغرب إلا في يوم غيم فتؤخر فيه
 
@@ -214,7 +214,7 @@ Kontext: … عند أبي حنيفة وقال أبو يوسف ومحمد: هو 
 
 Übersetzung: Die Zeit des ʿIšāʾ beginnt, wenn die Abenddämmerung (Šafaq) verschwunden ist, und endet, wenn der Faǧr aufgeht.
 
-**2.** book_id 11820, page_id 46 (Bd. 1, S. 40), Grundtext Bidāyat al-mubtadiʾ in Anführungszeichen, danach Kommentar al-Hidāya
+**2.** book_id 11820, page_id 46 (Bd. 1, S. 40), Grundtext Bidāyat al-mubtadiʾ in Anführungszeichen, danach Kommentar al-Hidāya **Nicht mehr in der App** (am 28.10.2026 entfernt, weil es ohne Kontext eher verwirrt).
 
 > "ثم الشفق هو البياض الذي في الأفق بعد الحمرة عند أبي حنيفة رحمه الله تعالى وعندهما هو الحمرة" وهو رواية عن أبي حنيفة
 
@@ -230,7 +230,7 @@ Beide Stellen stehen mit ihrer jeweiligen Zuschreibung für sich.)
 Die Quellen sprechen von „صلاة الليل“ (Nachtgebet); das Wort Tahaǧǧud steht nicht im Zitat und ist
 in der Übersetzung nicht eingesetzt.
 
-**1.** book_id 412, page_id 174 (S. 149), Kommentar
+**1.** book_id 412, page_id 174 (S. 149), Kommentar **Nicht mehr in der App** (am 28.10.2026 entfernt, weil es ohne Kontext eher verwirrt).
 
 > "وندب صلاة الليل" خصوصا آخره كما ذكرناه وأقل ما ينبغي أن يتنفل بالليل ثمان ركعات كذا في الجوهرة
 

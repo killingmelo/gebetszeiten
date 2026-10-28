@@ -61,11 +61,6 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
                 german = "Die erste [der verpönten Zeiten] ist beim Aufgang der Sonne, bis sie gestiegen ist und hell wird, etwa eine oder zwei Speerlängen hoch.",
                 source = "$MARAQI, S. 76",
             ),
-            Quote(
-                arabic = "والأوقات الثلاثة يكره فيها النافلة كراهة تحريم ولو كان لها سبب كالمنذور وركعتي الطواف",
-                german = "In den drei Zeiten ist freiwilliges Gebet streng verpönt, dem Verbot nahe (Karāhat taḥrīm), auch wenn es einen Anlass hat, etwa ein gelobtes Gebet oder die zwei Rakʿa nach dem Umlauf um die Kaʿba.",
-                source = "$MARAQI, S. 76",
-            ),
         ),
         showsSundial = false,
         note = "Die angezeigte Spanne rechnet die App: vom Sonnenaufgang bis " +
@@ -77,11 +72,6 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
         // Kein Foto: Šurūq direkt davor zeigt dasselbe.
         photo = null,
         quotes = listOf(
-            Quote(
-                arabic = "وندب ركعتان بعد الوضوء قبل جفافه وأربع فصاعدا في الضحى",
-                german = "Empfohlen sind zwei Rakʿa nach der Waschung, bevor sie trocknet, und vier oder mehr in der Ḍuḥā-Zeit.",
-                source = "$MARAQI, S. 149",
-            ),
             Quote(
                 arabic = "وقت \"الضحى\" وابتداؤه من ارتفاع الشمس إلى قبل زوالها",
                 german = "Die Zeit des Ḍuḥā beginnt mit dem Steigen der Sonne und reicht bis vor ihrem Zawāl.",
@@ -120,11 +110,6 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
                 german = "Nach Abū Ḥanīfa endet ihre Zeit [die des Ẓuhr], wenn der Schatten jedes Dinges doppelt so lang ist wie das Ding, ohne den Schatten zur Zeit des Zawāl. Abū Yūsuf und Muḥammad sagen: wenn der Schatten jedes Dinges so lang ist wie das Ding. Die Zeit des ʿAṣr beginnt, wenn die Zeit des Ẓuhr endet, nach beiden Ansichten.",
                 source = "$QUDURI, S. 23",
             ),
-            Quote(
-                arabic = "ووقت الظهر من زوال الشمس الى أن يصير ظل كل شيء مثليه أو مثله سوى ظل الاستواء واختار الثاني الطحاوي وهو قول الصاحبين ووقت العصر من ابتداء الزيادة على المثل أو المثلين الى غروب الشمس",
-                german = "Die Zeit des Ẓuhr reicht vom Zawāl der Sonne, bis der Schatten jedes Dinges doppelt oder einfach so lang ist wie das Ding, ohne den Schatten beim Höchststand. Das Zweite hat aṭ-Ṭaḥāwī gewählt, und es ist die Ansicht der beiden Schüler [Abū Ḥanīfas: Abū Yūsuf und Muḥammad]. Die Zeit des ʿAṣr reicht vom Beginn des Überschreitens des einfachen oder doppelten Schattens bis zum Sonnenuntergang.",
-                source = "$MARAQI, S. 72",
-            ),
         ),
         showsSundial = true,
         note = "Die angezeigte ʿAṣr-Zeit ist die amtliche Zeit von Diyanet.",
@@ -140,11 +125,6 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
                 german = "Die dritte [verpönte Zeit] ist, wenn sie gelb und schwach wird, so dass das Auge ihrem Anblick standhält, bis sie untergeht.",
                 source = "$MARAQI, S. 76",
             ),
-            Quote(
-                arabic = "\"ما لم تتغير الشمس\" بذهاب ضوئها فلا يتحير فيه البصر وهو الصحيح والتأخير إلى التغير مكروه تحريما",
-                german = "[Den ʿAṣr aufzuschieben ist empfohlen,] solange sich die Sonne nicht verändert hat, indem ihr Glanz schwindet und der Blick nicht mehr geblendet wird. Das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist streng verpönt, dem Verbot nahe (Makrūh taḥrīman).",
-                source = "$MARAQI, S. 74",
-            ),
         ),
         showsSundial = false,
         note = "Die angezeigte Spanne rechnet die App: von " +
@@ -159,11 +139,6 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
                 arabic = "والمغرب منه الى غروب الشفق الاحمر على المفتى به",
                 german = "Die Zeit des Maġrib reicht von ihm [dem Sonnenuntergang] bis zum Verschwinden der roten Abenddämmerung, nach der Ansicht, nach der die Fatwā gegeben wird.",
                 source = "$MARAQI, S. 72",
-            ),
-            Quote(
-                arabic = "وتعجيل المغرب إلا في يوم غيم فتؤخر فيه",
-                german = "[Empfohlen ist,] den Maġrib früh zu beten, außer an einem bewölkten Tag. Dann wird er aufgeschoben.",
-                source = "$MARAQI, S. 75",
             ),
         ),
         showsSundial = false,
@@ -197,11 +172,6 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
                 german = "Die Zeit des ʿIšāʾ beginnt, wenn die Abenddämmerung (Šafaq) verschwunden ist, und endet, wenn der Faǧr aufgeht.",
                 source = "$QUDURI, S. 23",
             ),
-            Quote(
-                arabic = "\"ثم الشفق هو البياض الذي في الأفق بعد الحمرة عند أبي حنيفة رحمه الله تعالى وعندهما هو الحمرة\" وهو رواية عن أبي حنيفة",
-                german = "Der Šafaq ist nach Abū Ḥanīfa, Gott erbarme sich seiner, die Helligkeit am Horizont nach dem Rot. Nach den beiden [Abū Yūsuf und Muḥammad] ist es das Rot, und das ist auch eine Überlieferung von Abū Ḥanīfa.",
-                source = "$HIDAYA, Bd. 1, S. 40",
-            ),
         ),
         showsSundial = false,
     ),
@@ -211,11 +181,6 @@ val VERSTEHEN: List<VerstehenEntry> = listOf(
         // Kein Foto: ʿIšāʾ direkt davor zeigt dasselbe.
         photo = null,
         quotes = listOf(
-            Quote(
-                arabic = "\"وندب صلاة الليل\" خصوصا آخره كما ذكرناه وأقل ما ينبغي أن يتنفل بالليل ثمان ركعات كذا في الجوهرة",
-                german = "Empfohlen ist das Nachtgebet, besonders am Ende der Nacht, wie wir erwähnt haben. Das Mindeste, was man nachts freiwillig beten sollte, sind acht Rakʿa. So steht es in al-Ǧauhara.",
-                source = "$MARAQI, S. 149",
-            ),
             Quote(
                 arabic = "\"وصلاة الليل\" خصوصا في الثلث الأخير منه \"أفضل من صلاة النهار\" لأنه أشق على النفس",
                 german = "Das Nachtgebet, besonders im letzten Drittel der Nacht, ist vorzüglicher als das Gebet am Tag, weil es der Seele schwerer fällt.",
