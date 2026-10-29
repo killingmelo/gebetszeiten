@@ -779,6 +779,15 @@ internal fun LocationSettings(
                 }
             }
 
+            ToggleRow(stringResource(R.string.settings_prayer_virtue), settings.showPrayerVirtue) {
+                commit { copy(showPrayerVirtue = it) }
+            }
+            Text(
+                stringResource(R.string.settings_prayer_virtue_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
         }
 
         SettingsSection(stringResource(R.string.settings_section_appearance)) {

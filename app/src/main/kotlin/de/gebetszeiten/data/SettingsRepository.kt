@@ -61,6 +61,9 @@ data class AppSettings(
     val persistentNotification: Boolean = false,
     /** Reminder style: SILENT (default), VIBRATE, or SOUND. */
     val reminderStyle: String = STYLE_SILENT,
+    /** Ein Satz „Wert dieses Gebets“ in der aufgeklappten Meldung zur
+     *  Gebetszeit (nicht im Vorlauf, nicht in der Daueranzeige). */
+    val showPrayerVirtue: Boolean = true,
     /** Forced theme: SYSTEM (default), LIGHT, or DARK. */
     val themeMode: String = THEME_SYSTEM,
     /** Hijri date correction in days (moon-sighting differences), −2..+2. */
@@ -206,6 +209,7 @@ data class AppSettings(
             reminderLeadMinutes = 0,
             persistentNotification = false,
             reminderStyle = STYLE_SILENT,
+            showPrayerVirtue = true,
             themeMode = THEME_SYSTEM,
             hijriOffsetDays = 0,
             widgetTransparent = false,
@@ -343,6 +347,7 @@ class SettingsRepository(private val context: Context) {
         val REMINDERS = stringSetPreferencesKey("reminders")
         val REMINDER_LEAD = intPreferencesKey("reminder_lead_minutes")
         val PERSISTENT_NOTIFICATION = booleanPreferencesKey("persistent_notification")
+        val SHOW_PRAYER_VIRTUE = booleanPreferencesKey("show_prayer_virtue")
         val REMINDER_STYLE = stringPreferencesKey("reminder_style")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HIJRI_OFFSET = intPreferencesKey("hijri_offset_days")
@@ -463,6 +468,7 @@ class SettingsRepository(private val context: Context) {
             persistentNotification = prefs[Keys.PERSISTENT_NOTIFICATION]
                 ?: AppSettings.DEFAULT.persistentNotification,
             reminderStyle = prefs[Keys.REMINDER_STYLE] ?: AppSettings.DEFAULT.reminderStyle,
+            showPrayerVirtue = prefs[Keys.SHOW_PRAYER_VIRTUE] ?: AppSettings.DEFAULT.showPrayerVirtue,
             themeMode = prefs[Keys.THEME_MODE] ?: AppSettings.DEFAULT.themeMode,
             hijriOffsetDays = prefs[Keys.HIJRI_OFFSET] ?: AppSettings.DEFAULT.hijriOffsetDays,
             widgetTransparent = prefs[Keys.WIDGET_TRANSPARENT] ?: AppSettings.DEFAULT.widgetTransparent,
@@ -507,6 +513,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.REMINDER_LEAD] = value.reminderLeadMinutes
             prefs[Keys.PERSISTENT_NOTIFICATION] = value.persistentNotification
             prefs[Keys.REMINDER_STYLE] = value.reminderStyle
+            prefs[Keys.SHOW_PRAYER_VIRTUE] = value.showPrayerVirtue
             prefs[Keys.THEME_MODE] = value.themeMode
             prefs[Keys.HIJRI_OFFSET] = value.hijriOffsetDays
             prefs[Keys.WIDGET_TRANSPARENT] = value.widgetTransparent

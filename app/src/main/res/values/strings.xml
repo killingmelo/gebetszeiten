@@ -159,6 +159,8 @@
     <string name="reminder_style_sound">Ton</string>
     <string name="settings_lead">Vorlauf</string>
     <string name="settings_lead_hint">Zusätzliche stille Erinnerung einige Minuten vor der Gebetszeit.</string>
+    <string name="settings_prayer_virtue">Wert des Gebets in der Gebets-Meldung</string>
+    <string name="settings_prayer_virtue_hint">Ein kurzer Satz aus dem Hadith, sichtbar beim Aufklappen der Meldung zur Gebetszeit.</string>
     <string name="lead_off">Aus</string>
     <string name="lead_5">5 Min</string>
     <string name="lead_10">10 Min</string>

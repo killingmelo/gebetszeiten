@@ -19,6 +19,7 @@ import de.gebetszeiten.R
 import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.prayer.NextPrayer
 import de.gebetszeiten.prayer.labelRes
+import de.gebetszeiten.prayer.virtueFor
 import de.gebetszeiten.ui.MainActivity
 import de.gebetszeiten.ui.photoRes
 import de.gebetszeiten.ui.theme.Palette
@@ -392,6 +393,8 @@ object PrayerNotifier {
      * @param next the next actual prayer (sunrise excluded) — shown as text.
      * @param clearAtMillis epoch millis of the next transition (sunrise included)
      *   at which the notification auto-dismisses.
+     * @param showVirtue `settings.showPrayerVirtue`: aufgeklappt steht statt
+     *   der Zeile zum naechsten Gebet ein Satz „Wert dieses Gebets“ ([virtueFor]).
      */
     @SuppressLint("MissingPermission") // guarded by canPost()
     fun notifyPrayer(
@@ -400,6 +403,7 @@ object PrayerNotifier {
         next: NextPrayer? = null,
         clearAtMillis: Long? = null,
         style: String = de.gebetszeiten.data.AppSettings.STYLE_SILENT,
+        showVirtue: Boolean = false,
     ) {
         if (!canPost(context)) return
         ensureChannel(context)
@@ -415,8 +419,14 @@ object PrayerNotifier {
                 it.time.format(timeFormat),
             )
         }
+        val virtue = if (showVirtue) virtueFor(prayer.prayer, prayer.time.toLocalDate()) else null
+        // Aufgeklappt zeigt BigPicture nur die Zusammenfassung, hoechstens zwei
+        // Zeilen. Mit dem Wert-Satz steht er allein dort (die Zeile zum
+        // naechsten Gebet davor schnitte ihn nach wenigen Woertern ab); Gebet
+        // und Uhrzeit bleiben im Titel, zugeklappt bleibt die Inhaltszeile.
+        val expanded = virtue ?: text
         val notification = NotificationCompat.Builder(context, styleChannel(style))
-            .prayerLook(context, prayer.prayer, text)
+            .prayerLook(context, prayer.prayer, expanded)
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(contentIntent(context))

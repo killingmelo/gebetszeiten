@@ -39,7 +39,9 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.data.AppSettings
+import de.gebetszeiten.prayer.PRAYER_VIRTUES
 import de.gebetszeiten.prayer.Section
 import de.gebetszeiten.ui.dmgTitle
 import de.gebetszeiten.ui.photoDescriptionRes
@@ -49,13 +51,16 @@ import de.gebetszeiten.ui.theme.NaskhFamily
 import de.gebetszeiten.ui.theme.Tokens
 import kotlinx.coroutines.delay
 import java.time.ZonedDateTime
+import java.util.Locale
 
 private val GUTTER = 24.dp
 private val ENTRY_GAP = 56.dp
+private const val VIRTUE_HEADING = "Wert dieses Gebets"
 
 /**
  * Reiter „Zeiten verstehen“: je Abschnitt Foto, Titel, Zitate (Arabisch, Deutsch,
- * Quelle), bei Ẓuhr und ʿAṣr die Sonnenuhr, am Ende einmal der Hinweis zur
+ * Quelle), bei den fünf Gebeten „Wert dieses Gebets“, bei Ẓuhr und ʿAṣr die
+ * Sonnenuhr, am Ende einmal der Hinweis zur
  * Übersetzung. [focus] springt zu einem Abschnitt (aus „Heute“ angetippt) und wird
  * danach mit [onFocusConsumed] zurückgegeben.
  */
@@ -154,6 +159,10 @@ private fun EntryBlock(entry: VerstehenEntry, settings: AppSettings, now: ZonedD
             }
             QuoteBlock(quote, t)
         }
+        entry.section.prayer()?.let { PRAYER_VIRTUES[it] }?.let { texts ->
+            Spacer(Modifier.height(32.dp))
+            VirtueBlock(texts, t)
+        }
         if (entry.showsSundial) {
             Spacer(Modifier.height(32.dp))
             SundialView(
@@ -167,6 +176,30 @@ private fun EntryBlock(entry: VerstehenEntry, settings: AppSettings, now: ZonedD
             Spacer(Modifier.height(24.dp))
             Text(note, style = MaterialTheme.typography.bodyLarge, color = t.ink)
         }
+    }
+}
+
+/** Die fünf Pflichtgebete; Nebenabschnitte (Šurūq, Ḍuḥā, Makrūh …) haben keinen Wert-Text. */
+private fun Section.prayer(): Prayer? = when (this) {
+    Section.FAJR -> Prayer.FAJR
+    Section.ZUHR -> Prayer.DHUHR
+    Section.ASR -> Prayer.ASR
+    Section.MAGHRIB -> Prayer.MAGHRIB
+    Section.ISHA -> Prayer.ISHA
+    else -> null
+}
+
+/** „Wert dieses Gebets“: alle freigegebenen Kurztexte des Gebets mit Fundstelle. */
+@Composable
+private fun VirtueBlock(texts: List<String>, t: Tokens) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            VIRTUE_HEADING.uppercase(Locale.GERMAN),
+            style = MaterialTheme.typography.labelSmall,
+            color = t.stone,
+            modifier = Modifier.semantics { heading() },
+        )
+        texts.forEach { Text(it, style = MaterialTheme.typography.bodyMedium, color = t.ink) }
     }
 }
 

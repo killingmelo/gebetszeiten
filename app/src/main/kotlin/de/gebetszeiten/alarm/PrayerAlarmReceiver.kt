@@ -111,6 +111,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 audible = !styleSilent,
                             ),
                             settings.reminderStyle,
+                            showVirtue = settings.showPrayerVirtue,
                         )
                     }
                 }
