@@ -44,6 +44,26 @@ class SettingsStore(private val dir: Path) {
             karahaWarning = p.bool("karahaWarning") ?: d.karahaWarning,
             showKaraha = p.bool("showKaraha") ?: d.showKaraha,
             exactRemaining = p.bool("exactRemaining") ?: d.exactRemaining,
+            endWarningMinutes = p.int("endWarningMinutes")?.takeIf { it in 0..120 } ?: d.endWarningMinutes,
+            cumaHints = p.bool("cumaHints") ?: d.cumaHints,
+            fastingHints = p.bool("fastingHints") ?: d.fastingHints,
+            nafileHints = p.bool("nafileHints") ?: d.nafileHints,
+            hijriHints = p.bool("hijriHints") ?: d.hijriHints,
+            ramazanHints = p.bool("ramazanHints") ?: d.ramazanHints,
+            sahurMinutes = p.int("sahurMinutes")?.takeIf { it in 0..180 } ?: d.sahurMinutes,
+            iftarLeadMinutes = p.int("iftarLeadMinutes")?.takeIf { it in 0..60 } ?: d.iftarLeadMinutes,
+            showTexts = p.bool("showTexts") ?: d.showTexts,
+            notifyStyle = p.enum<NotifyStyle>("notifyStyle") ?: d.notifyStyle,
+            bannerSeconds = p.int("bannerSeconds")?.takeIf { it in 0..600 } ?: d.bannerSeconds,
+            tonePrayer = p.enum<ToneChoice>("tonePrayer") ?: d.tonePrayer,
+            toneLead = p.enum<ToneChoice>("toneLead") ?: d.toneLead,
+            toneWarning = p.enum<ToneChoice>("toneWarning") ?: d.toneWarning,
+            toneHint = p.enum<ToneChoice>("toneHint") ?: d.toneHint,
+            tonePrayerFile = p.text("tonePrayerFile"),
+            toneLeadFile = p.text("toneLeadFile"),
+            toneWarningFile = p.text("toneWarningFile"),
+            toneHintFile = p.text("toneHintFile"),
+            toneVolume = p.int("toneVolume")?.takeIf { it in 0..100 } ?: d.toneVolume,
             ezanFile = p.text("ezanFile"),
             fajrEzanFile = p.text("fajrEzanFile"),
             ezanVolume = p.int("ezanVolume")?.takeIf { it in 0..100 } ?: d.ezanVolume,
@@ -66,6 +86,26 @@ class SettingsStore(private val dir: Path) {
         put("karahaWarning", s.karahaWarning)
         put("showKaraha", s.showKaraha)
         put("exactRemaining", s.exactRemaining)
+        put("endWarningMinutes", s.endWarningMinutes)
+        put("cumaHints", s.cumaHints)
+        put("fastingHints", s.fastingHints)
+        put("nafileHints", s.nafileHints)
+        put("hijriHints", s.hijriHints)
+        put("ramazanHints", s.ramazanHints)
+        put("sahurMinutes", s.sahurMinutes)
+        put("iftarLeadMinutes", s.iftarLeadMinutes)
+        put("showTexts", s.showTexts)
+        put("notifyStyle", s.notifyStyle.name)
+        put("bannerSeconds", s.bannerSeconds)
+        put("tonePrayer", s.tonePrayer.name)
+        put("toneLead", s.toneLead.name)
+        put("toneWarning", s.toneWarning.name)
+        put("toneHint", s.toneHint.name)
+        put("tonePrayerFile", s.tonePrayerFile)
+        put("toneLeadFile", s.toneLeadFile)
+        put("toneWarningFile", s.toneWarningFile)
+        put("toneHintFile", s.toneHintFile)
+        put("toneVolume", s.toneVolume)
         put("ezanFile", s.ezanFile)
         put("fajrEzanFile", s.fajrEzanFile)
         put("ezanVolume", s.ezanVolume)
@@ -83,6 +123,9 @@ class SettingsStore(private val dir: Path) {
     }
 
     private fun Properties.text(key: String): String? = getProperty(key)?.takeIf { it.isNotBlank() }
+
+    private inline fun <reified E : Enum<E>> Properties.enum(key: String): E? =
+        getProperty(key)?.trim()?.let { v -> enumValues<E>().firstOrNull { it.name == v } }
 
     private fun Properties.int(key: String): Int? = getProperty(key)?.trim()?.toIntOrNull()
 

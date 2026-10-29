@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dringlichkeits-Rot für die letzten Minuten (Widget-EXACT-Chronometer),
-         lesbar auf hellem wie auf AMOLED-schwarzem Hintergrund. -->
-    <color name="widget_urgent">#E53935</color>
+    <!-- Dringlichkeits-Rot für die letzten Minuten (Widget-EXACT-Chronometer):
+         Palette.Day.error, 4,5:1 auf dem cremefarbenen Grund. -->
+    <color name="widget_urgent">#FFCD341F</color>
+    <!-- Systemzähler im kleinen Widget: Akzent wie „noch“ davor. -->
+    <color name="widget_chrono_text">#FF224228</color>
+    <!-- Widget-Vorschau (Auswahl): Palette aus Color.kt (canvas, ink, accent). -->
+    <color name="widget_preview_bg">#FFF7F1E8</color>
+    <color name="widget_preview_text">#FF1C1B1A</color>
+    <color name="widget_preview_accent">#FF224228</color>
 </resources>

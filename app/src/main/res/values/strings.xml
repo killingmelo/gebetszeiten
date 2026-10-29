@@ -2,12 +2,12 @@
 <resources>
     <string name="app_name">Gebetszeiten</string>
 
-    <string name="prayer_fajr">Fajr</string>
+    <string name="prayer_fajr">Faǧr</string>
     <string name="prayer_sunrise">Sonnenaufgang</string>
-    <string name="prayer_dhuhr">Dhuhr</string>
-    <string name="prayer_asr">Asr</string>
-    <string name="prayer_maghrib">Maghrib</string>
-    <string name="prayer_isha">Isha</string>
+    <string name="prayer_dhuhr">Ẓuhr</string>
+    <string name="prayer_asr">ʿAṣr</string>
+    <string name="prayer_maghrib">Maġrib</string>
+    <string name="prayer_isha">ʿIšāʾ</string>
 
     <string name="location_title">Ort</string>
     <string name="city_label">Stadt</string>
@@ -31,16 +31,20 @@
     <string name="pre_reminder_title">%1$s in %2$d Min</string>
     <string name="pre_reminder_text">um %1$s</string>
     <string name="pause_notice_title">Keine amtlichen Zeiten</string>
-    <string name="pause_notice_text">Erinnerungen pausiert — zum Beheben antippen</string>
+    <string name="pause_notice_text">Erinnerungen pausiert, zum Beheben antippen</string>
     <string name="data_credit">Städtedaten: GeoNames (CC BY 4.0) · Berechnung: Diyanet-Methode (offline)</string>
     <string name="data_credit_official">Amtliche Diyanet-Zeiten · %1$s</string>
     <string name="data_credit_calculated">Berechnet · Diyanet-Methode</string>
     <string name="snackbar_official_loaded">Amtliche Zeiten für %1$s geladen</string>
 
     <!-- Qibla -->
-    <string name="qibla_bearing">%1$d° · %2$s</string>
+    <string name="qibla_bearing">%1$d°</string>
+    <string name="qibla_bearing_desc">%1$d Grad, %2$s</string>
     <string name="qibla_distance">Kaaba · %1$s km</string>
-    <string name="qibla_no_compass">Kompass nicht verfügbar — Qibla liegt bei %1$d° %2$s</string>
+    <string name="qibla_compass_desc">Kompass mit Qibla-Pfeil, Richtung %1$d° %2$s</string>
+    <string name="qibla_compass_inaccurate">Kompass ungenau. Handy in Form einer Acht bewegen.</string>
+    <string name="qibla_compass_interference">Metall, Magnethüllen und Lautsprecher können den Kompass ablenken.</string>
+    <string name="qibla_no_compass">Kompass nicht verfügbar. Qibla liegt bei %1$d° %2$s</string>
     <string name="compass_n">N</string>
     <string name="compass_e">O</string>
     <string name="compass_s">S</string>
@@ -50,81 +54,45 @@
     <string name="month_prev">Vorheriger Monat</string>
     <string name="month_next">Nächster Monat</string>
     <string name="month_loading">lädt…</string>
-    <string name="month_maghrib_short">Magh.</string>
+    <string name="month_no_time">keine Zeit</string>
 
     <!-- Tabs / App-Bar -->
     <string name="tab_today">Heute</string>
     <string name="tab_month">Monat</string>
     <string name="tab_qibla">Qibla</string>
+    <!-- Reiterbeschriftung kurz, damit sie bei vier Reitern auf 360 dp nicht abbricht -->
+    <string name="tab_verstehen">Verstehen</string>
+    <string name="verstehen_title">Zeiten verstehen</string>
     <string name="settings_icon_desc">Einstellungen</string>
 
     <!-- DateNavigator -->
-    <string name="date_today">Heute</string>
+    <!-- Widget-Vorschau in der Auswahl: Beispielwerte wie das kleine Widget -->
+    <string name="widget_preview_title">ʿAṣr</string>
+    <string name="widget_preview_remaining">noch 1+ Std</string>
+    <string name="widget_preview_next">dann Maġrib um 17:42</string>
+    <string name="date_jump_today">zu heute springen</string>
     <string name="date_prev_day">Vorheriger Tag</string>
     <string name="date_next_day">Nächster Tag</string>
 
-    <!-- Timeline expander / labels -->
-    <string name="times_hide_earlier">Frühere ausblenden</string>
-    <string name="times_show_earlier">Frühere Zeiten anzeigen</string>
-    <string name="times_hide_later">Weitere ausblenden</string>
-    <string name="times_show_later">Weitere Zeiten anzeigen</string>
-    <string name="times_tomorrow_fajr">Morgen · Fajr %1$s</string>
-
     <!-- Prayer-status content descriptions -->
     <string name="status_current">, aktuelles Gebet</string>
-    <string name="status_next">, nächstes Gebet</string>
     <string name="status_past">, vergangen</string>
-    <string name="desc_prayer_current">%1$s, %2$s, aktuelles Gebet, noch %3$s</string>
-    <string name="desc_prayer_current_makruh">, Makruh %1$s %2$s bis %3$s</string>
+    <!-- Šurūq ist kein Gebet: die laufende Zeile heißt „jetzt“, nicht „aktuelles Gebet“. -->
+    <string name="status_now">, jetzt</string>
+    <string name="status_jamaa_derived">, berechnet, keine amtliche Zeit</string>
     <string name="desc_prayer">%1$s, %2$s%3$s</string>
-    <string name="desc_nafl_remaining">%1$s, freiwilliges Gebet, noch %2$s</string>
-    <string name="desc_nafl_range">%1$s, freiwilliges Gebet, %2$s bis %3$s</string>
-    <string name="desc_makruh">Makruh-Zeit %1$s, %2$s bis %3$s</string>
-    <string name="desc_makruh_current">, aktuell</string>
-    <string name="desc_makruh_countdown">, %1$s</string>
-    <string name="desc_nafl_tip">Tipp: %1$s, freiwilliges Gebet, %2$s bis %3$s</string>
     <string name="show_explanation">Erklärung anzeigen</string>
-    <string name="remaining_inline">noch %1$s</string>
-
-    <!-- Inline labels -->
-    <string name="karaha_active_prefix">⛔ Karaha · </string>
-    <string name="karaha_warn_prefix">⚠ Karaha · </string>
-    <string name="makruh_chip">Makruh · %1$s · %2$s–%3$s</string>
-    <string name="makruh_chip_countdown"> · %1$s</string>
-    <string name="nafl_range_inline">%1$s · %2$s–%3$s</string>
-
-    <!-- Makruh / Nafl explanations -->
-    <string name="karaha_sunrise_title">İşrak (nach Sonnenaufgang)</string>
-    <string name="karaha_sunrise_text">Makruh-Zeit vom Sonnenaufgang, bis die Sonne ~eine Speerlänge gestiegen ist (≈45 Min). In dieser Zeit kein (freiwilliges) Gebet; danach beginnen İşrak/Duha. (Hanafi)</string>
-    <string name="karaha_zeval_title">Zeval / İstiva (Zenit)</string>
-    <string name="karaha_zeval_text">Makruh-Zeit kurz vor dem Höchststand der Sonne bis Dhuhr (≈20 Min). Während die Sonne im Zenit steht, wird nicht gebetet. (Hanafi)</string>
-    <string name="karaha_isfirar_title">İsfirar-ı şems (vor Sonnenuntergang)</string>
-    <string name="karaha_isfirar_text">Makruh-Zeit, wenn die Sonne vergilbt (≈40 Min vor Sonnenuntergang) bis Maghrib. Nur die heutige Asr darf hier noch (verspätet) gebetet werden. (Hanafi)</string>
-    <string name="nafl_awwabin_title">Awwabin (Evvabin)</string>
-    <string name="nafl_awwabin_text">Freiwilliges Gebet nach dem Maghrib- bis zum Isha-Gebet — empfohlen sind 6 Rekat. (Sunna/Mustahab)</string>
-    <string name="nafl_tahajjud_title">Tahajjud</string>
-    <string name="nafl_tahajjud_text">Freiwilliges Nachtgebet im letzten Drittel der Nacht (nach dem Schlaf, vor Fajr). Besonders verdienstvoll. (Sunna/Mustahab)</string>
 
     <!-- Block labels -->
-    <string name="makruh_zenit">Zenit</string>
-    <string name="makruh_before_sunset">vor Sonnenuntergang</string>
-    <string name="makruh_after_sunrise">nach Sonnenaufgang</string>
-    <string name="nafl_awwabin">Awwabin</string>
-    <string name="nafl_tahajjud">Tahajjud</string>
-    <string name="nafl_duha">Duha (Kuşluk)</string>
-
-    <!-- Cemaat (Gemeinschaftsgebet morgens, abgeleitet) -->
-    <string name="cemaat_label">Gemeinschaftsgebet (Cemaat)</string>
-    <string name="cemaat_time_inline">%1$s · %2$s</string>
-    <string name="desc_cemaat">Tipp: %1$s um %2$s</string>
-    <string name="cemaat_explain_title">Gemeinschaftsgebet (Cemaat)</string>
-    <string name="cemaat_explain_text">Übliche Zeit des Sabah-Gemeinschaftsgebets in der Moschee: kurz vor Sonnenaufgang (Diyanet-Praxis ≈30 Min davor). Die Zeit wird aus dem Sonnenaufgang berechnet — der Vorlauf ist in den Einstellungen anpassbar. Keine amtliche Diyanet-Angabe; die eigene Moschee kann abweichen.</string>
+    <string name="nafl_awwabin">Auwābīn</string>
+    <string name="nafl_tahajjud">Tahaǧǧud</string>
+    <string name="nafl_duha">Ḍuḥā</string>
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
     <string name="settings_instant_apply">Änderungen werden sofort übernommen.</string>
     <string name="settings_city">Stadt</string>
-    <string name="city_no_results">Keine Treffer – Schreibweise prüfen oder Koordinaten manuell eingeben.</string>
+    <string name="city_no_results">Keine Treffer. Schreibweise prüfen oder Koordinaten manuell eingeben.</string>
     <string name="city_searching_online">Online-Suche…</string>
     <string name="city_results_online">Online gefunden (Open-Meteo/GeoNames):</string>
     <string name="city_suggestions_toggle">Ortsvorschläge ein- oder ausblenden</string>
@@ -134,7 +102,7 @@
     <string name="favorites_add">Als Favorit merken</string>
     <string name="favorites_remove">Favorit entfernen</string>
     <string name="favorites_remove_named">%1$s als Favorit entfernen</string>
-    <string name="favorites_full">Favoriten voll — höchstens %1$d</string>
+    <string name="favorites_full">Favoriten voll: höchstens %1$d</string>
     <string name="favorites_switch">Favoriten-Ort wechseln</string>
     <string name="coords_show">Koordinaten manuell eingeben</string>
     <string name="coords_hide">Manuelle Eingabe schließen</string>
@@ -152,18 +120,18 @@
     <string name="no_times_fetch_now">Jetzt abrufen</string>
     <string name="no_times_enable_calculation">Berechnung einschalten</string>
     <string name="settings_section_display">Anzeige</string>
-    <string name="settings_show_makruh">Makruh-Zeiten anzeigen</string>
-    <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karaha-Zeit „⚠️ Karaha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>
-    <string name="settings_show_cemaat">Gemeinschaftsgebet (Cemaat) morgens anzeigen</string>
-    <string name="settings_cemaat_hint">Zeigt unter Fajr die übliche Moschee-Gemeinschaftszeit: Sonnenaufgang minus Vorlauf (Diyanet-Praxis ≈30 Min). Berechnet, keine amtliche Zeit — die eigene Moschee kann abweichen.</string>
+    <string name="settings_show_makruh">Makrūh-Zeiten anzeigen</string>
+    <string name="settings_makruh_hint">Widget und Sperrbildschirm zeigen während einer Karāha-Zeit „⚠️ Karāha bis …“ und 15 Minuten vorher eine Vorwarnung.</string>
+    <string name="settings_show_cemaat">Gemeinschaftsgebet (Ǧamāʿa) morgens anzeigen</string>
+    <string name="settings_cemaat_hint">Zeigt unter Faǧr die übliche Moschee-Gemeinschaftszeit: Sonnenaufgang minus Vorlauf (Diyanet-Praxis ≈30 Min). Berechnet, keine amtliche Zeit. Die eigene Moschee kann abweichen.</string>
     <string name="settings_cemaat_offset">Vorlauf vor Sonnenaufgang</string>
     <string name="cemaat_offset_chip">%1$d Min</string>
     <string name="settings_calculation_fallback">Berechnung als Notausgang</string>
     <string name="settings_calculation_fallback_hint">Wenn für einen Tag keine amtlichen Diyanet-Zeiten vorliegen, die lokale astronomische Berechnung verwenden. Amtliche Zeiten haben immer Vorrang. Ist dies aus, zeigt die App für solche Tage gar keine Zeiten.</string>
     <string name="settings_remaining">Restzeit</string>
-    <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit — eine Einstellung für alles: App, Widget, Sperrbildschirm und das Symbol in der Statusleiste. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
-    <string name="settings_remaining_all">Überall</string>
-    <string name="settings_remaining_cost">Stufen kostet je Gebetsintervall bis zu 14 feste Weckvorgänge — die letzten neun Minuten einzeln, davor die Zehnminuten-Marken — plus einen je angefangener Stunde; je nach Intervall etwa 13 bis 25. Genau kostet fast dieselben, sobald die dauerhafte Anzeige läuft: Den Text zählt dort das System, aber das Symbol in der Statusleiste stellt nur die App weiter. Etwas billiger ist Genau trotzdem, weil das Widget dabei ohne die App auskommt. Ohne dauerhafte Anzeige kostet Genau gar nichts, und Aus kostet nie welche.</string>
+    <string name="settings_remaining_hint">Darstellung der verbleibenden Zeit in Widget, Sperrbildschirm und Symbol in der Statusleiste. In der App steht die Restzeit immer. Stufen: abgerundet (noch 2+ Std), minutengenau erst kurz vorher. Genau: Live-Countdown, vom System gezeichnet.</string>
+    <string name="settings_remaining_all">Widget, Sperrbildschirm und Statusleiste</string>
+    <string name="settings_remaining_cost">Stufen kostet je Gebetsintervall bis zu 14 feste Weckvorgänge: die letzten neun Minuten einzeln, davor die Zehnminuten-Marken, plus einen je angefangener Stunde; je nach Intervall etwa 13 bis 25. Genau kostet fast dieselben, sobald die dauerhafte Anzeige läuft: Den Text zählt dort das System, aber das Symbol in der Statusleiste stellt nur die App weiter. Etwas billiger ist Genau trotzdem, weil das Widget dabei ohne die App auskommt. Ohne dauerhafte Anzeige kostet Genau gar nichts, und Aus kostet nie welche.</string>
     <string name="settings_lockscreen_hint">Auf dem Sperrbildschirm erscheint die Restzeit erst, wenn die dauerhafte Anzeige eingeschaltet ist.</string>
     <string name="settings_wear_hint">Wear OS: Die Darstellung an der Uhr wird direkt in der Watch-App eingestellt (Tippen auf die Anzeige-Zeile).</string>
     <string name="settings_official_online">Offizielle Diyanet-Zeiten (online)</string>
@@ -174,12 +142,12 @@
     <string name="onboarding_place_current">Aktuell eingestellt: %1$s</string>
 
     <!-- Ersteinrichtung: Vorschau der Dauerzeile -->
-    <string name="onboarding_preview_same_icon">Das Symbol ist bei „Stufen“ und „Genau“ dasselbe — verschieden ist nur der Text darunter.</string>
+    <string name="onboarding_preview_same_icon">Das Symbol ist bei „Stufen“ und „Genau“ dasselbe. Verschieden ist nur der Text darunter.</string>
     <string name="onboarding_preview_statusbar_desc">Vorschau: Symbol in der Statusleiste</string>
     <string name="onboarding_preview_statusbar_hint">so sieht es oben in der Statusleiste aus</string>
     <string name="onboarding_preview_expand">▾ antippen zum Aufklappen</string>
     <string name="onboarding_preview_collapse">▴ antippen zum Zuklappen</string>
-    <string name="onboarding_preview_example">Beispielwerte — für deinen Ort liegen noch keine Zeiten vor.</string>
+    <string name="onboarding_preview_example">Beispielwerte. Für deinen Ort liegen noch keine Zeiten vor.</string>
 
     <!-- Hinweisstreifen, wenn Benachrichtigungen blockiert sind -->
     <string name="notification_block_title">Benachrichtigungen sind aus</string>
@@ -191,13 +159,15 @@
     <string name="reminder_style_sound">Ton</string>
     <string name="settings_lead">Vorlauf</string>
     <string name="settings_lead_hint">Zusätzliche stille Erinnerung einige Minuten vor der Gebetszeit.</string>
+    <string name="settings_prayer_virtue">Wert des Gebets in der Gebets-Meldung</string>
+    <string name="settings_prayer_virtue_hint">Ein kurzer Satz aus dem Hadith, sichtbar beim Aufklappen der Meldung zur Gebetszeit.</string>
     <string name="lead_off">Aus</string>
     <string name="lead_5">5 Min</string>
     <string name="lead_10">10 Min</string>
     <string name="lead_15">15 Min</string>
     <string name="lead_30">30 Min</string>
     <string name="settings_persistent">Dauerhafte Anzeige (Sperrbildschirm)</string>
-    <string name="settings_persistent_hint">Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet — sichtbar auch auf dem Sperrbildschirm. Für sich allein kostet sie keinen zusätzlichen Akku: Sie wird nur zu den Gebetszeiten neu geschrieben. Zusammen mit der Restzeit kommen Weckvorgänge dazu, weil dann auch das Symbol in der Statusleiste weitergestellt werden muss.</string>
+    <string name="settings_persistent_hint">Stille, dauerhafte Benachrichtigung mit dem nächsten Gebet, sichtbar auch auf dem Sperrbildschirm. Für sich allein kostet sie keinen zusätzlichen Akku: Sie wird nur zu den Gebetszeiten neu geschrieben. Zusammen mit der Restzeit kommen Weckvorgänge dazu, weil dann auch das Symbol in der Statusleiste weitergestellt werden muss.</string>
     <string name="settings_section_appearance">Darstellung</string>
     <string name="settings_theme">Design</string>
     <string name="theme_system">System</string>
@@ -222,6 +192,39 @@
     <string name="battery_body">Damit Erinnerungen und Widget pünktlich bleiben, sollte die Akku-Optimierung für diese App deaktiviert werden. Die App wacht trotzdem nur zu den Gebetszeiten auf.</string>
     <string name="battery_disable">Akku-Optimierung deaktivieren</string>
 
-    <!-- Dialog -->
-    <string name="understood">Verstanden</string>
+    <!-- Titelbilder (Unsplash-Platzhalter) -->
+    <string name="photo_caption_fajr">Das Licht breitet sich am Horizont aus.</string>
+    <string name="photo_caption_shuruq">Die Sonne ist aufgegangen.</string>
+    <string name="photo_caption_zawal">Die Sonne steht nahe ihrem Höchststand.</string>
+    <string name="photo_caption_zuhr">Die Sonne hat den Zenit überschritten, der Schatten wächst wieder.</string>
+    <string name="photo_caption_asr">Die Schatten sind lang geworden.</string>
+    <string name="photo_caption_maghrib">Die Sonnenscheibe ist hinter dem Horizont verschwunden.</string>
+    <string name="photo_caption_isha">Die Abenddämmerung ist erloschen.</string>
+    <string name="photo_description_fajr">Foto: Orangefarbener Streifen am Horizont unter dunkelblauem Himmel</string>
+    <string name="photo_description_shuruq">Foto: Tief stehende Morgensonne über einer nebligen Wiese</string>
+    <string name="photo_description_zuhr">Foto: Palmenschatten auf hellem Boden</string>
+    <string name="photo_description_asr">Foto: Lange Schatten von Menschen auf sandigem Boden</string>
+    <string name="photo_description_maghrib">Foto: Sonne hinter einem Minarett im Abendlicht</string>
+    <string name="photo_description_isha">Foto: Sternenhimmel bei Nacht</string>
+    <!-- Heute: Titel, Restzeit, nächstes Gebet, Liste -->
+    <string name="moment_shuruq">Šurūq</string>
+    <string name="moment_zawal">Zawāl</string>
+    <string name="hero_remaining_lead">noch</string>
+    <string name="hero_next_lead">dann</string>
+    <string name="hero_next_at">%1$s um %2$s</string>
+    <string name="hero_makruh_until">Makrūh bis %1$s</string>
+    <string name="hero_makruh_from">Makrūh ab %1$s</string>
+    <string name="row_next_day">morgen</string>
+    <string name="desc_prayer_next_day">%1$s, morgen, %2$s</string>
+    <string name="side_jamaa">Ǧamāʿa</string>
+    <string name="side_makruh_sunrise">Makrūh beim Aufgang</string>
+    <string name="side_makruh_zawal">Makrūh im Zawāl</string>
+    <string name="side_makruh_isfirar">Makrūh beim Vergilben</string>
+
+    <string name="photo_credit">Foto: %1$s, Unsplash</string>
+    <string name="settings_section_about">Über</string>
+    <string name="about_photos">Fotos</string>
+    <string name="about_fonts">Schriften</string>
+    <string name="about_font_license">SIL Open Font License 1.1</string>
+
 </resources>

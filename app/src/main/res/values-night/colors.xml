@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nacht: Grund schwarz, Tinte creme, Akzent salbeigrün (Palette.Night). -->
+    <color name="widget_preview_bg">#FF000000</color>
+    <color name="widget_preview_text">#FFF7F1E8</color>
+    <color name="widget_preview_accent">#FF849671</color>
+    <!-- Palette.Night.error und Nacht-Akzent für den Systemzähler. -->
+    <color name="widget_urgent">#FFE54B35</color>
+    <color name="widget_chrono_text">#FF849671</color>
+</resources>

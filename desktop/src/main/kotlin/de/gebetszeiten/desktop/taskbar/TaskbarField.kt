@@ -242,11 +242,11 @@ class TaskbarField(private val onClick: () -> Unit) {
 fun runFieldDemo(args: Array<String>) {
     val tone = args.firstNotNullOfOrNull { a -> Tone.entries.firstOrNull { "--tone=${it.name}" == a } } ?: Tone.NORMAL
     val state = when (tone) {
-        Tone.KARAHA_SOON -> DisplayState("Dhuhr", "⚠️ Karaha ab 13:01", tone, "Noch 20+ Min bis Dhuhr · ⚠️ Karaha ab 13:01", null)
-        Tone.KARAHA_ACTIVE -> DisplayState("Dhuhr", "⚠️ Karaha bis 13:21", tone, "Noch 10 Min bis Dhuhr · ⚠️ Karaha bis 13:21", null)
-        Tone.URGENT -> DisplayState("Asr", "noch 7 Min", tone, "Noch 7 Min bis Asr", null)
+        Tone.KARAHA_SOON -> DisplayState("Ẓuhr", "⚠️ Karāha ab 13:01", tone, "Noch 20+ Min bis Ẓuhr · ⚠️ Karāha ab 13:01", null)
+        Tone.KARAHA_ACTIVE -> DisplayState("Ẓuhr", "⚠️ Karāha bis 13:21", tone, "Noch 10 Min bis Ẓuhr · ⚠️ Karāha bis 13:21", null)
+        Tone.URGENT -> DisplayState("ʿAṣr", "noch 7 Min", tone, "Noch 7 Min bis ʿAṣr", null)
         Tone.NO_TIMES -> DisplayState("Keine Zeiten", "", tone, "Keine amtlichen Zeiten für diesen Ort", null)
-        Tone.NORMAL -> DisplayState("Asr", "noch 20+ Min", tone, "Noch 20+ Min bis Asr", null)
+        Tone.NORMAL -> DisplayState("ʿAṣr", "noch 20+ Min", tone, "Noch 20+ Min bis ʿAṣr", null)
     }
     val field = TaskbarField(onClick = { println("Feld angeklickt") })
     field.show(state)

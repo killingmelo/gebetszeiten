@@ -4,24 +4,27 @@ package de.gebetszeiten.ui
 // herausgelöst (dort waren es 1.623 Zeilen), weil die Ortswahl mit den
 // Quellen-Badges weiter wächst.
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +32,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,11 +44,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -67,26 +75,41 @@ import de.gebetszeiten.data.withFavorite
 import de.gebetszeiten.data.withRecentPlace
 import de.gebetszeiten.data.withoutFavorite
 import de.gebetszeiten.official.OfficialTimesProvider
+import de.gebetszeiten.prayer.PhotoKey
 import de.gebetszeiten.prayer.TimesSourceBadge
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.prayer.timesSourceBadge
+import de.gebetszeiten.ui.theme.LocalTokens
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import java.time.LocalDate
 import java.util.Locale
 
+/** Ein Abschnitt im Stil von „Heute“: Großbuchstaben-Überschrift, Inhalt,
+ *  eine Haarlinie darunter (außer beim letzten, [divider] = false). Keine Karte, keine Fläche. */
 @Composable
-private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                content()
-            },
-        )
-    }
+private fun SettingsSection(
+    title: String,
+    divider: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val t = LocalTokens.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (divider) Modifier.hairlineBelow(t.hairline) else Modifier)
+            .padding(top = 20.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = {
+            Text(
+                title.uppercase(Locale.GERMAN),
+                style = MaterialTheme.typography.labelSmall,
+                color = t.stone,
+                modifier = Modifier.semantics { heading() },
+            )
+            content()
+        },
+    )
 }
 
 /** Stadtname mit fett hervorgehobenem, übereinstimmendem Wortanfang. */
@@ -115,12 +138,12 @@ private fun RecentPlacesRow(
 ) {
     Text(
         stringResource(R.string.city_recent),
-        style = MaterialTheme.typography.labelMedium,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         places.forEach { c ->
-            FilterChip(
+            SelectChip(
                 // Identität über die Koordinaten, wie bei withRecentPlace:
                 // zwei gleichnamige Orte dürfen nicht beide als aktiv
                 // erscheinen. Steht der aktive Ort gar nicht in den letzten
@@ -130,7 +153,7 @@ private fun RecentPlacesRow(
                 onClick = { onPick(c) },
                 // Gleichnamige Orte (Esenköy in Yalova und in Aydın) bekommen
                 // die Region angehängt, damit die Chips unterscheidbar bleiben.
-                label = { Text(recentPlaceLabel(c, places)) },
+                label = recentPlaceLabel(c, places),
             )
         }
     }
@@ -180,7 +203,7 @@ private fun FavoritesRow(
     ) {
         Text(
             stringResource(R.string.favorites_title),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         // Der Stern bleibt immer sichtbar und bedienbar — auch bei voller
@@ -205,7 +228,7 @@ private fun FavoritesRow(
             // Die Zahl kommt aus FAVORITES_MAX, damit der Text nicht lügt,
             // sobald jemand die Konstante anfasst.
             stringResource(R.string.favorites_full, FAVORITES_MAX),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
         )
     }
@@ -224,10 +247,10 @@ private fun FavoritesRow(
                 // gewählten Orten, keine zweite. Einmal berechnet, weil auch
                 // die Sprachausgabe des Schließen-Symbols sie braucht.
                 val label = recentPlaceLabel(c, cities)
-                FilterChip(
+                SelectChip(
                     selected = stampMatches(c.latitude, c.longitude, currentLat, currentLng),
                     onClick = { onPick(c) },
-                    label = { Text(label) },
+                    label = label,
                     // Schließen-Symbol je Chip: ohne es kostet das Entfernen
                     // eines fremden Favoriten ZWEI komplette Ortswechsel (hin,
                     // Stern aus, zurück) — und bei voller Liste ist es der
@@ -243,7 +266,10 @@ private fun FavoritesRow(
                                 // Die Klickfläche liegt außen und ist damit
                                 // größer als das Symbol; mehr gibt die
                                 // 32-dp-Höhe eines Chips nicht her.
-                                .clickable(onClickLabel = removeLabel) { onRemove(c) }
+                                // 48-dp-Trefferflaeche fuer das Kreuz; der Chip
+                                // waechst dafuer etwas in der Hoehe.
+                                .minimumInteractiveComponentSize()
+                                .clickable(role = Role.Button, onClickLabel = removeLabel) { onRemove(c) }
                                 .padding(3.dp)
                                 .size(18.dp),
                         )
@@ -275,7 +301,7 @@ private fun FavoritesRow(
         lines.forEach { line ->
             Text(
                 line,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -305,7 +331,7 @@ private fun ManualCoordinatesFields(
     if (latErr || lngErr) {
         Text(
             stringResource(R.string.settings_coordinate_error),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
         )
     }
@@ -406,7 +432,7 @@ private fun SourceStatusSection(settings: AppSettings, onRefresh: () -> Unit, re
         }
         Text(
             statusText ?: stringResource(R.string.status_loading),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (settings.canFetchOfficial()) {
@@ -452,15 +478,15 @@ internal fun LocationSettings(
             // Ohne imePadding reicht der Scroll-Viewport hinter die Tastatur —
             // Inhalt unterhalb der Tastaturkante wäre unerreichbar.
             .imePadding()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = 24.dp)
             .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineSmall)
         Text(
             stringResource(R.string.settings_instant_apply),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
         )
 
         // Sektions-Titel nennt den aktiven Ort — das Stadt-Feld selbst ist ein
@@ -474,6 +500,10 @@ internal fun LocationSettings(
                 useOnline = settings.useOnline,
                 calculationFillsGaps = settings.calculationFillsGaps,
                 currentCity = settings.city,
+                // Kein Autofokus: sonst oeffnet jeder Besuch der Einstellungen
+                // die Tastatur, die auf kleinen Handys fast das ganze Blatt
+                // verdeckt — auch wenn man gar keinen Ort sucht.
+                autoFocus = false,
                 whenEmpty = {
                     // Der aktuelle Ort als City. Das Land kennen die Einstellungen
                     // nicht — es bleibt leer, `recentPlaceLabel` liest es nicht.
@@ -618,7 +648,7 @@ internal fun LocationSettings(
             if (settings.showKaraha) {
                 Text(
                     stringResource(R.string.settings_makruh_hint),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -627,16 +657,16 @@ internal fun LocationSettings(
             if (settings.showCemaat) {
                 Text(
                     stringResource(R.string.settings_cemaat_hint),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(stringResource(R.string.settings_cemaat_offset), style = MaterialTheme.typography.bodyLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(15, 20, 30, 45, 60).forEach { v ->
-                        FilterChip(
+                        SelectChip(
                             selected = settings.cemaatOffsetMinutes == v,
                             onClick = { commit { copy(cemaatOffsetMinutes = v) } },
-                            label = { Text(stringResource(R.string.cemaat_offset_chip, v)) },
+                            label = stringResource(R.string.cemaat_offset_chip, v),
                         )
                     }
                 }
@@ -647,18 +677,18 @@ internal fun LocationSettings(
             }
             Text(
                 stringResource(R.string.settings_calculation_fallback_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Text(stringResource(R.string.settings_remaining), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
             Text(
                 stringResource(R.string.settings_remaining_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            // Ein Regler statt vier: App, Widget, Sperrbildschirm und Symbol
-            // folgen ihm gemeinsam.
+            // Ein Regler statt vier: Widget, Sperrbildschirm und Symbol folgen
+            // ihm gemeinsam. Die App zeigt die Restzeit immer.
             CountdownModeSelector(stringResource(R.string.settings_remaining_all), settings.countdownMode) {
                 commit { copy(countdownMode = it) }
             }
@@ -674,12 +704,12 @@ internal fun LocationSettings(
             }
             Text(
                 stringResource(R.string.settings_persistent_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 stringResource(R.string.settings_remaining_cost),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             // Der Hinweis, der mit den vier alten Reglern verschwand: er
@@ -689,13 +719,13 @@ internal fun LocationSettings(
             if (settings.countdownMode != AppSettings.COUNTDOWN_OFF && !settings.persistentNotification) {
                 Text(
                     stringResource(R.string.settings_lockscreen_hint),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
                 stringResource(R.string.settings_wear_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (OfficialTimesProvider.isOnline) {
@@ -709,7 +739,7 @@ internal fun LocationSettings(
         SettingsSection(stringResource(R.string.settings_section_reminders)) {
             Text(
                 stringResource(R.string.settings_reminders_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             listOf(Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA).forEach { p ->
@@ -719,16 +749,16 @@ internal fun LocationSettings(
             }
 
             Text(stringResource(R.string.settings_style), style = MaterialTheme.typography.bodyLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
                     stringResource(R.string.reminder_style_silent) to AppSettings.STYLE_SILENT,
                     stringResource(R.string.reminder_style_vibrate) to AppSettings.STYLE_VIBRATE,
                     stringResource(R.string.reminder_style_sound) to AppSettings.STYLE_SOUND,
                 ).forEach { (label, v) ->
-                    FilterChip(
+                    SelectChip(
                         selected = settings.reminderStyle == v,
                         onClick = { commit { copy(reminderStyle = v) } },
-                        label = { Text(label) },
+                        label = label,
                     )
                 }
             }
@@ -736,55 +766,64 @@ internal fun LocationSettings(
             Text(stringResource(R.string.settings_lead), style = MaterialTheme.typography.bodyLarge)
             Text(
                 stringResource(R.string.settings_lead_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(stringResource(R.string.lead_off) to 0, stringResource(R.string.lead_5) to 5, stringResource(R.string.lead_10) to 10, stringResource(R.string.lead_15) to 15, stringResource(R.string.lead_30) to 30).forEach { (label, v) ->
-                    FilterChip(
+                    SelectChip(
                         selected = settings.reminderLeadMinutes == v,
                         onClick = { commit { copy(reminderLeadMinutes = v) } },
-                        label = { Text(label) },
+                        label = label,
                     )
                 }
             }
+
+            ToggleRow(stringResource(R.string.settings_prayer_virtue), settings.showPrayerVirtue) {
+                commit { copy(showPrayerVirtue = it) }
+            }
+            Text(
+                stringResource(R.string.settings_prayer_virtue_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
         }
 
         SettingsSection(stringResource(R.string.settings_section_appearance)) {
             Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.bodyLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
                     stringResource(R.string.theme_system) to AppSettings.THEME_SYSTEM,
                     stringResource(R.string.theme_light) to AppSettings.THEME_LIGHT,
                     stringResource(R.string.theme_dark) to AppSettings.THEME_DARK,
                 ).forEach { (label, v) ->
-                    FilterChip(
+                    SelectChip(
                         selected = settings.themeMode == v,
                         onClick = { commit { copy(themeMode = v) } },
-                        label = { Text(label) },
+                        label = label,
                     )
                 }
             }
             Text(
                 stringResource(R.string.settings_amoled_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Text(stringResource(R.string.settings_hijri), style = MaterialTheme.typography.bodyLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(-2, -1, 0, 1, 2).forEach { v ->
-                    FilterChip(
+                    SelectChip(
                         selected = settings.hijriOffsetDays == v,
                         onClick = { commit { copy(hijriOffsetDays = v) } },
-                        label = { Text(if (v > 0) "+$v" else "$v") },
+                        label = if (v > 0) "+$v" else "$v",
                     )
                 }
             }
             Text(
                 stringResource(R.string.settings_hijri_hint),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
@@ -794,24 +833,72 @@ internal fun LocationSettings(
         }
 
         BatteryOptimizationCard()
+
+        AboutSection()
     }
 }
 
-/** Aus / Stufen / Genau — der eine Restzeit-Regler fuer alle Flaechen. */
+/** Der Name des Abschnitts, zu dem ein Foto gehört. */
+private fun photoLabelRes(key: PhotoKey): Int = when (key) {
+    PhotoKey.FAJR -> R.string.prayer_fajr
+    PhotoKey.SHURUQ -> R.string.moment_shuruq
+    PhotoKey.ZUHR -> R.string.prayer_dhuhr
+    PhotoKey.ASR -> R.string.prayer_asr
+    PhotoKey.MAGHRIB -> R.string.prayer_maghrib
+    PhotoKey.ISHA -> R.string.prayer_isha
+}
+
+/** Die gebündelten Schriften; ihre Lizenztexte liegen unter `assets/licenses/`. */
+private val FONT_NAMES = listOf("Noto Serif Display", "Inter", "Noto Naskh Arabic")
+
+/**
+ * „Über“: wer die Fotos gemacht hat und unter welcher Lizenz die Schriften
+ * stehen. Die Unsplash-Lizenz verlangt die Nennung nicht, sie ist aber fair.
+ */
+@Composable
+private fun AboutSection() {
+    SettingsSection(stringResource(R.string.settings_section_about), divider = false) {
+        Text(stringResource(R.string.about_photos), style = MaterialTheme.typography.titleMedium)
+        PHOTO_CREDITS.forEach { credit ->
+            CreditLine(
+                stringResource(photoLabelRes(credit.key)),
+                stringResource(R.string.photo_credit, credit.photographer),
+            )
+        }
+        Text(
+            stringResource(R.string.about_fonts),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        val license = stringResource(R.string.about_font_license)
+        FONT_NAMES.forEach { CreditLine(it, license) }
+    }
+}
+
+@Composable
+private fun CreditLine(name: String, detail: String) {
+    // Eine Einheit für TalkBack: Name und Nennung gehören zusammen.
+    Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
+        Text(name, style = MaterialTheme.typography.bodyLarge)
+        Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Aus / Stufen / Genau: der eine Restzeit-Regler fuer Widget, Sperrbildschirm und Statusleiste. */
 @Composable
 private fun CountdownModeSelector(label: String, value: String, onChange: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
                 stringResource(R.string.countdown_off) to AppSettings.COUNTDOWN_OFF,
                 stringResource(R.string.countdown_steps) to AppSettings.PRECISION_STEPS,
                 stringResource(R.string.countdown_exact) to AppSettings.PRECISION_EXACT,
             ).forEach { (chip, v) ->
-                FilterChip(
+                SelectChip(
                     selected = value == v,
                     onClick = { onChange(v) },
-                    label = { Text(chip) },
+                    label = chip,
                 )
             }
         }
@@ -822,12 +909,12 @@ private fun CountdownModeSelector(label: String, value: String, onChange: (Strin
 private fun FontSizeSelector(value: Float, onChange: (Float) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(stringResource(R.string.font_size), style = MaterialTheme.typography.bodyLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(stringResource(R.string.font_normal) to 1f, stringResource(R.string.font_large) to 1.2f, stringResource(R.string.font_xlarge) to 1.4f).forEach { (label, v) ->
-                FilterChip(
+                SelectChip(
                     selected = abs(value - v) < 0.01f,
                     onClick = { onChange(v) },
-                    label = { Text(label) },
+                    label = label,
                 )
             }
         }
@@ -859,16 +946,24 @@ private fun BatteryOptimizationCard() {
     }
     if (exempt) return
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        modifier = Modifier.fillMaxWidth(),
+    // Fläche (surface) mit Haarlinie: der einzige Block im Blatt, der zum
+    // Handeln auffordert, hebt sich so vom Grund ab, ohne Karte zu sein.
+    val t = LocalTokens.current
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = Modifier
+            .padding(top = 24.dp)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(t.surface)
+            .border(1.dp, t.hairline, shape),
     ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.battery_title), style = MaterialTheme.typography.titleSmall)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.battery_title), style = MaterialTheme.typography.titleMedium, color = t.ink)
             Text(
                 stringResource(R.string.battery_body),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                style = MaterialTheme.typography.bodyMedium,
+                color = t.stone,
             )
             Button(onClick = {
                 context.startActivity(
@@ -886,12 +981,18 @@ private fun BatteryOptimizationCard() {
 
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    // Die ganze Zeile schaltet (nicht nur der Schalter): groessere
+    // Trefferflaeche, und TalkBack liest Beschriftung und Zustand als EIN
+    // Element statt Text und namenlosen Schalter getrennt.
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }

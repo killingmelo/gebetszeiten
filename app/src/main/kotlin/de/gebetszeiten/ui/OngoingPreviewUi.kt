@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.repeatOnLifecycle
 import de.gebetszeiten.R
 import de.gebetszeiten.data.AppSettings
@@ -62,7 +62,7 @@ internal fun CountdownPreview(
         StatusBarStrip(countdownIconRes(row.glyph))
         Text(
             stringResource(R.string.onboarding_preview_same_icon),
-            style = MaterialTheme.typography.labelSmall,
+            style = PreviewSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         ShadeCardPreview(row)
@@ -72,17 +72,17 @@ internal fun CountdownPreview(
                 stringResource(R.string.countdown_steps) to AppSettings.PRECISION_STEPS,
                 stringResource(R.string.countdown_exact) to AppSettings.PRECISION_EXACT,
             ).forEach { (label, value) ->
-                FilterChip(
+                SelectChip(
                     selected = selected == value,
                     onClick = { onSelect(value) },
-                    label = { Text(label) },
+                    label = label,
                 )
             }
         }
         if (exampleLabel != null) {
             Text(
                 exampleLabel,
-                style = MaterialTheme.typography.labelSmall,
+                style = PreviewSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -123,7 +123,7 @@ private fun StatusBarStrip(iconRes: Int) {
             )
             Text(
                 stringResource(R.string.onboarding_preview_statusbar_hint),
-                style = MaterialTheme.typography.labelSmall,
+                style = PreviewSmall,
                 color = androidx.compose.ui.graphics.Color(0xFFBDBDBD),
                 modifier = Modifier.weight(1f),
             )
@@ -158,20 +158,20 @@ private fun ShadeCardPreview(row: OngoingPreviewRow) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = PreviewSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 row.texts.subText?.let {
                     Text(
                         "· $it",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = PreviewSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (row.showsChronometer) {
                     Text(
                         rememberTickingCountdown(),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = PreviewSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -180,14 +180,14 @@ private fun ShadeCardPreview(row: OngoingPreviewRow) {
             Text(row.texts.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             Text(
                 if (expanded) row.texts.bigText else (row.texts.contentText ?: ""),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 stringResource(
                     if (expanded) R.string.onboarding_preview_collapse else R.string.onboarding_preview_expand,
                 ),
-                style = MaterialTheme.typography.labelSmall,
+                style = PreviewSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
         }
@@ -217,3 +217,9 @@ private fun rememberTickingCountdown(): String {
     }
     return "%d:%02d:%02d".format(sekunden / 3600, (sekunden % 3600) / 60, sekunden % 60)
 }
+
+/** Kleine Zeilen der Vorschau: Inter 12 sp ohne die Sperrung der
+ *  Großbuchstaben-Köpfe (labelSmall ist seit dem Oura-Stil gesperrt). */
+private val PreviewSmall: androidx.compose.ui.text.TextStyle
+    @androidx.compose.runtime.Composable
+    get() = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 16.sp)

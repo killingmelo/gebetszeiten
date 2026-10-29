@@ -29,6 +29,15 @@ class QiblaMathTest {
         assertEquals("Süd", QiblaMath.cardinal(180.0))
         assertEquals("Südost", QiblaMath.cardinal(135.0))
     }
+    @Test fun trueAzimuthAddsEastDeclination() {
+        assertEquals(104.5f, QiblaMath.trueAzimuth(100f, 4.5f), 0.001f)
+    }
+    @Test fun trueAzimuthWraps() {
+        assertEquals(2f, QiblaMath.trueAzimuth(358f, 4f), 0.001f)
+    }
+    @Test fun westDeclinationSubtracts() {
+        assertEquals(358f, QiblaMath.trueAzimuth(10f, -12f), 0.001f)
+    }
     @Test fun normalizeWraps() {
         assertEquals(350f, QiblaMath.normalizeDegrees(-10f), 0.001f)
         assertEquals(10f, QiblaMath.normalizeDegrees(370f), 0.001f)

@@ -43,7 +43,7 @@ class PrayerComplicationService : ComplicationDataSourceService() {
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT) return null
-        return data("Asr", PlainComplicationText.Builder("17:36").build(), "17:36", null)
+        return data("ʿAṣr", PlainComplicationText.Builder("17:36").build(), "17:36", null)
     }
 
     override fun onComplicationRequest(

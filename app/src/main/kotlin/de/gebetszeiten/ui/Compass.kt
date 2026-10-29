@@ -1,6 +1,7 @@
 package de.gebetszeiten.ui
 
 import android.content.Context
+import android.hardware.GeomagneticField
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -16,18 +17,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import de.gebetszeiten.prayer.QiblaMath
 
-/** Geräte-Azimut (0..360 von Norden), geglättet; null wenn kein Rotationssensor. */
+/** Geräte-Azimut zu geografisch Nord und ob der Sensor gerade verlässlich misst. */
+data class DeviceHeading(val azimuth: Float, val reliable: Boolean)
+
+/**
+ * Geräte-Azimut (0..360 von geografisch Nord, Missweisung für [lat]/[lng] eingerechnet),
+ * geglättet; null wenn kein Rotationssensor.
+ */
 @Composable
-fun rememberDeviceAzimuth(): Float? {
+fun rememberDeviceAzimuth(lat: Double, lng: Double): DeviceHeading? {
     val context = LocalContext.current
     val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
     val rotationSensor = remember { sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) }
     var azimuth by remember { mutableStateOf<Float?>(null) }
+    // Bis zum ersten Rückruf als verlässlich annehmen, damit beim Öffnen keine Warnung aufblitzt.
+    var reliable by remember { mutableStateOf(true) }
 
-    DisposableEffect(rotationSensor) {
+    DisposableEffect(rotationSensor, lat, lng) {
         if (rotationSensor == null) {
             onDispose { }
         } else {
+            // Missweisung (Ost positiv) einmal pro Effekt; Höhe 0 genügt für diese Genauigkeit.
+            val declination = GeomagneticField(
+                lat.toFloat(), lng.toFloat(), 0f, System.currentTimeMillis(),
+            ).declination
             val matrix = FloatArray(9)
             val remapped = FloatArray(9)
             val orientation = FloatArray(3)
@@ -43,10 +56,13 @@ fun rememberDeviceAzimuth(): Float? {
                     SensorManager.getRotationMatrixFromVector(matrix, event.values)
                     SensorManager.remapCoordinateSystem(matrix, axisX, axisY, remapped)
                     SensorManager.getOrientation(remapped, orientation)
-                    val deg = QiblaMath.normalizeDegrees(Math.toDegrees(orientation[0].toDouble()).toFloat())
-                    azimuth = lowPass(deg, azimuth)
+                    val magnetic = QiblaMath.normalizeDegrees(Math.toDegrees(orientation[0].toDouble()).toFloat())
+                    azimuth = lowPass(QiblaMath.trueAzimuth(magnetic, declination), azimuth)
+                    reliable = event.accuracy >= SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM
                 }
-                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+                    reliable = accuracy >= SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM
+                }
             }
             sensorManager.registerListener(listener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
             onDispose { sensorManager.unregisterListener(listener) }
@@ -54,7 +70,7 @@ fun rememberDeviceAzimuth(): Float? {
     }
 
     // Sensor vorhanden, aber noch keine Messung → provisorisch 0; gar kein Sensor → null.
-    return if (rotationSensor == null) null else (azimuth ?: 0f)
+    return if (rotationSensor == null) null else DeviceHeading(azimuth ?: 0f, reliable)
 }
 
 /** Zirkulärer Tiefpass (Wraparound-sicher) gegen Zittern. */

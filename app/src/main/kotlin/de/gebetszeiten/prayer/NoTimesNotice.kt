@@ -73,7 +73,7 @@ fun widgetNotice(next: NextPrayer?, city: String, onlineEnabled: Boolean): NoTim
  * verwenden statt ihn zweimal einzeln zu formulieren.
  */
 private fun notausgangHint(onlineEnabled: Boolean): String = if (onlineEnabled) {
-    "Jetzt abrufen — oder die Berechnung als Notausgang einschalten."
+    "Jetzt abrufen oder die Berechnung als Notausgang einschalten."
 } else {
     "Schalte den Online-Abruf ein oder erlaube die Berechnung als Notausgang."
 }

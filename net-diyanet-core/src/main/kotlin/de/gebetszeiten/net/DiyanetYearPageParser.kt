@@ -1,5 +1,6 @@
 package de.gebetszeiten.net
 
+import de.gebetszeiten.core.prayertimes.HijriDay
 import de.gebetszeiten.core.prayertimes.officialtimes.SixTimes
 import java.time.LocalDate
 import java.time.LocalTime
@@ -30,6 +31,7 @@ object DiyanetYearPageParser {
     private val CELL = Regex("<td>\\s*([^<]*?)\\s*</td>")
     private val DATE = Regex("(\\d{2}) (\\S+) (\\d{4})")
     private val TIME = Regex("\\d{2}:\\d{2}")
+    private val HIJRI = Regex("(\\d{1,2}) (\\S+) (\\d{4})")
 
     fun parse(html: String): Map<LocalDate, SixTimes> {
         val year = parseTable(html, "tab-2", "Jahres-Tabelle")
@@ -42,7 +44,26 @@ object DiyanetYearPageParser {
         return (month + year).toSortedMap()
     }
 
-    private fun parseTable(html: String, tabId: String, name: String): Map<LocalDate, SixTimes> {
+    /**
+     * Das Hicri-Datum je Tag (Spalte 2 von tab-1 und tab-2). Eine unlesbare
+     * Zelle fehlt nur selbst; ohne Tabellen ist das Ergebnis leer, nie geraten.
+     */
+    fun parseHijri(html: String): Map<LocalDate, HijriDay> {
+        val out = sortedMapOf<LocalDate, HijriDay>()
+        for (tab in listOf("tab-1", "tab-2")) {
+            val cells = runCatching { tableCells(html, tab, tab) }.getOrNull() ?: continue
+            for (i in cells.indices step 8) {
+                val date = runCatching { gregorian(cells[i]) }.getOrNull() ?: continue
+                val h = HIJRI.matchEntire(cells[i + 1]) ?: continue
+                val month = HijriDay.monthOf(h.groupValues[2]) ?: continue
+                runCatching { HijriDay(h.groupValues[1].toInt(), month, h.groupValues[3].toInt()) }
+                    .onSuccess { out[date] = it }
+            }
+        }
+        return out
+    }
+
+    private fun tableCells(html: String, tabId: String, name: String): List<String> {
         val start = html.indexOf("id=\"$tabId\"")
         require(start >= 0) { "$name ($tabId) nicht gefunden" }
         val end = html.indexOf("</table>", start)
@@ -53,11 +74,20 @@ object DiyanetYearPageParser {
         require(cells.isNotEmpty() && cells.size % 8 == 0) {
             "Zellenzahl ${cells.size} nicht durch 8 teilbar"
         }
+        return cells
+    }
+
+    private fun gregorian(cell: String): LocalDate {
+        val m = requireNotNull(DATE.find(cell)) { "Datum unlesbar: $cell" }
+        val month = requireNotNull(TR_MONTHS[m.groupValues[2]]) { "Monat unlesbar: $cell" }
+        return LocalDate.of(m.groupValues[3].toInt(), month, m.groupValues[1].toInt())
+    }
+
+    private fun parseTable(html: String, tabId: String, name: String): Map<LocalDate, SixTimes> {
+        val cells = tableCells(html, tabId, name)
         val out = LinkedHashMap<LocalDate, SixTimes>(cells.size / 8)
         for (i in cells.indices step 8) {
-            val m = requireNotNull(DATE.find(cells[i])) { "Datum unlesbar: ${cells[i]}" }
-            val month = requireNotNull(TR_MONTHS[m.groupValues[2]]) { "Monat unlesbar: ${cells[i]}" }
-            val date = LocalDate.of(m.groupValues[3].toInt(), month, m.groupValues[1].toInt())
+            val date = gregorian(cells[i])
             val times = (2..7).map { off ->
                 cells[i + off].also { require(TIME.matches(it)) { "Zeit unlesbar am $date: $it" } }
             }
