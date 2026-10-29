@@ -187,6 +187,27 @@ object PrayerAlarmScheduler {
             }
         }
 
+        // Titelwechsel des Widgets ohne Gebetsbeginn (Ḍuḥā, Zawāl): nur ohne
+        // Karāha-Anzeige und nur mit liegendem Widget, siehe
+        // [widgetTitleBoundaries]. Die Glance-Abfrage laeuft nur, wenn die
+        // Karāha-Anzeige aus ist.
+        val widgetPlaced = !settings.showKaraha &&
+            androidx.glance.appwidget.GlanceAppWidgetManager(context)
+                .getGlanceIds(de.gebetszeiten.widget.NextPrayerWidget::class.java)
+                .isNotEmpty()
+        if (widgetPlaced) {
+            listOf(now.toLocalDate(), now.toLocalDate().plusDays(1)).forEach { date ->
+                PrayerProvider.daily(context, settings, date, zone)?.let { day ->
+                    boundaries += widgetTitleBoundaries(
+                        karaha = de.gebetszeiten.prayer.IslamicWindows.karaha(day),
+                        nafl = de.gebetszeiten.prayer.IslamicWindows.nafl(day, null),
+                        showKaraha = settings.showKaraha,
+                        widgetPlaced = widgetPlaced,
+                    )
+                }
+            }
+        }
+
         if (settings.showKaraha) {
             // Karaha lines on widget + notification change at these moments.
             // Keine Zeiten unter den aktuellen Einstellungen: keine Fenster,

@@ -37,7 +37,7 @@ fun verificationLine(verification: Verification?): String? {
 
         VerificationNote.DRIFT ->
             PREFIX + "${v.differingDays} von ${daysDative(v.comparedDays)} " +
-                "${differVerb(v.differingDays)} ab, max. ${v.maxAbsMinutes} Min — mögliche Korrektur"
+                "${differVerb(v.differingDays)} ab, max. ${v.maxAbsMinutes} Min, mögliche Korrektur"
 
         // „beiden Kontrollquellen" ist keine Annahme, sondern zugesichert:
         // CONFLICT_OVERRIDDEN entsteht nur aus GENAU ZWEI untereinander
@@ -55,8 +55,8 @@ fun verificationLine(verification: Verification?): String? {
         // vollstaendig. Nebenbei erledigt sich damit das falsche Deutsch bei
         // `comparedDays == 1` („1-Tage-Stand").
         VerificationNote.CONFLICT_OVERRIDDEN ->
-            PREFIX + "Jahresabruf widersprach beiden Kontrollquellen — " +
-                "geprüfter Kontrollstand übernommen, Abdeckung daher kürzer"
+            PREFIX + "Jahresabruf widersprach beiden Kontrollquellen. " +
+                "Geprüfter Kontrollstand übernommen, Abdeckung daher kürzer"
 
         // Ohne gemeinsame Tage steht in der [Verification] `maxAbsMinutes
         // == 0` — „uneinig (max. 0 Min)" wuerde sich selbst widersprechen
@@ -67,9 +67,9 @@ fun verificationLine(verification: Verification?): String? {
         // (Monatswechsel).
         VerificationNote.CONFLICT_UNRESOLVED ->
             if (v.comparedDays == 0) {
-                PREFIX + "keine gemeinsamen Tage — Zeiten unbestätigt"
+                PREFIX + "keine gemeinsamen Tage, Zeiten unbestätigt"
             } else {
-                PREFIX + "Quellen uneinig (max. ${v.maxAbsMinutes} Min) — Zeiten unbestätigt"
+                PREFIX + "Quellen uneinig (max. ${v.maxAbsMinutes} Min), Zeiten unbestätigt"
             }
 
         // KEINE Zahl fuer die gefuellten Tage, aus demselben Grund wie bei
@@ -80,12 +80,13 @@ fun verificationLine(verification: Verification?): String? {
         // waere also eine Zahl, die etwas anderes behauptet, als sie ist —
         // „(31 Tage verglichen)" ist wahr.
         VerificationNote.GAP_FILLED ->
-            PREFIX + "Jahresabruf deckt die aktuellen Tage nicht ab — " +
+            PREFIX + "Jahresabruf deckt die aktuellen Tage nicht ab. " +
                 "Zeiten dafür aus zwei übereinstimmenden Kontrollquellen " +
                 "(${daysNominative(v.comparedDays)} verglichen)"
 
         VerificationNote.UNVERIFIED_SINGLE ->
-            PREFIX + "nicht möglich — nur eine Quelle erreichbar"
+            // Ohne Doppelpunkt: „Gegenprüfung: nicht möglich: …“ hatte zwei.
+            "Gegenprüfung nicht möglich, nur eine Quelle erreichbar"
 
         VerificationNote.NONE -> null
     }

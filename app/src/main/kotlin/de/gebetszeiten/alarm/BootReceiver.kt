@@ -42,6 +42,7 @@ class BootReceiver : BroadcastReceiver() {
                     // Der aktive Ort — dieselben `settings`, aus denen auch
                     // die Zeiten oben kommen.
                     city = settings.city,
+                    photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
                 )
                 PrayerNotifier.updatePauseNotice(context, hasTimes = next != null)
                 NextPrayerWidget().updateAll(context)

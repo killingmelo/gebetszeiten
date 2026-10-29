@@ -67,7 +67,7 @@ data class OnboardingCopy(val headline: String, val detail: String)
 fun onboardingCopy(step: OnboardingStep, fresh: Boolean): OnboardingCopy = when (step) {
     OnboardingStep.ORT -> OnboardingCopy(
         headline = if (fresh) "Wo betest du?" else "Stimmt dein Ort noch?",
-        detail = "Amtliche Diyanet-Zeiten gelten je Ort — ein paar Kilometer " +
+        detail = "Amtliche Diyanet-Zeiten gelten je Ort. Ein paar Kilometer " +
             "machen Minuten aus. Tippen statt Standortfreigabe: die App fragt " +
             "nie nach deiner Position.",
     )
@@ -76,13 +76,13 @@ fun onboardingCopy(step: OnboardingStep, fresh: Boolean): OnboardingCopy = when 
         headline = if (fresh) {
             "Dein nächstes Gebet im Blick"
         } else {
-            "Das gibt es — gefunden hat es kaum jemand"
+            "Diese Anzeige kennen bisher nur wenige."
         },
         detail = "Eine stille, dauerhafte Benachrichtigung zeigt das nächste " +
             "Gebet auf dem Sperrbildschirm, mit einem Symbol oben in der " +
-            "Statusleiste. Wichtig zu wissen: Solange der Erinnerungsstil " +
+            "Statusleiste. Solange der Erinnerungsstil " +
             "„Still“ ist, ersetzt diese eine Zeile die einzelnen Meldungen zur " +
-            "Gebetszeit — sie ändert sich dann, statt neu aufzutauchen.",
+            "Gebetszeit. Sie ändert sich dann, statt neu aufzutauchen.",
     )
 
     OnboardingStep.ERINNERUNGEN -> OnboardingCopy(

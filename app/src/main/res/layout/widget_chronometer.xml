@@ -5,6 +5,6 @@
     android:id="@+id/widget_chrono"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:textColor="?android:attr/textColorPrimary"
-    android:textSize="24sp"
+    android:textColor="@color/widget_chrono_text"
+    android:textSize="15sp"
     android:textStyle="bold" />

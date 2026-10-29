@@ -15,7 +15,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PrayerViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -85,21 +87,27 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         val active = PrayerProvider.currentlyActive(app, value, zone, now)
             ?.takeIf { it.prayer != de.gebetszeiten.core.prayertimes.Prayer.SUNRISE }
         val next = PrayerProvider.nextPrayer(app, value, zone, now)
-        PrayerNotifier.updateOngoing(
-            app,
-            next,
-            value.persistentNotification,
-            value.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
-            active,
-            replacesEntry = value.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT,
-            activeUntil = PrayerProvider.activeUntil(app, value, zone, now, active),
-            exact = value.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
-            karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(app, value, zone, now),
-            // Der aktive Ort aus den gerade gespeicherten Einstellungen —
-            // nach einem Ortswechsel also sofort der neue, passend zu den
-            // Zeiten daneben.
-            city = value.city,
-        )
+        val photo = de.gebetszeiten.notify.ongoingPhotoAt(app, value, zone, now)
+        // Die Daueranzeige dekodiert ein Foto; das gehoert nicht auf den
+        // Hauptthread, auf dem `viewModelScope` laeuft.
+        withContext(Dispatchers.Default) {
+            PrayerNotifier.updateOngoing(
+                app,
+                next,
+                value.persistentNotification,
+                value.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
+                active,
+                replacesEntry = value.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT,
+                activeUntil = PrayerProvider.activeUntil(app, value, zone, now, active),
+                exact = value.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT,
+                karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(app, value, zone, now),
+                // Der aktive Ort aus den gerade gespeicherten Einstellungen —
+                // nach einem Ortswechsel also sofort der neue, passend zu den
+                // Zeiten daneben.
+                city = value.city,
+                photo = photo,
+            )
+        }
         PrayerNotifier.updatePauseNotice(app, hasTimes = next != null)
         PrayerAlarmScheduler.scheduleNext(app, value)
         NextPrayerWidget().updateAll(app)

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vorschau in der Widget-Auswahl (API 31+). Ohne sie zeigte die Auswahl nur
+     den Glance-Ladeplatzhalter. Beispielwerte im Aufbau des kleinen Widgets:
+     Abschnitt, Restzeit in Akzentfarbe, nächstes Gebet. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_bg"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="8dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:includeFontPadding="false"
+        android:text="@string/widget_preview_title"
+        android:textColor="@color/widget_preview_text"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/widget_preview_remaining"
+        android:textColor="@color/widget_preview_accent"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_preview_next"
+        android:textColor="@color/widget_preview_text"
+        android:textSize="13sp" />
+</LinearLayout>

@@ -7,14 +7,22 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Build
+import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
 import de.gebetszeiten.R
+import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.prayer.NextPrayer
 import de.gebetszeiten.prayer.labelRes
+import de.gebetszeiten.prayer.virtueFor
 import de.gebetszeiten.ui.MainActivity
+import de.gebetszeiten.ui.photoRes
+import de.gebetszeiten.ui.theme.Palette
 import java.time.format.DateTimeFormatter
 
 /** Posts a deliberately silent notification at a prayer time. */
@@ -29,6 +37,62 @@ object PrayerNotifier {
     private const val PRE_ID = 3
     private const val PAUSE_NOTICE_ID = 4
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+    /** Akzentfarbe der App fuer Symbol und Kopfzeile aller Gebets-Meldungen. */
+    private val accent: Int = Palette.Day.accent.toArgb()
+
+    // Zielbreiten der Fotos: aufgeklappt (BigPicture) und als Seitenbild.
+    // Die Quellen sind 1080 px breit; ohne Verkleinerung laege jedes Foto mit
+    // rund 3 MB im Speicher, nur damit das System es wieder herunterrechnet.
+    private const val BIG_PICTURE_WIDTH = 1024
+    private const val LARGE_ICON_WIDTH = 256
+
+    /**
+     * Das Foto, beim Dekodieren auf etwa [targetWidth] verkleinert
+     * (`inSampleSize`, Zweierpotenz, nie kleiner als das Ziel). Alle Aufrufer
+     * laufen ausserhalb des Hauptthreads: die Empfaenger auf
+     * `Dispatchers.Default`, das ViewModel wechselt eigens dorthin.
+     */
+    private fun decodePhoto(context: Context, @DrawableRes res: Int, targetWidth: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeResource(context.resources, res, bounds)
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= targetWidth) sample *= 2
+        return BitmapFactory.decodeResource(
+            context.resources,
+            res,
+            BitmapFactory.Options().apply { inSampleSize = sample },
+        )
+    }
+
+    /**
+     * Eintritt und Vorlauf sehen gleich aus: Gebetssymbol in Akzentfarbe,
+     * kleines Foto rechts, aufgeklappt das grosse Foto. [summary] traegt
+     * aufgeklappt die Inhaltszeile weiter, die das Bild sonst verdraengt.
+     */
+    private fun NotificationCompat.Builder.prayerLook(
+        context: Context,
+        prayer: Prayer,
+        summary: CharSequence?,
+    ): NotificationCompat.Builder {
+        val photo = photoRes(photoKeyFor(prayer))
+        val big = decodePhoto(context, photo, BIG_PICTURE_WIDTH)
+        val small = decodePhoto(context, photo, LARGE_ICON_WIDTH)
+        setSmallIcon(prayerIconRes(prayer))
+        setColor(accent)
+        if (small != null) setLargeIcon(small)
+        if (big != null) {
+            setStyle(
+                NotificationCompat.BigPictureStyle()
+                    .bigPicture(big)
+                    // Aufgeklappt steht das Foto gross da; das kleine daneben
+                    // waere doppelt.
+                    .bigLargeIcon(null as Bitmap?)
+                    .setSummaryText(summary),
+            )
+        }
+        return this
+    }
 
     fun ensureChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -183,6 +247,10 @@ object PrayerNotifier {
         // Nicht das Abrufziel aus `PrayerProvider.refreshOfficial` — das ist
         // seit Task 6 ein anderer Ort, und die Zeiten hier kommen vom aktiven.
         city: String? = null,
+        // Foto des laufenden Abschnitts aus [ongoingPhotoAt] (wie „Heute“,
+        // kennt den Zawāl). Ohne Vorgabewert, damit kein Aufrufer es vergisst;
+        // null nur ohne Tageszeiten.
+        photo: de.gebetszeiten.prayer.PhotoKey?,
     ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
@@ -248,6 +316,13 @@ object PrayerNotifier {
             // wird von der Anzeige-Weckkette weitergestellt
             // (AppSettings.needsDisplayStepAlarms).
             .setSmallIcon(countdownIconRes(anzeige.glyph))
+            .setColor(accent)
+            .apply {
+                // Kleines Foto des laufenden Abschnitts; aufgeklappt bleibt
+                // es beim Text, der Inhalt ist hier wichtiger als ein Bild.
+                val photo = photoRes(photo ?: ongoingPhotoKey(activeSince?.prayer, next.prayer))
+                decodePhoto(context, photo, LARGE_ICON_WIDTH)?.let { setLargeIcon(it) }
+            }
             .setContentTitle(texts.title)
             // `null` heisst „gar keine Zeile" — genau wie frueher das
             // uebersprungene `setContentText`; die Vorgabe des Builders IST
@@ -292,8 +367,9 @@ object PrayerNotifier {
         if (!canPost(context)) return
         ensureChannel(context)
         val untilPrayer = next.time.toInstant().toEpochMilli() - System.currentTimeMillis()
+        val text = context.getString(R.string.pre_reminder_text, next.time.format(timeFormat))
         val notification = NotificationCompat.Builder(context, styleChannel(style))
-            .setSmallIcon(R.drawable.ic_notification)
+            .prayerLook(context, next.prayer, text)
             .setContentTitle(
                 context.getString(
                     R.string.pre_reminder_title,
@@ -301,7 +377,7 @@ object PrayerNotifier {
                     leadMinutes,
                 ),
             )
-            .setContentText(context.getString(R.string.pre_reminder_text, next.time.format(timeFormat)))
+            .setContentText(text)
             .setContentIntent(contentIntent(context))
             .setPriority(
                 if (silentStyle(style)) NotificationCompat.PRIORITY_LOW else NotificationCompat.PRIORITY_DEFAULT,
@@ -317,6 +393,8 @@ object PrayerNotifier {
      * @param next the next actual prayer (sunrise excluded) — shown as text.
      * @param clearAtMillis epoch millis of the next transition (sunrise included)
      *   at which the notification auto-dismisses.
+     * @param showVirtue `settings.showPrayerVirtue`: aufgeklappt steht statt
+     *   der Zeile zum naechsten Gebet ein Satz „Wert dieses Gebets“ ([virtueFor]).
      */
     @SuppressLint("MissingPermission") // guarded by canPost()
     fun notifyPrayer(
@@ -325,6 +403,7 @@ object PrayerNotifier {
         next: NextPrayer? = null,
         clearAtMillis: Long? = null,
         style: String = de.gebetszeiten.data.AppSettings.STYLE_SILENT,
+        showVirtue: Boolean = false,
     ) {
         if (!canPost(context)) return
         ensureChannel(context)
@@ -340,8 +419,14 @@ object PrayerNotifier {
                 it.time.format(timeFormat),
             )
         }
+        val virtue = if (showVirtue) virtueFor(prayer.prayer, prayer.time.toLocalDate()) else null
+        // Aufgeklappt zeigt BigPicture nur die Zusammenfassung, hoechstens zwei
+        // Zeilen. Mit dem Wert-Satz steht er allein dort (die Zeile zum
+        // naechsten Gebet davor schnitte ihn nach wenigen Woertern ab); Gebet
+        // und Uhrzeit bleiben im Titel, zugeklappt bleibt die Inhaltszeile.
+        val expanded = virtue ?: text
         val notification = NotificationCompat.Builder(context, styleChannel(style))
-            .setSmallIcon(R.drawable.ic_notification)
+            .prayerLook(context, prayer.prayer, expanded)
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(contentIntent(context))

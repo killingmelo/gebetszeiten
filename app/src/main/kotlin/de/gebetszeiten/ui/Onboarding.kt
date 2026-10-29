@@ -2,17 +2,19 @@ package de.gebetszeiten.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,7 +37,9 @@ import de.gebetszeiten.notify.NotificationBlock
 import de.gebetszeiten.notify.PREVIEW_EXAMPLE_MINUTES
 import de.gebetszeiten.notify.ongoingPreviewRows
 import de.gebetszeiten.prayer.labelRes
+import de.gebetszeiten.ui.theme.LocalTokens
 import java.time.Duration
+import java.util.Locale
 
 /**
  * Die Ersteinrichtung: Vollbild, drei Schritte, Pflicht.
@@ -75,6 +79,7 @@ internal fun Onboarding(
     // Geste ab, ohne etwas zu tun: hinaus fuehrt sie nicht.
     BackHandler { previousStep(step)?.let { step = it } }
 
+    val t = LocalTokens.current
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -85,28 +90,35 @@ internal fun Onboarding(
                 // Emulator gesehen). `safeDrawing` deckt Statusleiste,
                 // Navigationsleiste, Display-Ausschnitt UND Tastatur ab.
                 .safeDrawingPadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // Schrittzahl als Großbuchstaben-Zeile wie die Abschnittsköpfe auf „Heute“.
             Text(
                 stringResource(
                     R.string.onboarding_progress,
                     OnboardingStep.values().indexOf(step) + 1,
                     OnboardingStep.values().size,
-                ),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ).uppercase(Locale.GERMAN),
+                style = MaterialTheme.typography.labelSmall,
+                color = t.stone,
             )
-            Text(copy.headline, style = MaterialTheme.typography.headlineSmall)
+            Text(copy.headline, style = MaterialTheme.typography.headlineSmall, color = t.ink)
             Text(
                 copy.detail,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = t.stone,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .hairlineBelow(t.hairline)
+                    .padding(bottom = 16.dp),
             )
 
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    // Haarlinie über den Knöpfen: der Inhalt endet sichtbar hier.
+                    .hairlineBelow(t.hairline)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -143,7 +155,7 @@ internal fun Onboarding(
 private fun OnboardingPlaceStep(draft: AppSettings, onChange: (AppSettings) -> Unit) {
     Text(
         stringResource(R.string.onboarding_place_current, draft.city),
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodyLarge,
     )
     PlacePicker(
         useOnline = draft.useOnline,
@@ -215,7 +227,7 @@ private fun OnboardingDisplayStep(draft: AppSettings, onChange: (AppSettings) ->
     if (block != NotificationBlock.NONE) {
         Text(
             de.gebetszeiten.notify.notificationBlockText(block).orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
         )
         Button(
@@ -250,26 +262,26 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
         )
     }
     Text(stringResource(R.string.settings_style), style = MaterialTheme.typography.bodyLarge)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(
             stringResource(R.string.reminder_style_silent) to AppSettings.STYLE_SILENT,
             stringResource(R.string.reminder_style_vibrate) to AppSettings.STYLE_VIBRATE,
             stringResource(R.string.reminder_style_sound) to AppSettings.STYLE_SOUND,
         ).forEach { (label, v) ->
-            FilterChip(
+            SelectChip(
                 selected = draft.reminderStyle == v,
                 onClick = { onChange(draft.copy(reminderStyle = v)) },
-                label = { Text(label) },
+                label = label,
             )
         }
     }
     Text(stringResource(R.string.settings_lead), style = MaterialTheme.typography.bodyLarge)
     Text(
         stringResource(R.string.settings_lead_hint),
-        style = MaterialTheme.typography.bodySmall,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(
             stringResource(R.string.lead_off) to 0,
             stringResource(R.string.lead_5) to 5,
@@ -277,10 +289,10 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
             stringResource(R.string.lead_15) to 15,
             stringResource(R.string.lead_30) to 30,
         ).forEach { (label, v) ->
-            FilterChip(
+            SelectChip(
                 selected = draft.reminderLeadMinutes == v,
                 onClick = { onChange(draft.copy(reminderLeadMinutes = v)) },
-                label = { Text(label) },
+                label = label,
             )
         }
     }
@@ -288,12 +300,21 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
 
 @Composable
 private fun ToggleLine(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    // Wie ToggleRow in den Einstellungen: die ganze Zeile schaltet.
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .hairlineBelow(LocalTokens.current.hairline)
+            .toggleable(
+                value = checked,
+                role = androidx.compose.ui.semantics.Role.Switch,
+                onValueChange = onChange,
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
-        Text(label, modifier = Modifier.weight(1f))
-        androidx.compose.material3.Switch(checked = checked, onCheckedChange = onChange)
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = null)
     }
 }
