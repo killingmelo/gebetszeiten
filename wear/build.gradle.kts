@@ -42,8 +42,8 @@ android {
         // fuehrt (1015 = 0.1.15, 1016 = 0.1.16). Zwei Artefakte mit
         // demselben Namen und verschiedenen Codes waeren in der
         // Bibliothek spaeter nicht mehr auseinanderzuhalten.
-        versionCode = 1017
-        versionName = "0.1.17"
+        versionCode = 1018
+        versionName = "0.1.18"
     }
 
     signingConfigs {

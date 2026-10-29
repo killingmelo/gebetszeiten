@@ -1,0 +1,5 @@
+• New design: a photo for the time of day, the current prayer, the time remaining and the next prayer at a glance.
+• New section "Understanding the times" with Hanafi quotations, a sundial for your location and the value of each prayer.
+• Month view with Šurūq, new widget, new notifications.
+• The Qibla compass now corrects for magnetic declination.
+• Easier to read, also with large text.
