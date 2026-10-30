@@ -24,9 +24,11 @@ Gelegenheiten, genau das zu übersehen — deshalb nur noch eine.
 
 ### App-Name (max. 30 Zeichen)
 ```
-Lightweight Gebetszeiten
+Gebetszeiten Islam
 ```
-*(24 Zeichen. Alternativen: „Gebetszeiten – lautlos präzise" / „Gebetszeiten: privat, offline")*
+*(18 Zeichen; steht auch in `fastlane/metadata/android/de-DE/title.txt`, geprüft von
+`StoreListingTextTest`. „Diyanet“ gehört nicht in den Namen: das sähe nach einem offiziellen
+Diyanet-Angebot aus. Unter dem Symbol auf dem Gerät heißt die App weiter „Gebetszeiten“.)*
 
 ### Kategorie & Tags
 - Kategorie: **Lifestyle**
@@ -44,6 +46,7 @@ Lightweight Gebetszeiten
 | Telefon-Screenshots | `fastlane/metadata/android/de-DE/images/phoneScreenshots/` |
 | Wear-Screenshots | `fastlane/metadata/android/de-DE/images/wearScreenshots/` |
 
-Icon und Feature-Graphic erzeugt `playstore/make_assets.py`; die Sichel darin
-kommt aus derselben Definition wie die App-Symbole
-(`tools/notification-icons/build_icons.py`). Nicht von Hand nachbessern.
+Icon und Feature-Graphic erzeugt `playstore/make_assets.py`. Das Motiv (Sujūd vor
+andalusischem Miḥrāb) kommt aus derselben Geometrie wie das Startbildschirm-Symbol
+(`tools/app-icon/geometry.json`), der Himmel des Feature-Bilds aus demselben Panorama wie
+die Screenshots (`playstore/panorama.py`). Nicht von Hand nachbessern.

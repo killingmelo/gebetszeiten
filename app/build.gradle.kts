@@ -101,6 +101,9 @@ android {
 //       build.gradle.kts (Modulkante net-diyanet)
 //   OngoingWiringTest, PrayerAlarmSchedulerWiringTest,
 //   CalculationFallbackMigrationWiringTest             -> app/src/main/kotlin
+//   StoreListingTextTest                              -> fastlane/metadata/android/de-DE
+//   AppIconAssetsTest                                 -> die Drawables, die
+//       beiden adaptiven Symbole und tools/app-icon/icon.sha256
 //
 // Diese Pfade sind fuer Gradle keine Task-Eingaben: die Kotlin-Quellen von
 // app/src/main und core-prayertimes sind es mittelbar ueber die Uebersetzung,
@@ -133,6 +136,15 @@ tasks.withType<Test>().configureEach {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(rootProject.file("shared-assets/official"))
         .withPropertyName("officialAssets")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.file("tools/app-icon/icon.sha256"))
+        .withPropertyName("appIconManifest")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(file("src/main/res/mipmap-anydpi-v26"))
+        .withPropertyName("adaptiveIcons")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.file("fastlane/metadata/android/de-DE"))
+        .withPropertyName("storeTexte")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.files(
         file("src/main/AndroidManifest.xml"),

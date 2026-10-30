@@ -3,14 +3,14 @@
 
 Ablauf: elf Zeichen (`0`-`9` und `h`) einmal als Sieben-Segment-Geometrie
 definieren -> zu 23 Symbolen zusammensetzen (`1h`…`9h`, `50 40 30 20 10`,
-`9`…`1`) -> dazu die Sichel in zwei Groessen (`ic_notification.xml` fuer die
-Statusleiste, `ic_launcher_foreground.xml` fuer das Startbildschirm-Symbol)
+`9`…`1`) -> dazu die Sichel fuer die Statusleiste (`ic_notification.xml`)
 -> je eine Vektordatei schreiben -> `icons.sha256` als Manifest daneben legen.
 
 Warum die Sichel hier steht und nicht mehr von Hand daneben: sie war an drei
 Stellen verschieden definiert, und zwei davon waren falsch (siehe den
 Abschnitt „Die Sichel" weiter unten). Wer nicht im Generator steht, wird
-nicht geprueft.
+nicht geprueft. Das Startbildschirm-Symbol ist seit dem 30.10.2026 keine
+Sichel mehr; es kommt aus `tools/app-icon/build_app_icon.py`.
 
 Warum ein Generator und keine 23 handgeschriebenen Dateien: 23 Dateien mit
 Pfaddaten von Hand sind 23 Gelegenheiten fuer einen Zahlendreher, den im
@@ -203,7 +203,9 @@ def path_data(text: str) -> str:
 # Startbildschirm eine leere gruene Scheibe mit einem gelben Fleck. Beides am
 # Emulator gesehen, beides seit der ersten Fassung so.
 #
-# Ab hier gilt diese eine Definition; `make_assets.py` liest sie mit.
+# Ab hier gilt diese eine Definition. Seit dem 30.10.2026 zeichnet sie nur
+# noch den Mond in der Statusleiste; Startbildschirm und Store zeigen das
+# Sujūd-Motiv aus `tools/app-icon/`.
 CRESCENT_OFFSET = 0.42   # Versatz des Stanzkreises, nach rechts oben
 CRESCENT_INNER = 0.86    # Radius des Stanzkreises
 
@@ -351,11 +353,6 @@ def vector_xml(text: str) -> str:
 
 
 NOTIFICATION_FILE = "ic_notification.xml"
-LAUNCHER_FILE = "ic_launcher_foreground.xml"
-# Durchmesser 44 von 108: innerhalb der Schutzzone des adaptiven Symbols (66)
-# und optisch so gross wie im Play-Symbol, dessen sichtbare Flaeche kleiner
-# ist als seine Leinwand.
-LAUNCHER_RADIUS = 22.0
 
 
 def notification_xml() -> str:
@@ -377,30 +374,6 @@ def notification_xml() -> str:
         "    <path\n"
         '        android:fillColor="#FFFFFFFF"\n'
         f'        android:pathData="{crescent_path(VIEWPORT / 2, VIEWPORT / 2, GLYPH_HEIGHT / 2)}" />\n'
-        "</vector>\n"
-    )
-
-
-def launcher_xml() -> str:
-    """Der Vordergrund des Startbildschirm-Symbols — dieselbe Sichel, groesser.
-
-    Kein `android:tint`: die Datei dient auch als `monochrome`-Ebene, die das
-    System selbst einfaerbt. Und kein gelber Punkt mehr — er stand nur hier,
-    nicht im Play-Symbol, und im monochromen Themed-Icon waere er ohnehin ein
-    bedeutungsloser weisser Fleck.
-    """
-    c = 108.0 / 2
-    return (
-        '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
-        '    android:width="108dp"\n'
-        '    android:height="108dp"\n'
-        '    android:viewportWidth="108"\n'
-        '    android:viewportHeight="108">\n'
-        "    <!-- Erzeugt von tools/notification-icons/build_icons.py;"
-        " nicht von Hand aendern. -->\n"
-        "    <path\n"
-        '        android:fillColor="#FFFFFF"\n'
-        f'        android:pathData="{crescent_path(c, c, LAUNCHER_RADIUS)}" />\n'
         "</vector>\n"
     )
 
@@ -441,12 +414,10 @@ def build() -> dict:
         files[filename(text)] = vector_xml(text)
 
     # Die Sichel gehoert dazu, seit sie hier definiert ist: als Mond in der
-    # Statusleiste und als Vordergrund des Startbildschirm-Symbols. Vorher
-    # standen beide von Hand daneben, ungeprueft — und beide waren falsch.
+    # Statusleiste. Vorher stand sie von Hand daneben, ungeprueft, und war
+    # falsch.
     check_crescent(GLYPH_HEIGHT / 2)
-    check_crescent(LAUNCHER_RADIUS)
     files[NOTIFICATION_FILE] = notification_xml()
-    files[LAUNCHER_FILE] = launcher_xml()
     assert len(set(files.values())) == len(files), "zwei Dateien mit gleichem Inhalt"
     return files
 

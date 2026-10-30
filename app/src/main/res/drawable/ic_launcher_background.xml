@@ -3,7 +3,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Erzeugt von tools/app-icon/build_app_icon.py; nicht von Hand aendern. -->
     <path
-        android:fillColor="#0E7A5F"
+        android:fillColor="#FFF7F1E8"
         android:pathData="M0,0h108v108h-108z" />
 </vector>

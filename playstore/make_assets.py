@@ -1,52 +1,77 @@
-# Generates Play Store listing graphics matching the app's adaptive icon
-# (green #0E7A5F background, white crescent).
-#
-# Die Sichel-Proportionen stehen NICHT mehr hier, sondern in
-# tools/notification-icons/build_icons.py — derselben Datei, die
-# ic_notification.xml und ic_launcher_foreground.xml erzeugt. Bis zum
-# 20.09.2026 hatte jede der drei Stellen ihre eigene Definition, und nur
-# diese war richtig: die beiden Vektoren zogen konzentrische Boegen und
-# fielen dadurch in sich zusammen. Ein Store-Symbol, das anders aussieht als
-# das auf dem Geraet, faellt niemandem auf, der beide nicht nebeneinander
-# haelt — deshalb jetzt eine Quelle.
+#!/usr/bin/env python3
+"""Store-Icon (512 x 512) und Feature-Bild (1024 x 500).
+
+Das Icon kommt aus derselben Geometrie wie das Startbildschirm-Symbol
+(`tools/app-icon/geometry.json`), der Himmel des Feature-Bilds aus demselben
+Panorama wie die Screenshots (`playstore/panorama.py`). Bis zum 30.10.2026
+zeichnete dieses Skript eine Sichel auf Tuerkisgruen; ein Store-Symbol, das
+anders aussieht als das auf dem Geraet, faellt niemandem auf, der beide nicht
+nebeneinander haelt. Deshalb eine Quelle.
+
+    python playstore/make_assets.py
+"""
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "notification-icons"))
-from build_icons import CRESCENT_INNER, CRESCENT_OFFSET  # noqa: E402
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parent
+sys.path.insert(0, str(REPO / "tools" / "app-icon"))
+sys.path.insert(0, str(HERE))
+from build_app_icon import render_png  # noqa: E402
+from panorama import INK, font, render_panorama  # noqa: E402
 
-GREEN = (14, 122, 95, 255)
-WHITE = (255, 255, 255, 255)
-
-
-def crescent(draw: ImageDraw.ImageDraw, cx: float, cy: float, r: float, fill, bg):
-    """Crescent = full circle minus a circle shifted to the upper right."""
-    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
-    off = r * CRESCENT_OFFSET
-    r2 = r * CRESCENT_INNER
-    draw.ellipse([cx + off - r2, cy - off - r2, cx + off + r2, cy - off + r2], fill=bg)
+ICON = HERE / "icon_512.png"
+FEATURE = HERE / "feature_1024x500.png"
 
 
-# --- 512x512 app icon (full-bleed green, Play renders its own mask) ---
-icon = Image.new("RGBA", (512, 512), GREEN)
-d = ImageDraw.Draw(icon)
-crescent(d, 256, 276, 150, WHITE, GREEN)
-icon.convert("RGB").save(r"C:\Users\ehren.HHK\GebetszeitenApp\playstore\icon_512.png")
+def kachel(size: int) -> Image.Image:
+    """Das Icon als abgerundete Kachel mit weichem Schatten, RGBA."""
+    icon = render_png(size)
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, size - 1, size - 1], radius=size * 0.22, fill=255)
+    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    out.paste(icon, (0, 0), mask)
+    return out
 
-# --- 1024x500 feature graphic ---
-fg = Image.new("RGBA", (1024, 500), GREEN)
-d = ImageDraw.Draw(fg)
-crescent(d, 200, 270, 120, WHITE, GREEN)
-try:
-    font_big = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 88)
-    font_small = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 36)
-except OSError:
-    font_big = ImageFont.load_default()
-    font_small = ImageFont.load_default()
-d.text((380, 160), "Gebetszeiten", font=font_big, fill=WHITE)
-d.text((384, 280), "Offline · privat · maximal akkusparend", font=font_small, fill=(214, 240, 230, 255))
-fg.convert("RGB").save(r"C:\Users\ehren.HHK\GebetszeitenApp\playstore\feature_1024x500.png")
 
-print("ok")
+def feature() -> Image.Image:
+    w, h = 1024, 500
+    im = render_panorama(w, h, bahn_ab=0.30).convert("RGBA")
+    d = ImageDraw.Draw(im)
+    serif = font("serif", 70)
+    d.text((64, 196), "Gebetszeiten", font=serif, fill=INK + (255,))
+    d.text((64, 276), "Islam", font=serif, fill=INK + (255,))
+    k = kachel(250)
+    im = Image.alpha_composite(im, schatten(w, h))
+    # rechts von der Maġrib-Sonne, die auf dem Horizont bei x = 717 steht
+    im.alpha_composite(k, (740, 125))
+    return im.convert("RGB")
+
+
+def schatten(w: int, h: int) -> Image.Image:
+    """Schatten unter der Icon-Kachel, RGBA in voller Bildgroesse."""
+    lage = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(lage).rounded_rectangle([748, 140, 998, 390], radius=55, fill=(0, 0, 0, 70))
+    return lage.filter(ImageFilter.GaussianBlur(14))
+
+
+def main() -> int:
+    icon = render_png(512).convert("RGB")
+    assert icon.size == (512, 512)
+    icon.save(ICON)
+    # DESIGN.md: Schatten weich und leicht, nie hart. Ein harter Rand hat zwei
+    # Alphastufen (0 und 90); ein weicher laeuft ueber viele aus.
+    stufen = sum(1 for n in schatten(1024, 500).getchannel("A").histogram() if n)
+    assert stufen > 20, f"Schatten hat nur {stufen} Alphastufen, also eine harte Kante"
+    fg = feature()
+    assert fg.size == (1024, 500) and fg.mode == "RGB"
+    fg.save(FEATURE)
+    print(f"{ICON.name} {icon.size}, {FEATURE.name} {fg.size}")
+    print("ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

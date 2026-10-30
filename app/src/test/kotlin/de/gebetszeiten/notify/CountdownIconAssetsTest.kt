@@ -122,15 +122,14 @@ class CountdownIconAssetsTest {
             val (hash, datei) = zeile.split("  ", limit = 2)
             datei to hash
         }
-        // Der Mond und der Startbildschirm-Vordergrund gehoeren seit dem
-        // 20.09.2026 dazu. Vorher standen sie von Hand daneben — und beide
-        // zeichneten statt einer Sichel zwei konzentrische Boegen, also eine
-        // Figur, die in sich zusammenfaellt. In der Statusleiste blieb ein
-        // Haarstrich, auf dem Startbildschirm eine leere gruene Scheibe. Was
-        // nicht im Manifest steht, prueft niemand.
+        // Der Mond gehoert seit dem 20.09.2026 dazu. Vorher stand er von Hand
+        // daneben und zeichnete statt einer Sichel zwei konzentrische Boegen;
+        // in der Statusleiste blieb ein Haarstrich. Was nicht im Manifest
+        // steht, prueft niemand. Der Startbildschirm-Vordergrund kommt seit dem
+        // 30.10.2026 aus tools/app-icon (siehe AppIconAssetsTest).
         assertEquals(
             "Manifest listet andere Dateien als der Code erreicht",
-            (countdownSymbole.map { "$it.xml" } + "$mond.xml" + "ic_launcher_foreground.xml")
+            (countdownSymbole.map { "$it.xml" } + "$mond.xml")
                 .toSortedSet(),
             erwartet.keys.toSortedSet(),
         )

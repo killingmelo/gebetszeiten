@@ -13,7 +13,7 @@ Alles Vorbereitete liegt in diesem Ordner (`playstore/`):
 | Wear-Bundle (AAB, signiert, aktueller Stand laut git tag) | `wear/build/outputs/bundle/onlineRelease/wear-online-release.aab` |
 | App-Icon 512×512 | `playstore/icon_512.png` |
 | Feature-Graphic 1024×500 | `playstore/feature_1024x500.png` |
-| Phone-Screenshots (16:9) | `fastlane/metadata/android/de-DE/images/phoneScreenshots/` |
+| Phone-Screenshots (9:16, „Ein Tag in fünf Bildern“) | `fastlane/metadata/android/de-DE/images/phoneScreenshots/` |
 | Wear-Screenshots (1:1) | `fastlane/metadata/android/de-DE/images/wearScreenshots/` |
 | Kurz- und Vollbeschreibung | `fastlane/metadata/android/de-DE/` (en-US daneben) |
 | Was ist neu | `fastlane/metadata/android/<sprache>/changelogs/<versionCode>.txt` |
@@ -106,16 +106,24 @@ hat. Nach dem Update tut sie das nicht mehr.
   App, die es nicht mehr gibt: rein offline rechnend, ohne INTERNET.
 - „Was ist neu" aus `changelogs/22.txt` (Telefon) bzw. `changelogs/1017.txt`
   (Uhr), je Sprache. Play kürzt bei 500 Zeichen.
+- App-Name **Gebetszeiten Islam** (`fastlane/…/de-DE/title.txt`).
 - Icon (`icon_512.png`), Feature-Graphic (`feature_1024x500.png`) und die
-  Screenshots aus `fastlane/…/images/` hochladen.
+  Screenshots aus `fastlane/…/images/` hochladen. Icon und Feature-Graphic
+  erzeugt `python playstore/make_assets.py` aus `tools/app-icon/geometry.json`
+  (dieselbe Form wie das Startbildschirm-Symbol) und `playstore/panorama.py`.
 - Kategorie **Lifestyle**, Kontakt-E-Mail, Datenschutz-URL (oben) eintragen.
 
 **Screenshots gelten nur für den Stand, aus dem sie stammen.** Die jetzigen
-sind vom 20.09.2026 (v0.2.0) und zeigen Ersteinrichtung, Heute, Monat, Qibla
-sowie zwei Ansichten der Uhr. Wer die Oberfläche ändert, macht sie neu:
-aufnehmen nach `build/roh/phoneScreenshots/` bzw. `…/wearScreenshots/`, dann
-`python playstore/make_screenshots.py` — das beschneidet auf das von Play
-erlaubte Verhältnis (höchstens 2:1) und legt sie an die Stelle oben.
+sind vom 30.10.2026 (Design-Neuausrichtung) und zeigen „Ein Tag in fünf
+Bildern“: Heute bei Faǧr, Zeiten verstehen bei Ẓuhr, Startbildschirm mit
+Widget und Uhr bei ʿAṣr, Monat bei Maġrib, Heute nachts bei ʿIšāʾ; dazu zwei
+Ansichten der Uhr. Wer die Oberfläche ändert, macht sie neu: der Ablauf
+(Zeitzone Europe/Berlin, Uhrzeit über die Einstellungen, Demo-Modus der
+Statusleiste, Systemsprache Deutsch) steht im Kopf von
+`playstore/make_screenshots.py`. Aufnehmen nach `build/roh/phoneScreenshots/`
+bzw. `…/wearScreenshots/`, dann `python playstore/make_screenshots.py`; es
+setzt Himmel, Überschrift und Aufnahme zu 1080 × 1920 zusammen und prüft
+Glyphen, Striche und Nahtstellen.
 
 ### 4. Formulare (Antworten vorbereitet)
 **Datensicherheit (Data Safety) — Stand Online-First:**
