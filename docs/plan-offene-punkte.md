@@ -100,6 +100,8 @@ Noch nichts umgesetzt. Weitere Punkte kommen dazu, danach wird in der hier festg
 7. Widget-Themen und Formate 5b (groß, nutzt die Bildfarbe aus 6). **Teil 1 gebaut:** fünf Themen (Wie das Telefon, Papier, Nacht, Wald, Sand), Deckkraft 0 bis 100 % statt Schalter (alt „transparent“ = 45 %), alle Themen 4,5:1 geprüft. Nebenbei behoben: eine zweite Änderung kam in laufender Glance-Sitzung (rund 45 s) nicht im Widget an. **Teil 2a gebaut:** Aufbau „Standard“, „Restzeit groß“ (zeigt die Restzeit auch bei Countdown aus, in Stufen), „Tagesliste“ (ab dem laufenden Gebet, so viele Zeilen wie passen), „Eine Zeile“; Thema „Wie das Tagesbild“ (dunkler Grund und Akzent aus dem Foto, 4,5:1 geprüft). **Teil 2b gebaut:** `WidgetConfigActivity` öffnet sich beim Hinzufügen und über „Widget bearbeiten“ (reconfigurable), mit Vorschau; Thema, Aufbau und Deckkraft je Widget im Glance-Zustand, ohne eigene Werte gelten die der App. Der Alarm-Planer fragt die Widgets, ob eines „Restzeit groß“ nutzt.
 8. Aḏān (groß, wartet auf die Lizenzfrage, läuft in eigener Sitzung)
 
+9. „Heute“: Gebetszeiten vorn, Nebenzeiten untergeordnet (Wunsch vom 04.11.2026). **Gebaut:** keine eigenen Nebenzeilen mehr; Makrūh, Ḍuḥā, Awwābīn, Taḥaǧǧud und Ǧamāʿa stehen klein unter ihrem Gebet („Makrūh bis 07:46“, „Ḍuḥā 07:46 bis 11:44“, „Makrūh ab 16:17“), Makrūh in Gold, Vergangenes verblasst. Gebetszeilen und Unterzeilen sind antippbar mit „?“ und führen zu ihrem Eintrag in „Zeiten verstehen“. Alles ohne Scrollen sichtbar (412×915). Abstrich: die kleinen Unterzeilen sind 24 dp hoch, unter der empfohlenen Tippfläche von 48 dp; TalkBack liest sie vollständig.
+
 ## Offene Entscheidungen
 
 - Hauptgebete antippbar mit „?“ (Punkt 2)?

@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -108,9 +110,6 @@ private val GUTTER = 24.dp
 /** Das Foto sitzt etwas breiter als der Text (wie im Entwurf `fotos-oura.html`). */
 private const val PHOTO_INSET_DP = 16
 private val PHOTO_INSET = PHOTO_INSET_DP.dp
-
-/** Nebenzeilen stehen um so viel eingerückt unter ihrem Gebet. */
-private val SIDE_INDENT = 16.dp
 
 /**
  * Die Fotos tragen keinen Inhalt, nur Stimmung: heute ist das Bild genau so
@@ -570,19 +569,133 @@ private fun Hero(
 @Composable
 private fun DayList(rows: List<DayRow>, onExplain: (Section) -> Unit, t: Tokens) {
     Column(Modifier.fillMaxWidth().padding(horizontal = GUTTER)) {
-        rows.forEach { row ->
-            when (row) {
-                is DayRow.PrayerRow -> PrayerLine(row, t)
-                is DayRow.SideRow -> SideLine(row, onExplain, t)
+        groupUnderPrayers(rows).forEach { group -> PrayerGroupLine(group, onExplain, t) }
+    }
+}
+
+/** Ein Gebet mit den Nebenzeiten, die zu ihm gehören (klein darunter). */
+internal data class PrayerGroup(val prayer: DayRow.PrayerRow, val subs: List<DayRow.SideRow>)
+
+/**
+ * Die Nebenzeiten stehen nicht mehr als eigene Zeilen, sondern klein unter
+ * ihrem Gebet (Wunsch vom 04.11.2026: wichtig, aber weniger als die
+ * Gebetszeiten; so bleiben alle Gebete ohne Scrollen sichtbar). Jede gehört
+ * zum Gebet davor (Makrūh beim Aufgang und Ḍuḥā zu Šurūq, Vergilben zu ʿAṣr,
+ * Awwābīn zu Maġrib, Taḥaǧǧud zu ʿIšāʾ); die Zawāl-Zeit kommt unmittelbar
+ * vor Ẓuhr und gehört deshalb zu ihm. Ohne Gebet davor: zum nächsten.
+ */
+internal fun groupUnderPrayers(rows: List<DayRow>): List<PrayerGroup> {
+    val prayers = rows.filterIsInstance<DayRow.PrayerRow>()
+    val subs = prayers.associateWith { mutableListOf<DayRow.SideRow>() }
+    rows.forEachIndexed { i, row ->
+        if (row !is DayRow.SideRow) return@forEachIndexed
+        val before = rows.subList(0, i).filterIsInstance<DayRow.PrayerRow>().lastOrNull()
+        val after = rows.subList(i + 1, rows.size).filterIsInstance<DayRow.PrayerRow>().firstOrNull()
+        val owner = if (row.kind == Section.ZUHR) after ?: before else before ?: after
+        owner?.let { subs.getValue(it) += row }
+    }
+    return prayers.map { PrayerGroup(it, subs.getValue(it)) }
+}
+
+/** Wie die Zeit einer Nebenzeile kurz geschrieben wird. */
+internal enum class SubForm { AT, UNTIL, FROM, SPAN }
+
+/**
+ * Beginnt sie mit dem Gebet, reicht „bis“ („Makrūh bis 07:46“); reicht sie
+ * bis zum nächsten Gebet, „ab“ („Makrūh ab 16:17“, „Taḥaǧǧud ab 02:05“);
+ * sonst beide Enden („Ḍuḥā 07:46 bis 11:44“). Ohne Ende nur die Uhrzeit.
+ */
+internal fun subFormOf(side: DayRow.SideRow, prayerAt: java.time.ZonedDateTime): SubForm = when {
+    side.end == null -> SubForm.AT
+    side.start == prayerAt -> SubForm.UNTIL
+    side.kind == Section.ISFIRAR_MAKRUH || side.kind == Section.TAHAJJUD -> SubForm.FROM
+    else -> SubForm.SPAN
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PrayerGroupLine(group: PrayerGroup, onExplain: (Section) -> Unit, t: Tokens) {
+    Column(Modifier.fillMaxWidth().hairlineBelow(t.hairline)) {
+        // Mit Nebenzeiten flacher: Gebet und kleine Zeile zusammen etwa so
+        // hoch wie früher Gebet plus eine Nebenzeile, sonst passte ʿIšāʾ nicht mehr.
+        PrayerLine(group.prayer, onExplain, t, minHeight = if (group.subs.isEmpty()) 48.dp else 36.dp)
+        if (group.subs.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                group.subs.forEach { SubItem(it, group.prayer.at, onExplain, t) }
             }
         }
     }
 }
 
+/** Eine Nebenzeit, klein; Makrūh in Gold, Vergangenes verblasst. Antippbar wie früher die Nebenzeile. */
+@Composable
+private fun SubItem(row: DayRow.SideRow, prayerAt: java.time.ZonedDateTime, onExplain: (Section) -> Unit, t: Tokens) {
+    val label = if (isMakruh(row.kind)) stringResource(R.string.sub_makruh) else stringResource(sideLabelRes(row.kind))
+    val start = row.start.format(HM)
+    val end = row.end?.format(HM)
+    val text = when (subFormOf(row, prayerAt)) {
+        SubForm.AT -> stringResource(R.string.sub_at, label, start)
+        SubForm.UNTIL -> stringResource(R.string.sub_until, label, end ?: start)
+        SubForm.FROM -> stringResource(R.string.sub_from, label, start)
+        SubForm.SPAN -> stringResource(R.string.sub_at, label, timeRange(start, end ?: start))
+    }
+    val color = when {
+        row.past -> t.stone
+        isMakruh(row.kind) -> t.gold
+        else -> t.stone
+    }
+    // TalkBack liest den vollen Namen und die ganze Spanne, nicht die Kurzform.
+    val fullLabel = stringResource(sideLabelRes(row.kind))
+    val time = end?.let { timeRange(start, it) } ?: start
+    val derived = if (row.kind == Section.JAMAA) stringResource(R.string.status_jamaa_derived) else ""
+    val status = derived + if (row.past) stringResource(R.string.status_past) else ""
+    val description = stringResource(R.string.desc_prayer, fullLabel, time, status)
+    val explainLabel = stringResource(R.string.show_explanation)
+    Row(
+        modifier = Modifier
+            .heightIn(min = 24.dp)
+            .clickable(role = Role.Button, onClickLabel = explainLabel) { onExplain(row.kind) }
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+                onClick(label = explainLabel) {
+                    onExplain(row.kind)
+                    true
+                }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = TABULAR),
+            color = color,
+        )
+        Icon(
+            painterResource(R.drawable.ic_help_small),
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.padding(start = 4.dp).size(12.dp),
+        )
+    }
+}
+/** Der Abschnitt in „Zeiten verstehen“, zu dem eine Gebetszeile führt. */
+internal fun explainSectionOf(prayer: Prayer): Section = when (prayer) {
+    Prayer.FAJR -> Section.FAJR
+    // Šurūq ist kein Gebet; der Abschnitt dazu ist die Makrūh-Zeit beim Aufgang.
+    Prayer.SUNRISE -> Section.SHURUQ_MAKRUH
+    Prayer.DHUHR -> Section.ZUHR
+    Prayer.ASR -> Section.ASR
+    Prayer.MAGHRIB -> Section.MAGHRIB
+    Prayer.ISHA -> Section.ISHA
+}
+
 private val TABULAR = "tnum"
 
 @Composable
-private fun PrayerLine(row: DayRow.PrayerRow, t: Tokens) {
+private fun PrayerLine(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: Tokens, minHeight: Dp = 48.dp) {
     // `past` gilt auch für die laufende Zeile; verblasst wird nur, was vorbei ist.
     val faded = row.past && !row.current
     val color = if (faded) t.stone else t.ink
@@ -601,21 +714,39 @@ private fun PrayerLine(row: DayRow.PrayerRow, t: Tokens) {
         stringResource(R.string.desc_prayer, name, time, status)
     }
     val accent = t.accent
+    val explainLabel = stringResource(R.string.show_explanation)
+    val section = explainSectionOf(row.prayer)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .hairlineBelow(t.hairline)
+            .heightIn(min = minHeight)
+            // Die Haarlinie zieht PrayerGroupLine unter Gebet und Nebenzeiten zusammen.
             // Punkt im Seitenrand, damit die Namen bündig bleiben.
             .drawBehind {
                 if (row.current) {
                     drawCircle(accent, radius = 3.dp.toPx(), center = Offset(-12.dp.toPx(), size.height / 2))
                 }
             }
-            .clearAndSetSemantics { contentDescription = description },
+            // Antippen führt zum Eintrag in „Zeiten verstehen“, wie früher die Nebenzeilen.
+            .clickable(role = Role.Button, onClickLabel = explainLabel) { onExplain(section) }
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+                onClick(label = explainLabel) {
+                    onExplain(section)
+                    true
+                }
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = weight, color = color)
+        // Zeigt, dass die Zeile eine Erklärung hat; Zierde, TalkBack nennt die Aktion oben.
+        Icon(
+            painterResource(R.drawable.ic_help_small),
+            contentDescription = null,
+            tint = t.stone,
+            modifier = Modifier.padding(start = 6.dp).size(14.dp),
+        )
         if (row.nextDay) {
             Spacer(Modifier.width(8.dp))
             Text(nextDay, style = MaterialTheme.typography.bodyMedium, color = t.stone)
@@ -649,71 +780,6 @@ private fun sideLabelRes(kind: Section): Int = when (kind) {
 
 private fun isMakruh(kind: Section) =
     kind == Section.SHURUQ_MAKRUH || kind == Section.ZUHR || kind == Section.ISFIRAR_MAKRUH
-
-@Composable
-private fun SideLine(row: DayRow.SideRow, onExplain: (Section) -> Unit, t: Tokens) {
-    val label = stringResource(sideLabelRes(row.kind))
-    val start = row.start.format(HM)
-    val time = row.end?.let { timeRange(start, it.format(HM)) } ?: start
-    val color = when {
-        row.past -> t.stone
-        isMakruh(row.kind) -> t.gold
-        else -> t.ink
-    }
-    // Die Ǧamāʿa-Zeit ist abgeleitet (Sonnenaufgang minus Vorlauf), das sagt
-    // TalkBack dazu, damit sie nicht als amtliche Zeit gilt.
-    val derived = if (row.kind == Section.JAMAA) stringResource(R.string.status_jamaa_derived) else ""
-    val status = derived + if (row.past) stringResource(R.string.status_past) else ""
-    val description = stringResource(R.string.desc_prayer, label, time, status)
-    val explainLabel = stringResource(R.string.show_explanation)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .hairlineBelow(t.hairline, inset = SIDE_INDENT)
-            .clickable(role = Role.Button, onClickLabel = explainLabel) { onExplain(row.kind) }
-            // Eine TalkBack-Einheit: Name, Zeit, Status, und die Aktion bleibt erhalten.
-            .clearAndSetSemantics {
-                contentDescription = description
-                role = Role.Button
-                onClick(label = explainLabel) {
-                    onExplain(row.kind)
-                    true
-                }
-            }
-            .padding(start = SIDE_INDENT),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = color,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            // Zeigt, dass die Zeile eine Erklärung hat. Reine Zierde: die
-            // ganze Zeile ist die Tippfläche, und TalkBack nennt die Aktion
-            // schon über die Semantik oben.
-            Icon(
-                painterResource(R.drawable.ic_help_small),
-                contentDescription = null,
-                // Leiser als der Name; verblasst und Makrūh (gold) gehen mit.
-                tint = if (color == t.ink) t.stone else color,
-                modifier = Modifier.padding(start = 6.dp).size(14.dp),
-            )
-        }
-        Text(
-            time,
-            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR),
-            color = color,
-            maxLines = 1,
-            modifier = Modifier.padding(start = 12.dp),
-        )
-    }
-}
 
 /**
  * Der Hinweis, der sagt, WARUM gerade nichts ankommt (Erlaubnis fehlt oder

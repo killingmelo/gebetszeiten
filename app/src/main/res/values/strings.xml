@@ -234,6 +234,11 @@
     <string name="row_next_day">morgen</string>
     <string name="desc_prayer_next_day">%1$s, morgen, %2$s</string>
     <string name="side_jamaa">Ǧamāʿa</string>
+    <!-- Kurzformen für die kleinen Nebenzeiten unter dem Gebet auf „Heute“. -->
+    <string name="sub_makruh">Makrūh</string>
+    <string name="sub_at">%1$s %2$s</string>
+    <string name="sub_until">%1$s bis %2$s</string>
+    <string name="sub_from">%1$s ab %2$s</string>
     <string name="side_makruh_sunrise">Makrūh beim Aufgang</string>
     <string name="side_makruh_zawal">Makrūh im Zawāl</string>
     <string name="side_makruh_isfirar">Makrūh beim Vergilben</string>
