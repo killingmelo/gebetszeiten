@@ -37,6 +37,10 @@ class CompassWiringTest {
     @Test fun qiblaScreenNutztOrtUndWarnt() {
         assertTrue(screen.contains("rememberDeviceAzimuth(settings.latitude, settings.longitude)"))
         assertTrue(screen.contains("qibla_compass_inaccurate"))
+        // Auch „genau“ wird gesagt, sonst kalibriert man auf Verdacht.
+        assertTrue(screen.contains("qibla_compass_accurate"))
+        assertTrue(screen.contains("compassAccuracy(heading)"))
+        assertTrue(compass.contains("measured = azimuth != null"))
         assertTrue(screen.contains("qibla_compass_interference"))
         assertFalse(screen.contains("rememberDeviceAzimuth()"))
     }

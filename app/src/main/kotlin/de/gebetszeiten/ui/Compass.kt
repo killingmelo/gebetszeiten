@@ -17,8 +17,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import de.gebetszeiten.prayer.QiblaMath
 
-/** Geräte-Azimut zu geografisch Nord und ob der Sensor gerade verlässlich misst. */
-data class DeviceHeading(val azimuth: Float, val reliable: Boolean)
+/** Geräte-Azimut zu geografisch Nord, ob der Sensor gerade verlässlich misst
+ *  und ob überhaupt schon eine Messung kam ([measured]). */
+data class DeviceHeading(val azimuth: Float, val reliable: Boolean, val measured: Boolean = true)
+
+/** Was die Qibla-Ansicht über die Genauigkeit sagt. */
+enum class CompassAccuracy { WAITING, GOOD, POOR }
+
+/**
+ * Android kalibriert den Magnetsensor selbst, laufend im Hintergrund; eine
+ * App kann das weder auslösen noch abfragen, nur die Selbsteinschätzung des
+ * Sensors lesen. Deshalb sagt die Ansicht beides: „genau“ (nichts zu tun)
+ * und erst bei „ungenau“ die Acht. Ohne die Anzeige kalibrierten Nutzer auf
+ * Verdacht bei jedem Öffnen.
+ */
+internal fun compassAccuracy(heading: DeviceHeading?): CompassAccuracy? = when {
+    heading == null -> null
+    !heading.measured -> CompassAccuracy.WAITING
+    heading.reliable -> CompassAccuracy.GOOD
+    else -> CompassAccuracy.POOR
+}
 
 /**
  * Geräte-Azimut (0..360 von geografisch Nord, Missweisung für [lat]/[lng] eingerechnet),
@@ -70,7 +88,7 @@ fun rememberDeviceAzimuth(lat: Double, lng: Double): DeviceHeading? {
     }
 
     // Sensor vorhanden, aber noch keine Messung → provisorisch 0; gar kein Sensor → null.
-    return if (rotationSensor == null) null else DeviceHeading(azimuth ?: 0f, reliable)
+    return if (rotationSensor == null) null else DeviceHeading(azimuth ?: 0f, reliable, measured = azimuth != null)
 }
 
 /** Zirkulärer Tiefpass (Wraparound-sicher) gegen Zittern. */

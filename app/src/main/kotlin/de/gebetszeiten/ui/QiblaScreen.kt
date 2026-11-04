@@ -2,7 +2,11 @@ package de.gebetszeiten.ui
 
 import android.graphics.Paint
 import android.graphics.Typeface
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -51,7 +55,10 @@ import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.prayer.QiblaMath
 import de.gebetszeiten.ui.theme.LocalTokens
 import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @Composable
 internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
@@ -160,14 +167,37 @@ internal fun QiblaScreen(inner: PaddingValues, settings: AppSettings) {
                     textAlign = TextAlign.Center,
                 )
             }
-            if (heading != null && !heading.reliable) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    stringResource(R.string.qibla_compass_inaccurate),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = t.ink,
-                    textAlign = TextAlign.Center,
-                )
+            when (compassAccuracy(heading)) {
+                CompassAccuracy.GOOD -> {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.qibla_compass_accurate),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = t.accent,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                CompassAccuracy.POOR -> {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.qibla_compass_inaccurate),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = t.gold,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    CalibrationFigure(line = t.stone, dot = t.gold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.qibla_calibrate_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = t.ink,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                // Vor der ersten Messung nichts: sonst blitzte „ungenau“ oder
+                // „genau“ auf, bevor der Sensor etwas gesagt hat.
+                CompassAccuracy.WAITING, null -> Unit
             }
             Spacer(Modifier.height(12.dp))
             Text(
@@ -227,6 +257,51 @@ private fun DrawScope.drawCompassRose(
                 cardinalPaint,
             )
         }
+    }
+}
+
+/**
+ * Die liegende Acht als Anleitung, ein Punkt läuft sie ab. Mit „Animationen
+ * entfernen“ steht der Punkt still; die Form allein erklärt die Bewegung.
+ */
+@Composable
+private fun CalibrationFigure(line: Color, dot: Color) {
+    val desc = stringResource(R.string.qibla_calibrate_figure_desc)
+    val phase = if (rememberAnimationsEnabled()) {
+        val transition = rememberInfiniteTransition(label = "acht")
+        val p by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = (2 * PI).toFloat(),
+            animationSpec = infiniteRepeatable(tween(2400, easing = LinearEasing)),
+            label = "acht",
+        )
+        p
+    } else {
+        (PI / 4).toFloat()
+    }
+    Canvas(
+        modifier = Modifier
+            .size(width = 120.dp, height = 56.dp)
+            .clearAndSetSemantics { contentDescription = desc },
+    ) {
+        val a = size.width / 2f - 6.dp.toPx()
+        // Lemniskate von Bernoulli: x = a·cos t / (1 + sin² t), y = x·sin t.
+        fun point(t: Float): Offset {
+            val s = sin(t)
+            val k = 1f + s * s
+            val x = a * cos(t) / k
+            return Offset(center.x + x, center.y + x * s)
+        }
+        val path = Path().apply {
+            val steps = 96
+            for (i in 0..steps) {
+                val p = point((2 * PI * i / steps).toFloat())
+                if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+            }
+            close()
+        }
+        drawPath(path, line, style = Stroke(width = 1.5.dp.toPx()))
+        drawCircle(dot, radius = 5.dp.toPx(), center = point(phase))
     }
 }
 

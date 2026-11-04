@@ -95,7 +95,7 @@ Noch nichts umgesetzt. Weitere Punkte kommen dazu, danach wird in der hier festg
 2. Dauerbenachrichtigung ohne Stadt (klein). **Erledigt:** `subText` samt `city`-Kette entfernt, Test sichert, dass `setSubText` nicht zurückkommt. Auf dem Emulator geprüft.
 3. Widget-Platzierung 5a (klein, sichtbarer Fehler). **Erledigt im Code:** Kurzform „ʿAṣr 15:38“ bei zu wenig Breite, `maxLines = 1`, Tests in `CompactFitTest`. Auf dem Gerät noch nicht angesehen.
 4. „?“-Icon (klein). **Erledigt für die Nebenzeilen**, auf dem Emulator geprüft. Hauptgebete offen.
-5. Kompass-Genauigkeit und Anleitung (mittel)
+5. Kompass-Genauigkeit und Anleitung (mittel). **Erledigt:** „Kompass genau, keine Kalibrierung nötig“ bzw. „Kompass ungenau“ mit liegender Acht (Punkt läuft sie ab, steht bei „Animationen entfernen“ still). Vor der ersten Messung keine Aussage. „Genau“ auf dem Emulator geprüft; „ungenau“ lässt sich dort nicht auslösen, nur per Test abgesichert. Kein dauerhafter Kalibrieren-Knopf.
 6. „Heute“ mit Bild im Kopf (groß, Gestaltung; vorher Entwurf als Screenshot zur Freigabe)
 7. Widget-Themen und Formate 5b (groß, nutzt die Bildfarbe aus 6)
 8. Aḏān (groß, wartet auf die Lizenzfrage, läuft in eigener Sitzung)

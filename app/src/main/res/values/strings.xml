@@ -42,7 +42,10 @@
     <string name="qibla_bearing_desc">%1$d Grad, %2$s</string>
     <string name="qibla_distance">Kaaba · %1$s km</string>
     <string name="qibla_compass_desc">Kompass mit Qibla-Pfeil, Richtung %1$d° %2$s</string>
-    <string name="qibla_compass_inaccurate">Kompass ungenau. Handy in Form einer Acht bewegen.</string>
+    <string name="qibla_compass_accurate">Kompass genau, keine Kalibrierung nötig</string>
+    <string name="qibla_compass_inaccurate">Kompass ungenau</string>
+    <string name="qibla_calibrate_hint">Telefon wie eine liegende Acht durch die Luft bewegen, bis hier „Kompass genau“ steht.</string>
+    <string name="qibla_calibrate_figure_desc">Bewegung in Form einer liegenden Acht</string>
     <string name="qibla_compass_interference">Metall, Magnethüllen und Lautsprecher können den Kompass ablenken.</string>
     <string name="qibla_no_compass">Kompass nicht verfügbar. Qibla liegt bei %1$d° %2$s</string>
     <string name="compass_n">N</string>
