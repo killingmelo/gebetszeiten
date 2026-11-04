@@ -190,6 +190,12 @@
     <string name="widget_theme_night">Nacht</string>
     <string name="widget_theme_forest">Wald</string>
     <string name="widget_theme_sand">Sand</string>
+    <string name="widget_theme_photo">Wie das Tagesbild</string>
+    <string name="settings_widget_format">Widget-Aufbau</string>
+    <string name="widget_format_standard">Standard</string>
+    <string name="widget_format_countdown">Restzeit groß</string>
+    <string name="widget_format_list">Tagesliste</string>
+    <string name="widget_format_slim">Eine Zeile</string>
 
     <!-- Countdown / Font selectors -->
     <string name="countdown_off">Aus</string>

@@ -96,6 +96,8 @@ class NextPrayerWidget : GlanceAppWidget() {
         val SHURUQ_MIN_WIDTH = 300.dp
         val CORNER = 24.dp
 
+        private val photoPixelCache = java.util.concurrent.ConcurrentHashMap<Int, IntArray>()
+
         /** Zähler im Widget-Zustand; jede Erhöhung lässt die Komposition neu rechnen. */
         val REFRESH = longPreferencesKey("refresh")
 
@@ -142,21 +144,167 @@ class NextPrayerWidget : GlanceAppWidget() {
                 NoTimesContent(model.headline, model.look)
             }
             is Model.Times -> GlanceTheme(colors = model.look.colors) {
-                if (LocalSize.current.width >= FULL.width && LocalSize.current.height >= FULL.height) {
-                    FullContent(
-                        context, model.title, model.countdown, model.nextLine, model.karahaLine,
-                        model.header, model.photo, model.dayPlan, model.look,
-                    )
-                } else {
-                    CompactContent(
-                        context, model.title, model.countdown, model.nextLine, model.nextShort,
-                        model.karahaLine, model.look,
-                    )
+                when (model.format) {
+                    WidgetFormat.COUNTDOWN -> CountdownContent(context, model)
+                    WidgetFormat.LIST -> ListContent(context, model)
+                    WidgetFormat.SLIM -> SlimContent(context, model)
+                    WidgetFormat.STANDARD -> StandardContent(context, model)
                 }
             }
             // Kein Tagesplan trotz nächstem Gebet: sollte nicht vorkommen;
             // dann eine leere Fläche statt eines Absturzes.
             null -> Box(GlanceModifier.fillMaxSize()) {}
+        }
+    }
+
+    /** Der bisherige Aufbau: klein Abschnitt und Restzeit, groß mit Foto und Tagesreihe. */
+    @Composable
+    private fun StandardContent(context: Context, model: Model.Times) {
+        if (LocalSize.current.width >= FULL.width && LocalSize.current.height >= FULL.height) {
+            FullContent(
+                context, model.title, model.countdown, model.nextLine, model.karahaLine,
+                model.header, model.photo, model.dayPlan, model.look,
+            )
+        } else {
+            CompactContent(
+                context, model.title, model.countdown, model.nextLine, model.nextShort,
+                model.karahaLine, model.look,
+            )
+        }
+    }
+
+    /** Gemeinsamer Rahmen: Grund mit Deckkraft, Ecken, Tipp öffnet die App. */
+    private fun frame(look: WidgetLook) = GlanceModifier
+        .fillMaxSize()
+        .appWidgetBackground()
+        .cornerRadius(CORNER)
+        .background(look.background)
+        .clickable(actionStartActivity<de.gebetszeiten.ui.MainActivity>())
+
+    /** „Restzeit groß“: Abschnitt klein, die Restzeit groß, darunter das nächste Gebet. */
+    @Composable
+    private fun CountdownContent(context: Context, model: Model.Times) {
+        val fontScale = context.resources.configuration.fontScale
+        val next = if (model.nextLine != null && model.nextShort != null) {
+            compactNextLine(model.nextLine, model.nextShort, LocalSize.current.width.value, fontScale)
+        } else {
+            model.nextLine
+        }
+        Column(
+            modifier = frame(model.look).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val countdown = model.countdown
+            // „noch“ steht klein beim Abschnitt, groß nur die Zahl: sonst
+            // passte sie im 2×1-Widget nicht und wurde gekürzt.
+            val lead = context.getString(R.string.hero_remaining_lead)
+            Text(
+                text = if (countdown.exact) model.title else "${model.title} $lead",
+                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium),
+                maxLines = 1,
+            )
+            if (countdown.exact) {
+                RemainingLine(context, countdown, onPhoto = false)
+            } else {
+                Text(
+                    text = countdown.short,
+                    style = TextStyle(
+                        color = if (countdown.urgent) GlanceTheme.colors.error else GlanceTheme.colors.primary,
+                        fontSize = bigCountdownSp(countdown.short, LocalSize.current.width.value, fontScale).sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                )
+            }
+            if (next != null) {
+                Text(
+                    text = next,
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium),
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+
+    /** „Tagesliste“: Abschnitt und Restzeit, darunter alle Gebete des Tages untereinander. */
+    @Composable
+    private fun ListContent(context: Context, model: Model.Times) {
+        Column(modifier = frame(model.look).padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = model.title,
+                    style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    modifier = GlanceModifier.defaultWeight(),
+                )
+                if (model.countdown.show && !model.countdown.exact) {
+                    Text(
+                        text = model.countdown.label,
+                        style = TextStyle(color = GlanceTheme.colors.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                    )
+                }
+            }
+            Spacer(GlanceModifier.height(4.dp))
+            // Passt nicht alles in die Höhe, ab dem laufenden Gebet: die
+            // kommenden sind wichtiger als die vergangenen.
+            val fits = listRowsThatFit(LocalSize.current.height.value, context.resources.configuration.fontScale)
+            val window = listWindow(model.dayPlan.size, model.dayPlan.indexOfFirst { it.current }, fits)
+            model.dayPlan.slice(window).forEach { entry ->
+                val color = when {
+                    entry.current -> GlanceTheme.colors.primary
+                    entry.faded -> GlanceTheme.colors.onSurfaceVariant
+                    else -> GlanceTheme.colors.onSurface
+                }
+                val weight = if (entry.current) FontWeight.Bold else FontWeight.Normal
+                val spoken = "${entry.label} ${entry.time}" +
+                    if (entry.current) context.getString(R.string.status_current) else ""
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth().padding(vertical = 1.dp)
+                        .semantics { contentDescription = spoken },
+                ) {
+                    Text(
+                        text = entry.label,
+                        style = TextStyle(color = color, fontSize = 13.sp, fontWeight = weight),
+                        modifier = GlanceModifier.defaultWeight(),
+                    )
+                    Text(text = entry.time, style = TextStyle(color = color, fontSize = 13.sp, fontWeight = weight))
+                }
+            }
+        }
+    }
+
+    /** „Eine Zeile“: Abschnitt, Restzeit, rechts das nächste Gebet. */
+    @Composable
+    private fun SlimContent(context: Context, model: Model.Times) {
+        Row(
+            modifier = frame(model.look).padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = model.title,
+                style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                maxLines = 1,
+            )
+            if (model.countdown.show && !model.countdown.exact) {
+                Text(
+                    text = "  " + model.countdown.label,
+                    style = TextStyle(
+                        color = if (model.countdown.urgent) GlanceTheme.colors.error else GlanceTheme.colors.primary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                )
+            }
+            Spacer(GlanceModifier.defaultWeight())
+            model.nextShort?.let {
+                Text(
+                    text = it,
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium),
+                    maxLines = 1,
+                )
+            }
         }
     }
 
@@ -173,6 +321,7 @@ class NextPrayerWidget : GlanceAppWidget() {
             val photo: Photo,
             val dayPlan: List<DayEntry>,
             val look: WidgetLook,
+            val format: WidgetFormat,
         ) : Model
     }
 
@@ -204,7 +353,11 @@ class NextPrayerWidget : GlanceAppWidget() {
         // Ein Regler fuer alle Flaechen (AppSettings.countdownMode); das
         // Widget liest denselben OFF/STEPS/EXACT-Wert wie App und
         // Benachrichtigung.
-        val showCountdown = settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF
+        val format = WidgetFormat.of(settings.widgetFormat)
+        // „Restzeit groß“ zeigt die Restzeit auch bei Countdown aus (dann in
+        // Stufen, die Weckkette dafür: AppSettings.widgetNeedsStepAlarms).
+        val showCountdown = settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF ||
+            format == WidgetFormat.COUNTDOWN
         val exact = settings.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT
         val karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now)
         // Restzeit bis zum naechsten Uebergang (`next`, Sonnenaufgang
@@ -275,13 +428,30 @@ class NextPrayerWidget : GlanceAppWidget() {
             }
         val photo = Photo(photoRes(hero.photo), context.getString(photoDescriptionRes(hero.photo)))
 
-        val look = WidgetLook.of(settings)
+        val look = WidgetLook.of(settings, photoPixels(context, settings, photo.res))
         // Kopfzeile im großen Widget: macht einen still falschen Ort sichtbar
         // und ist zugleich die Hijri-Datumszeile.
         val header = "${settings.city} · ${hijriTextShort(now.toLocalDate(), settings.hijriOffsetDays)}"
-        val countdown = Countdown(showCountdown, exact, remainingLabel, urgent, chronoBase)
+        // Ohne „noch“ für die große Anzeige; in der letzten Minute leer, dann die lange Form.
+        val shortLabel = de.gebetszeiten.prayer.remainingStepShort(remaining).ifEmpty { remainingLabel }
+        val countdown = Countdown(showCountdown, exact, remainingLabel, urgent, chronoBase, shortLabel)
 
-        return Model.Times(title, countdown, nextLine, nextShort, karahaLine, header, photo, dayPlan, look)
+        return Model.Times(title, countdown, nextLine, nextShort, karahaLine, header, photo, dayPlan, look, format)
+    }
+
+    /** Bildpunkte des Fotos, nur für das Thema „Wie das Tagesbild“; verkleinert
+     *  gelesen und je Foto gemerkt (die Fotos liegen fest im APK). */
+    private fun photoPixels(context: Context, settings: de.gebetszeiten.data.AppSettings, res: Int): IntArray? {
+        if (WidgetTheme.of(settings.widgetTheme) != WidgetTheme.PHOTO) return null
+        return photoPixelCache.getOrPut(res) {
+            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = 16 }
+            val bmp = android.graphics.BitmapFactory.decodeResource(context.resources, res, opts)
+                ?: return@getOrPut IntArray(0)
+            IntArray(bmp.width * bmp.height).also {
+                bmp.getPixels(it, 0, bmp.width, 0, 0, bmp.width, bmp.height)
+                bmp.recycle()
+            }
+        }
     }
 
     private data class DayEntry(
@@ -301,12 +471,14 @@ class NextPrayerWidget : GlanceAppWidget() {
         val label: String,
         val urgent: Boolean,
         val chronoBase: Long,
+        /** „10+ Min“ ohne „noch“, für „Restzeit groß“. */
+        val short: String = label,
     )
 
     /** Thema und Deckkraft aus den Einstellungen, einmal je Aufbau gelesen. */
-    private class WidgetLook(theme: WidgetTheme, val opacity: Int) {
-        private val light = theme.tokens.first
-        private val dark = theme.tokens.second
+    private class WidgetLook(theme: WidgetTheme, val opacity: Int, photo: de.gebetszeiten.ui.theme.Tokens? = null) {
+        private val light = photo ?: theme.tokens.first
+        private val dark = photo ?: theme.tokens.second
         val colors = ColorProviders(
             light = widgetScheme(light, dark = false),
             dark = widgetScheme(dark, dark = true),
@@ -324,8 +496,12 @@ class NextPrayerWidget : GlanceAppWidget() {
         val photo: Boolean get() = opacity >= 100
 
         companion object {
-            fun of(settings: de.gebetszeiten.data.AppSettings) =
-                WidgetLook(WidgetTheme.of(settings.widgetTheme), settings.widgetOpacity.coerceIn(0, 100))
+            fun of(settings: de.gebetszeiten.data.AppSettings, photoPixels: IntArray? = null) =
+                WidgetLook(
+                    WidgetTheme.of(settings.widgetTheme),
+                    settings.widgetOpacity.coerceIn(0, 100),
+                    photoPixels?.takeIf { it.isNotEmpty() }?.let { photoTokens(it) },
+                )
         }
     }
 

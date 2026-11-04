@@ -41,6 +41,37 @@ internal fun compactNextLine(
     return if (width(full) <= available) full else short
 }
 
+/**
+ * Schriftgröße der großen Restzeit („10+ Min“) im Aufbau „Restzeit groß“:
+ * 28 sp, wenn sie in die Breite passt, sonst 22 oder 18. Mit Auslassungspunkten
+ * gekürzt („noch 10+ …“) war sie im 2×1-Widget wertlos.
+ */
+internal fun bigCountdownSp(text: String, widthDp: Float, fontScale: Float): Int {
+    val available = widthDp - PADDING_H_DP
+    return listOf(28, 22, 18).firstOrNull { sp -> text.length * sp * CHAR_PER_SP * fontScale <= available } ?: 18
+}
+
+/**
+ * Welche Zeilen die „Tagesliste“ zeigt, wenn nicht alle [size] in die Höhe
+ * passen ([fits]): ab dem laufenden Gebet, damit die kommenden sichtbar
+ * bleiben; reicht es bis zum Ende, wird nach oben aufgefüllt.
+ */
+internal fun listWindow(size: Int, currentIndex: Int, fits: Int): IntRange {
+    if (fits >= size) return 0 until size
+    val n = fits.coerceAtLeast(1)
+    val start = currentIndex.coerceAtLeast(0).coerceAtMost(size - n)
+    return start until start + n
+}
+
+/** Wie viele Listenzeilen (13 sp) unter die Kopfzeile (16 sp) passen. */
+internal fun listRowsThatFit(heightDp: Float, fontScale: Float): Int {
+    fun line(sp: Int) = sp * LINE_PER_SP * fontScale
+    // Am Emulator nachgemessen: eine Zeile braucht rund 19 dp (Schrift plus
+    // Innenabstand), mit 18 dp ragte die dritte im 2×1-Widget unten heraus.
+    val free = heightDp - 20f - line(16) - 4f
+    return (free / (line(13) + 4f)).toInt().coerceAtLeast(1)
+}
+
 internal fun compactLines(
     heightDp: Float,
     fontScale: Float,

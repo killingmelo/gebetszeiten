@@ -73,6 +73,8 @@ data class AppSettings(
     /** Deckkraft des Widget-Hintergrunds in Prozent, 0 bis 100. Ersetzt den
      *  frueheren Schalter „transparent“ (der entsprach 45 %). */
     val widgetOpacity: Int = 100,
+    /** Aufbau des Widgets (`de.gebetszeiten.widget.WidgetFormat.key`). */
+    val widgetFormat: String = "standard",
     /** Restzeit-Darstellung fuer ALLE Flaechen: OFF, PRECISION_STEPS
      *  (abgerundete Stufen, die die App selbst weiterstellt) oder
      *  PRECISION_EXACT (Live-Countdown, vom System gezeichnet).
@@ -136,8 +138,12 @@ data class AppSettings(
         widgetNeedsStepAlarms() || notificationNeedsStepAlarms()
 
     /** Das Widget braucht die Kette nur fuer STEPS — es hat kein Symbol, und
-     *  seine EXACT-Anzeige zeichnet der Systemzaehler ohne die App. */
-    fun widgetNeedsStepAlarms(): Boolean = countdownMode == PRECISION_STEPS
+     *  seine EXACT-Anzeige zeichnet der Systemzaehler ohne die App. Der
+     *  Aufbau „Countdown groß“ zeigt die Restzeit auch bei Countdown aus,
+     *  dann in Stufen; ohne die Kette bliebe sie bis zum naechsten Gebet stehen. */
+    fun widgetNeedsStepAlarms(): Boolean =
+        countdownMode == PRECISION_STEPS ||
+            (countdownMode == COUNTDOWN_OFF && widgetFormat == "countdown")
 
     /** Die Dauerbenachrichtigung braucht sie in BEIDEN Modi: im EXACT-Modus
      *  zeichnet der Systemzaehler zwar den Text, das Statusleisten-Symbol
@@ -217,6 +223,7 @@ data class AppSettings(
             hijriOffsetDays = 0,
             widgetTheme = "system",
             widgetOpacity = 100,
+            widgetFormat = "standard",
             countdownMode = COUNTDOWN_OFF,
             recentPlaces = emptyList(),
             favorites = emptyList(),
@@ -359,6 +366,7 @@ class SettingsRepository(private val context: Context) {
         val WIDGET_TRANSPARENT = booleanPreferencesKey("widget_transparent")
         val WIDGET_OPACITY = intPreferencesKey("widget_opacity")
         val WIDGET_THEME = stringPreferencesKey("widget_theme")
+        val WIDGET_FORMAT = stringPreferencesKey("widget_format")
         val COUNTDOWN_MODE = stringPreferencesKey("countdown_mode")
         val COUNTDOWN_MIGRATED = booleanPreferencesKey("countdown_migrated")
 
@@ -480,6 +488,7 @@ class SettingsRepository(private val context: Context) {
             hijriOffsetDays = prefs[Keys.HIJRI_OFFSET] ?: AppSettings.DEFAULT.hijriOffsetDays,
             widgetTheme = prefs[Keys.WIDGET_THEME] ?: AppSettings.DEFAULT.widgetTheme,
             widgetOpacity = widgetOpacityFromPrefs(prefs[Keys.WIDGET_OPACITY], prefs[Keys.WIDGET_TRANSPARENT]),
+            widgetFormat = prefs[Keys.WIDGET_FORMAT] ?: AppSettings.DEFAULT.widgetFormat,
             countdownMode = countdownMode,
             recentPlaces = parseRecentPlaces(prefs[Keys.RECENT_PLACES]),
             // Kein Vorgängerschlüssel, keine Migration: fehlt der Schlüssel,
@@ -526,6 +535,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.HIJRI_OFFSET] = value.hijriOffsetDays
             prefs[Keys.WIDGET_THEME] = value.widgetTheme
             prefs[Keys.WIDGET_OPACITY] = value.widgetOpacity.coerceIn(0, 100)
+            prefs[Keys.WIDGET_FORMAT] = value.widgetFormat
             prefs.remove(Keys.WIDGET_TRANSPARENT)
             prefs[Keys.COUNTDOWN_MODE] = value.countdownMode
             // Auch hier gesetzt, nicht nur beim Lesen: wer speichert, hat

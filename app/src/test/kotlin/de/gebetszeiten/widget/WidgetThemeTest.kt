@@ -28,6 +28,40 @@ class WidgetThemeTest {
         }
     }
 
+    // Sand, Abendrot, Nachtblau, grau, fast weiß, fast schwarz.
+    private val bilder = listOf(
+        intArrayOf(0xFFC89A5E.toInt(), 0xFF8A6235.toInt(), 0xFFE8CFA0.toInt()),
+        intArrayOf(0xFFD0562C.toInt(), 0xFF6B2A1A.toInt()),
+        intArrayOf(0xFF1B2A4A.toInt(), 0xFF33507A.toInt()),
+        intArrayOf(0xFF808080.toInt()),
+        intArrayOf(0xFFFAFAF5.toInt()),
+        intArrayOf(0xFF050505.toInt()),
+    ).map { farben -> IntArray(300) { farben[it % farben.size] } }
+
+    @Test fun `Tagesbild-Thema haelt 4,5 zu 1 fuer jedes Bild`() {
+        bilder.forEach { px ->
+            val t = photoTokens(px)
+            val grund = t.canvas.toArgb()
+            listOf("Text" to t.ink, "Nebentext" to t.stone, "Akzent" to t.accent, "Gold" to t.gold, "Fehler" to t.error)
+                .forEach { (rolle, farbe) ->
+                    val k = contrast(farbe.toArgb(), grund)
+                    assertTrue("$rolle: %.2f".format(k), k >= 4.5)
+                }
+        }
+    }
+
+    @Test fun `Restzeit gross braucht die Stufen-Weckkette auch bei Countdown aus`() {
+        val aus = de.gebetszeiten.data.AppSettings.DEFAULT
+        assertTrue(!aus.widgetNeedsStepAlarms())
+        assertTrue(aus.copy(widgetFormat = "countdown").widgetNeedsStepAlarms())
+        // Genau zeichnet der Systemzähler, keine Kette nötig.
+        assertTrue(
+            !aus.copy(widgetFormat = "countdown", countdownMode = de.gebetszeiten.data.AppSettings.PRECISION_EXACT)
+                .widgetNeedsStepAlarms(),
+        )
+        assertEquals(WidgetFormat.STANDARD, WidgetFormat.of("quer"))
+    }
+
     @Test fun `unbekannter Schluessel faellt auf System zurueck`() {
         assertEquals(WidgetTheme.SYSTEM, WidgetTheme.of(null))
         assertEquals(WidgetTheme.SYSTEM, WidgetTheme.of("lila"))

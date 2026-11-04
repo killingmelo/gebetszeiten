@@ -844,6 +844,21 @@ internal fun LocationSettings(
                     )
                 }
             }
+            Text(
+                stringResource(R.string.settings_widget_format),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            val widgetFormat = de.gebetszeiten.widget.WidgetFormat.of(settings.widgetFormat)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                de.gebetszeiten.widget.WidgetFormat.entries.forEach { format ->
+                    SelectChip(
+                        selected = widgetFormat == format,
+                        onClick = { commit { copy(widgetFormat = format.key) } },
+                        label = stringResource(format.labelRes),
+                    )
+                }
+            }
             // Beim Ziehen nur die Anzeige, gespeichert (und das Widget neu
             // gezeichnet) wird erst beim Loslassen.
             var opacity by remember(settings.widgetOpacity) { mutableFloatStateOf(settings.widgetOpacity.toFloat()) }
