@@ -155,6 +155,10 @@ class NextPrayerWidget : GlanceAppWidget() {
                 it.at.format(timeFormat),
             )
         }
+        // Kurzform für schmale Widgets: Name und Uhrzeit, ohne „dann … um“.
+        val nextShort = hero.next?.let {
+            context.getString(it.prayer.labelRes()) + " " + it.at.format(timeFormat)
+        }
         // Die fünf Pflichtgebete des Tages; verblasst ist nur, was vorbei
         // und nicht mehr laufend ist (wie in der Tagesliste von „Heute“).
         val dayPlan = dayRows(
@@ -202,7 +206,7 @@ class NextPrayerWidget : GlanceAppWidget() {
                 if (LocalSize.current.width >= FULL.width && LocalSize.current.height >= FULL.height) {
                     FullContent(context, title, countdown, nextLine, karahaLine, header, photo, dayPlan, transparent)
                 } else {
-                    CompactContent(context, title, countdown, nextLine, karahaLine, transparent)
+                    CompactContent(context, title, countdown, nextLine, nextShort, karahaLine, transparent)
                 }
             }
         }
@@ -246,9 +250,16 @@ class NextPrayerWidget : GlanceAppWidget() {
         title: String,
         countdown: Countdown,
         nextLine: String?,
+        nextShort: String?,
         karahaLine: de.gebetszeiten.prayer.KarahaLine?,
         transparent: Boolean,
     ) {
+        val fontScale = context.resources.configuration.fontScale
+        val next = if (nextLine != null && nextShort != null) {
+            compactNextLine(nextLine, nextShort, LocalSize.current.width.value, fontScale)
+        } else {
+            nextLine
+        }
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -265,14 +276,14 @@ class NextPrayerWidget : GlanceAppWidget() {
             // weglassen als die letzte abschneiden (siehe compactLines).
             val fit = compactLines(
                 heightDp = LocalSize.current.height.value,
-                fontScale = context.resources.configuration.fontScale,
+                fontScale = fontScale,
                 countdown = countdown.show,
                 karaha = karahaLine != null,
-                next = nextLine != null,
+                next = next != null,
             )
             HeroText(
                 context, title, countdown,
-                nextLine.takeIf { fit.next }, karahaLine.takeIf { fit.karaha },
+                next.takeIf { fit.next }, karahaLine.takeIf { fit.karaha },
                 onPhoto = false,
             )
         }
@@ -306,6 +317,9 @@ class NextPrayerWidget : GlanceAppWidget() {
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                 ),
+                // Eine Zeile, wie compactLines rechnet; ein Umbruch schnitte
+                // die Uhrzeit unten ab.
+                maxLines = 1,
             )
         }
         karahaLine?.let { KarahaText(it, fontSize = 13, onPhoto = onPhoto) }
