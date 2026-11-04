@@ -5,12 +5,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.glance.appwidget.updateAll
 import de.gebetszeiten.alarm.PrayerAlarmScheduler
+import de.gebetszeiten.core.prayertimes.officialtimes.displayName
 import de.gebetszeiten.data.AppSettings
 import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.notify.PrayerNotifier
 import de.gebetszeiten.prayer.PrayerProvider
 import de.gebetszeiten.widget.NextPrayerWidget
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -74,7 +78,42 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
      *  App-Start ([ensureScheduled]) und Einstellungsaenderung ([save]) rufen
      *  [reschedule] ohne das Argument und erzwingen damit weiterhin nichts. */
     fun refreshOfficialNow() {
-        viewModelScope.launch { reschedule(repository.current(), force = true) }
+        // Ein zweiter Tipp waehrend des Abrufs startet keinen zweiten.
+        if (_refreshing.value) return
+        _refreshing.value = true
+        viewModelScope.launch {
+            try {
+                val value = repository.current()
+                reschedule(value, force = true)
+                _fetchOutcomes.emit(outcomeFor(value))
+            } finally {
+                _refreshing.value = false
+            }
+        }
+    }
+
+    private val _refreshing = MutableStateFlow(false)
+
+    /** Laeuft gerade ein Abruf von Hand? Der Knopf zeigt dann, dass er arbeitet. */
+    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
+    private val _fetchOutcomes = MutableSharedFlow<FetchOutcome>(extraBufferCapacity = 1)
+
+    /** Ergebnis jedes Abrufs von Hand, einmal je Abruf (fuer die Meldung). */
+    val fetchOutcomes: SharedFlow<FetchOutcome> = _fetchOutcomes.asSharedFlow()
+
+    private suspend fun outcomeFor(value: AppSettings): FetchOutcome {
+        val app = getApplication<Application>()
+        val zone = java.time.ZoneId.systemDefault()
+        val today = java.time.LocalDate.now(zone)
+        val hasTimes = PrayerProvider.daily(app, value, today, zone) != null
+        val place = de.gebetszeiten.official.DiyanetPlaceIndex
+            .nearest(app, value.latitude, value.longitude)
+            ?.displayName()
+            ?: value.city
+        val error = de.gebetszeiten.official.OfficialTimesCache(app)
+            .status(value.latitude, value.longitude).lastError
+        return fetchOutcome(hasTimes, place, error)
     }
 
     private suspend fun reschedule(value: AppSettings, force: Boolean = false) {

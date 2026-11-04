@@ -196,6 +196,22 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
     // Favorit ließe das Menü unaufgefordert aufklappen.
     LaunchedEffect(hasFavorites) { if (!hasFavorites) favoritesMenuOpen = false }
 
+    // „Jetzt abrufen“ meldet sein Ergebnis, sonst lief der Abruf stumm.
+    val refreshing by viewModel.refreshing.collectAsState()
+    val refreshTick by viewModel.officialRefreshes.collectAsState()
+    val loadedTemplate = stringResource(R.string.snackbar_official_loaded)
+    val failedTemplate = stringResource(R.string.fetch_failed)
+    val failedUnknown = stringResource(R.string.fetch_failed_unknown)
+    LaunchedEffect(Unit) {
+        viewModel.fetchOutcomes.collect { outcome ->
+            val text = when (outcome) {
+                is FetchOutcome.Loaded -> loadedTemplate.format(outcome.place)
+                is FetchOutcome.Failed -> outcome.reason?.let { failedTemplate.format(it) } ?: failedUnknown
+            }
+            snackbarHostState.showSnackbar(text)
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -323,6 +339,8 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
                 // Dieselbe Aktion wie "Jetzt aktualisieren" im Einstellungsblatt
                 // (SourceStatusSection) - kein zweiter Abruf-Mechanismus.
                 onFetchNow = { viewModel.refreshOfficialNow() },
+                refreshing = refreshing,
+                refreshTick = refreshTick,
                 onEnableCalculation = {
                     // Der Notausgang: springt nur ein, wenn fuer diesen Tag
                     // keine amtlichen Zeiten vorliegen (sonst waere NoTimesCard

@@ -121,6 +121,9 @@
     <string name="status_loading">Status wird geladen…</string>
     <string name="status_refresh">Jetzt aktualisieren</string>
     <string name="no_times_fetch_now">Jetzt abrufen</string>
+    <string name="fetch_running">Wird abgerufen</string>
+    <string name="fetch_failed">Abruf fehlgeschlagen: %1$s</string>
+    <string name="fetch_failed_unknown">Abruf fehlgeschlagen, keine Zeiten erhalten.</string>
     <string name="no_times_enable_calculation">Berechnung einschalten</string>
     <string name="settings_section_display">Anzeige</string>
     <string name="settings_show_makruh">Makrūh-Zeiten anzeigen</string>

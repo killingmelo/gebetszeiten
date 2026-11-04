@@ -68,14 +68,14 @@ class HeuteWiringTest {
     @Test fun `kleiner Bildschirm, Mitternacht, Ǧamāʿa und DMG-Titel sind verdrahtet`() {
         val text = ohneKommentare(heute)
         listOf(
-            "compactPhotoHeightDp(configuration.screenWidthDp, screenHeightDp)",
-            "heroPhotoHeightDp(configuration.screenWidthDp, screenHeightDp)",
+            // Die Fotos tragen keinen Inhalt: heute so hoch wie der Text, sonst ein Band.
+            "top = HERO_PHOTO_TOP",
+            ".height(OTHER_DAY_PHOTO_HEIGHT)",
             "heroTint(",
             "rolledSelectedDate(",
             "prayerStatusRes(",
             "R.string.status_jamaa_derived",
             "dmgTitle(stringResource(momentLabelRes(hero.moment)))",
         ).forEach { assertTrue("HeuteScreen.kt enthaelt $it nicht", text.contains(it)) }
-        assertTrue("Foto ohne Hoehenwahl", text.contains("Modifier.height(heightDp.dp)"))
     }
 }

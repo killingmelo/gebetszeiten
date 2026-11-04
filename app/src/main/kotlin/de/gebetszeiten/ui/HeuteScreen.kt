@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +46,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
@@ -112,28 +111,13 @@ private val PHOTO_INSET = PHOTO_INSET_DP.dp
 /** Nebenzeilen stehen um so viel eingerückt unter ihrem Gebet. */
 private val SIDE_INDENT = 16.dp
 
-/** Unter dieser Bildschirmhöhe (dp) wird das Foto flacher, damit Titel, „noch …“,
- *  „dann …“ und die Makrūh-Zeile ohne Scrollen sichtbar bleiben (360×640). */
-private const val COMPACT_HEIGHT_DP = 720
-
 /**
- * Feste Fotohöhe in dp auf kleinen Bildschirmen, sonst null (dann 10:7 wie im
- * Entwurf). 16:9 allein reichte auf 360×640 nicht: die Makrūh-Zeile lag noch
- * knapp unter dem Rand. Deshalb höchstens ein Viertel der Bildschirmhöhe.
+ * Die Fotos tragen keinen Inhalt, nur Stimmung: heute ist das Bild genau so
+ * hoch wie der Text darauf (plus ein schmaler freier Streifen oben), an
+ * anderen Tagen ein flaches Band. So bleibt der Platz bei den Zeiten.
  */
-internal fun compactPhotoHeightDp(screenWidthDp: Int, screenHeightDp: Int): Int? {
-    if (screenHeightDp >= COMPACT_HEIGHT_DP) return null
-    val sixteenByNine = (screenWidthDp - 2 * PHOTO_INSET_DP) * 9 / 16
-    return minOf(sixteenByNine, screenHeightDp / 4)
-}
-
-/**
- * Höhe des Bilds, auf dem heute Titel, „noch …“ und „dann …“ stehen. Der Kopf
- * liegt im Bild statt darunter; dadurch rückt die Zeitenliste hoch. Unten
- * braucht der Text rund 175 dp, darüber bleibt das Bild frei.
- */
-internal fun heroPhotoHeightDp(screenWidthDp: Int, screenHeightDp: Int): Int =
-    minOf(screenWidthDp - 2 * PHOTO_INSET_DP, (screenHeightDp * 0.3).toInt()).coerceIn(260, 300)
+private val HERO_PHOTO_TOP = 28.dp
+private val OTHER_DAY_PHOTO_HEIGHT = 96.dp
 
 /** Deckkraft des Grunds hinter dem Text im Bild; danach richtet sich die Kontrastprüfung. */
 private const val SCRIM_ALPHA = 0.86
@@ -177,6 +161,11 @@ internal fun HeuteScreen(
     settings: AppSettings,
     snackbarHostState: SnackbarHostState,
     onFetchNow: () -> Unit,
+    /** Läuft gerade ein Abruf von Hand ([PrayerViewModel.refreshing])? */
+    refreshing: Boolean,
+    /** Zählt abgeschlossene Abrufe ([PrayerViewModel.officialRefreshes]);
+     *  danach liest die Ansicht die Zeiten sofort neu, nicht erst beim Minutentakt. */
+    refreshTick: Int,
     onEnableCalculation: () -> Unit,
     onNotificationsGranted: () -> Unit,
     onExplain: (Section) -> Unit,
@@ -213,11 +202,8 @@ internal fun HeuteScreen(
         }
     }
     val isToday = selectedDate == LocalDate.now(zone)
-    val configuration = LocalConfiguration.current
-    val screenHeightDp = configuration.screenHeightDp
-    val photoHeightDp = compactPhotoHeightDp(configuration.screenWidthDp, screenHeightDp)
 
-    val dayInfo by produceState<DayInfo?>(null, settings, tick, selectedDate) {
+    val dayInfo by produceState<DayInfo?>(null, settings, tick, selectedDate, refreshTick) {
         // Keine Zeiten unter den aktuellen Einstellungen: `dayInfo` bleibt
         // null und die Ansicht zeigt NoTimesCard, statt Fenster aus erfundenen
         // Zeiten zu berechnen. Fehlt nur `nextFajr`, kostet das allein das,
@@ -230,7 +216,7 @@ internal fun HeuteScreen(
             null
         }
     }
-    val officialName by produceState<String?>(null, settings, selectedDate, tick) {
+    val officialName by produceState<String?>(null, settings, selectedDate, tick, refreshTick) {
         // Reihenfolge spiegelt resolveLocationIdChain (Bundle vor Index), die
         // Kette, die entscheidet, WELCHER Diyanet-Standort geholt wird. Das
         // Bundle schreibt den Ort richtig („Nürnberg“ statt „NURNBERG“).
@@ -299,13 +285,12 @@ internal fun HeuteScreen(
                 // für Widget, Sperrbildschirm und Statusleiste.
                 PhotoHero(
                     hero = hero,
-                    heightDp = heroPhotoHeightDp(configuration.screenWidthDp, screenHeightDp),
                     showKaraha = settings.showKaraha,
                     t = t,
                 )
             } else {
                 // An anderen Tagen kein Titel und keine Restzeit: nur Foto und Liste.
-                Photo(hero, photoHeightDp)
+                Photo(hero)
             }
             Spacer(Modifier.height(16.dp))
             DayList(rows, onExplain, t)
@@ -326,6 +311,7 @@ internal fun HeuteScreen(
                     onlineEnabled = settings.canFetchOfficial(),
                 ),
                 onFetchNow = onFetchNow,
+                refreshing = refreshing,
                 onEnableCalculation = onEnableCalculation,
                 t = t,
             )
@@ -423,10 +409,9 @@ private fun DateLine(
     }
 }
 
-/** Foto des Abschnitts, 10:7 oder [heightDp] hoch (siehe [compactPhotoHeightDp]),
- *  Radius 24 dp. */
+/** Foto des Abschnitts an anderen Tagen: ein flaches Band, Radius 24 dp. */
 @Composable
-private fun Photo(hero: HeroState, heightDp: Int?) {
+private fun Photo(hero: HeroState) {
     val key = hero.photo
     Image(
         painter = painterResource(photoRes(key)),
@@ -435,7 +420,7 @@ private fun Photo(hero: HeroState, heightDp: Int?) {
         modifier = Modifier
             .padding(horizontal = PHOTO_INSET)
             .fillMaxWidth()
-            .then(if (heightDp != null) Modifier.height(heightDp.dp) else Modifier.aspectRatio(10f / 7f))
+            .height(OTHER_DAY_PHOTO_HEIGHT)
             .clip(RoundedCornerShape(24.dp)),
     )
 }
@@ -447,7 +432,7 @@ private fun Photo(hero: HeroState, heightDp: Int?) {
  * 4,5:1 geprüft.
  */
 @Composable
-private fun PhotoHero(hero: HeroState, heightDp: Int, showKaraha: Boolean, t: Tokens) {
+private fun PhotoHero(hero: HeroState, showKaraha: Boolean, t: Tokens) {
     val key = hero.photo
     val res = photoRes(key)
     val tint = rememberHeroTint(res, t)
@@ -455,7 +440,6 @@ private fun PhotoHero(hero: HeroState, heightDp: Int, showKaraha: Boolean, t: To
         modifier = Modifier
             .padding(horizontal = PHOTO_INSET)
             .fillMaxWidth()
-            .height(heightDp.dp)
             .clip(RoundedCornerShape(24.dp)),
     ) {
         Image(
@@ -469,9 +453,10 @@ private fun PhotoHero(hero: HeroState, heightDp: Int, showKaraha: Boolean, t: To
                 .matchParentSize()
                 .background(
                     Brush.verticalGradient(
-                        0f to t.canvas.copy(alpha = 0f),
-                        0.25f to t.canvas.copy(alpha = 0.35f),
-                        0.5f to t.canvas.copy(alpha = SCRIM_ALPHA.toFloat()),
+                        // Das Bild ist kaum höher als der Text: der Verlauf
+                        // beginnt schon leicht und deckt ab gut einem Drittel.
+                        0f to t.canvas.copy(alpha = 0.15f),
+                        0.4f to t.canvas.copy(alpha = SCRIM_ALPHA.toFloat()),
                         1f to t.canvas.copy(alpha = SCRIM_ALPHA.toFloat()),
                     ),
                 ),
@@ -481,9 +466,8 @@ private fun PhotoHero(hero: HeroState, heightDp: Int, showKaraha: Boolean, t: To
             showKaraha = showKaraha,
             t = t,
             remainingColor = tint,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 20.dp, end = 20.dp, bottom = 18.dp),
+            // Der Text bestimmt die Höhe des Kastens; das Bild füllt ihn nur.
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = HERO_PHOTO_TOP, bottom = 18.dp),
         )
     }
 }
@@ -776,6 +760,7 @@ private fun NotificationBlockCard(tick: Int, onGranted: () -> Unit, t: Tokens) {
 private fun NoTimesCard(
     notice: de.gebetszeiten.prayer.NoTimesNotice,
     onFetchNow: () -> Unit,
+    refreshing: Boolean,
     onEnableCalculation: () -> Unit,
     t: Tokens,
 ) {
@@ -783,8 +768,20 @@ private fun NoTimesCard(
         Text(notice.headline, style = MaterialTheme.typography.titleMedium, color = t.ink)
         Text(notice.detail, style = MaterialTheme.typography.bodyMedium, color = t.stone)
         if (notice.showFetch) {
-            Button(onClick = onFetchNow, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.no_times_fetch_now))
+            // Während des Abrufs arbeitet der Knopf sichtbar und nimmt keinen
+            // zweiten Tipp an; das Ergebnis meldet danach die Snackbar.
+            Button(onClick = onFetchNow, enabled = !refreshing, modifier = Modifier.fillMaxWidth()) {
+                if (refreshing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(R.string.fetch_running))
+                } else {
+                    Text(stringResource(R.string.no_times_fetch_now))
+                }
             }
         }
         OutlinedButton(onClick = onEnableCalculation, modifier = Modifier.fillMaxWidth()) {
