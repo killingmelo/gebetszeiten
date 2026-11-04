@@ -142,11 +142,33 @@ internal fun PlacePicker(
         }
     }
 
+    var focused by remember { mutableStateOf(false) }
+    val cityLabel = stringResource(R.string.settings_city)
+    // Die Beschriftung steht UEBER dem Feld, nicht darin: mit `label` zeigt
+    // Material3 den Platzhalter erst bei Fokus, und nach der Auswahl stand
+    // dann nur „Stadt“ im Feld. Die gewaehlte Stadt erschien erst beim
+    // erneuten Antippen. (`labelPosition` gibt es in 1.4 nur fuer die
+    // TextFieldState-Variante.)
+    Text(
+        cityLabel,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     OutlinedTextField(
         value = query,
         onValueChange = { query = it; expanded = true },
-        label = { Text(stringResource(R.string.settings_city)) },
-        placeholder = { Text(currentCity) },
+        // Ohne Fokus liest sich der Ort wie ein Wert (volle Textfarbe), mit
+        // Fokus blass: dann ist er nur noch der Hinweis, was gerade gilt.
+        placeholder = {
+            Text(
+                currentCity,
+                color = if (focused) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            )
+        },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
@@ -169,7 +191,8 @@ internal fun PlacePicker(
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(focusRequester)
-            .onFocusChanged { expanded = it.isFocused },
+            .onFocusChanged { focused = it.isFocused; expanded = it.isFocused }
+            .semantics { contentDescription = cityLabel },
     )
 
     if (query.text.isBlank()) whenEmpty()
