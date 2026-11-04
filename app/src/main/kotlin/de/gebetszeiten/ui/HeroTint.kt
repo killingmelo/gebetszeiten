@@ -1,11 +1,12 @@
 package de.gebetszeiten.ui
 
+import androidx.compose.ui.graphics.Color
+import de.gebetszeiten.ui.theme.contrastRatio
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.sin
 
 /**
@@ -67,20 +68,8 @@ internal fun averageColor(pixels: IntArray): Int {
     return (0xFF shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (b / n).toInt()
 }
 
-/** WCAG-Kontrastverhältnis zweier Farben. */
-internal fun contrast(a: Int, b: Int): Double {
-    val la = luminance(a)
-    val lb = luminance(b)
-    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
-}
-
-internal fun luminance(c: Int): Double {
-    fun lin(v: Int): Double {
-        val s = v / 255.0
-        return if (s <= 0.03928) s / 12.92 else ((s + 0.055) / 1.055).pow(2.4)
-    }
-    return 0.2126 * lin(c shr 16 and 0xFF) + 0.7152 * lin(c shr 8 and 0xFF) + 0.0722 * lin(c and 0xFF)
-}
+/** WCAG-Kontrastverhältnis zweier ARGB-Farben; die Rechnung steht einmal, in [contrastRatio]. */
+internal fun contrast(a: Int, b: Int): Double = contrastRatio(Color(a), Color(b))
 
 private fun rgbToHsl(c: Int): Triple<Double, Double, Double> {
     val r = (c shr 16 and 0xFF) / 255.0

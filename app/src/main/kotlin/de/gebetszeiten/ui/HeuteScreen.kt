@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -480,7 +481,7 @@ private val heroPixelCache = ConcurrentHashMap<Int, IntArray>()
 private fun rememberHeroTint(res: Int, t: Tokens): Color {
     val context = LocalContext.current
     val canvas = t.canvas.toArgb()
-    val dark = luminance(canvas) < 0.5
+    val dark = t.canvas.luminance() < 0.5f
     val tint by produceState(t.ink, res, dark) {
         value = withContext(Dispatchers.Default) {
             val px = heroPixelCache.getOrPut(res) { samplePixels(context, res) }
