@@ -763,7 +763,7 @@ private fun PrayerLine(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: T
 }
 
 @StringRes
-private fun sideLabelRes(kind: Section): Int = when (kind) {
+internal fun sideLabelRes(kind: Section): Int = when (kind) {
     Section.JAMAA -> R.string.side_jamaa
     Section.SHURUQ_MAKRUH -> R.string.side_makruh_sunrise
     Section.DUHA -> R.string.nafl_duha
@@ -778,7 +778,7 @@ private fun sideLabelRes(kind: Section): Int = when (kind) {
     Section.ISHA -> R.string.prayer_isha
 }
 
-private fun isMakruh(kind: Section) =
+internal fun isMakruh(kind: Section) =
     kind == Section.SHURUQ_MAKRUH || kind == Section.ZUHR || kind == Section.ISFIRAR_MAKRUH
 
 /**

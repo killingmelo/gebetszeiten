@@ -27,6 +27,7 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.compose.runtime.getValue
@@ -97,7 +98,6 @@ class NextPrayerWidget : GlanceAppWidget() {
         /** Ab dieser Breite steht Šurūq als sechster Eintrag in der Zeitzeile;
          *  schmaler bleiben es die fünf Pflichtgebete. */
         val SHURUQ_MIN_WIDTH = 300.dp
-        val CORNER = 24.dp
 
         private val photoPixelCache = java.util.concurrent.ConcurrentHashMap<Int, IntArray>()
 
@@ -108,6 +108,24 @@ class NextPrayerWidget : GlanceAppWidget() {
         val CHOICE_THEME = stringPreferencesKey("theme")
         val CHOICE_FORMAT = stringPreferencesKey("format")
         val CHOICE_OPACITY = intPreferencesKey("opacity")
+        val CHOICE_COUNTDOWN = stringPreferencesKey("countdown")
+        val CHOICE_ALIGN = stringPreferencesKey("align")
+        val CHOICE_SHURUQ = booleanPreferencesKey("shuruq")
+        val CHOICE_DETAILS = booleanPreferencesKey("details")
+        val CHOICE_NEXT = booleanPreferencesKey("next")
+        val CHOICE_HEADER = booleanPreferencesKey("header")
+
+        /** Ecken, Ausrichtung und Inhalte dieses Widgets; ohne eigene Werte die Vorgaben. */
+        fun optionsOf(state: Preferences?): WidgetOptions {
+            val d = WidgetOptions()
+            return WidgetOptions(
+                align = WidgetAlign.of(state?.get(CHOICE_ALIGN)),
+                shuruq = state?.get(CHOICE_SHURUQ) ?: d.shuruq,
+                details = state?.get(CHOICE_DETAILS) ?: d.details,
+                next = state?.get(CHOICE_NEXT) ?: d.next,
+                header = state?.get(CHOICE_HEADER) ?: d.header,
+            )
+        }
 
         /** Die App-Einstellungen mit den eigenen Werten dieses Widgets darüber. */
         fun withWidgetChoice(
@@ -117,12 +135,14 @@ class NextPrayerWidget : GlanceAppWidget() {
             widgetTheme = state?.get(CHOICE_THEME) ?: settings.widgetTheme,
             widgetFormat = state?.get(CHOICE_FORMAT) ?: settings.widgetFormat,
             widgetOpacity = state?.get(CHOICE_OPACITY) ?: settings.widgetOpacity,
+            countdownMode = state?.get(CHOICE_COUNTDOWN) ?: settings.countdownMode,
         )
 
         /**
-         * Für den Alarm-Planer: nutzt irgendein Widget „Restzeit groß“, braucht
-         * es die Stufen-Weckkette, auch wenn die App-Einstellung einen
-         * anderen Aufbau nennt. Die Antwort steckt dann in `widgetFormat`.
+         * Für den Alarm-Planer: braucht irgendein Widget mit seinen eigenen
+         * Werten die Stufen-Weckkette (Restzeit in Stufen, oder „Restzeit
+         * groß“ bei Restzeit aus), dann auch, wenn die App-Einstellung etwas
+         * anderes sagt. Die Antwort steckt in `widgetStepAlarms`.
          */
         suspend fun withWidgetNeeds(
             context: Context,
@@ -131,11 +151,11 @@ class NextPrayerWidget : GlanceAppWidget() {
             val ids = runCatching {
                 GlanceAppWidgetManager(context).getGlanceIds(NextPrayerWidget::class.java)
             }.getOrDefault(emptyList())
-            val anyCountdown = ids.any { id ->
+            val anyNeeds = ids.any { id ->
                 val state = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
-                withWidgetChoice(settings, state).widgetFormat == WidgetFormat.COUNTDOWN.key
+                withWidgetChoice(settings, state).widgetNeedsStepAlarms()
             }
-            return if (anyCountdown) settings.copy(widgetFormat = WidgetFormat.COUNTDOWN.key) else settings
+            return if (anyNeeds) settings.copy(widgetStepAlarms = true) else settings
         }
 
         /**
@@ -216,7 +236,7 @@ class NextPrayerWidget : GlanceAppWidget() {
     private fun frame(look: WidgetLook) = GlanceModifier
         .fillMaxSize()
         .appWidgetBackground()
-        .cornerRadius(CORNER)
+        .cornerRadius(look.corner)
         .background(look.background)
         .clickable(actionStartActivity<de.gebetszeiten.ui.MainActivity>())
 
@@ -232,6 +252,7 @@ class NextPrayerWidget : GlanceAppWidget() {
         Column(
             modifier = frame(model.look).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = model.look.horizontal,
         ) {
             val countdown = model.countdown
             // „noch“ steht klein beim Abschnitt, groß nur die Zahl: sonst
@@ -288,7 +309,9 @@ class NextPrayerWidget : GlanceAppWidget() {
             // Passt nicht alles in die Höhe, ab dem laufenden Gebet: die
             // kommenden sind wichtiger als die vergangenen.
             val fits = listRowsThatFit(LocalSize.current.height.value, context.resources.configuration.fontScale)
-            val window = listWindow(model.dayPlan.size, model.dayPlan.indexOfFirst { it.current }, fits)
+            // Eine Nebenzeit-Zeile zählt wie eine weitere Zeile.
+            val weights = model.dayPlan.map { if (it.sub != null) 2 else 1 }
+            val window = listWindowWeighted(weights, model.dayPlan.indexOfFirst { it.current }, fits)
             model.dayPlan.slice(window).forEach { entry ->
                 val color = when {
                     entry.current -> GlanceTheme.colors.primary
@@ -308,6 +331,13 @@ class NextPrayerWidget : GlanceAppWidget() {
                         modifier = GlanceModifier.defaultWeight(),
                     )
                     Text(text = entry.time, style = TextStyle(color = color, fontSize = 13.sp, fontWeight = weight))
+                }
+                entry.sub?.let {
+                    Text(
+                        text = it,
+                        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+                        maxLines = 1,
+                    )
                 }
             }
         }
@@ -366,6 +396,7 @@ class NextPrayerWidget : GlanceAppWidget() {
 
     private suspend fun buildModel(context: Context, state: Preferences?): Model? {
         val settings = withWidgetChoice(SettingsRepository(context).current(), state)
+        val options = optionsOf(state)
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
         // Keine Zeiten unter den aktuellen Einstellungen: statt auf dem
@@ -387,7 +418,7 @@ class NextPrayerWidget : GlanceAppWidget() {
             // Rueckgabepfad wie beim Tagesplan weiter unten, falls sich das
             // je auseinanderentwickelt.
             val notice = widgetNotice(next, settings.city, settings.canFetchOfficial()) ?: return null
-            return Model.NoTimes(notice.headline, WidgetLook.of(settings))
+            return Model.NoTimes(notice.headline, WidgetLook.of(settings, null, options))
         }
         // Ein Regler fuer alle Flaechen (AppSettings.countdownMode); das
         // Widget liest denselben OFF/STEPS/EXACT-Wert wie App und
@@ -398,7 +429,7 @@ class NextPrayerWidget : GlanceAppWidget() {
         val showCountdown = settings.countdownMode != de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF ||
             format == WidgetFormat.COUNTDOWN
         val exact = settings.countdownMode == de.gebetszeiten.data.AppSettings.PRECISION_EXACT
-        val karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now)
+        val karahaLine = if (options.details) de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now) else null
         // Restzeit bis zum naechsten Uebergang (`next`, Sonnenaufgang
         // eingeschlossen): genau das Ziel, gegen das der Alarm-Planer die
         // Stufengrenzen weckt. Es faellt in jedem Abschnitt mit dem Ende
@@ -420,7 +451,7 @@ class NextPrayerWidget : GlanceAppWidget() {
         val nafl = IslamicWindows.nafl(today, nextFajr)
         val hero = heroState(today, karaha, nafl, nextFajr, now, isToday = true)
         val title = context.getString(momentLabelRes(hero.moment))
-        val nextLine = hero.next?.let {
+        val nextLine = hero.next?.takeIf { options.next }?.let {
             context.getString(R.string.hero_next_lead) + " " + context.getString(
                 R.string.hero_next_at,
                 context.getString(it.prayer.labelRes()),
@@ -428,25 +459,29 @@ class NextPrayerWidget : GlanceAppWidget() {
             )
         }
         // Kurzform für schmale Widgets: Name und Uhrzeit, ohne „dann … um“.
-        val nextShort = hero.next?.let {
+        val nextShort = hero.next?.takeIf { options.next }?.let {
             context.getString(it.prayer.labelRes()) + " " + it.at.format(timeFormat)
         }
         // Die fünf Pflichtgebete des Tages; verblasst ist nur, was vorbei
         // und nicht mehr laufend ist (wie in der Tagesliste von „Heute“).
-        val dayPlan = dayRows(
+        // Mit „Details“ kommen die Nebenzeiten dazu, klein unter ihrem Gebet wie auf „Heute“.
+        val rows = dayRows(
             today = today,
             karaha = karaha,
             nafl = nafl,
             nextFajr = nextFajr,
             now = now,
             isToday = true,
-            showKaraha = false,
-            showCemaat = false,
-            cemaatOffsetMinutes = 0,
+            showKaraha = options.details && settings.showKaraha,
+            showCemaat = options.details && settings.showCemaat,
+            cemaatOffsetMinutes = settings.cemaatOffsetMinutes,
         )
-            .filterIsInstance<DayRow.PrayerRow>()
-            .filter { !it.nextDay }
-            .map {
+        val dayPlan = de.gebetszeiten.ui.groupUnderPrayers(rows)
+            .filter { !it.prayer.nextDay }
+            .filter { options.shuruq || it.prayer.prayer != Prayer.SUNRISE }
+            .map { group ->
+                val it = group.prayer
+                val sub = if (options.details) subLine(context, group) else null
                 if (it.prayer == Prayer.SUNRISE) {
                     // Šurūq ist kein Gebet: nie „aktuell“, nur verblassen wie die anderen.
                     DayEntry(
@@ -455,6 +490,7 @@ class NextPrayerWidget : GlanceAppWidget() {
                         current = false,
                         faded = it.past,
                         optional = true,
+                        sub = sub,
                     )
                 } else {
                     DayEntry(
@@ -462,21 +498,45 @@ class NextPrayerWidget : GlanceAppWidget() {
                         time = it.at.format(timeFormat),
                         current = it.current,
                         faded = it.past && !it.current,
+                        sub = sub,
                     )
                 }
             }
         val photo = Photo(photoRes(hero.photo), context.getString(photoDescriptionRes(hero.photo)))
 
-        val look = WidgetLook.of(settings, photoPixels(context, settings, photo.res))
+        val look = WidgetLook.of(settings, photoPixels(context, settings, photo.res), options)
         // Kopfzeile im großen Widget: macht einen still falschen Ort sichtbar
         // und ist zugleich die Hijri-Datumszeile.
-        val header = "${settings.city} · ${hijriTextShort(now.toLocalDate(), settings.hijriOffsetDays)}"
+        val header = if (options.header) {
+            "${settings.city} · ${hijriTextShort(now.toLocalDate(), settings.hijriOffsetDays)}"
+        } else {
+            ""
+        }
         // Ohne „noch“ für die große Anzeige; in der letzten Minute leer, dann die lange Form.
         val shortLabel = de.gebetszeiten.prayer.remainingStepShort(remaining).ifEmpty { remainingLabel }
         val countdown = Countdown(showCountdown, exact, remainingLabel, urgent, chronoBase, shortLabel)
 
         return Model.Times(title, countdown, nextLine, nextShort, karahaLine, header, photo, dayPlan, look, format)
     }
+
+    /** Die Nebenzeiten eines Gebets als eine kurze Zeile („Makrūh bis 07:46 · Ḍuḥā 07:46 bis 11:44“). */
+    private fun subLine(context: Context, group: de.gebetszeiten.ui.PrayerGroup): String? =
+        group.subs.joinToString(" · ") { row ->
+            val label = if (de.gebetszeiten.ui.isMakruh(row.kind)) {
+                context.getString(R.string.sub_makruh)
+            } else {
+                context.getString(de.gebetszeiten.ui.sideLabelRes(row.kind))
+            }
+            val start = row.start.format(timeFormat)
+            val end = row.end?.format(timeFormat)
+            when (de.gebetszeiten.ui.subFormOf(row, group.prayer.at)) {
+                de.gebetszeiten.ui.SubForm.AT -> context.getString(R.string.sub_at, label, start)
+                de.gebetszeiten.ui.SubForm.UNTIL -> context.getString(R.string.sub_until, label, end ?: start)
+                de.gebetszeiten.ui.SubForm.FROM -> context.getString(R.string.sub_from, label, start)
+                de.gebetszeiten.ui.SubForm.SPAN ->
+                    context.getString(R.string.sub_at, label, de.gebetszeiten.prayer.timeRange(start, end ?: start))
+            }
+        }.ifEmpty { null }
 
     /** Bildpunkte des Fotos, nur für das Thema „Wie das Tagesbild“; verkleinert
      *  gelesen und je Foto gemerkt (die Fotos liegen fest im APK). */
@@ -500,6 +560,8 @@ class NextPrayerWidget : GlanceAppWidget() {
         val faded: Boolean,
         /** Nur bei genug Breite sichtbar (Šurūq). */
         val optional: Boolean = false,
+        /** Nebenzeiten dieses Gebets als kurze Zeile, nur mit „Details“. */
+        val sub: String? = null,
     )
 
     private data class Photo(val res: Int, val description: String)
@@ -515,7 +577,24 @@ class NextPrayerWidget : GlanceAppWidget() {
     )
 
     /** Thema und Deckkraft aus den Einstellungen, einmal je Aufbau gelesen. */
-    private class WidgetLook(theme: WidgetTheme, val opacity: Int, photo: de.gebetszeiten.ui.theme.Tokens? = null) {
+    private class WidgetLook(
+        theme: WidgetTheme,
+        val opacity: Int,
+        photo: de.gebetszeiten.ui.theme.Tokens? = null,
+        options: WidgetOptions = WidgetOptions(),
+    ) {
+        /** Eckenradius. Keine Wahl: ab Android 12 schneidet der Launcher jedes
+         *  Widget auf seinen eigenen Radius zu, darunter kann Glance keine
+         *  Ecken runden (am Emulator geprüft, „Eckig“ blieb rund). */
+        val corner = 24.dp
+
+        /** Ausrichtung des Textblocks. */
+        val horizontal: Alignment.Horizontal = when (options.align) {
+            WidgetAlign.START -> Alignment.Start
+            WidgetAlign.CENTER -> Alignment.CenterHorizontally
+            WidgetAlign.END -> Alignment.End
+        }
+
         private val light = photo ?: theme.tokens.first
         private val dark = photo ?: theme.tokens.second
         val colors = ColorProviders(
@@ -535,12 +614,16 @@ class NextPrayerWidget : GlanceAppWidget() {
         val photo: Boolean get() = opacity >= 100
 
         companion object {
-            fun of(settings: de.gebetszeiten.data.AppSettings, photoPixels: IntArray? = null) =
-                WidgetLook(
-                    WidgetTheme.of(settings.widgetTheme),
-                    settings.widgetOpacity.coerceIn(0, 100),
-                    photoPixels?.takeIf { it.isNotEmpty() }?.let { photoTokens(it) },
-                )
+            fun of(
+                settings: de.gebetszeiten.data.AppSettings,
+                photoPixels: IntArray? = null,
+                options: WidgetOptions = WidgetOptions(),
+            ) = WidgetLook(
+                WidgetTheme.of(settings.widgetTheme),
+                settings.widgetOpacity.coerceIn(0, 100),
+                photoPixels?.takeIf { it.isNotEmpty() }?.let { photoTokens(it) },
+                options,
+            )
         }
     }
 
@@ -565,13 +648,13 @@ class NextPrayerWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxSize()
                 .appWidgetBackground()
-                .cornerRadius(CORNER)
+                .cornerRadius(look.corner)
                 .background(look.background)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 // The whole widget opens the app — expected tap behaviour.
                 .clickable(actionStartActivity<de.gebetszeiten.ui.MainActivity>()),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalAlignment = Alignment.Start,
+            horizontalAlignment = look.horizontal,
         ) {
             // Bei großer Schrift passt nicht alles in 2×1: lieber eine Zeile
             // weglassen als die letzte abschneiden (siehe compactLines).
@@ -681,12 +764,12 @@ class NextPrayerWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxSize()
                 .appWidgetBackground()
-                .cornerRadius(CORNER)
+                .cornerRadius(look.corner)
                 .background(look.background)
                 .padding(14.dp)
                 .clickable(actionStartActivity<de.gebetszeiten.ui.MainActivity>()),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalAlignment = Alignment.Start,
+            horizontalAlignment = look.horizontal,
         ) {
             Text(
                 text = headline,
@@ -743,7 +826,7 @@ class NextPrayerWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxSize()
                 .appWidgetBackground()
-                .cornerRadius(CORNER)
+                .cornerRadius(look.corner)
                 .background(look.background)
                 .clickable(actionStartActivity<de.gebetszeiten.ui.MainActivity>()),
         ) {
@@ -760,8 +843,9 @@ class NextPrayerWidget : GlanceAppWidget() {
                 Column(
                     modifier = GlanceModifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.Bottom,
+                    horizontalAlignment = look.horizontal,
                 ) {
-                    Text(
+                    if (header.isNotEmpty()) Text(
                         text = header,
                         style = TextStyle(
                             color = if (onPhoto) ColorProvider(WidgetPhotoStyle.Text) else GlanceTheme.colors.onSurfaceVariant,

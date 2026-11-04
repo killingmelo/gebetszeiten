@@ -76,6 +76,31 @@ class WidgetThemeTest {
         assertEquals(app, NextPrayerWidget.withWidgetChoice(app, null))
     }
 
+    @Test fun `ohne eigene Werte sieht das Widget aus wie bisher`() {
+        val d = NextPrayerWidget.optionsOf(null)
+        assertEquals(WidgetAlign.START, d.align)
+        assertTrue(d.shuruq && d.details && d.next && d.header)
+    }
+
+    @Test fun `Ausrichtung, Inhalte und Restzeit-Art je Widget`() {
+        val eigen = androidx.datastore.preferences.core.mutablePreferencesOf(
+            NextPrayerWidget.CHOICE_ALIGN to "center",
+            NextPrayerWidget.CHOICE_SHURUQ to false,
+            NextPrayerWidget.CHOICE_DETAILS to false,
+            NextPrayerWidget.CHOICE_COUNTDOWN to de.gebetszeiten.data.AppSettings.PRECISION_STEPS,
+        )
+        val o = NextPrayerWidget.optionsOf(eigen)
+        assertEquals(WidgetAlign.CENTER, o.align)
+        assertTrue(!o.shuruq && !o.details && o.next && o.header)
+        val app = de.gebetszeiten.data.AppSettings.DEFAULT
+        val w = NextPrayerWidget.withWidgetChoice(app, eigen)
+        assertEquals(de.gebetszeiten.data.AppSettings.PRECISION_STEPS, w.countdownMode)
+        // Ein Widget mit Stufen braucht die Kette, auch wenn die App „aus“ sagt.
+        assertTrue(!app.widgetNeedsStepAlarms())
+        assertTrue(w.widgetNeedsStepAlarms())
+        assertTrue(app.copy(widgetStepAlarms = true).widgetNeedsStepAlarms())
+    }
+
     @Test fun `Widget-Einstellungen sind angemeldet`() {
         val info = java.io.File("src/main/res/xml/next_prayer_widget_info.xml").readText()
         assertTrue(info.contains("android:configure=\"de.gebetszeiten.widget.WidgetConfigActivity\""))

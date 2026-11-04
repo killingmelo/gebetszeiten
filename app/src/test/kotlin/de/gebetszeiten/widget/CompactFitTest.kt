@@ -61,6 +61,19 @@ class CompactFitTest {
         assertTrue(listRowsThatFit(200f, 1.0f) >= 6)
     }
 
+    @Test fun `Tagesliste mit Nebenzeiten rechnet die Unterzeilen mit`() {
+        // Gewichte: Faǧr 1, Šurūq mit Nebenzeiten 2, Ẓuhr 2, ʿAṣr 2, Maġrib 2, ʿIšāʾ 2.
+        val w = listOf(1, 2, 2, 2, 2, 2)
+        // ʿAṣr (3) läuft, vier Zeilen passen: ʿAṣr und Maġrib.
+        assertEquals(3..4, listWindowWeighted(w, currentIndex = 3, fits = 4))
+        // Am Ende wird nach oben aufgefüllt.
+        assertEquals(4..5, listWindowWeighted(w, currentIndex = 5, fits = 4))
+        // Zu wenig Platz: wenigstens das laufende.
+        assertEquals(3..3, listWindowWeighted(w, currentIndex = 3, fits = 1))
+        // Alles passt.
+        assertEquals(0..5, listWindowWeighted(w, currentIndex = 2, fits = 20))
+    }
+
     @Test fun `grosse Schrift kuerzt frueher`() {
         assertEquals(lang, compactNextLine(lang, kurz, 180f, 1.0f))
         assertEquals(kurz, compactNextLine(lang, kurz, 180f, 1.4f))

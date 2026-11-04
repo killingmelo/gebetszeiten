@@ -75,6 +75,9 @@ data class AppSettings(
     val widgetOpacity: Int = 100,
     /** Aufbau des Widgets (`de.gebetszeiten.widget.WidgetFormat.key`). */
     val widgetFormat: String = "standard",
+    /** Nicht gespeichert: setzt `NextPrayerWidget.withWidgetNeeds`, wenn ein
+     *  einzelnes Widget mit eigener Restzeit-Art die Stufen-Kette braucht. */
+    val widgetStepAlarms: Boolean = false,
     /** Restzeit-Darstellung fuer ALLE Flaechen: OFF, PRECISION_STEPS
      *  (abgerundete Stufen, die die App selbst weiterstellt) oder
      *  PRECISION_EXACT (Live-Countdown, vom System gezeichnet).
@@ -142,7 +145,8 @@ data class AppSettings(
      *  Aufbau „Countdown groß“ zeigt die Restzeit auch bei Countdown aus,
      *  dann in Stufen; ohne die Kette bliebe sie bis zum naechsten Gebet stehen. */
     fun widgetNeedsStepAlarms(): Boolean =
-        countdownMode == PRECISION_STEPS ||
+        widgetStepAlarms ||
+            countdownMode == PRECISION_STEPS ||
             (countdownMode == COUNTDOWN_OFF && widgetFormat == "countdown")
 
     /** Die Dauerbenachrichtigung braucht sie in BEIDEN Modi: im EXACT-Modus

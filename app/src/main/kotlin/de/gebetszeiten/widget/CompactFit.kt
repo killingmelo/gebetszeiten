@@ -63,6 +63,21 @@ internal fun listWindow(size: Int, currentIndex: Int, fits: Int): IntRange {
     return start until start + n
 }
 
+/**
+ * Wie [listWindow], aber eine Zeile mit Nebenzeiten darunter zählt doppelt
+ * ([weights]). Ab dem laufenden Gebet so viele, wie in [fits] Zeilen passen;
+ * bleibt Platz, wird nach oben aufgefüllt. Mindestens ein Eintrag.
+ */
+internal fun listWindowWeighted(weights: List<Int>, currentIndex: Int, fits: Int): IntRange {
+    if (weights.isEmpty()) return IntRange.EMPTY
+    var start = currentIndex.coerceIn(0, weights.size - 1)
+    var end = start
+    var used = weights[start]
+    while (end + 1 < weights.size && used + weights[end + 1] <= fits) used += weights[++end]
+    while (start - 1 >= 0 && used + weights[start - 1] <= fits) used += weights[--start]
+    return start..end
+}
+
 /** Wie viele Listenzeilen (13 sp) unter die Kopfzeile (16 sp) passen. */
 internal fun listRowsThatFit(heightDp: Float, fontScale: Float): Int {
     fun line(sp: Int) = sp * LINE_PER_SP * fontScale

@@ -64,6 +64,35 @@ enum class WidgetFormat(val key: String, @StringRes val labelRes: Int) {
     }
 }
 
+/** Ausrichtung des Textblocks. Die Zeilen der Tagesliste bleiben links Name, rechts Zeit. */
+enum class WidgetAlign(val key: String, @StringRes val labelRes: Int) {
+    START("start", R.string.widget_align_start),
+    CENTER("center", R.string.widget_align_center),
+    END("end", R.string.widget_align_end),
+    ;
+
+    companion object {
+        fun of(key: String?): WidgetAlign = entries.firstOrNull { it.key == key } ?: START
+    }
+}
+
+/**
+ * Was ein Widget zeigt und wie es aussieht, über Thema, Aufbau und Deckkraft
+ * hinaus. Die Vorgaben entsprechen dem bisherigen Widget, so dass ein
+ * bestehendes ohne eigene Werte gleich bleibt.
+ */
+data class WidgetOptions(
+    val align: WidgetAlign = WidgetAlign.START,
+    /** Šurūq in Tagesliste und Zeitreihe. */
+    val shuruq: Boolean = true,
+    /** Nebenzeiten: Karāha-Zeile, in der Tagesliste die kleinen Zeiten unter dem Gebet. */
+    val details: Boolean = true,
+    /** „dann … um …“. */
+    val next: Boolean = true,
+    /** Kopfzeile mit Ort und Hijri-Datum im großen Widget. */
+    val header: Boolean = true,
+)
+
 /**
  * Farben für [WidgetTheme.PHOTO] aus den Bildpunkten des Fotos: der Grund ist
  * das Bild, stark abgedunkelt (22 % seines Mittelwerts auf Schwarz), der

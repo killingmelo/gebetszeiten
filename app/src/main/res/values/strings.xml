@@ -194,6 +194,16 @@
     <string name="settings_widget_format">Widget-Aufbau</string>
     <string name="settings_widget_defaults_hint">Gilt für Widgets ohne eigene Einstellung. Ein einzelnes Widget stellst du ein, indem du es lange drückst und bearbeitest.</string>
     <string name="widget_config_title">Widget einstellen</string>
+    <string name="widget_config_countdown">Restzeit</string>
+    <string name="widget_config_align">Ausrichtung</string>
+    <string name="widget_align_start">Links</string>
+    <string name="widget_align_center">Mittig</string>
+    <string name="widget_align_end">Rechts</string>
+    <string name="widget_config_content">Inhalte</string>
+    <string name="widget_content_shuruq">Šurūq</string>
+    <string name="widget_content_details">Nebenzeiten (Makrūh, Ḍuḥā, Awwābīn, Taḥaǧǧud)</string>
+    <string name="widget_content_next">Nächstes Gebet („dann …“)</string>
+    <string name="widget_content_header">Kopfzeile mit Ort und Hijri-Datum (großes Widget)</string>
     <string name="widget_config_example">Beispiel</string>
     <string name="widget_config_done">Fertig</string>
     <string name="widget_config_cancel">Abbrechen</string>
