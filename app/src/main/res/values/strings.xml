@@ -196,13 +196,6 @@
     <string name="battery_disable">Akku-Optimierung deaktivieren</string>
 
     <!-- Titelbilder (Unsplash-Platzhalter) -->
-    <string name="photo_caption_fajr">Das Licht breitet sich am Horizont aus.</string>
-    <string name="photo_caption_shuruq">Die Sonne ist aufgegangen.</string>
-    <string name="photo_caption_zawal">Die Sonne steht nahe ihrem Höchststand.</string>
-    <string name="photo_caption_zuhr">Die Sonne hat den Zenit überschritten, der Schatten wächst wieder.</string>
-    <string name="photo_caption_asr">Die Schatten sind lang geworden.</string>
-    <string name="photo_caption_maghrib">Die Sonnenscheibe ist hinter dem Horizont verschwunden.</string>
-    <string name="photo_caption_isha">Die Abenddämmerung ist erloschen.</string>
     <string name="photo_description_fajr">Foto: Orangefarbener Streifen am Horizont unter dunkelblauem Himmel</string>
     <string name="photo_description_shuruq">Foto: Tief stehende Morgensonne über einer nebligen Wiese</string>
     <string name="photo_description_zuhr">Foto: Palmenschatten auf hellem Boden</string>

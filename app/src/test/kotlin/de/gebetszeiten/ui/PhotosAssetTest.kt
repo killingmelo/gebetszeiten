@@ -31,15 +31,13 @@ class PhotosAssetTest {
     }
 
     @Test
-    fun jederSchluesselHatBildUnterschriftUndBeschreibung() {
+    fun jederSchluesselHatBildUndBeschreibung() {
         val xml = strings.readText()
         val quelltext = photosKt.readText()
         for (key in PhotoKey.entries) {
             val s = suffix(key)
             assertTrue("Bild für $key fehlt in Photos.kt", quelltext.contains("R.drawable.photo_$s"))
-            assertTrue("Unterschrift für $key fehlt", xml.contains("name=\"photo_caption_$s\""))
             assertTrue("Beschreibung für $key fehlt", xml.contains("name=\"photo_description_$s\""))
-            assertTrue("Unterschrift für $key nicht verdrahtet", quelltext.contains("R.string.photo_caption_$s"))
             assertTrue("Beschreibung für $key nicht verdrahtet", quelltext.contains("R.string.photo_description_$s"))
         }
     }
@@ -59,7 +57,8 @@ class PhotosAssetTest {
         val xml = strings.readText()
         val texte = Regex("""<string name="photo_[^"]*"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
             .findAll(xml).map { it.groupValues[1] }.toList()
-        assertTrue("keine Foto-Strings gefunden", texte.size >= 13)
+        // Sechs Bildbeschreibungen; die Bildunterschriften sind gestrichen.
+        assertTrue("keine Foto-Strings gefunden", texte.size >= 6)
         texte.forEach {
             assertFalse("Strich in: $it", it.contains('—') || it.contains('–'))
         }

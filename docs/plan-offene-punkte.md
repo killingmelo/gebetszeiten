@@ -83,7 +83,7 @@ Noch nichts umgesetzt. Weitere Punkte kommen dazu, danach wird in der hier festg
 **Vorschlag.**
 - Das Bild wird zum Hintergrund des Kopfbereichs: oben randlos oder mit großem Radius, darauf Gebetsname („Ẓuhr“), Countdown („noch 26 Min“) und „dann ʿAṣr um 15:38“.
 - Die Textfarbe wird aus dem Bild abgeleitet (hellster bzw. dunkelster Ton des Bilds, z. B. über Palette), mit Prüfung auf mindestens 4,5:1 und einem weichen Verlauf zum Grund (Schwarz/Creme) als Absicherung. Ohne Bild oder bei zu wenig Kontrast fallen die Farben auf ink/stone zurück.
-- Der Satz unter dem Bild („Die Sonne hat den Zenit überschritten…“) bleibt, kleiner, direkt unter dem Countdown oder als Bildunterschrift im Bild.
+- Die Bildunterschriften („Die Schatten sind lang geworden.“ usw.) sind gestrichen (Wunsch vom 04.11.2026).
 - Die Zeitenliste rückt hoch, so dass auf einem 360x640-Gerät alle Hauptgebete ohne Scrollen sichtbar sind (Nebenzeilen dürfen darunter weitergehen).
 - Abhängig: Punkt 5b („wie das Tagesbild“) und die Dauerbenachrichtigung können dieselbe Bildfarbe nutzen.
 - Beibehalten aus DESIGN.md: Serife für Name und Countdown, keine Uhrzeiten im Bild selbst.

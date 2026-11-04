@@ -305,7 +305,7 @@ internal fun HeuteScreen(
                 )
             } else {
                 // An anderen Tagen kein Titel und keine Restzeit: nur Foto und Liste.
-                Photo(hero, photoHeightDp, t)
+                Photo(hero, photoHeightDp)
             }
             Spacer(Modifier.height(16.dp))
             DayList(rows, onExplain, t)
@@ -424,9 +424,9 @@ private fun DateLine(
 }
 
 /** Foto des Abschnitts, 10:7 oder [heightDp] hoch (siehe [compactPhotoHeightDp]),
- *  Radius 24 dp, darunter die Bildunterschrift. */
+ *  Radius 24 dp. */
 @Composable
-private fun Photo(hero: HeroState, heightDp: Int?, t: Tokens) {
+private fun Photo(hero: HeroState, heightDp: Int?) {
     val key = hero.photo
     Image(
         painter = painterResource(photoRes(key)),
@@ -438,19 +438,13 @@ private fun Photo(hero: HeroState, heightDp: Int?, t: Tokens) {
             .then(if (heightDp != null) Modifier.height(heightDp.dp) else Modifier.aspectRatio(10f / 7f))
             .clip(RoundedCornerShape(24.dp)),
     )
-    Text(
-        text = stringResource(captionResFor(hero)),
-        style = MaterialTheme.typography.bodyMedium,
-        color = t.stone,
-        modifier = Modifier.padding(start = GUTTER, end = GUTTER, top = 8.dp),
-    )
 }
 
 /**
  * Heute: das Foto des Abschnitts als Grund, unten darauf Titel, „noch …“ und
  * „dann …“. Ein Verlauf in der Grundfarbe trägt den Text; die Restzeit nimmt
  * ihre Farbe aus dem Bild ([heroTint]) und ist gegen genau diesen Verlauf auf
- * 4,5:1 geprüft. Die Bildunterschrift steht klein darunter.
+ * 4,5:1 geprüft.
  */
 @Composable
 private fun PhotoHero(hero: HeroState, heightDp: Int, showKaraha: Boolean, t: Tokens) {
@@ -492,12 +486,6 @@ private fun PhotoHero(hero: HeroState, heightDp: Int, showKaraha: Boolean, t: To
                 .padding(start = 20.dp, end = 20.dp, bottom = 18.dp),
         )
     }
-    Text(
-        text = stringResource(captionResFor(hero)),
-        style = MaterialTheme.typography.bodySmall,
-        color = t.stone,
-        modifier = Modifier.padding(start = GUTTER, end = GUTTER, top = 8.dp),
-    )
 }
 
 /** Bildpunkte je Foto, einmal verkleinert gelesen; die Fotos sind fest im APK. */

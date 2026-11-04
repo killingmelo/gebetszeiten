@@ -3,7 +3,6 @@ package de.gebetszeiten.ui
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import de.gebetszeiten.R
-import de.gebetszeiten.prayer.HeroState
 import de.gebetszeiten.prayer.Moment
 import de.gebetszeiten.prayer.PhotoKey
 
@@ -17,23 +16,6 @@ fun photoRes(key: PhotoKey): Int = when (key) {
     PhotoKey.MAGHRIB -> R.drawable.photo_maghrib
     PhotoKey.ISHA -> R.drawable.photo_isha
 }
-
-/** Die Bildunterschrift: ein Satz dazu, was am Himmel gerade geschieht. */
-@StringRes
-fun photoCaptionRes(key: PhotoKey): Int = when (key) {
-    PhotoKey.FAJR -> R.string.photo_caption_fajr
-    PhotoKey.SHURUQ -> R.string.photo_caption_shuruq
-    PhotoKey.ZUHR -> R.string.photo_caption_zuhr
-    PhotoKey.ASR -> R.string.photo_caption_asr
-    PhotoKey.MAGHRIB -> R.string.photo_caption_maghrib
-    PhotoKey.ISHA -> R.string.photo_caption_isha
-}
-
-/** Die Unterschrift auf „Heute“: während Zawāl zeigt das Ẓuhr-Foto, aber die
- *  Sonne hat den Zenit noch nicht überschritten, daher ein eigener Satz. */
-@StringRes
-fun captionResFor(state: HeroState): Int =
-    if (state.moment == Moment.ZAWAL) R.string.photo_caption_zawal else photoCaptionRes(state.photo)
 
 /** Titel des Abschnitts (Heute und Widget): Šurūq, Ḍuḥā und Zawāl haben keine Gebetszeile, aber einen Namen. */
 @StringRes
