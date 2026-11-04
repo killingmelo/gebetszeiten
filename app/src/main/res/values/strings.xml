@@ -192,6 +192,11 @@
     <string name="widget_theme_sand">Sand</string>
     <string name="widget_theme_photo">Wie das Tagesbild</string>
     <string name="settings_widget_format">Widget-Aufbau</string>
+    <string name="settings_widget_defaults_hint">Gilt für Widgets ohne eigene Einstellung. Ein einzelnes Widget stellst du ein, indem du es lange drückst und bearbeitest.</string>
+    <string name="widget_config_title">Widget einstellen</string>
+    <string name="widget_config_example">Beispiel</string>
+    <string name="widget_config_done">Fertig</string>
+    <string name="widget_config_cancel">Abbrechen</string>
     <string name="widget_format_standard">Standard</string>
     <string name="widget_format_countdown">Restzeit groß</string>
     <string name="widget_format_list">Tagesliste</string>

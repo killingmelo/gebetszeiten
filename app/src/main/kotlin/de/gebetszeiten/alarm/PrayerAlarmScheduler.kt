@@ -49,7 +49,10 @@ object PrayerAlarmScheduler {
 
         val next = PrayerProvider.next(context, settings, zone, now)
         val upcoming = PrayerProvider.nextPrayer(context, settings, zone, now)
-        val boundaries = collectDisplayStepBoundaries(context, settings, zone, now, nowMillis, next, upcoming)
+        // Ein einzelnes Widget mit „Restzeit groß“ braucht die Stufen-Kette
+        // auch dann, wenn die App-Einstellung einen anderen Aufbau nennt.
+        val displaySettings = de.gebetszeiten.widget.NextPrayerWidget.withWidgetNeeds(context, settings)
+        val boundaries = collectDisplayStepBoundaries(context, displaySettings, zone, now, nowMillis, next, upcoming)
 
         val plan = alarmPlan(
             nextPrayerMillis = next?.time?.toInstant()?.toEpochMilli(),

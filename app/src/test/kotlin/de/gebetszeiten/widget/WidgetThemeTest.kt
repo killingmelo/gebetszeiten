@@ -62,6 +62,31 @@ class WidgetThemeTest {
         assertEquals(WidgetFormat.STANDARD, WidgetFormat.of("quer"))
     }
 
+    @Test fun `eigene Werte eines Widgets gehen vor, fehlende kommen aus der App`() {
+        val app = de.gebetszeiten.data.AppSettings.DEFAULT.copy(widgetTheme = "forest", widgetOpacity = 80)
+        val eigen = androidx.datastore.preferences.core.mutablePreferencesOf(
+            NextPrayerWidget.CHOICE_THEME to "sand",
+            NextPrayerWidget.CHOICE_FORMAT to "list",
+        )
+        val w = NextPrayerWidget.withWidgetChoice(app, eigen)
+        assertEquals("sand", w.widgetTheme)
+        assertEquals("list", w.widgetFormat)
+        assertEquals(80, w.widgetOpacity)
+        // Ohne eigenen Zustand: genau die App-Werte (bestehende Widgets bleiben, wie sie sind).
+        assertEquals(app, NextPrayerWidget.withWidgetChoice(app, null))
+    }
+
+    @Test fun `Widget-Einstellungen sind angemeldet`() {
+        val info = java.io.File("src/main/res/xml/next_prayer_widget_info.xml").readText()
+        assertTrue(info.contains("android:configure=\"de.gebetszeiten.widget.WidgetConfigActivity\""))
+        assertTrue(info.contains("reconfigurable"))
+        val manifest = java.io.File("src/main/AndroidManifest.xml").readText()
+        assertTrue(manifest.contains(".widget.WidgetConfigActivity"))
+        assertTrue(manifest.contains("android.appwidget.action.APPWIDGET_CONFIGURE"))
+        val planer = java.io.File("src/main/kotlin/de/gebetszeiten/alarm/PrayerAlarmScheduler.kt").readText()
+        assertTrue(planer.contains("NextPrayerWidget.withWidgetNeeds(context, settings)"))
+    }
+
     @Test fun `unbekannter Schluessel faellt auf System zurueck`() {
         assertEquals(WidgetTheme.SYSTEM, WidgetTheme.of(null))
         assertEquals(WidgetTheme.SYSTEM, WidgetTheme.of("lila"))
@@ -72,8 +97,8 @@ class WidgetThemeTest {
         // Gelesen wird in der Komposition, an einem Zähler im Widget-Zustand;
         // `updateAll` allein zeichnete mit den Werten vom Sitzungsbeginn.
         val widget = java.io.File("src/main/kotlin/de/gebetszeiten/widget/NextPrayerWidget.kt").readText()
-        assertTrue(widget.contains("currentState<Preferences>()[REFRESH]"))
-        assertTrue(widget.contains("produceState(first, token) { value = buildModel(context) }"))
+        assertTrue(widget.contains("val state = currentState<Preferences>()"))
+        assertTrue(widget.contains("produceState(first, state) { value = buildModel(context, state) }"))
         java.io.File("src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.forEach { f ->
             val code = f.readLines().filterNot { it.trim().startsWith("*") || it.trim().startsWith("//") }.joinToString("\n")
             assertTrue("${f.name} ruft noch updateAll", !code.contains("NextPrayerWidget().updateAll("))

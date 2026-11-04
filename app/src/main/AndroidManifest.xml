@@ -51,6 +51,16 @@
                 android:resource="@xml/next_prayer_widget_info" />
         </receiver>
 
+        <!-- Einstellungen je Widget: beim Hinzufügen und über „Widget bearbeiten“. -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Gebetszeiten">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- Fires at each prayer time: posts the notification, advances the
              widget, schedules the next exact alarm. -->
         <receiver

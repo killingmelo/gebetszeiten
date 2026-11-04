@@ -26,6 +26,9 @@ import androidx.glance.currentState
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.glance.background
@@ -101,6 +104,40 @@ class NextPrayerWidget : GlanceAppWidget() {
         /** Zähler im Widget-Zustand; jede Erhöhung lässt die Komposition neu rechnen. */
         val REFRESH = longPreferencesKey("refresh")
 
+        /** Eigene Einstellungen eines Widgets; fehlen sie, gelten die der App. */
+        val CHOICE_THEME = stringPreferencesKey("theme")
+        val CHOICE_FORMAT = stringPreferencesKey("format")
+        val CHOICE_OPACITY = intPreferencesKey("opacity")
+
+        /** Die App-Einstellungen mit den eigenen Werten dieses Widgets darüber. */
+        fun withWidgetChoice(
+            settings: de.gebetszeiten.data.AppSettings,
+            state: Preferences?,
+        ): de.gebetszeiten.data.AppSettings = settings.copy(
+            widgetTheme = state?.get(CHOICE_THEME) ?: settings.widgetTheme,
+            widgetFormat = state?.get(CHOICE_FORMAT) ?: settings.widgetFormat,
+            widgetOpacity = state?.get(CHOICE_OPACITY) ?: settings.widgetOpacity,
+        )
+
+        /**
+         * Für den Alarm-Planer: nutzt irgendein Widget „Restzeit groß“, braucht
+         * es die Stufen-Weckkette, auch wenn die App-Einstellung einen
+         * anderen Aufbau nennt. Die Antwort steckt dann in `widgetFormat`.
+         */
+        suspend fun withWidgetNeeds(
+            context: Context,
+            settings: de.gebetszeiten.data.AppSettings,
+        ): de.gebetszeiten.data.AppSettings {
+            val ids = runCatching {
+                GlanceAppWidgetManager(context).getGlanceIds(NextPrayerWidget::class.java)
+            }.getOrDefault(emptyList())
+            val anyCountdown = ids.any { id ->
+                val state = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
+                withWidgetChoice(settings, state).widgetFormat == WidgetFormat.COUNTDOWN.key
+            }
+            return if (anyCountdown) settings.copy(widgetFormat = WidgetFormat.COUNTDOWN.key) else settings
+        }
+
         /**
          * Alle Widgets neu zeichnen, mit frisch gelesenen Einstellungen und
          * Zeiten, auch wenn ihre Glance-Sitzung noch läuft. Ersetzt
@@ -129,10 +166,12 @@ class NextPrayerWidget : GlanceAppWidget() {
      * [refreshAll] den Zähler erhöht.
      */
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val first = buildModel(context)
+        val first = buildModel(context, getAppWidgetState(context, PreferencesGlanceStateDefinition, id))
         provideContent {
-            val token = currentState<Preferences>()[REFRESH] ?: 0L
-            val model by produceState(first, token) { value = buildModel(context) }
+            // Der ganze Widget-Zustand als Schlüssel: Auffrischungszähler und
+            // die eigenen Einstellungen dieses Widgets (WidgetConfigActivity).
+            val state = currentState<Preferences>()
+            val model by produceState(first, state) { value = buildModel(context, state) }
             Render(context, model)
         }
     }
@@ -325,8 +364,8 @@ class NextPrayerWidget : GlanceAppWidget() {
         ) : Model
     }
 
-    private suspend fun buildModel(context: Context): Model? {
-        val settings = SettingsRepository(context).current()
+    private suspend fun buildModel(context: Context, state: Preferences?): Model? {
+        val settings = withWidgetChoice(SettingsRepository(context).current(), state)
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone)
         // Keine Zeiten unter den aktuellen Einstellungen: statt auf dem
