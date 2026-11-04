@@ -9,17 +9,13 @@ import java.io.File
  * Die Verdrahtung der Dauerbenachrichtigung — das, was kein reiner Test
  * sehen kann.
  *
- * `ongoingTexts` entscheidet die vier Texte und ist ohne Geraet pruefbar
- * ([OngoingTextTest]). Was `updateOngoing` damit macht und was die vier
- * Aufrufstellen ihr mitgeben, ist es nicht — dort braeuchte es Robolectric
- * oder ein Geraet. Genau in dieser Luecke lagen zwei Befunde der Pruefung:
+ * `ongoingTexts` entscheidet die drei Texte und ist ohne Geraet pruefbar
+ * ([OngoingTextTest]). Was `updateOngoing` damit macht, ist es nicht — dort
+ * braeuchte es Robolectric oder ein Geraet. Genau in dieser Luecke lag ein
+ * Befund der Pruefung: die genaue Uhrzeit aus dem aufgeklappten Text zu
+ * entfernen liess alles gruen.
  *
- * - `city = settings.city` an EINER der vier Aufrufstellen zu loeschen liess
- *   alles gruen; der Vorgabewert `null` macht das Weglassen lautlos.
- * - Die genaue Uhrzeit aus dem aufgeklappten Text zu entfernen liess alles
- *   gruen.
- *
- * Beides faellt jetzt hier auf. Das Mittel ist das Idiom des Hauses: ein
+ * Das faellt jetzt hier auf. Das Mittel ist das Idiom des Hauses: ein
  * Test, der den Quelltext liest — Praezedenz `NoNetworkInSharedCodeTest`,
  * `CountdownIconAssetsTest`, `OfficialAssetsIntegrityTest`. Das
  * Arbeitsverzeichnis ist das Modul (`app/`), daher die relativen Pfade.
@@ -33,41 +29,23 @@ import java.io.File
 class OngoingWiringTest {
 
     private val notifier = File("src/main/kotlin/de/gebetszeiten/notify/PrayerNotifier.kt")
-    private val quellsatz = File("src/main")
 
     @Test
-    fun `jede Aufrufstelle von updateOngoing nennt den Ort`() {
-        // Der Untertitel ist der aktive Ort. Fehlt das Argument, zeigt die
-        // Kopfzeile an dieser Stelle einfach keinen — ohne Fehler, ohne
-        // Absturz, ohne dass es jemandem auffaellt.
-        assertTrue("Pfad existiert nicht — Modulstruktur geaendert? $quellsatz", quellsatz.isDirectory)
-        val ohneOrt = mutableListOf<String>()
-        var aufrufe = 0
-        quellsatz.walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
-            .forEach { datei ->
-                val text = ohneKommentareUndTexte(datei.readText())
-                Regex("""(?<!fun )updateOngoing\(""").findAll(text).forEach { treffer ->
-                    aufrufe++
-                    val klammer = treffer.range.last
-                    val args = argumente(datei.path, text, klammer)
-                    if (!args.contains("city =")) ohneOrt += "${datei.path}: $args"
-                }
-            }
-        assertEquals("Aufrufstellen von updateOngoing", 4, aufrufe)
-        assertTrue(
-            "updateOngoing ohne `city =` — der Vorgabewert null laesst den Ort lautlos weg:\n" +
-                ohneOrt.joinToString("\n"),
-            ohneOrt.isEmpty(),
-        )
+    fun `die Dauerbenachrichtigung setzt keinen Untertitel`() {
+        // Samsung setzt den Untertitel in die Titelzeile; dort kuerzte der
+        // Ort die Restzeit („Noch 50+ Min bis…  Istanbul"). Deshalb gibt es
+        // ihn nicht mehr, und er soll auch nicht still zurueckkommen.
+        assertTrue("$notifier fehlt", notifier.isFile)
+        val rumpf = rumpfVon(ohneKommentareUndTexte(notifier.readText()), "fun updateOngoing(")
+        assertTrue("updateOngoing setzt wieder setSubText", !rumpf.contains("setSubText("))
     }
 
     @Test
-    fun `die vier Texte kommen unveraendert aus ongoingTexts`() {
+    fun `die drei Texte kommen unveraendert aus ongoingTexts`() {
         // `updateOngoing` setzt nur noch zusammen. Schiebt jemand einen
         // eigenen Wortlaut dazwischen — etwa `bigText("")`, die Mutation aus
         // der Pruefung —, ist die Entscheidung wieder an einem Ort, den kein
-        // Test ausfuehrt. Also darf jeder dieser vier Setzer GENAU EINMAL
+        // Test ausfuehrt. Also darf jeder dieser drei Setzer GENAU EINMAL
         // vorkommen und GENAU sein Feld bekommen.
         assertTrue("$notifier fehlt", notifier.isFile)
         val rumpf = rumpfVon(ohneKommentareUndTexte(notifier.readText()), "fun updateOngoing(")
@@ -76,7 +54,6 @@ class OngoingWiringTest {
             "setContentTitle" to "title",
             "setContentText" to "contentText",
             "bigText" to "bigText",
-            "setSubText" to "subText",
         ).forEach { (setzer, feld) ->
             assertEquals(
                 "$setzer steht nicht genau einmal in updateOngoing",
@@ -158,7 +135,7 @@ class OngoingWiringTest {
     /**
      * Kommentare und Zeichenkettenliterale zaehlen nicht — und zwar aus zwei
      * Gruenden: dieses Projekt erklaert seine Entscheidungen ausfuehrlich
-     * (ein Kommentar `city = ...` waere kein Argument), und ein `(` oder `{`
+     * (ein Kommentar `setSubText(...)` waere kein Aufruf), und ein `(` oder `{`
      * in einem Text wuerde die Klammerzaehlung verrutschen lassen. Die
      * leeren Anfuehrungszeichen bleiben stehen, damit `bigText("")` als
      * `bigText("")` sichtbar bleibt und auffliegt.

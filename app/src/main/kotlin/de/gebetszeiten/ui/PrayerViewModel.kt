@@ -104,7 +104,6 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
                 // Der aktive Ort aus den gerade gespeicherten Einstellungen —
                 // nach einem Ortswechsel also sofort der neue, passend zu den
                 // Zeiten daneben.
-                city = value.city,
                 photo = photo,
             )
         }

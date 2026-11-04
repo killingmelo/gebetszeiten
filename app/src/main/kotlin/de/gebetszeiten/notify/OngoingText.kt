@@ -1,18 +1,6 @@
 package de.gebetszeiten.notify
 
 /**
- * Untertitel der Dauerbenachrichtigung: der aktive Ort, gerendert als
- * `setSubText`. Der Untertitel steht in der Kopfzeile neben dem App-Namen und
- * ist auch auf dem Sperrbildschirm sichtbar, OHNE die Inhaltszeile zu
- * verbrauchen — dort draengen sich schon Uhrzeit, „aktuell", „bis" und die
- * Karaha-Zeile.
- *
- * Ein leerer oder nur aus Leerzeichen bestehender Ortsname ergibt `null`, also
- * gar keinen Untertitel: eine leere Kopfzeile sieht aus wie ein Fehler.
- */
-internal fun ongoingSubText(city: String?): String? = city?.trim()?.ifEmpty { null }
-
-/**
  * Der aufgeklappte Text der Dauerbenachrichtigung (`BigTextStyle`), damit
  * „runterziehen" tatsaechlich mehr zeigt als der eingeklappte Zustand.
  *
@@ -40,7 +28,7 @@ internal fun ongoingBigText(
 
 /**
  * Der Anzeigemodus der Dauerbenachrichtigung — die EINE Entscheidung, aus der
- * alle vier Texte folgen.
+ * alle drei Texte folgen.
  *
  * - [STEPS]: die Restzeit traegt den Titel („Noch 20+ Min bis Isha"), die
  *   genaue Uhrzeit ist von dort verdraengt.
@@ -66,7 +54,7 @@ internal fun ongoingMode(countdown: Boolean, exact: Boolean, stepShort: String):
 }
 
 /**
- * Alle vier Texte der Dauerbenachrichtigung auf einmal. `updateOngoing`
+ * Alle drei Texte der Dauerbenachrichtigung auf einmal. `updateOngoing`
  * setzt danach nur noch zusammen, was hier entschieden wurde.
  */
 internal data class OngoingTexts(
@@ -76,14 +64,12 @@ internal data class OngoingTexts(
     val contentText: String?,
     /** Aufgeklappt (`BigTextStyle`). */
     val bigText: String,
-    /** Untertitel neben dem App-Namen; `null` heisst „gar keiner". */
-    val subText: String?,
 )
 
 /**
  * Die Entscheidung, nicht nur der Wortlaut: aus [mode] und den bereits
- * aufgeloesten Bausteinen folgen Titel, eingeklappte Zeile, aufgeklappter
- * Text und Untertitel.
+ * aufgeloesten Bausteinen folgen Titel, eingeklappte Zeile und
+ * aufgeklappter Text.
  *
  * Warum das hier steht und nicht im `NotificationCompat`-Aufbau: die
  * Kernzusage von Task 17 — die genaue Uhrzeit steht in BEIDEN
@@ -111,7 +97,6 @@ internal fun ongoingTexts(
     activeLine: String? = null,
     untilLine: String? = null,
     karahaText: String? = null,
-    city: String? = null,
 ): OngoingTexts {
     val steps = mode == OngoingMode.STEPS
     // Wort fuer Wort die eingeklappte Zeile von vorher — einschliesslich
@@ -123,12 +108,11 @@ internal fun ongoingTexts(
         title = if (steps) titleWithStep else titleWithTime,
         contentText = if (collapsed.isEmpty()) null else collapsed.joinToString(" · "),
         bigText = ongoingBigText(timeLine, activeLine, untilLine, karahaText),
-        subText = ongoingSubText(city),
     )
 }
 
 /**
- * Symbol, Modus und alle vier Texte der Dauerbenachrichtigung — aus EINEM
+ * Symbol, Modus und alle drei Texte der Dauerbenachrichtigung — aus EINEM
  * Aufruf.
  *
  * Warum es diese Klammer ueber [ongoingMode], [ongoingTexts] und
@@ -159,7 +143,6 @@ internal fun ongoing(
     activeLine: String? = null,
     untilLine: String? = null,
     karahaText: String? = null,
-    city: String? = null,
 ): Ongoing {
     // Im EXACT-Modus gibt es keine Stufe: den Text zeichnet dort der
     // Systemzaehler. Das Symbol dagegen folgt in BEIDEN Modi derselben
@@ -178,7 +161,6 @@ internal fun ongoing(
             activeLine = activeLine,
             untilLine = untilLine,
             karahaText = karahaText,
-            city = city,
         ),
     )
 }

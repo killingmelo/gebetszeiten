@@ -59,21 +59,6 @@ class OngoingTextTest {
         assertEquals("um 22:48", ongoingBigText(umZeit, activeLine = "", untilLine = "   ", karahaText = ""))
     }
 
-    @Test fun `der Ort wird zum Untertitel`() {
-        assertEquals("Nürnberg", ongoingSubText("Nürnberg"))
-    }
-
-    @Test fun `ein leerer Ortsname ergibt keinen Untertitel`() {
-        // Eine leere Kopfzeile sieht aus wie ein Fehler — lieber gar keine.
-        assertNull(ongoingSubText(""))
-        assertNull(ongoingSubText("   "))
-        assertNull(ongoingSubText(null))
-    }
-
-    @Test fun `Leerzeichen um den Ortsnamen fallen weg`() {
-        assertEquals("Nürnberg", ongoingSubText("  Nürnberg  "))
-    }
-
     // --- Die Entscheidung, nicht nur der Wortlaut ----------------------------
     //
     // Frueher stand hier ein Test „die genaue Uhrzeit steht in BEIDEN
@@ -92,7 +77,6 @@ class OngoingTextTest {
         activeLine: String? = aktuell,
         untilLine: String? = null,
         karahaText: String? = null,
-        city: String? = null,
     ) = ongoingTexts(
         mode = mode,
         titleWithStep = titelStufen,
@@ -101,7 +85,6 @@ class OngoingTextTest {
         activeLine = activeLine,
         untilLine = untilLine,
         karahaText = karahaText,
-        city = city,
     )
 
     @Test fun `im Stufen-Modus traegt der Titel die Restzeit, NICHT die Uhrzeit`() {
@@ -156,12 +139,6 @@ class OngoingTextTest {
         assertEquals("um 22:48", texte(OngoingMode.STEPS, activeLine = null).contentText)
     }
 
-    @Test fun `der Ort wird auch hier zum Untertitel, ein leerer nicht`() {
-        assertEquals("Nürnberg", texte(OngoingMode.STEPS, city = "  Nürnberg ").subText)
-        assertNull(texte(OngoingMode.STEPS, city = "   ").subText)
-        assertNull(texte(OngoingMode.STEPS, city = null).subText)
-    }
-
     @Test fun `der Modus folgt aus den beiden Schaltern und der Reststufe`() {
         assertEquals(OngoingMode.STEPS, ongoingMode(countdown = true, exact = false, stepShort = "20+ Min"))
         assertEquals(OngoingMode.EXACT, ongoingMode(countdown = true, exact = true, stepShort = ""))
@@ -188,7 +165,6 @@ class OngoingTextTest {
         titleWithTime = "Isha um 22:48",
         timeLine = "um 22:48",
         activeLine = "aktuell: Maghrib",
-        city = "Nuernberg",
     )
 
     @Test fun `ohne Countdown bleibt es der Mond und der klassische Titel`() {
@@ -259,13 +235,5 @@ class OngoingTextTest {
             anzeige(41, countdown = true, exact = false),
             anzeige(41, countdown = true, exact = true),
         ).forEach { assertTrue(it.texts.bigText, it.texts.bigText.contains("um 22:48")) }
-    }
-
-    @Test fun `der Ort steht in jedem Modus im Untertitel`() {
-        listOf(
-            anzeige(41, countdown = false, exact = false),
-            anzeige(41, countdown = true, exact = false),
-            anzeige(41, countdown = true, exact = true),
-        ).forEach { assertEquals("Nuernberg", it.texts.subText) }
     }
 }

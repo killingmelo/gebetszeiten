@@ -212,8 +212,8 @@ object PrayerNotifier {
      * ist bei allen VIER Aufrufern `PrayerProvider.nextPrayer` (Sonnenaufgang
      * uebersprungen), also dasselbe Ziel wie im Titel daneben.
      *
-     * Beim Herunterziehen zeigt die Anzeige mehr als eingeklappt: [city] steht
-     * als Untertitel in der Kopfzeile, und der `BigTextStyle`-Text traegt die
+     * Beim Herunterziehen zeigt die Anzeige mehr als eingeklappt: der
+     * `BigTextStyle`-Text traegt die
      * genaue Uhrzeit in BEIDEN Countdown-Modi, dazu laufendes Gebet, dessen
      * Ende und die Karaha-Zeile, soweit vorhanden. Der Titel und die
      * eingeklappte Zeile bleiben unveraendert.
@@ -243,10 +243,6 @@ object PrayerNotifier {
         exact: Boolean = false,
         // "⚠️ Karaha bis/ab HH:MM" — static, refreshed at window boundaries.
         karahaLine: de.gebetszeiten.prayer.KarahaLine? = null,
-        // Der AKTIVE Ort (`settings.city`) als Untertitel in der Kopfzeile.
-        // Nicht das Abrufziel aus `PrayerProvider.refreshOfficial` — das ist
-        // seit Task 6 ein anderer Ort, und die Zeiten hier kommen vom aktiven.
-        city: String? = null,
         // Foto des laufenden Abschnitts aus [ongoingPhotoAt] (wie „Heute“,
         // kennt den Zawāl). Ohne Vorgabewert, damit kein Aufrufer es vergisst;
         // null nur ohne Tageszeiten.
@@ -303,7 +299,6 @@ object PrayerNotifier {
             activeLine = sinceLine,
             untilLine = untilLine,
             karahaText = karahaLine?.text,
-            city = city,
         )
         val mode = anzeige.mode
         val texts = anzeige.texts
@@ -332,8 +327,9 @@ object PrayerNotifier {
             // dabei — im Stufen-Modus ist sie aus dem Titel verdraengt, und
             // genau die verlangt der Nutzer. Entschieden in [ongoingTexts].
             .setStyle(NotificationCompat.BigTextStyle().bigText(texts.bigText))
-            // Der Ort in der Kopfzeile, ohne die Inhaltszeile zu belegen.
-            .setSubText(texts.subText)
+            // Kein Untertitel (`setSubText`): manche Hersteller setzen ihn in
+            // die Titelzeile, und dort kuerzte der Ort die Restzeit
+            // („Noch 50+ Min bis…  Istanbul").
             .setContentIntent(contentIntent(context))
             .setOngoing(true)
             .setOnlyAlertOnce(true)

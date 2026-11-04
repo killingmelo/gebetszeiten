@@ -64,7 +64,6 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
                         // Der aktive Ort aus `settings` — nicht das Abrufziel
                         // von `refreshOfficial`, das ein anderer sein kann.
-                        city = settings.city,
                         photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
                     )
                     PrayerNotifier.updatePauseNotice(context, hasTimes = stepNext != null)
@@ -129,7 +128,6 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     // Der aktive Ort aus `settings`. Der Abruf weiter unten
                     // (`refreshOfficial`) frischt seit Task 6 unter Umstaenden
                     // einen ANDEREN Ort auf — der gehoert nicht hierher.
-                    city = settings.city,
                     photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
                 )
                 PrayerNotifier.updatePauseNotice(context, hasTimes = transitionNext != null)

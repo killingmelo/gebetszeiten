@@ -24,7 +24,6 @@ class OngoingPreviewTest {
         titleWithTime = "Isha um 22:48",
         timeLine = "um 22:48",
         activeLine = "aktuell: Maghrib",
-        city = "Nuernberg",
     )
 
     @Test fun `genau drei Zeilen, in der Reihenfolge der Auswahl`() {
@@ -84,12 +83,8 @@ class OngoingPreviewTest {
 
     @Test fun `die genaue Uhrzeit steht in jeder Zeile im Aufgeklappten`() {
         // Dieselbe Zusage wie in der echten Anzeige: runterziehen gibt immer
-        // Ort und genaue Zeit.
+        // die genaue Zeit.
         rows(41).forEach { assertTrue(it.texts.bigText, it.texts.bigText.contains("um 22:48")) }
-    }
-
-    @Test fun `der Ort steht in jeder Zeile im Untertitel`() {
-        rows(41).forEach { assertEquals("Nuernberg", it.texts.subText) }
     }
 
     // --- Woher die Zahlen kommen ---

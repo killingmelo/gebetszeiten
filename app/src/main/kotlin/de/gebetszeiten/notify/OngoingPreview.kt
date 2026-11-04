@@ -38,7 +38,6 @@ internal fun ongoingPreviewRows(
     timeLine: String,
     activeLine: String? = null,
     karahaText: String? = null,
-    city: String? = null,
 ): List<OngoingPreviewRow> = listOf(
     AppSettings.COUNTDOWN_OFF to false,
     AppSettings.PRECISION_STEPS to false,
@@ -53,7 +52,6 @@ internal fun ongoingPreviewRows(
         timeLine = timeLine,
         activeLine = activeLine,
         karahaText = karahaText,
-        city = city,
     )
     OngoingPreviewRow(
         mode = mode,

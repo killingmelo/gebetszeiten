@@ -161,13 +161,6 @@ private fun ShadeCardPreview(row: OngoingPreviewRow) {
                     style = PreviewSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                row.texts.subText?.let {
-                    Text(
-                        "· $it",
-                        style = PreviewSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
                 if (row.showsChronometer) {
                     Text(
                         rememberTickingCountdown(),

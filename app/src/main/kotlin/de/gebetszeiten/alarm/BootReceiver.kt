@@ -41,7 +41,6 @@ class BootReceiver : BroadcastReceiver() {
                     karahaLine = de.gebetszeiten.prayer.KarahaDisplay.line(context, settings, zone, now),
                     // Der aktive Ort — dieselben `settings`, aus denen auch
                     // die Zeiten oben kommen.
-                    city = settings.city,
                     photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
                 )
                 PrayerNotifier.updatePauseNotice(context, hasTimes = next != null)

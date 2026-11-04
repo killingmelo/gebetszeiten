@@ -200,7 +200,6 @@ private fun OnboardingDisplayStep(draft: AppSettings, onChange: (AppSettings) ->
         titleWithTime = stringResource(R.string.ongoing_title, isha, "21:31"),
         timeLine = stringResource(R.string.ongoing_at, "21:31"),
         activeLine = stringResource(R.string.ongoing_since, stringResource(Prayer.MAGHRIB.labelRes())),
-        city = draft.city,
     )
     CountdownPreview(
         rows = rows,
