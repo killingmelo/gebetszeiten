@@ -599,12 +599,27 @@ private fun SideLine(row: DayRow.SideRow, onExplain: (Section) -> Unit, t: Token
             .padding(start = SIDE_INDENT),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = color,
+        Row(
             modifier = Modifier.weight(1f),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = color,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            // Zeigt, dass die Zeile eine Erklärung hat. Reine Zierde: die
+            // ganze Zeile ist die Tippfläche, und TalkBack nennt die Aktion
+            // schon über die Semantik oben.
+            Icon(
+                painterResource(R.drawable.ic_help_small),
+                contentDescription = null,
+                // Leiser als der Name; verblasst und Makrūh (gold) gehen mit.
+                tint = if (color == t.ink) t.stone else color,
+                modifier = Modifier.padding(start = 6.dp).size(14.dp),
+            )
+        }
         Text(
             time,
             style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = TABULAR),
