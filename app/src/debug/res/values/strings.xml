@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Testfassung neben der Play-Fassung: im Launcher und in den Widgets unterscheidbar. -->
+    <string name="app_name">Gebetszeiten Test</string>
+</resources>

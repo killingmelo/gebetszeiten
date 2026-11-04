@@ -54,6 +54,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Neben der Play-Fassung installierbar: eigene Kennung, eigener
+            // Name („Gebetszeiten Test“, src/debug/res). Über die Play-Fassung
+            // ginge es nicht, die ist mit dem Play-Schlüssel signiert.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
