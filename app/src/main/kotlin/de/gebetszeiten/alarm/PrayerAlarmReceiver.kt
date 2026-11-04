@@ -3,7 +3,6 @@ package de.gebetszeiten.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.glance.appwidget.updateAll
 import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.notify.PrayerNotifier
@@ -67,7 +66,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
                     )
                     PrayerNotifier.updatePauseNotice(context, hasTimes = stepNext != null)
-                    NextPrayerWidget().updateAll(context)
+                    NextPrayerWidget.refreshAll(context)
                     PrayerAlarmScheduler.scheduleNext(context, settings, zone)
                     return@launch
                 }
@@ -131,7 +130,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
                 )
                 PrayerNotifier.updatePauseNotice(context, hasTimes = transitionNext != null)
-                NextPrayerWidget().updateAll(context)
+                NextPrayerWidget.refreshAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)
                 // Online-Flavor: amtlichen Cache auch ohne App-Öffnen frisch
                 // halten — und zwar fuer ALLE Favoriten plus den aktiven Ort,

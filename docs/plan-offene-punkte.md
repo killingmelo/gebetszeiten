@@ -97,7 +97,7 @@ Noch nichts umgesetzt. Weitere Punkte kommen dazu, danach wird in der hier festg
 4. „?“-Icon (klein). **Erledigt für die Nebenzeilen**, auf dem Emulator geprüft. Hauptgebete offen.
 5. Kompass-Genauigkeit und Anleitung (mittel). **Erledigt:** „Kompass genau, keine Kalibrierung nötig“ bzw. „Kompass ungenau“ mit liegender Acht (Punkt läuft sie ab, steht bei „Animationen entfernen“ still). Vor der ersten Messung keine Aussage. „Genau“ auf dem Emulator geprüft; „ungenau“ lässt sich dort nicht auslösen, nur per Test abgesichert. Kein dauerhafter Kalibrieren-Knopf.
 6. „Heute“ mit Bild im Kopf (groß, Gestaltung). **Erledigt, freigegeben:** Titel, Restzeit und „dann …“ im Bild auf einem Verlauf, Restzeit-Farbe aus dem Bild (`HeroTint.kt`, 4,5:1 geprüft), Bild 260 bis 300 dp. Auf 412×915 ist die Liste bis ʿAṣr ohne Scrollen sichtbar; Maġrib und ʿIšāʾ brauchen weiter Scrollen (Nebenzeilen kompakter wäre ein eigener Schritt).
-7. Widget-Themen und Formate 5b (groß, nutzt die Bildfarbe aus 6)
+7. Widget-Themen und Formate 5b (groß, nutzt die Bildfarbe aus 6). **Teil 1 gebaut:** fünf Themen (Wie das Telefon, Papier, Nacht, Wald, Sand), Deckkraft 0 bis 100 % statt Schalter (alt „transparent“ = 45 %), alle Themen 4,5:1 geprüft. Nebenbei behoben: eine zweite Änderung kam in laufender Glance-Sitzung (rund 45 s) nicht im Widget an. **Offen, Teil 2:** feste Formate (Countdown groß, Tagesliste, schmal), Thema „wie das Tagesbild“, Einstellungen je Widget beim Hinzufügen.
 8. Aḏān (groß, wartet auf die Lizenzfrage, läuft in eigener Sitzung)
 
 ## Offene Entscheidungen

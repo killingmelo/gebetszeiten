@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.TextButton
@@ -39,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -827,9 +829,41 @@ internal fun LocationSettings(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            ToggleRow(stringResource(R.string.settings_widget_transparent), settings.widgetTransparent) {
-                commit { copy(widgetTransparent = it) }
+            Text(
+                stringResource(R.string.settings_widget_theme),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            val widgetTheme = de.gebetszeiten.widget.WidgetTheme.of(settings.widgetTheme)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                de.gebetszeiten.widget.WidgetTheme.entries.forEach { theme ->
+                    SelectChip(
+                        selected = widgetTheme == theme,
+                        onClick = { commit { copy(widgetTheme = theme.key) } },
+                        label = stringResource(theme.labelRes),
+                    )
+                }
             }
+            // Beim Ziehen nur die Anzeige, gespeichert (und das Widget neu
+            // gezeichnet) wird erst beim Loslassen.
+            var opacity by remember(settings.widgetOpacity) { mutableFloatStateOf(settings.widgetOpacity.toFloat()) }
+            Text(
+                stringResource(R.string.settings_widget_opacity, opacity.roundToInt()),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Slider(
+                value = opacity,
+                onValueChange = { opacity = it },
+                onValueChangeFinished = { commit { copy(widgetOpacity = opacity.roundToInt()) } },
+                valueRange = 0f..100f,
+                steps = 9,
+            )
+            Text(
+                stringResource(R.string.settings_widget_opacity_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         BatteryOptimizationCard()

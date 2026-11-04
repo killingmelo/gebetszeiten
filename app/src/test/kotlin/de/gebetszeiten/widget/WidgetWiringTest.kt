@@ -47,7 +47,7 @@ class WidgetWiringTest {
         val text = ohneKommentare(widget)
         listOf(
             "setChronometerCountDown", "R.color.widget_urgent", "actionStartActivity",
-            "remainingStepLabel(", "isUrgent(", "KarahaText(", "widgetTransparent", "NoTimesContent(",
+            "remainingStepLabel(", "isUrgent(", "KarahaText(", "WidgetLook.of(settings)", "NoTimesContent(",
         ).forEach {
             assertTrue("NextPrayerWidget.kt enthaelt $it nicht mehr", text.contains(it))
         }

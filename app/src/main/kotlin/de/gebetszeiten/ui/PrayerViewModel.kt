@@ -3,7 +3,6 @@ package de.gebetszeiten.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.glance.appwidget.updateAll
 import de.gebetszeiten.alarm.PrayerAlarmScheduler
 import de.gebetszeiten.core.prayertimes.officialtimes.displayName
 import de.gebetszeiten.data.AppSettings
@@ -148,7 +147,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         }
         PrayerNotifier.updatePauseNotice(app, hasTimes = next != null)
         PrayerAlarmScheduler.scheduleNext(app, value)
-        NextPrayerWidget().updateAll(app)
+        NextPrayerWidget.refreshAll(app)
         // Zaehler hier, nicht in refreshOfficialNow: JEDER abgeschlossene
         // Durchlauf soll die Statuszeile neu lesen lassen — auch der nach
         // einem Ortswechsel (save() -> reschedule()), sonst bleibt dort

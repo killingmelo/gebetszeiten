@@ -3,7 +3,6 @@ package de.gebetszeiten.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.glance.appwidget.updateAll
 import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.notify.PrayerNotifier
 import de.gebetszeiten.prayer.PrayerProvider
@@ -44,7 +43,7 @@ class BootReceiver : BroadcastReceiver() {
                     photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
                 )
                 PrayerNotifier.updatePauseNotice(context, hasTimes = next != null)
-                NextPrayerWidget().updateAll(context)
+                NextPrayerWidget.refreshAll(context)
                 PrayerAlarmScheduler.scheduleNext(context, settings, zone)
             } finally {
                 pending.finish()

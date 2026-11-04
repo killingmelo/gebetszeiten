@@ -72,6 +72,10 @@ internal val DarkColors = schemeOf(Palette.Night, Palette.Day, true, NightContai
 private val LightHighContrast = schemeOf(Palette.DayHc, Palette.NightHc, false, DayHcContainers, Palette.DayHc.surface)
 private val DarkHighContrast = schemeOf(Palette.NightHc, Palette.DayHc, true, NightHcContainers, Palette.NightHc.surface)
 
+/** Material-Schema für ein Widget-Thema; Flächenstufen sind dort alle gleich. */
+internal fun widgetScheme(t: Tokens, dark: Boolean): ColorScheme =
+    schemeOf(t, t, dark, List(5) { t.surface }, t.surface)
+
 /** Die Farbrollen der aktiven Palette; alle Bildschirme lesen sie hier. */
 val LocalTokens = staticCompositionLocalOf { Palette.Day }
 

@@ -68,8 +68,11 @@ data class AppSettings(
     val themeMode: String = THEME_SYSTEM,
     /** Hijri date correction in days (moon-sighting differences), −2..+2. */
     val hijriOffsetDays: Int = 0,
-    /** Semi-transparent widget background. */
-    val widgetTransparent: Boolean = false,
+    /** Farbthema des Widgets (`de.gebetszeiten.widget.WidgetTheme.key`). */
+    val widgetTheme: String = "system",
+    /** Deckkraft des Widget-Hintergrunds in Prozent, 0 bis 100. Ersetzt den
+     *  frueheren Schalter „transparent“ (der entsprach 45 %). */
+    val widgetOpacity: Int = 100,
     /** Restzeit-Darstellung fuer ALLE Flaechen: OFF, PRECISION_STEPS
      *  (abgerundete Stufen, die die App selbst weiterstellt) oder
      *  PRECISION_EXACT (Live-Countdown, vom System gezeichnet).
@@ -212,7 +215,8 @@ data class AppSettings(
             showPrayerVirtue = true,
             themeMode = THEME_SYSTEM,
             hijriOffsetDays = 0,
-            widgetTransparent = false,
+            widgetTheme = "system",
+            widgetOpacity = 100,
             countdownMode = COUNTDOWN_OFF,
             recentPlaces = emptyList(),
             favorites = emptyList(),
@@ -351,7 +355,10 @@ class SettingsRepository(private val context: Context) {
         val REMINDER_STYLE = stringPreferencesKey("reminder_style")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HIJRI_OFFSET = intPreferencesKey("hijri_offset_days")
+        // Nur noch fuer die Uebernahme in WIDGET_OPACITY gelesen.
         val WIDGET_TRANSPARENT = booleanPreferencesKey("widget_transparent")
+        val WIDGET_OPACITY = intPreferencesKey("widget_opacity")
+        val WIDGET_THEME = stringPreferencesKey("widget_theme")
         val COUNTDOWN_MODE = stringPreferencesKey("countdown_mode")
         val COUNTDOWN_MIGRATED = booleanPreferencesKey("countdown_migrated")
 
@@ -471,7 +478,8 @@ class SettingsRepository(private val context: Context) {
             showPrayerVirtue = prefs[Keys.SHOW_PRAYER_VIRTUE] ?: AppSettings.DEFAULT.showPrayerVirtue,
             themeMode = prefs[Keys.THEME_MODE] ?: AppSettings.DEFAULT.themeMode,
             hijriOffsetDays = prefs[Keys.HIJRI_OFFSET] ?: AppSettings.DEFAULT.hijriOffsetDays,
-            widgetTransparent = prefs[Keys.WIDGET_TRANSPARENT] ?: AppSettings.DEFAULT.widgetTransparent,
+            widgetTheme = prefs[Keys.WIDGET_THEME] ?: AppSettings.DEFAULT.widgetTheme,
+            widgetOpacity = widgetOpacityFromPrefs(prefs[Keys.WIDGET_OPACITY], prefs[Keys.WIDGET_TRANSPARENT]),
             countdownMode = countdownMode,
             recentPlaces = parseRecentPlaces(prefs[Keys.RECENT_PLACES]),
             // Kein Vorgängerschlüssel, keine Migration: fehlt der Schlüssel,
@@ -516,7 +524,9 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.SHOW_PRAYER_VIRTUE] = value.showPrayerVirtue
             prefs[Keys.THEME_MODE] = value.themeMode
             prefs[Keys.HIJRI_OFFSET] = value.hijriOffsetDays
-            prefs[Keys.WIDGET_TRANSPARENT] = value.widgetTransparent
+            prefs[Keys.WIDGET_THEME] = value.widgetTheme
+            prefs[Keys.WIDGET_OPACITY] = value.widgetOpacity.coerceIn(0, 100)
+            prefs.remove(Keys.WIDGET_TRANSPARENT)
             prefs[Keys.COUNTDOWN_MODE] = value.countdownMode
             // Auch hier gesetzt, nicht nur beim Lesen: wer speichert, hat
             // gewaehlt. Ohne das Flag koennte eine Migration, die noch nicht
@@ -619,3 +629,10 @@ class SettingsRepository(private val context: Context) {
         return decision
     }
 }
+
+/**
+ * Deckkraft des Widget-Hintergrunds. Ohne gespeicherten Wert gilt der alte
+ * Schalter weiter: „transparent“ war 45 %, sonst voll deckend.
+ */
+internal fun widgetOpacityFromPrefs(stored: Int?, legacyTransparent: Boolean?): Int =
+    stored?.coerceIn(0, 100) ?: if (legacyTransparent == true) 45 else 100

@@ -182,7 +182,14 @@
     <string name="settings_amoled_hint">Dunkel = AMOLED-Schwarz (Pixel aus, maximal akkusparend).</string>
     <string name="settings_hijri">Hijri-Korrektur</string>
     <string name="settings_hijri_hint">Verschiebt das Hijri-Datum um ganze Tage (regionale Mondsichtung).</string>
-    <string name="settings_widget_transparent">Widget-Hintergrund transparent</string>
+    <string name="settings_widget_theme">Widget-Farben</string>
+    <string name="settings_widget_opacity">Widget-Hintergrund: %1$d %%</string>
+    <string name="settings_widget_opacity_hint">Bei wenig Deckkraft scheint das Hintergrundbild durch; dann kann die Schrift schlechter lesbar sein.</string>
+    <string name="widget_theme_system">Wie das Telefon</string>
+    <string name="widget_theme_paper">Papier</string>
+    <string name="widget_theme_night">Nacht</string>
+    <string name="widget_theme_forest">Wald</string>
+    <string name="widget_theme_sand">Sand</string>
 
     <!-- Countdown / Font selectors -->
     <string name="countdown_off">Aus</string>
