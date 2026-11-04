@@ -1,7 +1,10 @@
 package de.gebetszeiten.ui
 
 import androidx.annotation.StringRes
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,7 +42,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -91,6 +96,9 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val HM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -119,8 +127,16 @@ internal fun compactPhotoHeightDp(screenWidthDp: Int, screenHeightDp: Int): Int?
     return minOf(sixteenByNine, screenHeightDp / 4)
 }
 
-/** Abstand zwischen Bildunterschrift und Titel in dp. */
-internal fun heroGapDp(screenHeightDp: Int): Int = if (screenHeightDp < COMPACT_HEIGHT_DP) 12 else 20
+/**
+ * Höhe des Bilds, auf dem heute Titel, „noch …“ und „dann …“ stehen. Der Kopf
+ * liegt im Bild statt darunter; dadurch rückt die Zeitenliste hoch. Unten
+ * braucht der Text rund 175 dp, darüber bleibt das Bild frei.
+ */
+internal fun heroPhotoHeightDp(screenWidthDp: Int, screenHeightDp: Int): Int =
+    minOf(screenWidthDp - 2 * PHOTO_INSET_DP, (screenHeightDp * 0.3).toInt()).coerceIn(260, 300)
+
+/** Deckkraft des Grunds hinter dem Text im Bild; danach richtet sich die Kontrastprüfung. */
+private const val SCRIM_ALPHA = 0.86
 
 /**
  * Der gewählte Tag nach einem Tageswechsel: war „heute“ gewählt, rückt er auf
@@ -278,15 +294,20 @@ internal fun HeuteScreen(
                 cemaatOffsetMinutes = settings.cemaatOffsetMinutes,
             )
             Spacer(Modifier.height(8.dp))
-            Photo(hero, photoHeightDp, t)
-            // An anderen Tagen kein Titel und keine Restzeit: nur Foto und Liste.
             if (isToday) {
-                Spacer(Modifier.height(heroGapDp(screenHeightDp).dp))
                 // „noch …“ steht hier immer; die Restzeit-Einstellung gilt nur
                 // für Widget, Sperrbildschirm und Statusleiste.
-                Hero(hero = hero, showKaraha = settings.showKaraha, t = t)
+                PhotoHero(
+                    hero = hero,
+                    heightDp = heroPhotoHeightDp(configuration.screenWidthDp, screenHeightDp),
+                    showKaraha = settings.showKaraha,
+                    t = t,
+                )
+            } else {
+                // An anderen Tagen kein Titel und keine Restzeit: nur Foto und Liste.
+                Photo(hero, photoHeightDp, t)
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
             DayList(rows, onExplain, t)
             Text(
                 // Amtlich nennt die Stadt („… · Nürnberg“); der berechnete
@@ -425,9 +446,100 @@ private fun Photo(hero: HeroState, heightDp: Int?, t: Tokens) {
     )
 }
 
+/**
+ * Heute: das Foto des Abschnitts als Grund, unten darauf Titel, „noch …“ und
+ * „dann …“. Ein Verlauf in der Grundfarbe trägt den Text; die Restzeit nimmt
+ * ihre Farbe aus dem Bild ([heroTint]) und ist gegen genau diesen Verlauf auf
+ * 4,5:1 geprüft. Die Bildunterschrift steht klein darunter.
+ */
 @Composable
-private fun Hero(hero: HeroState, showKaraha: Boolean, t: Tokens) {
-    Column(Modifier.padding(horizontal = GUTTER)) {
+private fun PhotoHero(hero: HeroState, heightDp: Int, showKaraha: Boolean, t: Tokens) {
+    val key = hero.photo
+    val res = photoRes(key)
+    val tint = rememberHeroTint(res, t)
+    Box(
+        modifier = Modifier
+            .padding(horizontal = PHOTO_INSET)
+            .fillMaxWidth()
+            .height(heightDp.dp)
+            .clip(RoundedCornerShape(24.dp)),
+    ) {
+        Image(
+            painter = painterResource(res),
+            contentDescription = stringResource(photoDescriptionRes(key)),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.matchParentSize(),
+        )
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to t.canvas.copy(alpha = 0f),
+                        0.25f to t.canvas.copy(alpha = 0.35f),
+                        0.5f to t.canvas.copy(alpha = SCRIM_ALPHA.toFloat()),
+                        1f to t.canvas.copy(alpha = SCRIM_ALPHA.toFloat()),
+                    ),
+                ),
+        )
+        Hero(
+            hero = hero,
+            showKaraha = showKaraha,
+            t = t,
+            remainingColor = tint,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 20.dp, end = 20.dp, bottom = 18.dp),
+        )
+    }
+    Text(
+        text = stringResource(captionResFor(hero)),
+        style = MaterialTheme.typography.bodySmall,
+        color = t.stone,
+        modifier = Modifier.padding(start = GUTTER, end = GUTTER, top = 8.dp),
+    )
+}
+
+/** Bildpunkte je Foto, einmal verkleinert gelesen; die Fotos sind fest im APK. */
+private val heroPixelCache = ConcurrentHashMap<Int, IntArray>()
+
+/** Farbe der Restzeit für das Foto [res]; bis sie berechnet ist, Tinte. */
+@Composable
+private fun rememberHeroTint(res: Int, t: Tokens): Color {
+    val context = LocalContext.current
+    val canvas = t.canvas.toArgb()
+    val dark = luminance(canvas) < 0.5
+    val tint by produceState(t.ink, res, dark) {
+        value = withContext(Dispatchers.Default) {
+            val px = heroPixelCache.getOrPut(res) { samplePixels(context, res) }
+            if (px.isEmpty()) {
+                null
+            } else {
+                Color(heroTint(px, dark, background = blend(canvas, averageColor(px), SCRIM_ALPHA)))
+            }
+        } ?: t.ink
+    }
+    return tint
+}
+
+private fun samplePixels(context: android.content.Context, res: Int): IntArray {
+    val opts = BitmapFactory.Options().apply { inSampleSize = 16 }
+    val bmp = BitmapFactory.decodeResource(context.resources, res, opts) ?: return IntArray(0)
+    val px = IntArray(bmp.width * bmp.height)
+    bmp.getPixels(px, 0, bmp.width, 0, 0, bmp.width, bmp.height)
+    bmp.recycle()
+    return px
+}
+
+@Composable
+private fun Hero(
+    hero: HeroState,
+    showKaraha: Boolean,
+    t: Tokens,
+    remainingColor: Color = t.ink,
+    modifier: Modifier = Modifier.padding(horizontal = GUTTER),
+) {
+    Column(modifier) {
         Text(
             text = dmgTitle(stringResource(momentLabelRes(hero.moment))),
             style = MaterialTheme.typography.displayLarge,
@@ -446,7 +558,7 @@ private fun Hero(hero: HeroState, showKaraha: Boolean, t: Tokens) {
                     }
                 },
                 style = MaterialTheme.typography.headlineSmall,
-                color = t.ink,
+                color = remainingColor,
                 modifier = Modifier.padding(top = 4.dp),
             )
         }

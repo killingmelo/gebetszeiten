@@ -20,9 +20,13 @@ class HeuteLogicTest {
         assertNull(compactPhotoHeightDp(screenWidthDp = 412, screenHeightDp = 915))
     }
 
-    @Test fun `Abstand unter dem Foto schrumpft auf kleinem Bildschirm`() {
-        assertEquals(12, heroGapDp(screenHeightDp = 640))
-        assertEquals(20, heroGapDp(screenHeightDp = 915))
+    @Test fun `Bild mit Kopf bleibt flach genug fuer die Zeitenliste`() {
+        // 360×640: 30 % der Höhe wären 192, mindestens 260 für den Text im Bild.
+        assertEquals(260, heroPhotoHeightDp(screenWidthDp = 360, screenHeightDp = 640))
+        // 412×915: 30 % sind 274.
+        assertEquals(274, heroPhotoHeightDp(screenWidthDp = 412, screenHeightDp = 915))
+        // Großer Bildschirm: gedeckelt auf 300.
+        assertEquals(300, heroPhotoHeightDp(screenWidthDp = 480, screenHeightDp = 1200))
     }
 
     @Test fun `nach Mitternacht rueckt heute mit`() {

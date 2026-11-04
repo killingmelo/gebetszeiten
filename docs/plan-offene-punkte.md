@@ -96,7 +96,7 @@ Noch nichts umgesetzt. Weitere Punkte kommen dazu, danach wird in der hier festg
 3. Widget-Platzierung 5a (klein, sichtbarer Fehler). **Erledigt im Code:** Kurzform „ʿAṣr 15:38“ bei zu wenig Breite, `maxLines = 1`, Tests in `CompactFitTest`. Auf dem Gerät noch nicht angesehen.
 4. „?“-Icon (klein). **Erledigt für die Nebenzeilen**, auf dem Emulator geprüft. Hauptgebete offen.
 5. Kompass-Genauigkeit und Anleitung (mittel). **Erledigt:** „Kompass genau, keine Kalibrierung nötig“ bzw. „Kompass ungenau“ mit liegender Acht (Punkt läuft sie ab, steht bei „Animationen entfernen“ still). Vor der ersten Messung keine Aussage. „Genau“ auf dem Emulator geprüft; „ungenau“ lässt sich dort nicht auslösen, nur per Test abgesichert. Kein dauerhafter Kalibrieren-Knopf.
-6. „Heute“ mit Bild im Kopf (groß, Gestaltung; vorher Entwurf als Screenshot zur Freigabe)
+6. „Heute“ mit Bild im Kopf (groß, Gestaltung). **Erledigt, freigegeben:** Titel, Restzeit und „dann …“ im Bild auf einem Verlauf, Restzeit-Farbe aus dem Bild (`HeroTint.kt`, 4,5:1 geprüft), Bild 260 bis 300 dp. Auf 412×915 ist die Liste bis ʿAṣr ohne Scrollen sichtbar; Maġrib und ʿIšāʾ brauchen weiter Scrollen (Nebenzeilen kompakter wäre ein eigener Schritt).
 7. Widget-Themen und Formate 5b (groß, nutzt die Bildfarbe aus 6)
 8. Aḏān (groß, wartet auf die Lizenzfrage, läuft in eigener Sitzung)
 

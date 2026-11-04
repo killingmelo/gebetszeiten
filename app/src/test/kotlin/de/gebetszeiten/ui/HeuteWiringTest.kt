@@ -69,7 +69,8 @@ class HeuteWiringTest {
         val text = ohneKommentare(heute)
         listOf(
             "compactPhotoHeightDp(configuration.screenWidthDp, screenHeightDp)",
-            "heroGapDp(screenHeightDp)",
+            "heroPhotoHeightDp(configuration.screenWidthDp, screenHeightDp)",
+            "heroTint(",
             "rolledSelectedDate(",
             "prayerStatusRes(",
             "R.string.status_jamaa_derived",
