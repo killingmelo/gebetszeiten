@@ -278,3 +278,59 @@ Kontext: … وقال ﵇: "نوروا بالفجر يبارك لكم" **[Zitat]
   Android-Schriften sie nicht darstellen. ﷺ (U+FDFA) kommt einmal vor (Auwābīn).
 - Bitte besonders prüfen: „كراهة تحريم“ / „مكروه تحريما“ als „streng verpönt, dem Verbot nahe“ (Karāhat taḥrīm / Makrūh taḥrīman; eigene Kategorie unterhalb von ḥarām),
   „المفتى به“ als „Ansicht, nach der die Fatwā gegeben wird“, „الصاحبين“ als „die beiden Schüler [Abū Ḥanīfas]“.
+
+---
+
+## Ergänzung 05.11.2026: Rakʿa, Makrūh-Regeln, Sunna-Arten, Glossar
+
+Vom Herausgeber am 05.11.2026 freigegeben. Alle Zitate aus Werkzeug-Ergebnissen
+(`shamela_get_page`), Matn (über `ــ`) und Kommentar getrennt; Fußnoten nicht zitiert.
+Die Farḍ-Zahlen (2, 4, 4, 3, 4; Ǧumʿa 2) stehen ohne Zitat (Entscheidung des Herausgebers:
+unstrittig, in keinem hanafitischen Werk der Bibliothek als eigener Satz gefunden).
+
+| book_id | page_id | Druckseite | Stelle | in der App |
+|---|---|---|---|---|
+| 412 | 84 bis 85 | S. 75 f. | Kommentar (wiederholt den Matn in Anführung) | Šurūq, „Was in den Makrūh-Zeiten gilt“ 1 |
+| 412 | 85 | S. 76 | Matn | Šurūq, Makrūh 2 (Nafila, Karāhat at-taḥrīm) und 3 (nach Faǧr und ʿAṣr) |
+| 412 | 85 | S. 76 | Kommentar | Vergilben, „Das ʿAṣr desselben Tages“ |
+| 412 | 169 bis 170 | S. 145 f. | Matn | Rakʿa: Sunna muʾakkada (Faǧr, Ẓuhr, Maġrib, ʿIšāʾ) |
+| 412 | 169 | S. 145 | Kommentar | Ẓuhr: „zwei hinzuzufügen, so dass es vier werden“ |
+| 412 | 170 | S. 146 | Matn | Rakʿa: empfohlen (ʿAṣr, Maġrib, ʿIšāʾ) |
+| 412 | 170 | S. 146 | Kommentar | ʿAṣr: Wahl zwischen zwei und vier (al-Qudūrī) |
+| 412 | 171 | S. 147 | Kommentar | Auwābīn: zusätzlich oder darin enthalten |
+| 412 | 163 | S. 139 | Matn | ʿIšāʾ: Witr wāǧib, drei Rakʿa |
+| 412 | 27 | S. 31 | Kommentar | Faǧr: Unterschied muʾakkada und mandūb |
+| 21613 | 99 | Bd. 1, S. 104 | Radd al-muḥtār (Ibn ʿĀbidīn), Ḥalabī-Druck | Faǧr: Sünde beim Auslassen, „ohne Entschuldigung, beharrlich“ |
+| 21613 | 118 | Bd. 1, S. 123 | Radd al-muḥtār, nach al-Imdād | Faǧr: empfohlene Sunna, kein Tadel |
+
+Wortlaut der Matn-Stelle S. 76 im Druck: „كما ح عصر اليوم“ (Satzfehler); zitiert wird deshalb die
+Kommentarfassung „"كما صح عصر اليوم" بأدائه …“ derselben Seite.
+
+Zur Zählfrage (S. 147): Ibn al-Humām wählte in Fatḥ al-qadīr die Ansicht „darin enthalten“
+(laut aṭ-Ṭaḥṭāwī, Ḥāšiya, book_id 11993, page_id 420, S. 391); in der App steht nur Marāqī.
+Für die vier empfohlenen nach ʿIšāʾ sagt Marāqī nichts zur Zählung; die Kachel nennt sie ohne Summe.
+
+### Glossar: Koran und Ḥadīṯ (hadith-unlocked)
+
+| Begriff | Stelle | Grad laut Werkzeug |
+|---|---|---|
+| Faǧr, Ẓuhr | Koran 17:78 | |
+| Auwābīn | Koran 17:25; Muslim 748a | ṣaḥīḥ (Muslim) |
+| Tahaǧǧud | Koran 17:79 | |
+| Šurūq, Zawāl | Muslim 612d | ṣaḥīḥ (Muslim) |
+| Ḍuḥā | Muslim 720 | ṣaḥīḥ (Muslim) |
+| Isfār und Taġlīs | Tirmiḏī 154 | ḥasan ṣaḥīḥ (at-Tirmiḏī); Ibn ʿAbd al-Barr: „nicht stark“ |
+| Ǧamāʿa | Buḫārī 645 | muttafaq ʿalaih |
+| Witr | Abū Dāwūd 1416 | ṣaḥīḥ (al-Albānī), ḥasan (at-Tirmiḏī) |
+| Farḍ, Nafl | Buḫārī 6502 | ṣaḥīḥ |
+
+Wortsinn und Herkunft der Begriffe stehen ohne Quelle (Entscheidung vom 05.11.2026: reine
+Wortbedeutungen ja, Regeln nur als Zitat).
+
+### Diyanet und ʿAṣr
+
+Hinweis im ʿAṣr-Reiter: Diyanet setzt ʿAṣr nach „asr-ı evvel“ (einfacher Schatten, Abū Yūsuf
+und Muḥammad). Belegt über Sekundärquellen, die die Antwort des Fetva-Kurulu wiedergeben
+(sorularlaislamiyet.com/node/91604, islamveihsan.com „Asr-ı Evvel ve Asr-ı Sani“); die Seite
+kurul.diyanet.gov.tr selbst war nicht abrufbar. Zu ʿIšāʾ (roter oder weißer Šafaq) wurde keine
+verlässliche Aussage gefunden; die App sagt dazu nichts.

@@ -24,7 +24,7 @@ class VerstehenContentTest {
     fun zitateSindVollstaendig() {
         for (entry in VERSTEHEN) {
             assertTrue("${entry.section}: höchstens zwei Zitate", entry.quotes.size <= 2)
-            for (q in entry.quotes) {
+            for (q in entry.quotes + entry.groups.flatMap { it.quotes }) {
                 assertTrue("${entry.section}: arabic leer", q.arabic.isNotBlank())
                 assertTrue("${entry.section}: german leer", q.german.isNotBlank())
                 assertTrue("${entry.section}: source leer", q.source.isNotBlank())
@@ -39,9 +39,15 @@ class VerstehenContentTest {
             for (e in VERSTEHEN) {
                 add(e.title)
                 e.note?.let { add(it) }
-                for (q in e.quotes) {
+                for (q in e.quotes + e.groups.flatMap { it.quotes }) {
                     add(q.arabic); add(q.german); add(q.source)
                 }
+                e.groups.forEach { add(it.heading) }
+            }
+            for (g in GLOSSAR.values) { add(g.term); add(g.text) }
+            for (tab in VERSTEHEN_TABS) {
+                add(tab.beginLabel); add(tab.endLabel)
+                tab.rakaat.forEach { (a, b) -> add(a); add(b) }
             }
         }
         for (t in texts) {
@@ -61,7 +67,10 @@ class VerstehenContentTest {
         val asr = VERSTEHEN.single { it.section == Section.ASR }
         assertNotNull(asr.note)
         assertTrue(asr.note!!.contains("Diyanet"))
-        assertEquals("Die angezeigte ʿAṣr-Zeit ist die amtliche Zeit von Diyanet.", asr.note)
+        // Diyanet folgt der Ansicht der beiden Schüler (einfacher Schatten); das muss dastehen.
+        assertTrue(asr.note!!.startsWith("Die angezeigte ʿAṣr-Zeit ist die amtliche Zeit von Diyanet."))
+        assertTrue(asr.note!!.contains("Abū Yūsuf und Muḥammad"))
+        assertTrue(asr.note!!.contains("Abū Ḥanīfa"))
     }
 
     @Test
@@ -88,6 +97,42 @@ class VerstehenContentTest {
             assertNotNull("$section ohne Hinweis", note)
             assertTrue("$section: $note", note!!.contains(minuten))
             assertTrue("$section: $note", note.startsWith("Die angezeigte Spanne rechnet die App"))
+        }
+    }
+
+    @Test
+    fun angezeigteNafilaSpannenNennenIhreHerleitung() {
+        for (section in listOf(Section.DUHA, Section.AWWABIN, Section.TAHAJJUD)) {
+            val note = VERSTEHEN.single { it.section == section }.note
+            assertNotNull("$section ohne Hinweis", note)
+            assertTrue("$section: $note", note!!.startsWith("Die angezeigte"))
+            assertTrue("$section: $note", note.contains("rechnet die App"))
+        }
+    }
+
+    @Test
+    fun jederBegriffImReiterHatEinenGlossareintrag() {
+        for (tab in VERSTEHEN_TABS) {
+            assertTrue("${tab.label}: keine Begriffe", tab.glossary.isNotEmpty())
+            for (key in tab.glossary) assertNotNull("${tab.label}: $key fehlt im Glossar", GLOSSAR[key])
+        }
+        // Kein Eintrag, den kein Reiter zeigt.
+        val shown = VERSTEHEN_TABS.flatMap { it.glossary }.toSet()
+        assertEquals(GLOSSAR.keys, shown)
+    }
+
+    @Test
+    fun fardZahlenJeGebet() {
+        val fard = VERSTEHEN_TABS.associate { tab -> tab.label to tab.rakaat.firstOrNull { it.first == "Farḍ" }?.second }
+        assertEquals(mapOf("Faǧr" to "2", "Šurūq" to null, "Ẓuhr" to "4", "ʿAṣr" to "4", "Maġrib" to "3", "ʿIšāʾ" to "4"), fard)
+    }
+
+    @Test
+    fun rakaZitateStehenInDenGebetsreitern() {
+        // Jede Angabe der Rakʿa-Kachel muss im selben Reiter belegt sein.
+        for (section in listOf(Section.FAJR, Section.ZUHR, Section.ASR, Section.MAGHRIB, Section.ISHA)) {
+            val groups = VERSTEHEN.single { it.section == section }.groups
+            assertTrue("$section ohne Rakʿa-Zitate", groups.any { it.heading == "Rakʿa" && it.quotes.isNotEmpty() })
         }
     }
 
