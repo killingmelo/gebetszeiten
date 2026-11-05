@@ -1,0 +1,5 @@
+• Optionaler Aḏān zur Gebetszeit, je Gebet wählbar, mit eigenem Faǧr-Aḏān und eigener Datei.
+• Widgets mit sechs Farbthemen, vier Aufbauten und Deckkraft, jedes Widget einzeln einstellbar.
+• „Heute“ zeigt alle Gebete ohne Scrollen, Nebenzeiten klein darunter; jede Zeile erklärt sich mit „?“.
+• Qibla-Kompass sagt, ob er genau misst.
+• „Jetzt abrufen“ zeigt Laden und Ergebnis.

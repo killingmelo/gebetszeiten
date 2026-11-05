@@ -291,5 +291,7 @@
     <string name="about_photos">Fotos</string>
     <string name="about_fonts">Schriften</string>
     <string name="about_font_license">SIL Open Font License 1.1</string>
+    <string name="about_adhan">Aḏān</string>
+    <string name="about_adhan_source">Aufnahme von YouTube (youtube.com/watch?v=7FG4q8xyKvA), in der Lautstärke angeglichen</string>
 
 </resources>

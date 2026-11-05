@@ -935,6 +935,14 @@ private fun AboutSection() {
         )
         val license = stringResource(R.string.about_font_license)
         FONT_NAMES.forEach { CreditLine(it, license) }
+        // Quelle der mitgelieferten Aufnahme (res/raw/adhan_almakki.ogg); die
+        // Nutzung mit Quellenangabe hat der Herausgeber der App bestätigt.
+        Text(
+            stringResource(R.string.about_adhan),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        CreditLine(stringResource(R.string.adhan_voice_bundled), stringResource(R.string.about_adhan_source))
     }
 }
 

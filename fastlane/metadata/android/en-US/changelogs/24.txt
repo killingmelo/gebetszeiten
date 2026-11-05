@@ -1,0 +1,5 @@
+• Optional Aḏān at prayer time, per prayer, with its own Faǧr Aḏān and your own audio file.
+• Widgets with six colour themes, four layouts and opacity; each widget can be set up on its own.
+• "Today" shows every prayer without scrolling, side times small underneath; each row explains itself with "?".
+• The Qibla compass tells you whether it is accurate.
+• "Fetch now" shows progress and the result.

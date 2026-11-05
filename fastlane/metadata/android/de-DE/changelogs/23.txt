@@ -1,0 +1,5 @@
+• Neues Design: Foto zur Tageszeit, groß das laufende Gebet, die Restzeit und das nächste Gebet.
+• Neuer Bereich „Zeiten verstehen“ mit hanafitischen Zitaten, einer Sonnenuhr für deinen Ort und dem Wert jedes Gebets.
+• Monatsansicht mit Šurūq, neues Widget, neue Benachrichtigungen.
+• Der Qibla-Kompass berücksichtigt jetzt die Missweisung.
+• Besser lesbar, auch bei großer Schrift.
