@@ -311,7 +311,7 @@ class NextPrayerWidget : GlanceAppWidget() {
             val fits = listRowsThatFit(LocalSize.current.height.value, context.resources.configuration.fontScale)
             // Eine Nebenzeit-Zeile zählt wie eine weitere Zeile.
             val weights = model.dayPlan.map { if (it.sub != null) 2 else 1 }
-            val window = listWindowWeighted(weights, model.dayPlan.indexOfFirst { it.current }, fits)
+            val window = listWindowWeighted(weights, listAnchor(model.dayPlan.map { it.current }, model.dayPlan.map { it.faded }), fits)
             model.dayPlan.slice(window).forEach { entry ->
                 val color = when {
                     entry.current -> GlanceTheme.colors.primary

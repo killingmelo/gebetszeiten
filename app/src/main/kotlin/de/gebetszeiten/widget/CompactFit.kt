@@ -78,6 +78,18 @@ internal fun listWindowWeighted(weights: List<Int>, currentIndex: Int, fits: Int
     return start..end
 }
 
+/**
+ * Ab welchem Eintrag die „Tagesliste“ zeigt: das laufende Gebet, sonst das
+ * nächste noch kommende. Während Ḍuḥā oder Zawāl läuft kein Gebet; vorher
+ * begann die Liste dann oben mit dem längst vergangenen Faǧr.
+ */
+internal fun listAnchor(current: List<Boolean>, faded: List<Boolean>): Int {
+    val running = current.indexOf(true)
+    if (running >= 0) return running
+    val upcoming = faded.indexOf(false)
+    return if (upcoming >= 0) upcoming else (faded.size - 1).coerceAtLeast(0)
+}
+
 /** Wie viele Listenzeilen (13 sp) unter die Kopfzeile (16 sp) passen. */
 internal fun listRowsThatFit(heightDp: Float, fontScale: Float): Int {
     fun line(sp: Int) = sp * LINE_PER_SP * fontScale

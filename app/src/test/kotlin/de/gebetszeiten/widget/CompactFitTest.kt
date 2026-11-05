@@ -74,6 +74,15 @@ class CompactFitTest {
         assertEquals(0..5, listWindowWeighted(w, currentIndex = 2, fits = 20))
     }
 
+    @Test fun `Tagesliste beginnt beim laufenden, sonst beim naechsten Gebet`() {
+        // ʿAṣr läuft.
+        assertEquals(3, listAnchor(listOf(false, false, false, true, false, false), listOf(true, true, true, false, false, false)))
+        // Ḍuḥā: nichts läuft, Faǧr und Šurūq vorbei, also Ẓuhr.
+        assertEquals(2, listAnchor(listOf(false, false, false, false, false, false), listOf(true, true, false, false, false, false)))
+        // Nach ʿIšāʾ alles vorbei: der letzte Eintrag.
+        assertEquals(5, listAnchor(List(6) { false }, List(6) { true }))
+    }
+
     @Test fun `grosse Schrift kuerzt frueher`() {
         assertEquals(lang, compactNextLine(lang, kurz, 180f, 1.0f))
         assertEquals(kurz, compactNextLine(lang, kurz, 180f, 1.4f))
