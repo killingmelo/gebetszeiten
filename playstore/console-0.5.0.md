@@ -27,7 +27,7 @@ Keine neuen Berechtigungen, keine neuen Daten. Die Minuten-Verschiebung bleibt a
 
 ## 3. Ausrollen
 
-1. Beide AABs in den **internen Test** hochladen (Telefon und Uhr).
+1. Beide AABs in den **internen Test** hochladen (Telefon und Uhr), von Hand oder mit `python playstore/play_upload.py --ja`, sobald das Dienstkonto eingerichtet ist (`playstore/CHECKLISTE-upload.md`).
 2. **Pre-Launch-Bericht** abwarten und lesen.
 3. Auf dem eigenen Telefon aus dem Test-Track installieren (nie den lokalen Release-Build: die Play-Signatur weicht ab). Prüfen: Restzeit-Zahl in der Statusleiste, wenn „Restzeit“ und „Dauerhafte Anzeige“ an sind; eine Verschiebung einstellen und auf der Uhr nachsehen.
 4. Produktion gestaffelt (z. B. 20 %), ein bis zwei Tage Android Vitals beobachten, dann 100 %.
