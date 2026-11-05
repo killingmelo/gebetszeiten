@@ -451,7 +451,8 @@ private fun DateLine(
             Text(
                 text = date.format(DateTimeFormatter.ofPattern(pattern, Locale.GERMAN)).uppercase(Locale.GERMAN),
                 style = MaterialTheme.typography.labelSmall,
-                color = t.stone,
+                // Kleine Köpfe in Akzentfarbe (Weiß und Akzent, 05.11.2026).
+                color = t.accent,
             )
             Text(
                 text = hijriText(date, hijriOffsetDays),

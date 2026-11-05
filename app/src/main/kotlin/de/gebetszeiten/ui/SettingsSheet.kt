@@ -106,7 +106,8 @@ private fun SettingsSection(
             Text(
                 title.uppercase(Locale.GERMAN),
                 style = MaterialTheme.typography.labelSmall,
-                color = t.stone,
+                // Abschnittsköpfe in Akzentfarbe (Weiß und Akzent, 05.11.2026).
+                color = t.accent,
                 modifier = Modifier.semantics { heading() },
             )
             content()

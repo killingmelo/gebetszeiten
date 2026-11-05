@@ -101,7 +101,7 @@ internal fun Onboarding(
                     OnboardingStep.values().size,
                 ).uppercase(Locale.GERMAN),
                 style = MaterialTheme.typography.labelSmall,
-                color = t.stone,
+                color = t.accent,
             )
             Text(copy.headline, style = MaterialTheme.typography.headlineSmall, color = t.ink)
             Text(

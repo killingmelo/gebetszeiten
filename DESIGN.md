@@ -8,12 +8,13 @@ Dieses Dokument ist Ouras Stilreferenz (unten unverändert) mit folgenden Abweic
   - Grotesk (Fließtext, Bedienelemente): Inter, Regular (400), Medium (500), SemiBold (600).
   - Arabisch: Noto Naskh Arabic, Regular (400).
   - Ressourcen: `R.font.serif_light`, `serif_regular`, `sans_regular`, `sans_medium`, `sans_semibold`, `naskh_regular`.
+- **Taggrund ist Weiß (seit 05.11.2026).** Ouras Creme (`canvas` #f7f1e8) wird in der App nicht mehr als Grund verwendet; Karten heben sich über die Haarlinie ab. Creme bleibt nur im App-Symbol und im Widget-Thema „Papier“. Kleine Abschnittsköpfe in Großbuchstaben (Datumszeile, Einstellungen, Ersteinrichtung, „Verstehen“) stehen in Waldgrün, Fließtext und Beschriftungen bleiben Stein.
 - **Nachtgrund ist #000000.** Nachts: Grund #000000, Fläche #19191c, Text #f7f1e8, Nebentext #a8a5a0, Haarlinie #232326.
 - **Palette, wie im Code verwendet** (`ui/theme/Color.kt`, geprüft von `PaletteContrastTest`: Tag/Nacht mindestens 4,5:1, Hochkontrast mindestens 7:1, jeweils für Text, Nebentext, Akzent, Gold und Fehler auf Grund und Fläche). Wo die Spec den Test nicht bestand, ist der Wert minimal abgedunkelt bzw. aufgehellt (Spalten mit \*).
 
   | Token | Tag | Nacht | Hochkontrast Tag | Hochkontrast Nacht |
   |---|---|---|---|---|
-  | canvas | #f7f1e8 | #000000 | #ffffff | #000000 |
+  | canvas | #ffffff (bis 05.11.2026 #f7f1e8) | #000000 | #ffffff | #000000 |
   | surface | #ffffff | #19191c | #ffffff | #000000 |
   | ink | #1c1b1a | #f7f1e8 | #000000 | #ffffff |
   | stone | #4a4741 | #a8a5a0 | #33312d | #d0ccc5 |

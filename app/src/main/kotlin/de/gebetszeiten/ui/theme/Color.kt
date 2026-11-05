@@ -35,7 +35,9 @@ val Tokens.currentRow: Color get() = lerp(surface, accent, currentRowTint)
  */
 object Palette {
     val Day = Tokens(
-        canvas = Color(0xFFF7F1E8),
+        // Weiß statt Creme (#f7f1e8), Entscheidung vom 05.11.2026 nach der
+        // Rückmeldung des Testers; Karten heben sich durch die Haarlinie ab.
+        canvas = Color(0xFFFFFFFF),
         surface = Color(0xFFFFFFFF),
         ink = Color(0xFF1C1B1A),
         stone = Color(0xFF4A4741),
