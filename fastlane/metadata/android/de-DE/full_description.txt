@@ -24,11 +24,12 @@ Optional zeigt die App die Restzeit bis zum nächsten Gebet als Symbol in der St
 
 FUNKTIONEN
 
-* Heute auf einen Blick: laufendes Gebet, Restzeit, nächstes Gebet und alle Zeiten des Tages ohne Scrollen; jede Zeile erklärt sich mit einem Tipp
-* Zeiten verstehen: zu jeder Gebetszeit ein Foto, Zitate hanafitischer Gelehrter auf Arabisch und Deutsch und eine Sonnenuhr für den eigenen Ort
+* Heute auf einen Blick: laufendes Gebet mit Restzeit und Fortschritt, nächstes Gebet und alle Zeiten des Tages ohne Scrollen; Tage per Wischen wechseln, jede Zeile erklärt sich mit einem Tipp
+* Zeiten verstehen: je Gebet ein Reiter mit Beginn, Ende und Rakʿa, Zitaten hanafitischer Gelehrter auf Arabisch und Deutsch, Begriffen erklärt und einer Sonnenuhr für den eigenen Ort
 * Monatsübersicht und Qibla-Kompass, der sagt, ob er gerade genau misst
 * Makrūh-Zeiten und freiwillige Gebete (Ḍuḥā, Auwābīn, Tahaǧǧud), wenn gewünscht
 * Gemeinschaftsgebet (Ǧamāʿa) am Morgen, Vorlauf einstellbar
+* Jede Zeit um bis zu 60 Minuten verschiebbar, wenn deine Moschee anders betet; überall gekennzeichnet, auch auf der Uhr
 * Favoriten-Orte für den schnellen Wechsel
 * Islamisches Datum, einstellbare Schriftgröße, hoher Kontrast, Nachtansicht in reinem Schwarz
 * Stille Erinnerungen je Gebet; Ton und Vibration nur, wenn du sie einschaltest

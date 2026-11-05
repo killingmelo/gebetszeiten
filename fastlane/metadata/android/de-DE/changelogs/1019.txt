@@ -1,0 +1,1 @@
+• Übernimmt die Minuten-Verschiebung vom Telefon und kennzeichnet sie: „+5“ an der Uhrzeit, „von dir verschoben“ in der Ortszeile.

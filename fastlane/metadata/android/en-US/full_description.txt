@@ -24,11 +24,12 @@ Optionally the app shows the time left until the next prayer as a status bar ico
 
 FEATURES
 
-* Today at a glance: current prayer, time left, next prayer and every time of the day without scrolling; each row explains itself with a tap
-* Understanding the times: a photo for each prayer time, quotations from Hanafi scholars in Arabic and German, and a sundial for your own place
+* Today at a glance: current prayer with time left and progress, next prayer and every time of the day without scrolling; swipe to change the day, each row explains itself with a tap
+* Understanding the times: a tab per prayer with start, end and Rakʿa, quotations from Hanafi scholars in Arabic and German, terms explained and a sundial for your own place
 * Month view and Qibla compass that tells you whether it is accurate
 * Makrūh times and voluntary prayers (Ḍuḥā, Auwābīn, Tahaǧǧud), if you want them
 * Congregational prayer (Ǧamāʿa) in the morning, lead time adjustable
+* Shift any time by up to 60 minutes if your mosque prays at a different time; always marked, also on the watch
 * Favourite places for switching quickly
 * Hijri date, adjustable text size, high contrast, night view in pure black
 * Silent reminders per prayer; sound and vibration only if you switch them on

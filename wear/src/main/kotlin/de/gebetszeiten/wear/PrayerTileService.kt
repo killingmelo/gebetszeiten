@@ -37,6 +37,9 @@ private const val NO_TIMES_FRESHNESS_MILLIS = 30 * 60 * 1000L
  * computation covers the whole rest of the day with zero app wake-ups. A
  * freshness interval lets the system re-request once the entries are used up.
  */
+// ResolvableFuture ist der Weg, den die Tiles-Beispiele von Google selbst gehen;
+// Lint meldet ihn als „RestrictedApi“, weil er aus androidx.concurrent stammt. Gewollt.
+@android.annotation.SuppressLint("RestrictedApi")
 class PrayerTileService : TileService() {
 
     private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")

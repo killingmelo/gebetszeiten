@@ -1,0 +1,5 @@
+• "Today" reordered: progress of the current period, the five prayers in one card, the current prayer highlighted; Faǧr shows its end at Šurūq. Swipe to change the day.
+• "Understanding" with a tab per prayer: start, end, Rakʿa, quotations, what applies at Makrūh times, terms explained.
+• Each prayer time can be shifted by minutes, always marked, also on the watch.
+• The time left shows in the status bar again.
+• Light theme is now white.

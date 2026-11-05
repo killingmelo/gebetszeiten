@@ -1,0 +1,5 @@
+• „Heute“ neu geordnet: Fortschritt des laufenden Abschnitts, die fünf Gebete in einer Karte, das laufende Gebet hervorgehoben; Faǧr zeigt sein Ende bei Šurūq. Tage per Wischen wechseln.
+• „Verstehen“ mit Reitern je Gebet: Beginn, Ende, Rakʿa, Zitate, was in den Makrūh-Zeiten gilt, Begriffe erklärt.
+• Zeiten je Gebet um Minuten verschiebbar, überall gekennzeichnet, auch auf der Uhr.
+• Restzeit erscheint wieder in der Statusleiste.
+• Heller Grund jetzt Weiß.
