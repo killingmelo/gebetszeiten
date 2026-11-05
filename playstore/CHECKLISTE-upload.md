@@ -47,6 +47,8 @@ python playstore/play_upload.py --ja
 ```
 Lädt hoch und übernimmt: Telefon in `internal`, Uhr in `wear:internal`, beide als Entwurf. Danach in der Console unter „Test und Release“ > „Interner Test“ (Telefon und Wear OS) prüfen und freigeben.
 
+**Tracks (Stand 05.11.2026):** Der offene Test (`beta`, `wear:beta`) ist noch nicht freigeschaltet, Google antwortet „Precondition check failed“. Höchste Test-Ebene fürs Telefon ist der geschlossene Test: `--track alpha`. Für die Uhr gibt es keinen geschlossenen Track (`wear:alpha` existiert nicht), sie bleibt in `wear:internal`. Liegt ein Bundle schon bei Google (etwa erst intern hochgeladen), weist das Skript es nur dem neuen Track zu.
+
 Zusätze: `--eintrag` (Titel, Kurz- und Vollbeschreibung), `--bilder` (ersetzt alle Screenshots je Sprache durch die aus `fastlane/…/images/`), `--nur-telefon`, `--nur-uhr`, `--track`, `--uhr-track`. Verlangt Google beim Übernehmen `changesNotSentForReview`, mit `--nicht-zur-pruefung` wiederholen.
 
 ## Nicht über die API

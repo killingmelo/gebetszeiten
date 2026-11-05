@@ -199,12 +199,18 @@ def hochladen(svc, plan: dict, args) -> None:
             tracks_zeigen(edits, edit_id)
             return
 
+        vorhanden = {b["versionCode"] for b in
+                     edits.bundles().list(packageName=PAKET, editId=edit_id).execute().get("bundles", [])}
         for g, d in plan["geraete"].items():
-            print(f"{g}: lade {d['aab'].name} hoch …", flush=True)
-            media = MediaFileUpload(str(d["aab"]), mimetype="application/octet-stream", resumable=True)
-            code = edits.bundles().upload(packageName=PAKET, editId=edit_id, media_body=media).execute()["versionCode"]
-            if code != d["code"]:
-                raise Fehler(f"{g}: Bundle hat versionCode {code}, Gradle sagt {d['code']}")
+            if d["code"] in vorhanden:
+                # Schon bei Google (z. B. erst intern, jetzt höherer Track): nur zuweisen.
+                print(f"{g}: {d['code']} liegt schon bei Google, wird nur dem Track zugewiesen")
+            else:
+                print(f"{g}: lade {d['aab'].name} hoch …", flush=True)
+                media = MediaFileUpload(str(d["aab"]), mimetype="application/octet-stream", resumable=True)
+                code = edits.bundles().upload(packageName=PAKET, editId=edit_id, media_body=media).execute()["versionCode"]
+                if code != d["code"]:
+                    raise Fehler(f"{g}: Bundle hat versionCode {code}, Gradle sagt {d['code']}")
             edits.tracks().update(packageName=PAKET, editId=edit_id, track=d["track"], body={
                 "track": d["track"],
                 "releases": [{
@@ -241,7 +247,8 @@ def hochladen(svc, plan: dict, args) -> None:
         edits.commit(packageName=PAKET, editId=edit_id,
                      changesNotSentForReview=args.nicht_zur_pruefung or None).execute()
         uebernommen = True
-        print("Übernommen. Freigeben in der Play Console: Test und Release > Interner Test.")
+        ziele = ", ".join(sorted({d["track"] for d in plan["geraete"].values()}))
+        print(f"Übernommen als Entwurf in {ziele}. Freigeben in der Play Console unter Test und Release.")
     finally:
         if not uebernommen:
             try:
