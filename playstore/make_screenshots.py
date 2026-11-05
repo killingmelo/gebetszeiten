@@ -47,21 +47,25 @@ ZIEL = REPO / "fastlane" / "metadata" / "android" / "de-DE" / "images"
 MAX_VERHAELTNIS = 2.0
 BREITE, HOEHE = 1080, 1920
 
-# (Rohdatei, Überschrift, Zeile). Reihenfolge = Tageslauf = Panorama von links.
+# (Rohdatei, Gebet klein darüber, Aussage groß, Zeile). Reihenfolge = Tageslauf =
+# Panorama von links. Seit 05.11.2026 (Rückmeldung des Testers) trägt die Aussage
+# zur Funktion die Überschrift, der Gebetsname steht klein darüber.
 SHOTS = [
-    ("01_fajr.png", "Faǧr", "Welches Gebet gerade gilt und wie lange noch"),
-    ("02_zuhr.png", "Ẓuhr", "Warum die Zeit dann beginnt"),
-    ("03_asr.png", "ʿAṣr", "Auf dem Startbildschirm und am Handgelenk"),
-    ("04_maghrib.png", "Maġrib", "Amtliche Diyanet-Zeiten, gegengeprüft"),
-    ("05_isha.png", "ʿIšāʾ", "Keine Werbung, kein Konto, akkusparend"),
+    ("01_fajr.png", "Faǧr", "Der Tag beginnt\nmit dem ersten Licht.", "Welches Gebet gilt und wie lange noch"),
+    ("02_zuhr.png", "Ẓuhr", "Jede Zeit erklärt.", "Beginn, Ende, Rakʿa und Quellen"),
+    ("03_asr.png", "ʿAṣr", "Immer im Blick.", "Widgets, Statusleiste und Uhr"),
+    ("04_maghrib.png", "Maġrib", "Der ganze Monat.", "Amtliche Diyanet-Zeiten, gegengeprüft"),
+    ("05_isha.png", "ʿIšāʾ", "Ruhig, auch\nin der Nacht.", "Reines Schwarz. Keine Werbung, kein Konto."),
 ]
-UHR_EINSATZ = "03_asr_uhr.png"
+# Kein Uhr-Einsatz mehr: die vorhandene Aufnahme stammt vom 30.10. und zeigte
+# andere Zeiten als das Telefon daneben. Wieder einsetzen mit neuer Aufnahme.
+UHR_EINSATZ = None
 NACHT = 4  # Index des letzten, dunklen Bildes
 
 # Zeile in Tinte statt Stein (#4A4741): vor Ocker und Ton reichte Stein nicht
 # fuer 4,5:1 (Bild 4, gemessen 2,4:1 am Zeilenende).
-HELL = {"titel": INK, "zeile": INK, "rahmen": (0x1C, 0x1B, 0x1A)}
-DUNKEL = {"titel": (0xF7, 0xF1, 0xE8), "zeile": (0xD8, 0xD2, 0xC8), "rahmen": (0x2A, 0x2A, 0x2D)}
+HELL = {"titel": INK, "zeile": INK, "kopf": INK, "rahmen": (0x1C, 0x1B, 0x1A)}
+DUNKEL = {"titel": (0xF7, 0xF1, 0xE8), "zeile": (0xD8, 0xD2, 0xC8), "kopf": (0xD8, 0xD2, 0xC8), "rahmen": (0x2A, 0x2A, 0x2D)}
 
 # Telefon schmal und tief genug, dass die Sonnenbahn im Streifen darueber
 # sichtbar bleibt; die oberen gut drei Viertel des Bildschirms bleiben zu sehen.
@@ -69,14 +73,30 @@ TELEFON_BREITE = 700
 RAHMEN = 12
 TELEFON_OBEN = 700
 ECKE = 40
-# Horizont und flache Sonnenbahn zwischen Zeile (y = 250) und Telefon (y = 700).
-TITEL_Y, ZEILE_Y = 170, 250
+# Kopf (Gebet), Aussage (bis zwei Zeilen) und Zeile über dem Horizont; die
+# flache Sonnenbahn läuft darunter bis zum Telefon (y = 700).
+KOPF_Y, TITEL_Y, ZEILE_Y = 110, 200, 380
+TITEL_PX, TITEL_ABSTAND, ZEILE_PX, KOPF_PX = 84, 92, 38, 30
 HORIZONT = 640 / HOEHE
-BAHN = 0.357
+# Flacher als bis 05.11.2026 (0,357): die Textzone reicht jetzt tiefer, die Sonne
+# im Scheitel soll darunter bleiben statt hinter der Zeile zu stehen.
+BAHN = 0.18
 
 
 STRICHE = (chr(0x2014), chr(0x2013))
-SCHRIFTDATEI = {"serif": "serif_light.ttf", "sans": "sans_regular.ttf"}
+SCHRIFTDATEI = {"serif": "serif_regular.ttf", "sans": "sans_regular.ttf", "kopf": "sans_semibold.ttf"}
+
+
+def zeilen(index: int) -> list:
+    """(Text, Schrift, Grundlinie, Farbschlüssel) aller Textzeilen eines Bildes."""
+    _, kopf, titel, zeile = SHOTS[index]
+    teile = titel.split("\n")
+    # Einzeilige Aussage etwas tiefer, damit der Abstand zur Zeile gleich wirkt.
+    oben = TITEL_Y + (TITEL_ABSTAND // 2 if len(teile) == 1 else 0)
+    out = [(kopf.upper(), font("kopf", KOPF_PX), KOPF_Y, "kopf")]
+    out += [(t, font("serif", TITEL_PX), oben + i * TITEL_ABSTAND, "titel") for i, t in enumerate(teile)]
+    out.append((zeile, font("sans", ZEILE_PX), ZEILE_Y, "zeile"))
+    return out
 
 
 def fehlende_zeichen(text: str, role: str) -> set:
@@ -107,9 +127,8 @@ def pruefe_kontrast(index: int, panel: Image.Image) -> None:
     """Ueberschrift und Zeile gegen den Himmel dahinter, ueber ihre ganze Breite."""
     farben = DUNKEL if index == NACHT else HELL
     d = ImageDraw.Draw(panel)
-    _, titel, zeile = SHOTS[index]
-    for text, schrift, y, farbe in ((titel, font("serif", 120), TITEL_Y, farben["titel"]),
-                                    (zeile, font("sans", 40), ZEILE_Y, farben["zeile"])):
+    for text, schrift, y, rolle in zeilen(index):
+        farbe = farben[rolle]
         x0, y0, x1, y1 = d.textbbox((BREITE / 2, y), text, font=schrift, anchor="ms")
         for x in range(int(x0), int(x1), 6):
             for yy in (int(y0) + 2, int((y0 + y1) / 2), int(y1) - 2):
@@ -124,11 +143,12 @@ def pruefe_texte() -> None:
     # keiner der beiden Schriften. Ein Bild-Vergleich (getmask) taugt dafuer
     # nicht, weil Pillow fuer fehlende Zeichen ein Ersatzkaestchen malt.
     assert fehlende_zeichen(chr(0x0635), "serif") == {chr(0x0635)}, "Glyphenpruefung erkennt nichts"
-    for _, titel, zeile in SHOTS:
-        for text in (titel, zeile):
+    for _, kopf, titel, zeile in SHOTS:
+        for text in (kopf, titel, zeile):
             assert not any(s in text for s in STRICHE), f"Strich in „{text}“"
-        assert not fehlende_zeichen(titel, "serif"), f"Serife: {fehlende_zeichen(titel, 'serif')}"
+        assert not fehlende_zeichen(titel.replace("\n", " "), "serif"), f"Serife: {fehlende_zeichen(titel, 'serif')}"
         assert not fehlende_zeichen(zeile, "sans"), f"Grotesk: {fehlende_zeichen(zeile, 'sans')}"
+        assert not fehlende_zeichen(kopf.upper(), "kopf"), f"Kopf: {fehlende_zeichen(kopf.upper(), 'kopf')}"
 
 
 
@@ -140,15 +160,22 @@ def _rund(im: Image.Image, radius: int) -> Image.Image:
     return out
 
 
-def compose(raw: Image.Image, panel: Image.Image, title: str, line: str,
+def compose(raw: Image.Image, panel: Image.Image, index: int,
             inset: Image.Image | None = None, dunkel: bool = False) -> Image.Image:
-    """Ein Screenshot 1080 x 1920: Himmel, Überschrift, Zeile, Aufnahme im Rahmen."""
+    """Ein Screenshot 1080 x 1920: Himmel, Gebet, Aussage, Zeile, Aufnahme im Rahmen."""
     farben = DUNKEL if dunkel else HELL
     im = panel.convert("RGBA")
     d = ImageDraw.Draw(im)
-    serif, sans = font("serif", 120), font("sans", 40)
-    d.text((BREITE / 2, TITEL_Y), title, font=serif, fill=farben["titel"], anchor="ms")
-    d.text((BREITE / 2, ZEILE_Y), line, font=sans, fill=farben["zeile"], anchor="ms")
+    for text, schrift, y, rolle in zeilen(index):
+        # Der Gebetsname leicht gesperrt, wie die kleinen Köpfe in der App.
+        if rolle == "kopf":
+            breite = sum(d.textlength(c, font=schrift) for c in text) + 4 * (len(text) - 1)
+            x = BREITE / 2 - breite / 2
+            for c in text:
+                d.text((x, y), c, font=schrift, fill=farben[rolle], anchor="ls")
+                x += d.textlength(c, font=schrift) + 4
+        else:
+            d.text((BREITE / 2, y), text, font=schrift, fill=farben[rolle], anchor="ms")
 
     h = round(raw.size[1] * TELEFON_BREITE / raw.size[0])
     bild = raw.convert("RGB").resize((TELEFON_BREITE, h), Image.LANCZOS)
@@ -174,15 +201,15 @@ def compose(raw: Image.Image, panel: Image.Image, title: str, line: str,
 
 def telefon() -> list:
     quelle = ROH / "phoneScreenshots"
-    fehlend = [n for n, _, _ in SHOTS if not (quelle / n).is_file()]
+    fehlend = [n for n, _, _, _ in SHOTS if not (quelle / n).is_file()]
     assert not fehlend, f"Roh-Aufnahmen fehlen: {fehlend}"
     pano = render_panorama(BREITE * len(SHOTS), HOEHE, horizon=HORIZONT, bahn=BAHN)
     bilder = []
-    for i, (name, titel, zeile) in enumerate(SHOTS):
+    for i, (name, _, _, _) in enumerate(SHOTS):
         panel = pano.crop((i * BREITE, 0, (i + 1) * BREITE, HOEHE))
         pruefe_kontrast(i, panel)
-        einsatz = Image.open(quelle / UHR_EINSATZ) if name == "03_asr.png" else None
-        bild = compose(Image.open(quelle / name), panel, titel, zeile, einsatz, dunkel=(i == NACHT))
+        einsatz = Image.open(quelle / UHR_EINSATZ) if UHR_EINSATZ and name == "03_asr.png" else None
+        bild = compose(Image.open(quelle / name), panel, i, einsatz, dunkel=(i == NACHT))
         assert bild.size == (BREITE, HOEHE)
         assert bild.size[1] / bild.size[0] <= MAX_VERHAELTNIS, f"{name}: zu hoch für Play"
         bilder.append((name, bild))

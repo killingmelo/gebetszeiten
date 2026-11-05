@@ -42,7 +42,9 @@ SONNEN = [  # (t auf der Bahn, Farbe, Radius in Anteilen der Hoehe)
 ]
 # Sterne unterhalb der Ueberschrift-Zone (die Zeile im fuenften Screenshot
 # endet bei etwa 0,14 der Hoehe), sonst sitzt einer mitten im Text.
-STERNE = [(0.85, 0.20, 1.6), (0.93, 0.26, 1.2), (0.965, 0.18, 1.4), (0.89, 0.31, 1.0), (0.985, 0.29, 1.1)]
+# Seit 05.11.2026 ist die Textzone hoeher (Gebet, zweizeilige Aussage, Zeile bis etwa
+# 0,21 der Hoehe); die Sterne stehen darunter, aber noch ueber dem Horizont (0,33).
+STERNE = [(0.85, 0.25, 1.6), (0.93, 0.29, 1.2), (0.965, 0.235, 1.4), (0.89, 0.315, 1.0), (0.985, 0.27, 1.1)]
 
 
 def _hex(h: str) -> tuple:
@@ -117,7 +119,8 @@ def render_panorama(width: int, height: int, horizon: float = 0.736, sun: bool =
 
 def font(role: str, px: int) -> ImageFont.FreeTypeFont:
     """Die gebuendelten Schriften der App: Serife fuer Ueberschriften, Grotesk fuer Zeilen."""
-    datei = {"serif": "serif_light.ttf", "sans": "sans_regular.ttf"}[role]
+    # Serife Regular statt Light (05.11.2026: Light war im Store zu dünn), Kopfzeile Semibold.
+    datei = {"serif": "serif_regular.ttf", "sans": "sans_regular.ttf", "kopf": "sans_semibold.ttf"}[role]
     return ImageFont.truetype(str(FONTS / datei), px)
 
 
