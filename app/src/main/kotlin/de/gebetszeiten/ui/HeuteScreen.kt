@@ -2,7 +2,14 @@ package de.gebetszeiten.ui
 
 import androidx.annotation.StringRes
 import android.graphics.BitmapFactory
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
@@ -129,6 +136,19 @@ private const val SCRIM_ALPHA = 0.86
 internal fun rolledSelectedDate(selected: LocalDate, previousToday: LocalDate, today: LocalDate): LocalDate =
     if (selected == previousToday) today else selected
 
+/** Tage, um die ein waagrechtes Wischen weiterblättert: nach links (dx < 0)
+ *  ist morgen, nach rechts gestern; unterhalb der Schwelle bleibt der Tag. */
+internal fun swipeDayDelta(totalDx: Float, thresholdPx: Float): Long = when {
+    totalDx <= -thresholdPx -> 1L
+    totalDx >= thresholdPx -> -1L
+    else -> 0L
+}
+
+/** Ab dieser Strecke wechselt das Wischen den Tag. */
+private val SWIPE_DAY_THRESHOLD = 72.dp
+/** Wie stark der Inhalt dem Finger folgt (nur Andeutung, kein Blättern). */
+private const val SWIPE_FOLLOW = 0.35f
+
 /** TalkBack-Zusatz einer Gebetszeile. Šurūq ist kein Gebet und heißt „jetzt“. */
 @StringRes
 internal fun prayerStatusRes(prayer: Prayer, current: Boolean, faded: Boolean): Int? = when {
@@ -245,10 +265,34 @@ internal fun HeuteScreen(
     // auch wenn sich `dayInfo` dabei nicht ändert.
     val now = remember(tick, selectedDate) { ZonedDateTime.now(zone) }
 
+    // Wischen nach links/rechts blättert wie die Pfeile; der Inhalt folgt dem
+    // Finger nur angedeutet und federt zurück. Senkrechtes Scrollen bleibt,
+    // weil die waagrechte Erkennung erst nach der Berührungsschwelle greift.
+    val swipeThresholdPx = with(LocalDensity.current) { SWIPE_DAY_THRESHOLD.toPx() }
+    val dragX = remember { Animatable(0f) }
+    val swipeScope = rememberCoroutineScope()
+
     Column(
         modifier = Modifier
             .padding(inner)
             .fillMaxSize()
+            .pointerInput(Unit) {
+                var total = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { total = 0f },
+                    onDragEnd = {
+                        val delta = swipeDayDelta(total, swipeThresholdPx)
+                        if (delta != 0L) selectedDate = selectedDate.plusDays(delta)
+                        swipeScope.launch { dragX.animateTo(0f) }
+                    },
+                    onDragCancel = { swipeScope.launch { dragX.animateTo(0f) } },
+                ) { change, dx ->
+                    change.consume()
+                    total += dx
+                    swipeScope.launch { dragX.snapTo(total * SWIPE_FOLLOW) }
+                }
+            }
+            .graphicsLayer { translationX = dragX.value }
             .verticalScroll(rememberScrollState()),
     ) {
         // `tick` als Anlass zum Nachsehen: kommt der Nutzer aus den

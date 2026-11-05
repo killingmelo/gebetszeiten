@@ -1,0 +1,299 @@
+<title>Tageshimmel Probebau</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+Display:wght@300;400&display=swap">
+<style>
+/* Layout: Kopf, Steuerleiste, zwei Telefone nebeneinander (schmal: untereinander), Messwerte unter jedem Telefon. Farben aus DESIGN.md der App. */
+:root{
+  --canvas:#f7f1e8; --surface:#ffffff; --ink:#1c1b1a; --stone:#4a4741; --hairline:#e1dcd3;
+  --accent:#224228; --gold:#966417; --ok:#224228; --bad:#cd341f;
+  --serif:"Noto Serif Display", "Georgia", "Times New Roman", serif;
+  --sans:"Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --canvas:#000000; --surface:#19191c; --ink:#f7f1e8; --stone:#a8a5a0; --hairline:#232326;
+  --accent:#849671; --gold:#ddaa61; --ok:#849671; --bad:#e54b35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --canvas:#000000; --surface:#19191c; --ink:#f7f1e8; --stone:#a8a5a0; --hairline:#232326;
+  --accent:#849671; --gold:#ddaa61; --ok:#849671; --bad:#e54b35; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--canvas);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 64px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--stone)}
+h1{font-family:var(--serif);font-weight:300;font-size:clamp(34px,6vw,56px);line-height:1.1;margin:6px 0 12px;text-wrap:balance}
+.lead{max-width:62ch;color:var(--stone);margin:0}
+.controls{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--canvas);border-bottom:1px solid var(--hairline);
+  padding-block:14px;display:flex;flex-direction:column;gap:12px}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.clock{font-family:var(--serif);font-size:40px;font-weight:300;font-variant-numeric:tabular-nums;min-width:3.2em}
+.meta{color:var(--stone);font-size:14px;font-variant-numeric:tabular-nums}
+input[type=range]{flex:1;min-width:200px;accent-color:var(--accent);height:28px}
+button{font:600 14px var(--sans);border-radius:9999px;border:1px solid var(--stone);background:transparent;color:var(--ink);
+  padding:8px 16px;cursor:pointer;min-height:40px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--canvas)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{font-weight:500;padding:6px 12px;min-height:36px}
+.chips button span{color:var(--stone);font-variant-numeric:tabular-nums;margin-left:6px;font-weight:400}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}
+@media (max-width:700px){.pair{grid-template-columns:1fr}}
+.option{display:flex;flex-direction:column;gap:14px;align-items:center;min-width:0}
+.option h2{font-family:var(--serif);font-weight:400;font-size:26px;margin:0;text-align:center}
+.option p.what{margin:0;color:var(--stone);font-size:14px;text-align:center;max-width:36ch}
+.phone{position:relative;width:min(320px,100%);aspect-ratio:320/660;max-width:100%;border-radius:40px;overflow:hidden;
+  border:1px solid var(--hairline);background:#000;box-shadow:0 12px 40px rgba(28,27,26,.12)}
+.phone canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.head{position:absolute;left:24px;right:24px;top:52px;display:flex;flex-direction:column;gap:2px;transition:color .4s}
+.head .place{font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;opacity:.85}
+.head .name{font-family:var(--serif);font-weight:300;font-size:46px;line-height:1.1;margin-top:6px}
+.head .count{font-size:16px;font-weight:500;font-variant-numeric:tabular-nums}
+.card{position:absolute;left:14px;right:14px;bottom:18px;border-radius:24px;padding:12px 18px;display:flex;flex-direction:column;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background .4s,color .4s}
+.card .r{display:flex;justify-content:space-between;padding:6px 0;font-size:15px;font-variant-numeric:tabular-nums}
+.card .r+.r{border-top:1px solid var(--line,rgba(0,0,0,.08))}
+.card .r.now{font-weight:600}
+.card .r.now::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;align-self:center;margin-right:-8px;margin-left:-12px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:min(320px,100%)}
+.stat{display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
+.stat b{font-weight:600;font-size:18px}
+.stat small{color:var(--stone);font-size:12px}
+.pass{color:var(--ok)} .fail{color:var(--bad)}
+.notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px;border-top:1px solid var(--hairline);padding-top:24px}
+@media (max-width:700px){.notes{grid-template-columns:1fr}}
+.notes h3{font-size:14px;font-weight:600;margin:0 0 6px}
+.notes ul{margin:0;padding-left:18px;color:var(--stone);font-size:15px;display:flex;flex-direction:column;gap:4px}
+.foot{color:var(--stone);font-size:13px;max-width:70ch}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">GebetszeitenApp · Probebau, nicht in der App</div>
+    <h1>Tageshimmel für „Heute“</h1>
+    <p class="lead">Beide Himmel werden aus dem echten Sonnenstand über Nürnberg am 5. November 2026 gerechnet; Zeiten amtlich von der Diyanet. Links nur Farbverlauf und Silhouette, rechts derselbe Verlauf mit Ebenen für Berge, Baum, Sonne und Sterne. Mit dem Regler durch den Tag gehen oder abspielen.</p>
+  </header>
+
+  <section class="controls" aria-label="Uhrzeit wählen">
+    <div class="row">
+      <div class="clock" id="clock">14:00</div>
+      <input type="range" id="zeit" min="0" max="1439" step="1" value="840" aria-label="Uhrzeit">
+      <button class="primary" id="play" type="button">Abspielen</button>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <div class="chips" id="chips"></div>
+      <div class="meta" id="sunmeta">Sonnenhöhe</div>
+    </div>
+  </section>
+
+  <section class="pair">
+    <div class="option">
+      <div class="eyebrow">Option 1</div>
+      <h2>Gerechneter Verlauf</h2>
+      <p class="what">Drei Farben aus der Sonnenhöhe, darunter eine flache Hügelkante. Kein Bild, fast kein Speicher.</p>
+      <div class="phone" id="p1"><canvas></canvas></div>
+      <div class="stats" id="s1"></div>
+    </div>
+    <div class="option">
+      <div class="eyebrow">Option 5</div>
+      <h2>Verlauf mit Bild-Ebenen</h2>
+      <p class="what">Gleicher Verlauf, darüber Sterne, Sonne mit Schein, drei Bergketten im Dunst und ein Baum.</p>
+      <div class="phone" id="p5"><canvas></canvas></div>
+      <div class="stats" id="s5"></div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div>
+      <h3>Was die Messwerte zeigen</h3>
+      <ul>
+        <li><b>Kontrast</b>: schlechtester Punkt hinter dem Gebetsnamen und der Restzeit. Die App verlangt mindestens 4,5:1.</li>
+        <li><b>Helligkeit</b>: mittlere Leuchtdichte des ganzen Bildes. Nachts soll sie fast null sein, damit AMOLED dunkel bleibt.</li>
+        <li><b>Schrift</b>: hell oder dunkel, je nachdem, was mehr Kontrast ergibt. Reicht beides nicht (in der Dämmerung oder am frühen Nachmittag), legt sich oben ein feiner dunkler Schleier darüber, so stark wie nötig.</li>
+        <li><b>Sterne</b> bleiben hinter der Schrift weg; sonst fällt der Kontrast nachts auf 2,7:1.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Worauf du achten kannst</h3>
+      <ul>
+        <li>Übergänge bei Faǧr, Šurūq und Maġrib: wirkt es stufenlos?</li>
+        <li>Mittag: bleibt die dunkle Schrift auf dem hellen Blau gut lesbar?</li>
+        <li>Nach ʿIšāʾ: ist es schwarz genug, und stören die Sterne?</li>
+      </ul>
+    </div>
+  </section>
+  <p class="foot">Sonnenstand nach der NOAA-Näherung für 49,45° N, 11,08° O. Die Ebenen rechts sind schnell gezeichnete Platzhalter; in der App kämen sauber gestaltete Formen oder die Bilder des Testers hinein, sofern die Rechte geklärt sind.</p>
+</div>
+
+<script>
+(()=>{
+const LAT=49.4521, LON=11.0767, TZ=1, DOY=309; // 5.11.2026, MEZ
+const TIMES=[["Faǧr","05:21"],["Šurūq","07:03"],["Ẓuhr","12:04"],["ʿAṣr","14:27"],["Maġrib","16:56"],["ʿIšāʾ","18:25"]];
+const toMin=s=>{const[h,m]=s.split(":").map(Number);return h*60+m};
+const T=TIMES.map(([n,t])=>({n,t,m:toMin(t)}));
+const fmt=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(Math.floor(m%60)).padStart(2,"0")};
+const rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
+
+function sun(min){
+  const g=2*Math.PI/365*(DOY-1+(min/60-12)/24);
+  const eq=229.18*(0.000075+0.001868*Math.cos(g)-0.032077*Math.sin(g)-0.014615*Math.cos(2*g)-0.040849*Math.sin(2*g));
+  const dec=0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)-0.006758*Math.cos(2*g)+0.000907*Math.sin(2*g)-0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
+  const tst=min+eq+4*LON-60*TZ, ha=rad(tst/4-180), la=rad(LAT);
+  const alt=Math.asin(Math.sin(la)*Math.sin(dec)+Math.cos(la)*Math.cos(dec)*Math.cos(ha));
+  const az=deg(Math.atan2(Math.sin(ha),Math.cos(ha)*Math.sin(la)-Math.tan(dec)*Math.cos(la)))+180;
+  return {alt:deg(alt),az,noon:720-eq-4*LON+60*TZ};
+}
+
+// Himmelsfarben nach Sonnenhöhe: [Höhe, oben, Mitte, Horizont]
+const hx=h=>[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+const MORNING=[[-90,"000000","000000","010204"],[-18,"000000","01020a","04060f"],[-12,"02040f","070b24","141a3c"],
+  [-6,"0a1234","25336a","5e5a8a"],[-2,"1d2d64","5d6a9e","d8a08a"],[1,"34589a","95a6c8","f3c896"],
+  [6,"5584c4","a3c3e2","efdcbc"],[15,"6d9ed6","a6cbec","d6e7f4"],[30,"74a5da","acd0ef","d2e6f5"]].map(s=>[s[0],hx(s[1]),hx(s[2]),hx(s[3])]);
+const EVENING=MORNING.map(s=>s.slice());
+EVENING[4]=[-2,hx("1b2458"),hx("6a527e"),hx("e07a52")];
+EVENING[5]=[1,hx("3a5590"),hx("b49aa8"),hx("f2a463")];
+EVENING[6]=[6,hx("5582c0"),hx("b0c2da"),hx("f2cf9c")];
+const lerp=(a,b,t)=>a+(b-a)*t, mixc=(a,b,t)=>a.map((v,i)=>lerp(v,b[i],t));
+function sky(alt,evening){
+  const P=evening?EVENING:MORNING; let i=0; while(i<P.length-2&&alt>P[i+1][0])i++;
+  const a=P[i],b=P[i+1],t=Math.min(1,Math.max(0,(alt-a[0])/(b[0]-a[0]))), s=t*t*(3-2*t);
+  return {top:mixc(a[1],b[1],s),mid:mixc(a[2],b[2],s),bot:mixc(a[3],b[3],s)};
+}
+const css=c=>`rgb(${c.map(v=>Math.round(v)).join(",")})`;
+const BLACK=[0,0,0];
+
+// Kontrast (WCAG)
+const lin=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};
+const lum=c=>0.2126*lin(c[0])+0.7152*lin(c[1])+0.0722*lin(c[2]);
+const ratio=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05)};
+const INK=[28,27,26], PAPER=[247,241,232];
+
+// Zufall mit festem Startwert, damit Sterne stillstehen
+let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const STARS=Array.from({length:140},()=>({x:rnd(),y:rnd()*0.62,r:rnd()*1.1+0.3,a:rnd()*0.6+0.4}));
+
+function ridge(ctx,W,H,base,amp,f,ph,color){
+  ctx.beginPath(); ctx.moveTo(0,H);
+  for(let x=0;x<=W;x+=4){const u=x/W; const y=base-amp*(0.55*Math.sin(u*f+ph)+0.3*Math.sin(u*f*2.3+ph*1.7)+0.15*Math.sin(u*f*5.1+ph*0.3));ctx.lineTo(x,y)}
+  ctx.lineTo(W,H); ctx.closePath(); ctx.fillStyle=css(color); ctx.fill();
+}
+function tree(ctx,x,y,s,color){
+  ctx.fillStyle=css(color);
+  ctx.fillRect(x-s*0.05,y-s*0.55,s*0.1,s*0.6);
+  const blobs=[[0,-0.95,0.42],[-0.3,-0.75,0.32],[0.32,-0.78,0.34],[-0.12,-1.25,0.3],[0.2,-1.15,0.28],[0,-0.6,0.28]];
+  for(const[bx,by,br] of blobs){ctx.beginPath();ctx.arc(x+bx*s,y+by*s,br*s,0,Math.PI*2);ctx.fill()}
+}
+
+function draw(canvas,opt,min){
+  const dpr=Math.min(2,window.devicePixelRatio||1), W=canvas.clientWidth, H=canvas.clientHeight;
+  if(canvas.width!==Math.round(W*dpr)){canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr)}
+  const ctx=canvas.getContext("2d",{willReadFrequently:true}); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const s=sun(min), ev=min>s.noon, c=sky(s.alt,ev), hor=H*0.70;
+  const g=ctx.createLinearGradient(0,0,0,hor);
+  g.addColorStop(0,css(c.top)); g.addColorStop(0.55,css(c.mid)); g.addColorStop(1,css(c.bot));
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const dark=Math.min(1,Math.max(0,(-s.alt-2)/12)); // 0 am Tag, 1 ab −14°
+  if(opt===1){
+    ridge(ctx,W,H,hor+8,26,3.2,0.8,mixc(c.bot,BLACK,0.78));
+    ctx.fillStyle=css(mixc(c.bot,BLACK,0.9)); ctx.fillRect(0,hor+40,W,H);
+  } else {
+    // Sterne
+    if(dark>0){for(const st of STARS){const py=st.y*H;if(py>36&&py<190)continue; // keine Sterne hinter der Schrift
+      ctx.globalAlpha=st.a*dark*0.85;ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(st.x*W,st.y*H,st.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+    // Sonne mit Schein
+    const sx=((s.az-115)/(245-115))*W, sy=hor-Math.max(-8,s.alt)/26*(hor*0.40); // Höchststand unterhalb der Schrift
+    if(s.alt>-8){
+      const glowA=Math.max(0,Math.min(1,(s.alt+8)/10));
+      const warm=s.alt<8?[255,190,120]:[255,244,220];
+      const rg=ctx.createRadialGradient(sx,sy,0,sx,sy,W*0.6);
+      rg.addColorStop(0,`rgba(${warm},${0.55*glowA})`); rg.addColorStop(1,`rgba(${warm},0)`);
+      ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+      if(s.alt>-1){ctx.fillStyle=`rgb(${s.alt<6?"255,214,160":"255,250,236"})`;ctx.beginPath();ctx.arc(sx,sy,13,0,Math.PI*2);ctx.fill()}
+    }
+    const haze=mixc(c.bot,c.mid,0.35);
+    ridge(ctx,W,H,hor-18,40,2.4,2.1,mixc(haze,BLACK,0.25+0.6*dark));
+    ridge(ctx,W,H,hor+6,30,3.6,0.4,mixc(haze,BLACK,0.5+0.42*dark));
+    const near=mixc(c.bot,BLACK,0.82+0.15*dark);
+    ridge(ctx,W,H,hor+34,18,2.0,4.0,near);
+    tree(ctx,W*0.78,hor+30,64,near);
+    ctx.fillStyle=css(near); ctx.fillRect(0,hor+52,W,H);
+  }
+  return {s,c};
+}
+function veil(canvas,a){
+  const ctx=canvas.getContext("2d"), W=canvas.clientWidth, H=canvas.clientHeight;
+  const g=ctx.createLinearGradient(0,0,0,H*0.42);
+  g.addColorStop(0,`rgba(0,0,0,${a})`); g.addColorStop(0.7,`rgba(0,0,0,${a*0.6})`); g.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H*0.42);
+}
+
+function sampleWorst(canvas,text){
+  const ctx=canvas.getContext("2d"), dpr=canvas.width/canvas.clientWidth;
+  const x0=24*dpr, y0=52*dpr, w=(canvas.clientWidth-48)*dpr, h=110*dpr;
+  const d=ctx.getImageData(x0,y0,w,h).data; let worst=99, sum=[0,0,0], n=0;
+  for(let i=0;i<d.length;i+=4*37){const px=[d[i],d[i+1],d[i+2]];const r=ratio(px,text);if(r<worst)worst=r;sum[0]+=px[0];sum[1]+=px[1];sum[2]+=px[2];n++}
+  return {worst,avg:sum.map(v=>v/n)};
+}
+function meanLum(canvas){
+  const ctx=canvas.getContext("2d"), d=ctx.getImageData(0,0,canvas.width,canvas.height).data; let L=0,n=0;
+  for(let i=0;i<d.length;i+=4*211){L+=lum([d[i],d[i+1],d[i+2]]);n++} return L/n;
+}
+
+function state(min){
+  const sorted=T.filter(p=>p.n!=="Šurūq");
+  let cur=null; for(const p of T){if(min>=p.m)cur=p}
+  if(!cur) cur=T[5];
+  const nextIdx=T.findIndex(p=>p.m>min); const next=nextIdx<0?{...T[0],m:T[0].m+1440}:T[nextIdx];
+  const isPrayer=cur.n!=="Šurūq";
+  return {cur:isPrayer?cur:null,next,left:next.m-min};
+}
+const dur=m=>{m=Math.round(m);const h=Math.floor(m/60),r=m%60;return h?`${h} Std. ${r} Min.`:`${r} Min.`};
+const de=v=>v.toFixed(1).replace(".",",");
+
+const phones=[{id:1,el:document.getElementById("p1"),st:document.getElementById("s1")},{id:5,el:document.getElementById("p5"),st:document.getElementById("s5")}];
+for(const p of phones){
+  p.el.insertAdjacentHTML("beforeend",`<div class="head"><div class="place">Nürnberg · Do., 5. November</div><div class="name"></div><div class="count"></div></div><div class="card"></div>`);
+  p.head=p.el.querySelector(".head"); p.card=p.el.querySelector(".card");
+}
+
+const range=document.getElementById("zeit"), clock=document.getElementById("clock"), meta=document.getElementById("sunmeta");
+function render(min){
+  clock.textContent=fmt(min);
+  const st=state(min);
+  let s0;
+  for(const p of phones){
+    const canvas=p.el.querySelector("canvas"); const {s}=draw(canvas,p.id,min); s0=s;
+    let a=sampleWorst(canvas,INK), b=sampleWorst(canvas,PAPER), veilA=0;
+    // Reicht weder helle noch dunkle Schrift, legt sich ein feiner Schleier oben drüber, bis helle Schrift 4,5:1 hat
+    while(Math.max(a.worst,b.worst)<4.5&&veilA<0.6){veilA+=0.05;draw(canvas,p.id,min);veil(canvas,veilA);a=sampleWorst(canvas,INK);b=sampleWorst(canvas,PAPER)}
+    const light=b.worst>a.worst, text=light?PAPER:INK, worst=light?b.worst:a.worst;
+    p.head.style.color=css(text);
+    p.head.querySelector(".name").textContent=st.cur?st.cur.n:st.next.n;
+    p.head.querySelector(".count").textContent=st.cur?`noch ${dur(st.left)} bis ${st.next.n}`:`beginnt in ${dur(st.left)}`;
+    const nightCard=lum(a.avg)<0.18;
+    p.card.style.background=nightCard?"rgba(25,25,28,.72)":"rgba(255,255,255,.72)";
+    p.card.style.color=nightCard?"#f7f1e8":"#1c1b1a";
+    p.card.style.setProperty("--line",nightCard?"rgba(255,255,255,.08)":"rgba(0,0,0,.08)");
+    p.card.innerHTML=T.map(x=>`<div class="r${st.cur&&st.cur.n===x.n?" now":""}"><span>${x.n}</span><span>${x.t}</span></div>`).join("");
+    const L=meanLum(canvas)*100;
+    p.st.innerHTML=`<div class="stat"><b class="${worst>=4.5?"pass":"fail"}">${de(worst)}:1</b><small>Kontrast, schlechtester Punkt</small></div>
+      <div class="stat"><b>${L<1?de(L):Math.round(L)} %</b><small>Helligkeit des Bildes</small></div>
+      <div class="stat"><b>${light?"hell":"dunkel"}${veilA?` + ${Math.round(veilA*100)} %`:""}</b><small>Schrift${veilA?", mit Schleier":""}</small></div>`;
+  }
+  meta.textContent=`Sonnenhöhe ${s0.alt<0?"−":""}${de(Math.abs(s0.alt))}°`;
+}
+
+const chips=document.getElementById("chips");
+chips.innerHTML=[...T,{n:"Mitternacht",t:"00:30",m:30}].map(p=>`<button type="button" data-m="${p.m}">${p.n}<span>${p.t}</span></button>`).join("");
+let playing=false, t=+range.value, last=0, raf=0;
+chips.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;stop();t=+b.dataset.m+2;range.value=Math.round(t);render(t)});
+range.addEventListener("input",()=>{stop();t=+range.value;render(t)});
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const btn=document.getElementById("play");
+function stop(){playing=false;cancelAnimationFrame(raf);btn.textContent="Abspielen"}
+function step(ts){if(!playing)return;const dt=last?(ts-last):16;last=ts;t=(t+dt/1000*(reduce?15:40))%1440;range.value=Math.round(t);render(t);raf=requestAnimationFrame(step)}
+btn.addEventListener("click",()=>{if(playing){stop();return}playing=true;last=0;btn.textContent="Anhalten";raf=requestAnimationFrame(step)});
+addEventListener("resize",()=>render(t));
+document.fonts&&document.fonts.ready.then(()=>render(t));
+render(t);
+})();
+</script>

@@ -25,6 +25,22 @@ class HeuteLogicTest {
         assertEquals(gewaehlt, rolledSelectedDate(selected = gewaehlt, previousToday = gestern, today = heute))
     }
 
+    @Test fun `nach links wischen ist morgen, nach rechts gestern`() {
+        assertEquals(1L, swipeDayDelta(totalDx = -200f, thresholdPx = 150f))
+        assertEquals(-1L, swipeDayDelta(totalDx = 200f, thresholdPx = 150f))
+    }
+
+    @Test fun `kurzes Wischen wechselt den Tag nicht`() {
+        assertEquals(0L, swipeDayDelta(totalDx = -149f, thresholdPx = 150f))
+        assertEquals(0L, swipeDayDelta(totalDx = 149f, thresholdPx = 150f))
+        assertEquals(0L, swipeDayDelta(totalDx = 0f, thresholdPx = 150f))
+    }
+
+    @Test fun `genau an der Schwelle wechselt der Tag`() {
+        assertEquals(1L, swipeDayDelta(totalDx = -150f, thresholdPx = 150f))
+        assertEquals(-1L, swipeDayDelta(totalDx = 150f, thresholdPx = 150f))
+    }
+
     @Test fun `Šurūq heisst jetzt, nicht aktuelles Gebet`() {
         assertEquals(R.string.status_now, prayerStatusRes(Prayer.SUNRISE, current = true, faded = false))
         assertEquals(R.string.status_current, prayerStatusRes(Prayer.ASR, current = true, faded = false))
