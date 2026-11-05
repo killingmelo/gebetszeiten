@@ -272,6 +272,8 @@
     <string name="hero_remaining_lead">noch</string>
     <string name="hero_next_lead">dann</string>
     <string name="hero_next_at">%1$s um %2$s</string>
+    <string name="desc_progress">%1$d Prozent des Abschnitts vorbei, von %2$s bis %3$s</string>
+    <string name="sub_shuruq">bis Šurūq %1$s</string>
     <string name="hero_makruh_until">Makrūh bis %1$s</string>
     <string name="hero_makruh_from">Makrūh ab %1$s</string>
     <string name="row_next_day">morgen</string>

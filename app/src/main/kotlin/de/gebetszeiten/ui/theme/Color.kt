@@ -1,6 +1,7 @@
 package de.gebetszeiten.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 /** Farbrollen der App (Oura-Stil, siehe DESIGN.md "Abweichungen"). */
 data class Tokens(
@@ -13,7 +14,17 @@ data class Tokens(
     val gold: Color,
     val ochre: Color,
     val error: Color,
+    /** Wie stark der Grund der laufenden Gebetszeile ins Akzentgrün geht (0 = gar nicht). */
+    val currentRowTint: Float = 0f,
 )
+
+/**
+ * Grund der laufenden Gebetszeile in der Karte auf „Heute“. Die Stärke ist so
+ * gewählt, dass Gold (Makrūh) darauf noch 4,5:1 hat (Tag höchstens 6 %, Nacht
+ * bis 14 %). Im Hochkontrast bleibt die Zeile ungetönt: schon 5 % drückten das
+ * Gold dort unter 7:1; dort markiert allein die grüne Schrift.
+ */
+val Tokens.currentRow: Color get() = lerp(surface, accent, currentRowTint)
 
 /**
  * Einzige Quelle der Farben; `Theme.kt` baut daraus die Material-Schemata,
@@ -33,6 +44,7 @@ object Palette {
         gold = Color(0xFF966417),
         ochre = Color(0xFFBC924C),
         error = Color(0xFFCD341F),
+        currentRowTint = 0.06f,
     )
     val Night = Tokens(
         canvas = Color(0xFF000000),
@@ -44,6 +56,7 @@ object Palette {
         gold = Color(0xFFDDAA61),
         ochre = Color(0xFFBC924C),
         error = Color(0xFFE54B35),
+        currentRowTint = 0.12f,
     )
     // Hochkontrast: AAA (7:1) für Text und Akzente.
     val DayHc = Tokens(

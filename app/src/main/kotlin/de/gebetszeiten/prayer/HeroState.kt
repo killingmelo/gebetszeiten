@@ -22,7 +22,20 @@ data class HeroState(
     val remaining: Duration?,
     val next: Upcoming?,
     val makruh: MakruhLine?,
+    /** Beginn und Ende des laufenden Abschnitts für den Fortschrittsbalken; null = kein Balken. */
+    val since: ZonedDateTime? = null,
+    val until: ZonedDateTime? = null,
 )
+
+/**
+ * Anteil des laufenden Abschnitts, der vorbei ist (0 bis 1). Null, wenn Beginn
+ * oder Ende fehlen (z. B. nach Mitternacht ohne ʿIšāʾ von gestern).
+ */
+fun heroProgress(since: ZonedDateTime?, until: ZonedDateTime?, now: ZonedDateTime): Float? {
+    if (since == null || until == null || !until.isAfter(since)) return null
+    val total = Duration.between(since, until).seconds.toFloat()
+    return (Duration.between(since, now).seconds / total).coerceIn(0f, 1f)
+}
 
 /** Ab so vielen Minuten vor Beginn wird ein Karāha-Abschnitt im Titel angekündigt. */
 private const val MAKRUH_LEAD_MINUTES = 15L
@@ -58,6 +71,8 @@ fun heroState(
     nextFajr: ZonedDateTime?,
     now: ZonedDateTime,
     isToday: Boolean,
+    /** ʿIšāʾ von gestern: Beginn des Abschnitts zwischen Mitternacht und Faǧr. */
+    previousIsha: ZonedDateTime? = null,
 ): HeroState {
     if (!isToday) {
         return HeroState(Moment.FAJR, PhotoKey.FAJR, remaining = null, next = null, makruh = null)
@@ -65,26 +80,31 @@ fun heroState(
 
     // Moment, Ende des laufenden Abschnitts und nächstes Pflichtgebet.
     val moment: Moment
+    val since: ZonedDateTime?
     val until: ZonedDateTime?
     val next: Upcoming?
     when {
         now.isBefore(today.fajr) -> {
             moment = Moment.ISHA
+            since = previousIsha
             until = today.fajr
             next = Upcoming(Prayer.FAJR, today.fajr)
         }
         now.isBefore(today.sunrise) -> {
             moment = Moment.FAJR
+            since = today.fajr
             until = today.sunrise
             next = Upcoming(Prayer.DHUHR, today.dhuhr)
         }
         now.isBefore(nafl.duhaStart) -> {
             moment = Moment.SHURUQ
+            since = today.sunrise
             until = today.dhuhr
             next = Upcoming(Prayer.DHUHR, today.dhuhr)
         }
         now.isBefore(karaha.zevalStart) -> {
             moment = Moment.DUHA
+            since = nafl.duhaStart
             until = today.dhuhr
             next = Upcoming(Prayer.DHUHR, today.dhuhr)
         }
@@ -92,26 +112,31 @@ fun heroState(
         // und die Zeit makrūh; der Titel sagt das, bis Ẓuhr beginnt.
         now.isBefore(today.dhuhr) -> {
             moment = Moment.ZAWAL
+            since = karaha.zevalStart
             until = today.dhuhr
             next = Upcoming(Prayer.DHUHR, today.dhuhr)
         }
         now.isBefore(today.asr) -> {
             moment = Moment.DHUHR
+            since = today.dhuhr
             until = today.asr
             next = Upcoming(Prayer.ASR, today.asr)
         }
         now.isBefore(today.maghrib) -> {
             moment = Moment.ASR
+            since = today.asr
             until = today.maghrib
             next = Upcoming(Prayer.MAGHRIB, today.maghrib)
         }
         now.isBefore(today.isha) -> {
             moment = Moment.MAGHRIB
+            since = today.maghrib
             until = today.isha
             next = Upcoming(Prayer.ISHA, today.isha)
         }
         else -> {
             moment = Moment.ISHA
+            since = today.isha
             until = nextFajr
             next = nextFajr?.let { Upcoming(Prayer.FAJR, it) }
         }
@@ -123,5 +148,7 @@ fun heroState(
         remaining = until?.let { Duration.between(now, it) },
         next = next,
         makruh = makruhLine(karaha, now),
+        since = since,
+        until = until,
     )
 }

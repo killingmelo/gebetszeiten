@@ -67,9 +67,13 @@ class HeuteLogicTest {
             DayRow.SideRow(Section.AWWABIN, h(16, 57), h(18, 25), past = false),
             DayRow.PrayerRow(Prayer.ISHA, h(18, 25), past = false, current = false),
         )
-        val g = groupUnderPrayers(rows).associate { it.prayer.prayer to it.subs.map { s -> s.kind } }
-        assertEquals(listOf(Section.JAMAA), g[Prayer.FAJR])
-        assertEquals(listOf(Section.SHURUQ_MAKRUH, Section.DUHA), g[Prayer.SUNRISE])
+        val groups = groupUnderPrayers(rows)
+        val g = groups.associate { it.prayer.prayer to it.subs.map { s -> s.kind } }
+        // Šurūq ist keine eigene Zeile mehr: es steht unter Faǧr, mit dem, was dort beginnt.
+        assertEquals(null, g[Prayer.SUNRISE])
+        assertEquals(listOf(Section.JAMAA, Section.SHURUQ_MAKRUH, Section.DUHA), g[Prayer.FAJR])
+        assertEquals(Prayer.SUNRISE, groups.first { it.prayer.prayer == Prayer.FAJR }.shuruq?.prayer)
+        assertEquals(null, groups.first { it.prayer.prayer == Prayer.DHUHR }.shuruq)
         // Zawāl kommt vor Ẓuhr und gehört zu ihm, nicht zu Šurūq.
         assertEquals(listOf(Section.ZUHR), g[Prayer.DHUHR])
         assertEquals(listOf(Section.ISFIRAR_MAKRUH), g[Prayer.ASR])

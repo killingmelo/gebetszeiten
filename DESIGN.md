@@ -4,7 +4,7 @@ Dieses Dokument ist Ouras Stilreferenz (unten unverändert) mit folgenden Abweic
 
 - **Aktionsblau entfällt.** Ouras `primary` (#2a72de) wird nicht verwendet. Aktionen und Akzente nutzen das Waldgrün (`accent`: Tag #224228, Nacht #849671). Fehler bleibt #e33a22.
 - **Schriften ersetzt.** Editorial New und AkkuratLL sind nicht lizenzfrei. Stattdessen, gebündelt und unter OFL:
-  - Serife (Überschriften, Zeiten): Noto Serif Display, Light (300) und Regular (400). Newsreader (Google-Fonts-Fassung ohne Punkt-unten-Buchstaben und ʿ/ʾ) und Fraunces (ohne ʿ/ʾ) fielen im Abdeckungstest durch.
+  - Serife (Überschriften, Zeiten): Noto Serif Display, Regular (400). Light (300) ist gebündelt, wird seit 05.11.2026 aber nicht mehr für Überschriften verwendet (zu dünn auf dem Telefon). Newsreader (Google-Fonts-Fassung ohne Punkt-unten-Buchstaben und ʿ/ʾ) und Fraunces (ohne ʿ/ʾ) fielen im Abdeckungstest durch.
   - Grotesk (Fließtext, Bedienelemente): Inter, Regular (400), Medium (500), SemiBold (600).
   - Arabisch: Noto Naskh Arabic, Regular (400).
   - Ressourcen: `R.font.serif_light`, `serif_regular`, `sans_regular`, `sans_medium`, `sans_semibold`, `naskh_regular`.

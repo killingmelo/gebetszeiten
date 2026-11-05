@@ -25,13 +25,15 @@ val SansFamily = FontFamily(
 /** Arabische Schrift (Noto Naskh Arabic). */
 val NaskhFamily = FontFamily(Font(R.font.naskh_regular, FontWeight.Normal))
 
+// Serife seit 05.11.2026 in Regular statt Light: Light wirkte auf dem Telefon
+// zu dünn (Rückmeldung des Testers, Entscheidung des Herausgebers).
 val AppTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = SerifFamily, fontWeight = FontWeight.Light,
+        fontFamily = SerifFamily, fontWeight = FontWeight.Normal,
         fontSize = 56.sp, lineHeight = 1.05.em,
     ),
     headlineSmall = TextStyle(
-        fontFamily = SerifFamily, fontWeight = FontWeight.Light,
+        fontFamily = SerifFamily, fontWeight = FontWeight.Normal,
         fontSize = 26.sp, lineHeight = 32.sp,
     ),
     titleMedium = TextStyle(

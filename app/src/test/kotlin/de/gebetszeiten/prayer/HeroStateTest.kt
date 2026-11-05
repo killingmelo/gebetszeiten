@@ -42,6 +42,32 @@ class HeroStateTest {
         assertEquals(PhotoKey.ZUHR, s.photo)
     }
 
+    @Test fun `Balken um 13 Uhr 20 laeuft von Zuhr bis Asr`() {
+        val s = at(t(13, 20))
+        assertEquals(t(12, 5), s.since)
+        assertEquals(t(14, 38), s.until)
+        // 75 von 153 Minuten
+        assertEquals(75f / 153f, heroProgress(s.since, s.until, t(13, 20))!!, 0.001f)
+    }
+
+    @Test fun `Balken nach Mitternacht beginnt beim Isha von gestern`() {
+        val s = heroState(times, karaha, nafl, nextFajr, t(3, 0), isToday = true, previousIsha = t(18, 38, day = 27))
+        assertEquals(t(18, 38, day = 27), s.since)
+        assertEquals(t(5, 10), s.until)
+        assertNotNull(heroProgress(s.since, s.until, t(3, 0)))
+    }
+
+    @Test fun `ohne Isha von gestern kein Balken nach Mitternacht`() {
+        val s = at(t(3, 0))
+        assertNull(heroProgress(s.since, s.until, t(3, 0)))
+    }
+
+    @Test fun `Balken bleibt zwischen 0 und 1`() {
+        assertEquals(0f, heroProgress(t(12, 0), t(13, 0), t(11, 0))!!, 0f)
+        assertEquals(1f, heroProgress(t(12, 0), t(13, 0), t(14, 0))!!, 0f)
+        assertNull(heroProgress(t(13, 0), t(12, 0), t(12, 30)))
+    }
+
     @Test fun `at0300IsIshaOfPreviousDayUntilFajr`() {
         val s = at(t(3, 0))
         assertEquals(Moment.ISHA, s.moment)

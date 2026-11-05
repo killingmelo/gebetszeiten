@@ -11,6 +11,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -92,6 +93,7 @@ import de.gebetszeiten.prayer.Section
 import de.gebetszeiten.prayer.dataCreditRes
 import de.gebetszeiten.prayer.dayRows
 import de.gebetszeiten.prayer.durationLabel
+import de.gebetszeiten.prayer.heroProgress
 import de.gebetszeiten.prayer.heroState
 import de.gebetszeiten.prayer.hijriText
 import de.gebetszeiten.prayer.labelRes
@@ -99,6 +101,7 @@ import de.gebetszeiten.prayer.noTimesNotice
 import de.gebetszeiten.prayer.timeRange
 import de.gebetszeiten.ui.theme.LocalTokens
 import de.gebetszeiten.ui.theme.Tokens
+import de.gebetszeiten.ui.theme.currentRow
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.ZoneId
@@ -110,6 +113,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private val HM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+/** Innenabstand der Gebetskarte links und rechts. */
+private val CARD_PADDING = 18.dp
 
 /** Seitenrand für Text und Liste. */
 private val GUTTER = 24.dp
@@ -166,6 +172,8 @@ private data class DayInfo(
     // abgedeckter Tag): HEUTE bleibt vollständig, nur was den Faǧr von morgen
     // braucht (Tahaǧǧud, die Restzeit nach ʿIšāʾ, die Folgetag-Zeile) entfällt.
     val nextFajr: ZonedDateTime?,
+    // ʿIšāʾ von gestern, nur für den Balken zwischen Mitternacht und Faǧr.
+    val previousIsha: ZonedDateTime?,
 )
 
 /**
@@ -223,6 +231,9 @@ internal fun HeuteScreen(
     }
     val isToday = selectedDate == LocalDate.now(zone)
 
+    // Erst nach dem ersten Laden entscheidet sich, ob es Zeiten gibt; vorher
+    // stand kurz „Keine amtlichen Zeiten“ da, obwohl sie nur noch geladen wurden.
+    var dayLoaded by remember { mutableStateOf(false) }
     val dayInfo by produceState<DayInfo?>(null, settings, tick, selectedDate, refreshTick) {
         // Keine Zeiten unter den aktuellen Einstellungen: `dayInfo` bleibt
         // null und die Ansicht zeigt NoTimesCard, statt Fenster aus erfundenen
@@ -230,12 +241,21 @@ internal fun HeuteScreen(
         // was den Folgetag braucht, nicht die ganze Ansicht.
         val times = PrayerProvider.daily(context, settings, selectedDate, zone)
         val nextFajr = PrayerProvider.daily(context, settings, selectedDate.plusDays(1), zone)?.fajr
-        value = if (times != null) {
-            DayInfo(times, IslamicWindows.karaha(times), IslamicWindows.nafl(times, nextFajr), nextFajr)
-        } else {
-            null
+        val info = times?.let {
+            DayInfo(it, IslamicWindows.karaha(it), IslamicWindows.nafl(it, nextFajr), nextFajr, previousIsha = null)
+        }
+        value = info
+        dayLoaded = true
+        // ʿIšāʾ von gestern nur für den Balken: kommt nach, hält die Liste nicht auf.
+        if (info != null) {
+            PrayerProvider.daily(context, settings, selectedDate.minusDays(1), zone)?.isha?.let {
+                value = info.copy(previousIsha = it)
+            }
         }
     }
+    // Bis die Quelle feststeht, keine Quellenzeile: sonst stand beim ersten
+    // Start kurz „Berechnet“ unter amtlichen Zeiten.
+    var sourceKnown by remember { mutableStateOf(false) }
     val officialName by produceState<String?>(null, settings, selectedDate, tick, refreshTick) {
         // Reihenfolge spiegelt resolveLocationIdChain (Bundle vor Index), die
         // Kette, die entscheidet, WELCHER Diyanet-Standort geholt wird. Das
@@ -245,6 +265,7 @@ internal fun HeuteScreen(
         value = de.gebetszeiten.official.BundledOfficialSource
             .locationNameFor(context, settings.latitude, settings.longitude, selectedDate)
             ?: officialCacheName(context, settings, selectedDate)
+        sourceKnown = true
     }
 
     // stringResource statt context.getString: Lint verbietet
@@ -310,8 +331,10 @@ internal fun HeuteScreen(
         )
 
         val info = dayInfo
-        if (info != null) {
-            val hero = heroState(info.times, info.karaha, info.nafl, info.nextFajr, now, isToday)
+        if (!dayLoaded) {
+            // Lädt noch: lieber kurz leer als ein falscher Hinweis.
+        } else if (info != null) {
+            val hero = heroState(info.times, info.karaha, info.nafl, info.nextFajr, now, isToday, info.previousIsha)
             val rows = dayRows(
                 today = info.times,
                 karaha = info.karaha,
@@ -329,6 +352,7 @@ internal fun HeuteScreen(
                 // für Widget, Sperrbildschirm und Statusleiste.
                 PhotoHero(
                     hero = hero,
+                    now = now,
                     showKaraha = settings.showKaraha,
                     t = t,
                 )
@@ -338,7 +362,7 @@ internal fun HeuteScreen(
             }
             Spacer(Modifier.height(16.dp))
             DayList(rows, onExplain, t)
-            Text(
+            if (sourceKnown) Text(
                 // Amtlich nennt die Stadt („… · Nürnberg“); der berechnete
                 // String hat keinen Platzhalter, das Argument wird ignoriert.
                 text = stringResource(dataCreditRes(officialName != null), officialName ?: settings.city),
@@ -476,7 +500,7 @@ private fun Photo(hero: HeroState) {
  * 4,5:1 geprüft.
  */
 @Composable
-private fun PhotoHero(hero: HeroState, showKaraha: Boolean, t: Tokens) {
+private fun PhotoHero(hero: HeroState, now: ZonedDateTime, showKaraha: Boolean, t: Tokens) {
     val key = hero.photo
     val res = photoRes(key)
     val tint = rememberHeroTint(res, t)
@@ -507,6 +531,7 @@ private fun PhotoHero(hero: HeroState, showKaraha: Boolean, t: Tokens) {
         )
         Hero(
             hero = hero,
+            now = now,
             showKaraha = showKaraha,
             t = t,
             remainingColor = tint,
@@ -550,12 +575,15 @@ private fun samplePixels(context: android.content.Context, res: Int): IntArray {
 @Composable
 private fun Hero(
     hero: HeroState,
+    now: ZonedDateTime,
     showKaraha: Boolean,
     t: Tokens,
     remainingColor: Color = t.ink,
     modifier: Modifier = Modifier.padding(horizontal = GUTTER),
 ) {
     Column(modifier) {
+        // Kein „JETZT“ im Kopf: der große Name und der Balken sagen es schon
+        // (Entscheidung 05.11.2026); die Liste zeigt das laufende Gebet in Grün.
         Text(
             text = dmgTitle(stringResource(momentLabelRes(hero.moment))),
             style = MaterialTheme.typography.displayLarge,
@@ -591,6 +619,9 @@ private fun Hero(
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
+        heroProgress(hero.since, hero.until, now)?.let { part ->
+            SectionProgress(part, hero.since!!.format(HM), hero.until!!.format(HM), t)
+        }
         val makruh = hero.makruh
         if (showKaraha && makruh != null) {
             val head = if (makruh.state.active) {
@@ -609,16 +640,72 @@ private fun Hero(
     }
 }
 
-/** Der ganze Tag, Haarlinie unter jeder Zeile, keine Flächen. */
+/** Wie weit der laufende Abschnitt ist, mit Beginn und Ende darunter. */
 @Composable
-private fun DayList(rows: List<DayRow>, onExplain: (Section) -> Unit, t: Tokens) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = GUTTER)) {
-        groupUnderPrayers(rows).forEach { group -> PrayerGroupLine(group, onExplain, t) }
+private fun SectionProgress(part: Float, from: String, to: String, t: Tokens) {
+    val percent = (part * 100).toInt()
+    val description = stringResource(R.string.desc_progress, percent, from, to)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .clearAndSetSemantics { contentDescription = description },
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(50))
+                .background(t.hairline),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(part)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(t.accent),
+            )
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            Text(from, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = TABULAR), color = t.stone)
+            Spacer(Modifier.weight(1f))
+            Text(to, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = TABULAR), color = t.stone)
+        }
     }
 }
 
-/** Ein Gebet mit den Nebenzeiten, die zu ihm gehören (klein darunter). */
-internal data class PrayerGroup(val prayer: DayRow.PrayerRow, val subs: List<DayRow.SideRow>)
+/** Der ganze Tag als Karte: fünf Gebete, Nebenzeiten klein darunter. */
+@Composable
+private fun DayList(rows: List<DayRow>, onExplain: (Section) -> Unit, t: Tokens) {
+    val groups = groupUnderPrayers(rows)
+    // Weiße Fläche (nachts #19191c) mit Haarlinie, wie die Karten in DESIGN.md;
+    // die letzte Zeile braucht keine Linie, die Karte schließt sie ab.
+    Column(
+        Modifier
+            .padding(horizontal = PHOTO_INSET)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(t.surface)
+            .border(1.dp, t.hairline, RoundedCornerShape(24.dp)),
+    ) {
+        groups.forEachIndexed { i, group ->
+            // Keine Linie direkt am getönten Grund: weder unter ihm noch über ihm.
+            val nextIsCurrent = groups.getOrNull(i + 1)?.prayer?.current == true
+            val line = i != groups.lastIndex && !group.prayer.current && !nextIsCurrent
+            PrayerGroupLine(group, onExplain, t, line = line)
+        }
+    }
+}
+
+/**
+ * Ein Gebet mit den Nebenzeiten, die zu ihm gehören (klein darunter). Šurūq ist
+ * kein Gebet und steht seit dem 05.11.2026 als „bis Šurūq …“ unter Faǧr.
+ */
+internal data class PrayerGroup(
+    val prayer: DayRow.PrayerRow,
+    val subs: List<DayRow.SideRow>,
+    val shuruq: DayRow.PrayerRow? = null,
+)
 
 /**
  * Die Nebenzeiten stehen nicht mehr als eigene Zeilen, sondern klein unter
@@ -629,16 +716,20 @@ internal data class PrayerGroup(val prayer: DayRow.PrayerRow, val subs: List<Day
  * vor Ẓuhr und gehört deshalb zu ihm. Ohne Gebet davor: zum nächsten.
  */
 internal fun groupUnderPrayers(rows: List<DayRow>): List<PrayerGroup> {
-    val prayers = rows.filterIsInstance<DayRow.PrayerRow>()
+    val all = rows.filterIsInstance<DayRow.PrayerRow>()
+    val shuruq = all.firstOrNull { it.prayer == Prayer.SUNRISE }
+    val prayers = all.filter { it.prayer != Prayer.SUNRISE }
     val subs = prayers.associateWith { mutableListOf<DayRow.SideRow>() }
     rows.forEachIndexed { i, row ->
         if (row !is DayRow.SideRow) return@forEachIndexed
-        val before = rows.subList(0, i).filterIsInstance<DayRow.PrayerRow>().lastOrNull()
-        val after = rows.subList(i + 1, rows.size).filterIsInstance<DayRow.PrayerRow>().firstOrNull()
+        val before = rows.subList(0, i).filterIsInstance<DayRow.PrayerRow>().lastOrNull { it in subs }
+        val after = rows.subList(i + 1, rows.size).filterIsInstance<DayRow.PrayerRow>().firstOrNull { it in subs }
         val owner = if (row.kind == Section.ZUHR) after ?: before else before ?: after
         owner?.let { subs.getValue(it) += row }
     }
-    return prayers.map { PrayerGroup(it, subs.getValue(it)) }
+    return prayers.map { p ->
+        PrayerGroup(p, subs.getValue(p), shuruq = shuruq.takeIf { p.prayer == Prayer.FAJR && !p.nextDay })
+    }
 }
 
 /** Wie die Zeit einer Nebenzeile kurz geschrieben wird. */
@@ -658,19 +749,86 @@ internal fun subFormOf(side: DayRow.SideRow, prayerAt: java.time.ZonedDateTime):
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PrayerGroupLine(group: PrayerGroup, onExplain: (Section) -> Unit, t: Tokens) {
-    Column(Modifier.fillMaxWidth().hairlineBelow(t.hairline)) {
+private fun PrayerGroupLine(group: PrayerGroup, onExplain: (Section) -> Unit, t: Tokens, line: Boolean = true) {
+    val shuruq = group.shuruq
+    val hasSubs = group.subs.isNotEmpty() || shuruq != null
+    val hairline = t.hairline
+    Column(
+        Modifier
+            .fillMaxWidth()
+            // Das laufende Gebet: Grund leicht ins Grün gezogen, über die ganze Kartenbreite.
+            .let { if (group.prayer.current) it.background(t.currentRow) else it }
+            .drawBehind {
+                if (line) {
+                    val stroke = 1.dp.toPx()
+                    val inset = CARD_PADDING.toPx()
+                    val y = size.height - stroke / 2
+                    drawLine(hairline, Offset(inset, y), Offset(size.width - inset, y), stroke)
+                }
+            }
+            .padding(horizontal = CARD_PADDING, vertical = 2.dp),
+    ) {
         // Mit Nebenzeiten flacher: Gebet und kleine Zeile zusammen etwa so
         // hoch wie früher Gebet plus eine Nebenzeile, sonst passte ʿIšāʾ nicht mehr.
-        PrayerLine(group.prayer, onExplain, t, minHeight = if (group.subs.isEmpty()) 48.dp else 36.dp)
-        if (group.subs.isNotEmpty()) {
+        PrayerLine(group.prayer, onExplain, t, minHeight = if (hasSubs) 36.dp else 48.dp)
+        if (hasSubs) {
             FlowRow(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                group.subs.forEach { SubItem(it, group.prayer.at, onExplain, t) }
+                // Unter Faǧr: erst was vor Šurūq liegt (Ǧamāʿa), dann „bis Šurūq …“,
+                // dann was dort beginnt. Die Makrūh-Zeit ab Šurūq liest sich als
+                // „Makrūh bis …“, also zählt Šurūq als ihr Anfang.
+                val (beforeShuruq, afterShuruq) = if (shuruq == null) {
+                    group.subs to emptyList()
+                } else {
+                    group.subs.partition { it.start.isBefore(shuruq.at) }
+                }
+                beforeShuruq.forEach { SubItem(it, group.prayer.at, onExplain, t) }
+                shuruq?.let { ShuruqItem(it, onExplain, t) }
+                afterShuruq.forEach { SubItem(it, shuruq?.at ?: group.prayer.at, onExplain, t) }
             }
         }
+    }
+}
+
+/** „bis Šurūq 07:03“ unter Faǧr; führt wie früher die Šurūq-Zeile zur Erklärung. */
+@Composable
+private fun ShuruqItem(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: Tokens) {
+    val time = row.at.format(HM)
+    val text = stringResource(R.string.sub_shuruq, time)
+    val name = stringResource(R.string.moment_shuruq)
+    val status = prayerStatusRes(row.prayer, row.current, row.past && !row.current)?.let { stringResource(it) } ?: ""
+    val description = stringResource(R.string.desc_prayer, name, time, status)
+    val explainLabel = stringResource(R.string.show_explanation)
+    val section = explainSectionOf(row.prayer)
+    val color = if (row.current) t.ink else t.stone
+    Row(
+        modifier = Modifier
+            .heightIn(min = 24.dp)
+            .clickable(role = Role.Button, onClickLabel = explainLabel) { onExplain(section) }
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+                onClick(label = explainLabel) {
+                    onExplain(section)
+                    true
+                }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = TABULAR),
+            fontWeight = if (row.current) FontWeight.SemiBold else FontWeight.Normal,
+            color = color,
+        )
+        Icon(
+            painterResource(R.drawable.ic_help_small),
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.padding(start = 4.dp).size(12.dp),
+        )
     }
 }
 
@@ -742,7 +900,12 @@ private val TABULAR = "tnum"
 private fun PrayerLine(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: Tokens, minHeight: Dp = 48.dp) {
     // `past` gilt auch für die laufende Zeile; verblasst wird nur, was vorbei ist.
     val faded = row.past && !row.current
-    val color = if (faded) t.stone else t.ink
+    // Das laufende Gebet in Waldgrün und fett, ohne Marke (Entscheidung 05.11.2026).
+    val color = when {
+        row.current -> t.accent
+        faded -> t.stone
+        else -> t.ink
+    }
     val weight = if (row.current) FontWeight.SemiBold else FontWeight.Normal
     val name = if (row.prayer == Prayer.SUNRISE) {
         stringResource(R.string.moment_shuruq)
@@ -757,20 +920,14 @@ private fun PrayerLine(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: T
     } else {
         stringResource(R.string.desc_prayer, name, time, status)
     }
-    val accent = t.accent
     val explainLabel = stringResource(R.string.show_explanation)
     val section = explainSectionOf(row.prayer)
+    val rowStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp, lineHeight = 26.sp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = minHeight)
             // Die Haarlinie zieht PrayerGroupLine unter Gebet und Nebenzeiten zusammen.
-            // Punkt im Seitenrand, damit die Namen bündig bleiben.
-            .drawBehind {
-                if (row.current) {
-                    drawCircle(accent, radius = 3.dp.toPx(), center = Offset(-12.dp.toPx(), size.height / 2))
-                }
-            }
             // Antippen führt zum Eintrag in „Zeiten verstehen“, wie früher die Nebenzeilen.
             .clickable(role = Role.Button, onClickLabel = explainLabel) { onExplain(section) }
             .clearAndSetSemantics {
@@ -783,7 +940,7 @@ private fun PrayerLine(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: T
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = weight, color = color)
+        Text(name, style = rowStyle, fontWeight = weight, color = color)
         // Zeigt, dass die Zeile eine Erklärung hat; Zierde, TalkBack nennt die Aktion oben.
         Icon(
             painterResource(R.drawable.ic_help_small),
@@ -791,6 +948,7 @@ private fun PrayerLine(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: T
             tint = t.stone,
             modifier = Modifier.padding(start = 6.dp).size(14.dp),
         )
+
         if (row.nextDay) {
             Spacer(Modifier.width(8.dp))
             Text(nextDay, style = MaterialTheme.typography.bodyMedium, color = t.stone)
@@ -798,7 +956,7 @@ private fun PrayerLine(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: T
         Spacer(Modifier.weight(1f))
         Text(
             time,
-            style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = TABULAR),
+            style = rowStyle.copy(fontFeatureSettings = TABULAR),
             fontWeight = weight,
             color = color,
             modifier = Modifier.padding(start = 12.dp),
