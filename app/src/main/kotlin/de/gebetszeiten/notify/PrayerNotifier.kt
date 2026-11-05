@@ -32,6 +32,8 @@ object PrayerNotifier {
     private const val CHANNEL_VIBRATE_ID = "prayer_times_vibrate"
     private const val CHANNEL_SOUND_ID = "prayer_times_sound"
     private const val ONGOING_CHANNEL_ID = "next_prayer"
+    /** Dauerbenachrichtigung mit Restzeit-Symbol; siehe [ongoingChannelId]. */
+    private const val ONGOING_STATUS_CHANNEL_ID = "next_prayer_status"
     private const val NOTIFICATION_ID = 1
     private const val ONGOING_ID = 2
     private const val PRE_ID = 3
@@ -142,7 +144,32 @@ object PrayerNotifier {
             lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         }
         manager.createNotificationChannel(ongoing)
+        // Seit Android 12 blendet das System Symbole stiller Meldungen in der
+        // Statusleiste aus („hideSilentStatusBar“, ab Werk an). LOW zählt als
+        // still, deshalb erschien die Restzeit dort nie. Dieser Kanal steht auf
+        // DEFAULT, bleibt aber ohne Ton und Vibration; Kanäle lassen sich nach
+        // dem Anlegen nicht umstellen, darum ein zweiter statt des alten.
+        val ongoingStatus = NotificationChannel(
+            ONGOING_STATUS_CHANNEL_ID,
+            context.getString(R.string.ongoing_status_channel_name),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = context.getString(R.string.ongoing_status_channel_desc)
+            setSound(null, null)
+            enableVibration(false)
+            setShowBadge(false)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+        }
+        manager.createNotificationChannel(ongoingStatus)
     }
+
+    /**
+     * Der Kanal der Dauerbenachrichtigung: mit Restzeit der sichtbare
+     * [ONGOING_STATUS_CHANNEL_ID] (sonst zeigte die Statusleiste das Symbol
+     * nicht), ohne Restzeit der stille alte, damit dort kein Mond dauerhaft steht.
+     */
+    internal fun ongoingChannelId(countdown: Boolean): String =
+        if (countdown) ONGOING_STATUS_CHANNEL_ID else ONGOING_CHANNEL_ID
 
     private fun styleChannel(style: String): String = when (style) {
         de.gebetszeiten.data.AppSettings.STYLE_VIBRATE -> CHANNEL_VIBRATE_ID
@@ -167,7 +194,11 @@ object PrayerNotifier {
                 ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED,
             appEnabled = manager.areNotificationsEnabled(),
-            ongoingChannelImportance = importanceOf(manager, ONGOING_CHANNEL_ID),
+            // Abgeschaltet ist die Anzeige, wenn einer der beiden Kanäle auf „Keine“ steht.
+            ongoingChannelImportance = minOf(
+                importanceOf(manager, ONGOING_CHANNEL_ID),
+                importanceOf(manager, ONGOING_STATUS_CHANNEL_ID),
+            ),
             entryChannelImportance = importanceOf(manager, CHANNEL_ID),
         )
     }
@@ -302,7 +333,7 @@ object PrayerNotifier {
         )
         val mode = anzeige.mode
         val texts = anzeige.texts
-        val notification = NotificationCompat.Builder(context, ONGOING_CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, ongoingChannelId(countdown))
             // Die Restzeit in der Statusleiste statt des statischen Monds.
             // Ist [countdown] aus, liefert countdownGlyph None und
             // countdownIconRes wieder ic_notification — dann sieht die
@@ -333,7 +364,7 @@ object PrayerNotifier {
             .setContentIntent(contentIntent(context))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(if (countdown) NotificationCompat.PRIORITY_DEFAULT else NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSilent(true)
             .apply {

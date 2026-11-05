@@ -23,6 +23,8 @@
     <string name="notification_next_line">Nächstes Gebet: %1$s um %2$s</string>
     <string name="ongoing_channel_name">Nächstes Gebet (dauerhaft)</string>
     <string name="ongoing_channel_desc">Dauerhafte stille Anzeige der nächsten Gebetszeit</string>
+    <string name="ongoing_status_channel_name">Nächstes Gebet mit Restzeit</string>
+    <string name="ongoing_status_channel_desc">Dauerhafte Anzeige ohne Ton, mit der Restzeit als Symbol in der Statusleiste</string>
     <string name="ongoing_title">%1$s um %2$s</string>
     <string name="ongoing_title_remaining">Noch %1$s bis %2$s</string>
     <string name="ongoing_at">um %1$s</string>
