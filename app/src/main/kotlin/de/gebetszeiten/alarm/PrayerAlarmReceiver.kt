@@ -68,6 +68,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                         // Der aktive Ort aus `settings` — nicht das Abrufziel
                         // von `refreshOfficial`, das ein anderer sein kann.
                         photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
+                        offsets = settings.timeOffsets,
                     )
                     PrayerNotifier.updatePauseNotice(context, hasTimes = stepNext != null)
                     NextPrayerWidget.refreshAll(context)
@@ -143,6 +144,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     // (`refreshOfficial`) frischt seit Task 6 unter Umstaenden
                     // einen ANDEREN Ort auf — der gehoert nicht hierher.
                     photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
+                    offsets = settings.timeOffsets,
                 )
                 PrayerNotifier.updatePauseNotice(context, hasTimes = transitionNext != null)
                 NextPrayerWidget.refreshAll(context)

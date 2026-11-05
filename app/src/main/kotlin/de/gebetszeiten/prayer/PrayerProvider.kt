@@ -31,7 +31,13 @@ object PrayerProvider {
      *  legt fest, welche Quellen in welcher Reihenfolge befragt werden; die
      *  Berechnung steht darin nur, wenn der Nutzer sie als Notausgang
      *  eingeschaltet hat (`settings.calculationFillsGaps`). */
-    suspend fun daily(context: Context, settings: AppSettings, date: LocalDate, zone: ZoneId): DailyPrayerTimes? {
+    suspend fun daily(context: Context, settings: AppSettings, date: LocalDate, zone: ZoneId): DailyPrayerTimes? =
+        // Die Minuten-Verschiebung des Nutzers greift hier, an der einen Stelle,
+        // durch die alle Oberflächen gehen; gekennzeichnet wird sie dort.
+        unshifted(context, settings, date, zone)?.let { settings.timeOffsets.applyTo(it) }
+
+    /** Die Zeiten der Quelle ohne Verschiebung (amtlich bzw. Notausgang). */
+    suspend fun unshifted(context: Context, settings: AppSettings, date: LocalDate, zone: ZoneId): DailyPrayerTimes? {
         for (source in daySourceOrder(settings.useOnline, settings.calculationFillsGaps)) {
             when (source) {
                 DaySource.ONLINE_CACHE ->

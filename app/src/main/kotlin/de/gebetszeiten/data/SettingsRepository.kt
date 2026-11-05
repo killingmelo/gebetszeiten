@@ -70,6 +70,8 @@ data class AppSettings(
     val themeMode: String = THEME_SYSTEM,
     /** Hijri date correction in days (moon-sighting differences), −2..+2. */
     val hijriOffsetDays: Int = 0,
+    /** Minuten-Verschiebung je Zeit, vom Nutzer gewählt; überall gekennzeichnet. */
+    val timeOffsets: de.gebetszeiten.core.prayertimes.TimeOffsets = de.gebetszeiten.core.prayertimes.TimeOffsets.NONE,
     /** Farbthema des Widgets (`de.gebetszeiten.widget.WidgetTheme.key`). */
     val widgetTheme: String = "system",
     /** Deckkraft des Widget-Hintergrunds in Prozent, 0 bis 100. Ersetzt den
@@ -227,6 +229,7 @@ data class AppSettings(
             showPrayerVirtue = true,
             themeMode = THEME_SYSTEM,
             hijriOffsetDays = 0,
+            timeOffsets = de.gebetszeiten.core.prayertimes.TimeOffsets.NONE,
             widgetTheme = "system",
             widgetOpacity = 100,
             widgetFormat = "standard",
@@ -368,6 +371,7 @@ class SettingsRepository(private val context: Context) {
         val REMINDER_STYLE = stringPreferencesKey("reminder_style")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HIJRI_OFFSET = intPreferencesKey("hijri_offset_days")
+        val TIME_OFFSETS = stringPreferencesKey("time_offsets")
         // Nur noch fuer die Uebernahme in WIDGET_OPACITY gelesen.
         val WIDGET_TRANSPARENT = booleanPreferencesKey("widget_transparent")
         val WIDGET_OPACITY = intPreferencesKey("widget_opacity")
@@ -512,6 +516,7 @@ class SettingsRepository(private val context: Context) {
             ),
             themeMode = prefs[Keys.THEME_MODE] ?: AppSettings.DEFAULT.themeMode,
             hijriOffsetDays = prefs[Keys.HIJRI_OFFSET] ?: AppSettings.DEFAULT.hijriOffsetDays,
+            timeOffsets = de.gebetszeiten.core.prayertimes.TimeOffsets.decode(prefs[Keys.TIME_OFFSETS]),
             widgetTheme = prefs[Keys.WIDGET_THEME] ?: AppSettings.DEFAULT.widgetTheme,
             widgetOpacity = widgetOpacityFromPrefs(prefs[Keys.WIDGET_OPACITY], prefs[Keys.WIDGET_TRANSPARENT]),
             widgetFormat = prefs[Keys.WIDGET_FORMAT] ?: AppSettings.DEFAULT.widgetFormat,
@@ -569,6 +574,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.ADHAN_VOLUME] = de.gebetszeiten.adhan.normalizedVolume(value.adhan.volumePercent)
             prefs[Keys.THEME_MODE] = value.themeMode
             prefs[Keys.HIJRI_OFFSET] = value.hijriOffsetDays
+            prefs[Keys.TIME_OFFSETS] = value.timeOffsets.encode()
             prefs[Keys.WIDGET_THEME] = value.widgetTheme
             prefs[Keys.WIDGET_OPACITY] = value.widgetOpacity.coerceIn(0, 100)
             prefs[Keys.WIDGET_FORMAT] = value.widgetFormat

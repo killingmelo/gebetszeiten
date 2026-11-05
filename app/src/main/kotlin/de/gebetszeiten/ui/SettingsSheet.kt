@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -646,6 +648,8 @@ internal fun LocationSettings(
 
         SourceStatusSection(settings, onRefresh, refreshTick)
 
+        OffsetsSection(settings.timeOffsets) { neu -> commit { copy(timeOffsets = neu) } }
+
         SettingsSection(stringResource(R.string.settings_section_display)) {
             ToggleRow(stringResource(R.string.settings_show_makruh), settings.showKaraha) { commit { copy(showKaraha = it) } }
             if (settings.showKaraha) {
@@ -919,6 +923,84 @@ private val FONT_NAMES = listOf("Noto Serif Display", "Inter", "Noto Naskh Arabi
  * „Über“: wer die Fotos gemacht hat und unter welcher Lizenz die Schriften
  * stehen. Die Unsplash-Lizenz verlangt die Nennung nicht, sie ist aber fair.
  */
+/**
+ * „Zeiten verschieben“: je Zeit −60 bis +60 Minuten, z. B. wenn die eigene
+ * Moschee später betet. Ab Werk alles 0; jede Verschiebung wird auf „Heute“,
+ * im Monat, im Widget, in der Meldung und auf der Uhr gekennzeichnet.
+ */
+@Composable
+private fun OffsetsSection(
+    offsets: de.gebetszeiten.core.prayertimes.TimeOffsets,
+    onChange: (de.gebetszeiten.core.prayertimes.TimeOffsets) -> Unit,
+) {
+    val t = LocalTokens.current
+    SettingsSection(stringResource(R.string.settings_section_offsets)) {
+        Text(
+            stringResource(R.string.settings_offsets_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        listOf(
+            de.gebetszeiten.core.prayertimes.Prayer.FAJR,
+            de.gebetszeiten.core.prayertimes.Prayer.SUNRISE,
+            de.gebetszeiten.core.prayertimes.Prayer.DHUHR,
+            de.gebetszeiten.core.prayertimes.Prayer.ASR,
+            de.gebetszeiten.core.prayertimes.Prayer.MAGHRIB,
+            de.gebetszeiten.core.prayertimes.Prayer.ISHA,
+        ).forEach { prayer ->
+            val name = if (prayer == de.gebetszeiten.core.prayertimes.Prayer.SUNRISE) {
+                stringResource(R.string.moment_shuruq)
+            } else {
+                stringResource(prayer.labelRes())
+            }
+            val minutes = offsets.of(prayer)
+            val value = de.gebetszeiten.prayer.offsetMark(minutes)?.let { "$it Min" } ?: stringResource(R.string.settings_offset_none)
+            val earlier = stringResource(R.string.settings_offset_earlier, name)
+            val later = stringResource(R.string.settings_offset_later, name)
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(name, style = MaterialTheme.typography.bodyLarge, color = t.ink, modifier = Modifier.weight(1f))
+                OffsetStep("\u2212", earlier, enabled = minutes > de.gebetszeiten.core.prayertimes.TimeOffsets.RANGE.first) {
+                    onChange(offsets.with(prayer, minutes - 1))
+                }
+                Text(
+                    value,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"),
+                    color = if (minutes == 0) t.stone else t.gold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.width(88.dp),
+                )
+                OffsetStep("+", later, enabled = minutes < de.gebetszeiten.core.prayertimes.TimeOffsets.RANGE.last) {
+                    onChange(offsets.with(prayer, minutes + 1))
+                }
+            }
+        }
+        if (!offsets.isZero) {
+            OutlinedButton(onClick = { onChange(de.gebetszeiten.core.prayertimes.TimeOffsets.NONE) }) {
+                Text(stringResource(R.string.settings_offsets_reset))
+            }
+        }
+    }
+}
+
+/** Runder Knopf „−“ oder „+“, 48 dp groß; TalkBack liest „Ẓuhr eine Minute später“. */
+@Composable
+private fun OffsetStep(symbol: String, description: String, enabled: Boolean, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        shape = androidx.compose.foundation.shape.CircleShape,
+        contentPadding = PaddingValues(0.dp),
+        modifier = Modifier
+            .size(48.dp)
+            .semantics { contentDescription = description },
+    ) {
+        Text(symbol, style = MaterialTheme.typography.titleLarge)
+    }
+}
+
 @Composable
 private fun AboutSection() {
     SettingsSection(stringResource(R.string.settings_section_about), divider = false) {

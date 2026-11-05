@@ -85,6 +85,20 @@ object WearSyncApplier {
         notifyWearOfficialRefreshed(context)
     }
 
+    /** Verschiebung vom Telefon übernehmen und neu zeichnen; wirft nie außer CancellationException. */
+    suspend fun applyOffsets(context: Context, item: DataItem) {
+        try {
+            val text = DataMapItem.fromDataItem(item).dataMap.getString(WearSyncContract.KEY_OFFSETS)
+            WearSettings.saveTimeOffsets(context, de.gebetszeiten.core.prayertimes.TimeOffsets.decode(text))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.w("WearSyncApplier", "Verschiebung liess sich nicht übernehmen", e)
+            return
+        }
+        notifyWearOfficialRefreshed(context)
+    }
+
     /** Payload aus einem DataItem — null, wenn Pflichtfelder fehlen.
      *  [WearSyncContract.KEY_UPDATED] fehlt bei einem aelteren Telefon;
      *  `containsKey` statt `getLong` mit Default, weil `getLong` sonst nicht
@@ -134,6 +148,8 @@ object WearSyncApplier {
                     TimeUnit.SECONDS,
                 )
                 try {
+                    // Beim Nachholen auch die Verschiebung übernehmen (eigenes DataItem).
+                    buffer.filter { it.uri.path == WearSyncContract.PATH_OFFSETS }.forEach { applyOffsets(context, it) }
                     buffer.filter { it.uri.path == WearSyncContract.PATH }.mapNotNull(::payloadOf)
                 } finally {
                     buffer.release()

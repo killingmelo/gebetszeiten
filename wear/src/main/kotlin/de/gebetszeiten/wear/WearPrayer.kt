@@ -88,6 +88,15 @@ object WearPrayer {
         location: GeoLocation,
         date: LocalDate,
         zone: ZoneId,
+    ): DailyPrayerTimes? =
+        // Dieselbe Verschiebung wie am Telefon (vom Telefon gesynct), an derselben einen Stelle.
+        unshifted(context, location, date, zone)?.let { WearSettings.timeOffsets(context).applyTo(it) }
+
+    private suspend fun unshifted(
+        context: Context,
+        location: GeoLocation,
+        date: LocalDate,
+        zone: ZoneId,
     ): DailyPrayerTimes? {
         val calculationFillsGaps = WearSettings.calculationFillsGaps(context)
         for (source in daySourceOrder(useOnline = true, calculationFillsGaps = calculationFillsGaps)) {

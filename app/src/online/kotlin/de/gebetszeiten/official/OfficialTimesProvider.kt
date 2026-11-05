@@ -25,4 +25,8 @@ object OfficialTimesProvider {
      *  Cache-Kopf existiert. */
     suspend fun syncToWear(context: Context, schedule: Map<LocalDate, SixTimes>, settings: AppSettings, updatedEpochMs: Long?) =
         WearCacheSync.create(context).push(schedule, settings.latitude, settings.longitude, settings.city, updatedEpochMs)
+
+    /** Die Minuten-Verschiebung zur Uhr (eigenes DataItem, wirft nie). */
+    suspend fun syncOffsetsToWear(context: Context, offsets: de.gebetszeiten.core.prayertimes.TimeOffsets) =
+        WearCacheSync.pushOffsets(context, offsets)
 }

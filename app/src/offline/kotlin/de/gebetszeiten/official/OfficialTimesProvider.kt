@@ -14,4 +14,8 @@ object OfficialTimesProvider {
     /** Offline gibt es nichts zu syncen (kein Online-Cache, kein gms). */
     @Suppress("UNUSED_PARAMETER")
     suspend fun syncToWear(context: Context, schedule: Map<LocalDate, SixTimes>, settings: AppSettings, updatedEpochMs: Long?) = Unit
+
+    /** Offline: keine Uhr-Verbindung. */
+    @Suppress("UNUSED_PARAMETER")
+    suspend fun syncOffsetsToWear(context: Context, offsets: de.gebetszeiten.core.prayertimes.TimeOffsets) = Unit
 }

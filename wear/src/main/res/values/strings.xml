@@ -70,4 +70,5 @@
 
     <!-- PrayerComplicationService: content description template -->
     <string name="complication_desc">Nächstes Gebet %1$s %2$s</string>
+    <string name="city_shifted">%1$s · von dir verschoben</string>
 </resources>

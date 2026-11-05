@@ -460,7 +460,7 @@ class NextPrayerWidget : GlanceAppWidget() {
         }
         // Kurzform für schmale Widgets: Name und Uhrzeit, ohne „dann … um“.
         val nextShort = hero.next?.takeIf { options.next }?.let {
-            context.getString(it.prayer.labelRes()) + " " + it.at.format(timeFormat)
+            context.getString(it.prayer.labelRes()) + " " + it.at.format(timeFormat) + markOf(settings, it.prayer)
         }
         // Die fünf Pflichtgebete des Tages; verblasst ist nur, was vorbei
         // und nicht mehr laufend ist (wie in der Tagesliste von „Heute“).
@@ -486,7 +486,7 @@ class NextPrayerWidget : GlanceAppWidget() {
                     // Šurūq ist kein Gebet: nie „aktuell“, nur verblassen wie die anderen.
                     DayEntry(
                         label = context.getString(R.string.moment_shuruq),
-                        time = it.at.format(timeFormat),
+                        time = it.at.format(timeFormat) + markOf(settings, it.prayer),
                         current = false,
                         faded = it.past,
                         optional = true,
@@ -495,7 +495,7 @@ class NextPrayerWidget : GlanceAppWidget() {
                 } else {
                     DayEntry(
                         label = context.getString(it.prayer.labelRes()),
-                        time = it.at.format(timeFormat),
+                        time = it.at.format(timeFormat) + markOf(settings, it.prayer),
                         current = it.current,
                         faded = it.past && !it.current,
                         sub = sub,
@@ -894,3 +894,7 @@ class NextPrayerWidget : GlanceAppWidget() {
         }
     }
 }
+
+/** „ +5“ hinter einer vom Nutzer verschobenen Zeit; leer, wenn nicht verschoben. */
+private fun markOf(settings: de.gebetszeiten.data.AppSettings, prayer: Prayer): String =
+    de.gebetszeiten.prayer.offsetMark(settings.timeOffsets.of(prayer))?.let { " $it" } ?: ""

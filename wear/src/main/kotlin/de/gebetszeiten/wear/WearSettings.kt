@@ -56,6 +56,7 @@ object WearSettings {
     // uebersetzt, geloescht.
     private val USE_CALCULATED_LEGACY = booleanPreferencesKey("use_calculated")
     private val SHOW_CEMAAT = booleanPreferencesKey("show_cemaat")
+    private val TIME_OFFSETS = stringPreferencesKey("time_offsets")
     private val DEFAULT = GeoLocation(49.4521, 11.0767) // Nürnberg
     private const val DEFAULT_CITY = "Nürnberg"
 
@@ -93,6 +94,14 @@ object WearSettings {
 
     suspend fun city(context: Context): String =
         context.locationStore.data.first()[CITY] ?: DEFAULT_CITY
+
+    /** Minuten-Verschiebung vom Telefon (`WearSyncContract.PATH_OFFSETS`); ohne Sync keine. */
+    suspend fun timeOffsets(context: Context): de.gebetszeiten.core.prayertimes.TimeOffsets =
+        de.gebetszeiten.core.prayertimes.TimeOffsets.decode(context.locationStore.data.first()[TIME_OFFSETS])
+
+    suspend fun saveTimeOffsets(context: Context, value: de.gebetszeiten.core.prayertimes.TimeOffsets) {
+        context.locationStore.edit { it[TIME_OFFSETS] = value.encode() }
+    }
 
     /** Show remaining time instead of the clock time (app + complication). */
     suspend fun showRemaining(context: Context): Boolean =

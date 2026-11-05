@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -42,8 +43,13 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun save(value: AppSettings) {
         viewModelScope.launch {
+            val before = repository.settings.first().timeOffsets
             repository.save(value)
             reschedule(value)
+            // Die Uhr zeigt dieselben verschobenen Zeiten wie das Telefon.
+            if (value.timeOffsets != before) {
+                de.gebetszeiten.official.OfficialTimesProvider.syncOffsetsToWear(getApplication(), value.timeOffsets)
+            }
         }
     }
 
@@ -143,6 +149,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
                 // nach einem Ortswechsel also sofort der neue, passend zu den
                 // Zeiten daneben.
                 photo = photo,
+                offsets = value.timeOffsets,
             )
         }
         PrayerNotifier.updatePauseNotice(app, hasTimes = next != null)

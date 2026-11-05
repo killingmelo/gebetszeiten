@@ -120,6 +120,12 @@
     <string name="settings_coordinate_error">Gültige Werte: Breite -90 bis 90, Länge -180 bis 180.</string>
     <string name="settings_apply_location">Ort übernehmen</string>
     <string name="settings_section_source">Zeitenquelle</string>
+    <string name="settings_section_offsets">Zeiten verschieben</string>
+    <string name="settings_offsets_hint">Wenn deine Moschee zu anderen Zeiten betet, kannst du jede Zeit um bis zu 60 Minuten früher oder später stellen. Die amtlichen Zeiten bleiben die Grundlage; überall, wo eine Zeit verschoben ist, steht das dabei, auch auf der Uhr.</string>
+    <string name="settings_offset_none">amtlich</string>
+    <string name="settings_offset_earlier">%1$s eine Minute früher</string>
+    <string name="settings_offset_later">%1$s eine Minute später</string>
+    <string name="settings_offsets_reset">Alle auf amtlich zurücksetzen</string>
     <string name="status_loading">Status wird geladen…</string>
     <string name="status_refresh">Jetzt aktualisieren</string>
     <string name="no_times_fetch_now">Jetzt abrufen</string>
@@ -274,6 +280,8 @@
     <string name="hero_remaining_lead">noch</string>
     <string name="hero_next_lead">dann</string>
     <string name="hero_next_at">%1$s um %2$s</string>
+    <string name="offset_summary">Von dir verschoben: %1$s</string>
+    <string name="desc_offset">, von dir um %1$s Minuten verschoben</string>
     <string name="desc_progress">%1$d Prozent des Abschnitts vorbei, von %2$s bis %3$s</string>
     <string name="hero_makruh_until">Makrūh bis %1$s</string>
     <string name="hero_makruh_from">Makrūh ab %1$s</string>

@@ -27,4 +27,15 @@ object WearSyncContract {
      * Fall.
      */
     const val KEY_UPDATED = "updatedEpochMs"
+
+    /**
+     * Die Minuten-Verschiebung des Nutzers (`TimeOffsets.encode()`), damit die
+     * Uhr dieselben Zeiten zeigt wie das Telefon. Fehlt der Schlüssel (ältere
+     * Telefon-App), verschiebt die Uhr nichts.
+     */
+    const val KEY_OFFSETS = "timeOffsets"
+
+    /** Eigenes DataItem für die Verschiebung: ändert sie sich, muss die Uhr
+     *  nicht auf den nächsten Zeiten-Abruf warten. */
+    const val PATH_OFFSETS = "/time-offsets"
 }

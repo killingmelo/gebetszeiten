@@ -278,6 +278,8 @@ object PrayerNotifier {
         // kennt den Zawāl). Ohne Vorgabewert, damit kein Aufrufer es vergisst;
         // null nur ohne Tageszeiten.
         photo: de.gebetszeiten.prayer.PhotoKey?,
+        // Verschiebung des Nutzers: die Uhrzeit trägt dann ihr Vorzeichen („12:09 (+5)“).
+        offsets: de.gebetszeiten.core.prayertimes.TimeOffsets = de.gebetszeiten.core.prayertimes.TimeOffsets.NONE,
     ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
@@ -292,7 +294,8 @@ object PrayerNotifier {
         if (replacesEntry) manager.cancel(NOTIFICATION_ID)
         val whenMillis = next.time.toInstant().toEpochMilli()
         val name = context.getString(next.prayer.labelRes())
-        val timeStr = next.time.format(timeFormat)
+        val timeStr = next.time.format(timeFormat) +
+            (de.gebetszeiten.prayer.offsetMark(offsets.of(next.prayer))?.let { " ($it)" } ?: "")
         // STEPS countdown: the remaining time IS the headline ("Noch 20+ Min
         // bis Isha"); clock time moves to the detail line. Otherwise the
         // classic "Isha um 22:48" title (EXACT mode ticks via chronometer).

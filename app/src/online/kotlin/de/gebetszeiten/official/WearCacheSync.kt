@@ -45,6 +45,22 @@ class WearCacheSync(
     }
 
     companion object {
+        /** Verschiebung als eigenes DataItem; ein Fehler ist folgenlos (wie beim Zeiten-Sync). */
+        suspend fun pushOffsets(context: Context, offsets: de.gebetszeiten.core.prayertimes.TimeOffsets) {
+            try {
+                val request = PutDataMapRequest.create(WearSyncContract.PATH_OFFSETS).apply {
+                    dataMap.putString(WearSyncContract.KEY_OFFSETS, offsets.encode())
+                }.asPutDataRequest()
+                withContext(Dispatchers.IO) {
+                    Tasks.await(Wearable.getDataClient(context).putDataItem(request), 10, TimeUnit.SECONDS)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.w("WearCacheSync", "Verschiebung nicht zur Uhr gesendet", e)
+            }
+        }
+
         fun create(context: Context) = WearCacheSync(
             put = { schedule, lat, lng, city, updatedEpochMs ->
                 val request = PutDataMapRequest.create(WearSyncContract.PATH).apply {

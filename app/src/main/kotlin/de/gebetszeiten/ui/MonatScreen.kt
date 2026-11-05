@@ -185,6 +185,15 @@ internal fun MonatScreen(inner: PaddingValues, settings: AppSettings) {
             }
             val noTime = stringResource(R.string.month_no_time)
             val accent = t.accent
+            // Verschobene Zeiten: über der Tabelle steht, was der Nutzer verschoben hat.
+            de.gebetszeiten.ui.offsetSummaryText(settings.timeOffsets)?.let { summary ->
+                Text(
+                    summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = t.gold,
+                    modifier = Modifier.padding(horizontal = MONTH_GUTTER, vertical = 6.dp),
+                )
+            }
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(list) { row ->
                     val isToday = row.date == today

@@ -279,6 +279,9 @@ class MainActivity : Activity() {
             )
         }
         val name = next.first.label()
+        // Vom Telefon gesyncte Verschiebung: die Uhrzeit trägt ihr Vorzeichen,
+        // die Ortszeile sagt, dass verschoben ist (nie still, wie am Telefon).
+        val offsets = WearSettings.timeOffsets(applicationContext)
 
         val heroTimeText: String
         val heroTimeSize: Float
@@ -289,7 +292,7 @@ class MainActivity : Activity() {
             heroTimeSize = 24f
             heroTimeDesc = heroTimeText
         } else {
-            heroTimeText = next.second.format(timeFormat)
+            heroTimeText = next.second.format(timeFormat) + (offsets.markOf(next.first)?.let { " $it" } ?: "")
             heroTimeSize = 42f
             heroTimeDesc = getString(R.string.desc_hero_time_clock, heroTimeText)
         }
@@ -330,7 +333,7 @@ class MainActivity : Activity() {
             heroTimeText = heroTimeText,
             heroTimeSize = heroTimeSize,
             heroTimeDesc = heroTimeDesc,
-            city = s.city,
+            city = if (offsets.isZero) s.city else getString(R.string.city_shifted, s.city),
             karaha = karahaUi,
             modeText = settingsRows.modeText,
             vibrateText = settingsRows.vibrateText,

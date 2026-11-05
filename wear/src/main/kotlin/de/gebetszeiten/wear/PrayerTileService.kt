@@ -97,13 +97,15 @@ class PrayerTileService : TileService() {
             return ResolvableFuture.create<TileBuilders.Tile>().apply { set(tile) }
         }
 
+        val offsets = kotlinx.coroutines.runBlocking { WearSettings.timeOffsets(applicationContext) }
         val timeline = TimelineBuilders.Timeline.Builder()
         var start = now
         for ((index, entry) in upcoming.take(6).withIndex()) {
             val (prayer, time) = entry
             val after = upcoming.getOrNull(index + 1)
                 ?.let { getString(R.string.tile_danach, it.first.label(), it.second.format(timeFormat)) }
-            val layout = layout(requestParams.deviceConfiguration, prayer.label(), time.format(timeFormat), after)
+            val shown = time.format(timeFormat) + (offsets.markOf(prayer)?.let { " $it" } ?: "")
+            val layout = layout(requestParams.deviceConfiguration, prayer.label(), shown, after)
             timeline.addTimelineEntry(
                 TimelineBuilders.TimelineEntry.Builder()
                     .setValidity(

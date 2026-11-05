@@ -98,6 +98,8 @@ import de.gebetszeiten.prayer.heroState
 import de.gebetszeiten.prayer.hijriText
 import de.gebetszeiten.prayer.labelRes
 import de.gebetszeiten.prayer.noTimesNotice
+import de.gebetszeiten.prayer.offsetMark
+import de.gebetszeiten.prayer.offsetSummary
 import de.gebetszeiten.prayer.timeRange
 import de.gebetszeiten.ui.theme.LocalTokens
 import de.gebetszeiten.ui.theme.Tokens
@@ -361,11 +363,15 @@ internal fun HeuteScreen(
                 Photo(hero)
             }
             Spacer(Modifier.height(16.dp))
-            DayList(rows, onExplain, t)
+            DayList(rows, onExplain, t, settings.timeOffsets)
             if (sourceKnown) Text(
                 // Amtlich nennt die Stadt („… · Nürnberg“); der berechnete
                 // String hat keinen Platzhalter, das Argument wird ignoriert.
-                text = stringResource(dataCreditRes(officialName != null), officialName ?: settings.city),
+                // Hat der Nutzer verschoben, steht das gleich darunter: nie still.
+                text = listOfNotNull(
+                    stringResource(dataCreditRes(officialName != null), officialName ?: settings.city),
+                    offsetSummaryText(settings.timeOffsets),
+                ).joinToString("\n"),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 16.sp),
                 color = t.stone,
                 modifier = Modifier.padding(start = GUTTER, end = GUTTER, top = 16.dp, bottom = 24.dp),
@@ -641,6 +647,16 @@ private fun Hero(
     }
 }
 
+/** „Von dir verschoben: Ẓuhr +5 Min“, oder null ohne Verschiebung. */
+@Composable
+internal fun offsetSummaryText(offsets: de.gebetszeiten.core.prayertimes.TimeOffsets): String? {
+    if (offsets.isZero) return null
+    val names = de.gebetszeiten.core.prayertimes.Prayer.entries.associateWith { p ->
+        if (p == Prayer.SUNRISE) stringResource(R.string.moment_shuruq) else stringResource(p.labelRes())
+    }
+    return offsetSummary(offsets, { names.getValue(it) }, stringResource(R.string.offset_summary))
+}
+
 /** Wie weit der laufende Abschnitt ist, mit Beginn und Ende darunter. */
 @Composable
 private fun SectionProgress(part: Float, from: String, to: String, t: Tokens) {
@@ -677,7 +693,12 @@ private fun SectionProgress(part: Float, from: String, to: String, t: Tokens) {
 
 /** Der ganze Tag als Karte: fünf Gebete, Nebenzeiten klein darunter. */
 @Composable
-private fun DayList(rows: List<DayRow>, onExplain: (Section) -> Unit, t: Tokens) {
+private fun DayList(
+    rows: List<DayRow>,
+    onExplain: (Section) -> Unit,
+    t: Tokens,
+    offsets: de.gebetszeiten.core.prayertimes.TimeOffsets = de.gebetszeiten.core.prayertimes.TimeOffsets.NONE,
+) {
     val groups = groupUnderPrayers(rows)
     // Weiße Fläche (nachts #19191c) mit Haarlinie, wie die Karten in DESIGN.md;
     // die letzte Zeile braucht keine Linie, die Karte schließt sie ab.
@@ -693,7 +714,7 @@ private fun DayList(rows: List<DayRow>, onExplain: (Section) -> Unit, t: Tokens)
             // Keine Linie direkt am getönten Grund: weder unter ihm noch über ihm.
             val nextIsCurrent = groups.getOrNull(i + 1)?.prayer?.current == true
             val line = i != groups.lastIndex && !group.prayer.current && !nextIsCurrent
-            PrayerGroupLine(group, onExplain, t, line = line)
+            PrayerGroupLine(group, onExplain, t, line = line, offsets = offsets)
         }
     }
 }
@@ -750,7 +771,13 @@ internal fun subFormOf(side: DayRow.SideRow, prayerAt: java.time.ZonedDateTime):
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PrayerGroupLine(group: PrayerGroup, onExplain: (Section) -> Unit, t: Tokens, line: Boolean = true) {
+private fun PrayerGroupLine(
+    group: PrayerGroup,
+    onExplain: (Section) -> Unit,
+    t: Tokens,
+    line: Boolean = true,
+    offsets: de.gebetszeiten.core.prayertimes.TimeOffsets = de.gebetszeiten.core.prayertimes.TimeOffsets.NONE,
+) {
     val shuruq = group.shuruq
     val hasSubs = group.subs.isNotEmpty()
     val hairline = t.hairline
@@ -773,7 +800,12 @@ private fun PrayerGroupLine(group: PrayerGroup, onExplain: (Section) -> Unit, t:
         // hoch wie früher Gebet plus eine Nebenzeile, sonst passte ʿIšāʾ nicht mehr.
         // Faǧr endet nicht mit dem nächsten Gebet, sondern bei Šurūq: das Ende
         // steht deshalb gleich in der Zeile („05:21 bis 07:03“), nicht als Nebenzeit.
-        PrayerLine(group.prayer, onExplain, t, minHeight = if (hasSubs) 36.dp else 48.dp, end = shuruq?.at)
+        PrayerLine(
+            group.prayer, onExplain, t,
+            minHeight = if (hasSubs) 36.dp else 48.dp,
+            end = shuruq?.at,
+            mark = offsetMark(offsets.of(group.prayer.prayer)),
+        )
         if (hasSubs) {
             FlowRow(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -861,6 +893,8 @@ private fun PrayerLine(
     t: Tokens,
     minHeight: Dp = 48.dp,
     end: ZonedDateTime? = null,
+    /** „+5“ / „−3“, wenn der Nutzer diese Zeit verschoben hat. */
+    mark: String? = null,
 ) {
     // `past` gilt auch für die laufende Zeile; verblasst wird nur, was vorbei ist.
     val faded = row.past && !row.current
@@ -883,7 +917,7 @@ private fun PrayerLine(
         stringResource(R.string.desc_prayer_next_day, name, time)
     } else {
         stringResource(R.string.desc_prayer, name, time, status)
-    }
+    } + (mark?.let { stringResource(R.string.desc_offset, it) } ?: "")
     val explainLabel = stringResource(R.string.show_explanation)
     val section = explainSectionOf(row.prayer)
     val rowStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp, lineHeight = 26.sp)
@@ -925,6 +959,14 @@ private fun PrayerLine(
             color = color,
             modifier = Modifier.padding(start = 12.dp),
         )
+        mark?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = TABULAR),
+                color = t.gold,
+                modifier = Modifier.padding(start = 4.dp),
+            )
+        }
     }
 }
 

@@ -20,6 +20,14 @@ class WearSyncListenerService : WearableListenerService() {
     override fun onDataChanged(events: DataEventBuffer) {
         for (event in events) {
             if (event.type != DataEvent.TYPE_CHANGED) continue
+            if (event.dataItem.uri.path == WearSyncContract.PATH_OFFSETS) {
+                try {
+                    runBlocking { WearSyncApplier.applyOffsets(applicationContext, event.dataItem) }
+                } catch (e: Exception) {
+                    android.util.Log.w("WearSyncListener", "Verschiebung liess sich nicht verarbeiten", e)
+                }
+                continue
+            }
             if (event.dataItem.uri.path != WearSyncContract.PATH) continue
             val payload = WearSyncApplier.payloadOf(event.dataItem) ?: continue
             // Zweites Netz (Fix-Runde 4, Important 2): [WearSyncApplier.apply]
