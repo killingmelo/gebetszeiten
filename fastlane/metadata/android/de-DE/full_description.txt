@@ -16,7 +16,7 @@ Aus dem Quellcode ist zusätzlich eine Fassung ganz ohne Internet-Berechtigung b
 
 AKKU
 
-Kein Hintergrunddienst, kein ständiges Abfragen, kein Aktualisieren im Takt. Die App wacht zu den Gebetszeiten auf und sonst nicht, im Normalfall etwa ein Dutzend Mal am Tag. Das Widget ändert sich nur, wenn sich etwas ändert.
+Kein ständiger Hintergrunddienst, kein ständiges Abfragen, kein Aktualisieren im Takt. Die App wacht zu den Gebetszeiten auf und sonst nicht, im Normalfall etwa ein Dutzend Mal am Tag. Das Widget ändert sich nur, wenn sich etwas ändert. Nur wenn du den Aḏān einschaltest, läuft zur Gebetszeit für die Dauer des Aḏān ein Wiedergabedienst.
 
 Die App bittet darum, von der Akku-Optimierung ausgenommen zu werden. Das klingt nach dem Gegenteil, hat aber einen einfachen Grund: Manche Hersteller halten Erinnerungen sonst zurück, und das Gebet wäre vorbei, bevor die Erinnerung kommt. Öfter aufwachen muss die App dadurch nicht.
 
@@ -24,15 +24,16 @@ Optional zeigt die App die Restzeit bis zum nächsten Gebet als Symbol in der St
 
 FUNKTIONEN
 
-* Heute auf einen Blick: laufendes Gebet, Restzeit, nächstes Gebet
+* Heute auf einen Blick: laufendes Gebet, Restzeit, nächstes Gebet und alle Zeiten des Tages ohne Scrollen; jede Zeile erklärt sich mit einem Tipp
 * Zeiten verstehen: zu jeder Gebetszeit ein Foto, Zitate hanafitischer Gelehrter auf Arabisch und Deutsch und eine Sonnenuhr für den eigenen Ort
-* Monatsübersicht und Qibla-Kompass
+* Monatsübersicht und Qibla-Kompass, der sagt, ob er gerade genau misst
 * Makrūh-Zeiten und freiwillige Gebete (Ḍuḥā, Auwābīn, Tahaǧǧud), wenn gewünscht
 * Gemeinschaftsgebet (Ǧamāʿa) am Morgen, Vorlauf einstellbar
 * Favoriten-Orte für den schnellen Wechsel
 * Islamisches Datum, einstellbare Schriftgröße, hoher Kontrast, Nachtansicht in reinem Schwarz
 * Stille Erinnerungen je Gebet; Ton und Vibration nur, wenn du sie einschaltest
-* Widget für den Startbildschirm
+* Aḏān zur Gebetszeit, wenn gewünscht: je Gebet wählbar, eigener Aḏān für Faǧr, eigene Aufnahme möglich
+* Widgets für Start- und Sperrbildschirm: sechs Farbthemen, vier Aufbauten, Deckkraft, Restzeit und Inhalte für jedes Widget einzeln
 
 WEAR OS
 

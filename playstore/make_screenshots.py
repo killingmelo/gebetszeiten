@@ -165,9 +165,10 @@ def compose(raw: Image.Image, panel: Image.Image, title: str, line: str,
         ring = Image.new("RGBA", (g + 2 * RAHMEN, g + 2 * RAHMEN), (0, 0, 0, 0))
         ImageDraw.Draw(ring).ellipse([0, 0, g + 2 * RAHMEN - 1, g + 2 * RAHMEN - 1], fill=farben["rahmen"])
         ring.paste(rund, (RAHMEN, RAHMEN), maske)
-        # Rechts auf dem leeren Himmel des Startbildschirms, ueber dem Widget:
-        # weiter unten verdeckte die Uhr dessen Zeitenzeile.
-        im.alpha_composite(ring, (BREITE - ring.size[0] - 60, 1060))
+        # Rechts auf dem leeren Himmel des Startbildschirms, ueber den Widgets:
+        # weiter unten verdeckte die Uhr deren Zeilen (seit 0.4.0 stehen dort
+        # zwei Widgets, das kleine sitzt hoeher als frueher das grosse).
+        im.alpha_composite(ring, (BREITE - ring.size[0] - 60, 720))
     return im.convert("RGB")
 
 
