@@ -751,7 +751,7 @@ internal fun subFormOf(side: DayRow.SideRow, prayerAt: java.time.ZonedDateTime):
 @Composable
 private fun PrayerGroupLine(group: PrayerGroup, onExplain: (Section) -> Unit, t: Tokens, line: Boolean = true) {
     val shuruq = group.shuruq
-    val hasSubs = group.subs.isNotEmpty() || shuruq != null
+    val hasSubs = group.subs.isNotEmpty()
     val hairline = t.hairline
     Column(
         Modifier
@@ -770,65 +770,22 @@ private fun PrayerGroupLine(group: PrayerGroup, onExplain: (Section) -> Unit, t:
     ) {
         // Mit Nebenzeiten flacher: Gebet und kleine Zeile zusammen etwa so
         // hoch wie früher Gebet plus eine Nebenzeile, sonst passte ʿIšāʾ nicht mehr.
-        PrayerLine(group.prayer, onExplain, t, minHeight = if (hasSubs) 36.dp else 48.dp)
+        // Faǧr endet nicht mit dem nächsten Gebet, sondern bei Šurūq: das Ende
+        // steht deshalb gleich in der Zeile („05:21 bis 07:03“), nicht als Nebenzeit.
+        PrayerLine(group.prayer, onExplain, t, minHeight = if (hasSubs) 36.dp else 48.dp, end = shuruq?.at)
         if (hasSubs) {
             FlowRow(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // Unter Faǧr: erst was vor Šurūq liegt (Ǧamāʿa), dann „bis Šurūq …“,
-                // dann was dort beginnt. Die Makrūh-Zeit ab Šurūq liest sich als
-                // „Makrūh bis …“, also zählt Šurūq als ihr Anfang.
-                val (beforeShuruq, afterShuruq) = if (shuruq == null) {
-                    group.subs to emptyList()
-                } else {
-                    group.subs.partition { it.start.isBefore(shuruq.at) }
+                // Unter Faǧr liest sich die Makrūh-Zeit ab Šurūq als „Makrūh bis …“,
+                // also zählt Šurūq als ihr Anfang; Ǧamāʿa davor bleibt am Faǧr.
+                group.subs.forEach { side ->
+                    val anchor = if (shuruq != null && !side.start.isBefore(shuruq.at)) shuruq.at else group.prayer.at
+                    SubItem(side, anchor, onExplain, t)
                 }
-                beforeShuruq.forEach { SubItem(it, group.prayer.at, onExplain, t) }
-                shuruq?.let { ShuruqItem(it, onExplain, t) }
-                afterShuruq.forEach { SubItem(it, shuruq?.at ?: group.prayer.at, onExplain, t) }
             }
         }
-    }
-}
-
-/** „bis Šurūq 07:03“ unter Faǧr; führt wie früher die Šurūq-Zeile zur Erklärung. */
-@Composable
-private fun ShuruqItem(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: Tokens) {
-    val time = row.at.format(HM)
-    val text = stringResource(R.string.sub_shuruq, time)
-    val name = stringResource(R.string.moment_shuruq)
-    val status = prayerStatusRes(row.prayer, row.current, row.past && !row.current)?.let { stringResource(it) } ?: ""
-    val description = stringResource(R.string.desc_prayer, name, time, status)
-    val explainLabel = stringResource(R.string.show_explanation)
-    val section = explainSectionOf(row.prayer)
-    val color = if (row.current) t.ink else t.stone
-    Row(
-        modifier = Modifier
-            .heightIn(min = 24.dp)
-            .clickable(role = Role.Button, onClickLabel = explainLabel) { onExplain(section) }
-            .clearAndSetSemantics {
-                contentDescription = description
-                role = Role.Button
-                onClick(label = explainLabel) {
-                    onExplain(section)
-                    true
-                }
-            },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = TABULAR),
-            fontWeight = if (row.current) FontWeight.SemiBold else FontWeight.Normal,
-            color = color,
-        )
-        Icon(
-            painterResource(R.drawable.ic_help_small),
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.padding(start = 4.dp).size(12.dp),
-        )
     }
 }
 
@@ -897,7 +854,13 @@ internal fun explainSectionOf(prayer: Prayer): Section = when (prayer) {
 private val TABULAR = "tnum"
 
 @Composable
-private fun PrayerLine(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: Tokens, minHeight: Dp = 48.dp) {
+private fun PrayerLine(
+    row: DayRow.PrayerRow,
+    onExplain: (Section) -> Unit,
+    t: Tokens,
+    minHeight: Dp = 48.dp,
+    end: ZonedDateTime? = null,
+) {
     // `past` gilt auch für die laufende Zeile; verblasst wird nur, was vorbei ist.
     val faded = row.past && !row.current
     // Das laufende Gebet in Waldgrün und fett, ohne Marke (Entscheidung 05.11.2026).
@@ -912,7 +875,7 @@ private fun PrayerLine(row: DayRow.PrayerRow, onExplain: (Section) -> Unit, t: T
     } else {
         stringResource(row.prayer.labelRes())
     }
-    val time = row.at.format(HM)
+    val time = end?.let { timeRange(row.at.format(HM), it.format(HM)) } ?: row.at.format(HM)
     val nextDay = stringResource(R.string.row_next_day)
     val status = prayerStatusRes(row.prayer, row.current, faded)?.let { stringResource(it) } ?: ""
     val description = if (row.nextDay) {
