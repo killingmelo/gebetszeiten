@@ -135,7 +135,9 @@ class NextPrayerWidget : GlanceAppWidget() {
             widgetTheme = state?.get(CHOICE_THEME) ?: settings.widgetTheme,
             widgetFormat = state?.get(CHOICE_FORMAT) ?: settings.widgetFormat,
             widgetOpacity = state?.get(CHOICE_OPACITY) ?: settings.widgetOpacity,
-            countdownMode = state?.get(CHOICE_COUNTDOWN) ?: settings.countdownMode,
+            // Ohne eigene Wahl des Widgets: der App-Regler, falls „Restzeit im Widget“ an ist.
+            countdownMode = state?.get(CHOICE_COUNTDOWN)
+                ?: if (settings.countdownInWidget) settings.countdownMode else de.gebetszeiten.data.AppSettings.COUNTDOWN_OFF,
         )
 
         /**

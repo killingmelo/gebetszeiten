@@ -714,6 +714,9 @@ internal fun LocationSettings(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Wo und wie die Restzeit erscheint (seit 0.5.1): jede Fläche
+            // einzeln, dazu Text und Symbol der Live-Pille.
+            LiveDisplayOptions(settings) { change -> commit(change) }
             Text(
                 stringResource(R.string.settings_remaining_cost),
                 style = MaterialTheme.typography.bodyMedium,
@@ -1148,5 +1151,115 @@ private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+
+/**
+ * Restzeit-Anzeige im Einzelnen: Statusleiste (Live-Pille), Sperrbildschirm,
+ * Widget, dazu Text und Symbol der Pille mit Vorschau. Statusleiste und
+ * Sperrbildschirm hängen an der dauerhaften Anzeige; Android zeigt beides nur
+ * zusammen mit einer Meldung.
+ */
+@Composable
+private fun LiveDisplayOptions(settings: AppSettings, commit: (AppSettings.() -> AppSettings) -> Unit) {
+    val context = LocalContext.current
+    val hint = MaterialTheme.typography.bodyMedium
+    val hintColor = MaterialTheme.colorScheme.onSurfaceVariant
+    var canPromote by remember { mutableStateOf(de.gebetszeiten.notify.PrayerNotifier.canPromote(context)) }
+    val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    LaunchedEffect(Unit) {
+        // Nach der Rückkehr aus den Systemeinstellungen neu prüfen.
+        lifecycle.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            canPromote = de.gebetszeiten.notify.PrayerNotifier.canPromote(context)
+        }
+    }
+    val countdownOn = settings.countdownMode != AppSettings.COUNTDOWN_OFF
+
+    ToggleRow(stringResource(R.string.settings_countdown_widget), settings.countdownInWidget) {
+        commit { copy(countdownInWidget = it) }
+    }
+    if (!settings.persistentNotification) {
+        Text(stringResource(R.string.settings_live_needs_persistent), style = hint, color = hintColor)
+        return
+    }
+    ToggleRow(stringResource(R.string.settings_lock_screen), settings.lockScreenVisible) {
+        commit { copy(lockScreenVisible = it) }
+    }
+    ToggleRow(stringResource(R.string.settings_live_status_bar), settings.liveStatusBar) {
+        commit { copy(liveStatusBar = it) }
+    }
+    if (!settings.liveStatusBar || !countdownOn) {
+        if (settings.liveStatusBar) {
+            Text(stringResource(R.string.settings_live_needs_countdown), style = hint, color = hintColor)
+        }
+        return
+    }
+    if (android.os.Build.VERSION.SDK_INT >= 36 && !canPromote) {
+        Text(stringResource(R.string.settings_live_blocked), style = hint, color = hintColor)
+        OutlinedButton(onClick = {
+            context.startActivity(
+                android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }) { Text(stringResource(R.string.settings_live_allow)) }
+    }
+    if (android.os.Build.VERSION.SDK_INT < 36) {
+        Text(stringResource(R.string.settings_live_old_android), style = hint, color = hintColor)
+        return
+    }
+
+    Text(stringResource(R.string.settings_pill_text), style = MaterialTheme.typography.bodyLarge)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(
+            AppSettings.PILL_TEXT_NUMBER to R.string.pill_text_number,
+            AppSettings.PILL_TEXT_PRAYER to R.string.pill_text_prayer,
+        ).forEach { (key, label) ->
+            SelectChip(settings.pillText == key, { commit { copy(pillText = key) } }, stringResource(label))
+        }
+    }
+    Text(stringResource(R.string.settings_pill_icon), style = MaterialTheme.typography.bodyLarge)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(
+            AppSettings.PILL_ICON_MOON to R.string.pill_icon_moon,
+            AppSettings.PILL_ICON_PRAYER to R.string.pill_icon_prayer,
+            AppSettings.PILL_ICON_NUMBER to R.string.pill_icon_number,
+        ).forEach { (key, label) ->
+            SelectChip(settings.pillIcon == key, { commit { copy(pillIcon = key) } }, stringResource(label))
+        }
+    }
+    PillPreview(settings)
+    if (settings.pillIcon == AppSettings.PILL_ICON_NUMBER) {
+        Text(stringResource(R.string.settings_pill_double_hint), style = hint, color = hintColor)
+    }
+    Text(stringResource(R.string.settings_pill_system_hint), style = hint, color = hintColor)
+}
+
+/** Beispiel der Pille mit der aktuellen Wahl (40 Minuten bis ʿAṣr). */
+@Composable
+private fun PillPreview(settings: AppSettings) {
+    val sample = de.gebetszeiten.core.prayertimes.Prayer.ASR
+    val pill = de.gebetszeiten.notify.pillOf(
+        settings.liveLook(), chip = "40", prayerName = stringResource(sample.labelRes()), canPromote = true,
+    )
+    val icon = when (pill.icon) {
+        de.gebetszeiten.notify.PillIcon.NUMBER -> R.drawable.ic_countdown_40
+        de.gebetszeiten.notify.PillIcon.PRAYER -> de.gebetszeiten.notify.prayerIconRes(sample)
+        de.gebetszeiten.notify.PillIcon.MOON -> R.drawable.ic_notification
+    }
+    val desc = stringResource(R.string.settings_pill_preview, pill.text ?: "")
+    Row(
+        modifier = Modifier
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(50))
+            .background(androidx.compose.ui.graphics.Color.Black)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics { contentDescription = desc },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        Icon(painterResource(icon), contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(20.dp))
+        Text(pill.text ?: "", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.titleMedium)
     }
 }

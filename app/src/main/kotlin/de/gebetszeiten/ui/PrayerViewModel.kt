@@ -150,6 +150,7 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
                 // Zeiten daneben.
                 photo = photo,
                 offsets = value.timeOffsets,
+                look = value.liveLook(),
             )
         }
         PrayerNotifier.updatePauseNotice(app, hasTimes = next != null)

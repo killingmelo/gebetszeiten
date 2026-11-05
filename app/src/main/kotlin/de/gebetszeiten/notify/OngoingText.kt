@@ -131,7 +131,28 @@ internal data class Ongoing(
     val mode: OngoingMode,
     val glyph: CountdownGlyph,
     val texts: OngoingTexts,
+    /**
+     * Kurztext für das Live-Update-Feld der Statusleiste (Android 16,
+     * `setShortCriticalText`), nur die Zahl wie auf dem Symbol, siehe
+     * [chipText]. Ohne Restzeit gar nichts.
+     * Gebraucht, weil OnePlus/OPPO das kleine Symbol durch das App-Symbol
+     * ersetzen (`oplus_smallicon_use_app_icon`, am Gerät belegt 05.11.2026)
+     * und die Zahl dort sonst nie ankommt.
+     */
+    val chip: String? = null,
 )
+
+/**
+ * Nur die Zahl, wie auf dem Statusleisten-Symbol: „50“ (Minuten, auf zehn
+ * abgerundet), „7“, „2h“. Wunsch des Nutzers (05.11.2026): kein „Min“ und
+ * kein „+“ im Feld. Stunden tragen das „h“, sonst wären „2“ Stunden und
+ * „2“ Minuten nicht zu unterscheiden.
+ */
+internal fun chipText(glyph: CountdownGlyph): String? = when (glyph) {
+    is CountdownGlyph.Hours -> "${glyph.hours}h"
+    is CountdownGlyph.Minutes -> "${glyph.minutes}"
+    CountdownGlyph.Now, CountdownGlyph.None -> null
+}
 
 internal fun ongoing(
     remaining: java.time.Duration,
@@ -153,6 +174,9 @@ internal fun ongoing(
     return Ongoing(
         mode = mode,
         glyph = countdownGlyph(remaining, countdown),
+        // Auch im EXACT-Modus: das Symbol folgt dort derselben Stufenregel und
+        // wird von der Anzeige-Weckkette weitergestellt, also auch das Feld.
+        chip = chipText(countdownGlyph(remaining, countdown)),
         texts = ongoingTexts(
             mode = mode,
             titleWithStep = titleWithStep(stepShort),

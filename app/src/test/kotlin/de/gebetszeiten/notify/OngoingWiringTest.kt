@@ -41,6 +41,19 @@ class OngoingWiringTest {
     }
 
     @Test
+    fun `mit Restzeit fordert die Meldung das Live-Update an`() {
+        // OnePlus/OPPO ersetzen das kleine Symbol durch das App-Symbol; die
+        // Zahl kommt dort nur über das Live-Update-Feld an. Fällt einer der
+        // beiden Aufrufe oder die Berechtigung weg, ist die Zahl lautlos weg.
+        val rumpf = rumpfVon(ohneKommentareUndTexte(notifier.readText()), "fun updateOngoing(")
+        assertTrue("setRequestPromotedOngoing fehlt", rumpf.contains("setRequestPromotedOngoing(true)"))
+        assertTrue("setShortCriticalText fehlt", rumpf.contains("setShortCriticalText("))
+        val manifest = File("src/main/AndroidManifest.xml").readText()
+        assertTrue("POST_PROMOTED_NOTIFICATIONS fehlt im Manifest",
+            manifest.contains("android.permission.POST_PROMOTED_NOTIFICATIONS"))
+    }
+
+    @Test
     fun `die drei Texte kommen unveraendert aus ongoingTexts`() {
         // `updateOngoing` setzt nur noch zusammen. Schiebt jemand einen
         // eigenen Wortlaut dazwischen — etwa `bigText("")`, die Mutation aus
@@ -91,7 +104,13 @@ class OngoingWiringTest {
         }
         assertTrue(
             "das Symbol kommt nicht aus demselben Ergebnis wie die Texte",
-            rumpf.contains("setSmallIcon(countdownIconRes(anzeige.glyph))"),
+            rumpf.contains("countdownIconRes(anzeige.glyph)"),
+        )
+        // Als Live-Update trägt die Pille die Zahl im Text; das Symbol ist
+        // dann das ruhige App-Symbol, sonst stünde die Zahl doppelt.
+        assertTrue(
+            "Live-Update ohne Wechsel auf das App-Symbol",
+            rumpf.contains("pillOf(look,anzeige.chip,name,canPromote(context))"),
         )
     }
 

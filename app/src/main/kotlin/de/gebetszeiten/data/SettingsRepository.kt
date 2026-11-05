@@ -95,6 +95,17 @@ data class AppSettings(
      *  [persistentNotification] bleibt daneben eigenstaendig — es entscheidet,
      *  OB es eine Benachrichtigung gibt, nicht wie sie aussieht. */
     val countdownMode: String = COUNTDOWN_OFF,
+    /** Restzeit als Live-Anzeige in der Statusleiste (Android 16, „Pille“).
+     *  Aus: in der Statusleiste nur das ruhige Symbol, keine Zahl. */
+    val liveStatusBar: Boolean = true,
+    /** Dauerhafte Anzeige auch auf dem Sperrbildschirm. */
+    val lockScreenVisible: Boolean = true,
+    /** Restzeit in Widgets ohne eigene Einstellung. */
+    val countdownInWidget: Boolean = true,
+    /** Text der Pille: [PILL_TEXT_NUMBER] („40“) oder [PILL_TEXT_PRAYER] („ʿIšāʾ 40“). */
+    val pillText: String = PILL_TEXT_NUMBER,
+    /** Symbol der Pille: [PILL_ICON_MOON], [PILL_ICON_PRAYER] oder [PILL_ICON_NUMBER]. */
+    val pillIcon: String = PILL_ICON_MOON,
     /** Zuletzt gewählte Orte (neuester zuerst), für schnellen Ortswechsel ohne Suche. */
     val recentPlaces: List<City> = emptyList(),
     /** Bewusst gemerkte Orte (in der Reihenfolge des Hinzufügens). Unabhängig
@@ -168,6 +179,14 @@ data class AppSettings(
      *  Seit Task 16 fragen beide Praedikate dieselbe Einstellung
      *  [countdownMode]; die Asymmetrie bleibt trotzdem, denn sie kam nie von
      *  der Einstellung, sondern vom Symbol. */
+    /** Die Wahl für die Dauerbenachrichtigung, als ein Wert für [de.gebetszeiten.notify.PrayerNotifier.updateOngoing]. */
+    fun liveLook(): de.gebetszeiten.notify.LiveLook = de.gebetszeiten.notify.LiveLook(
+        statusBar = liveStatusBar,
+        lockScreen = lockScreenVisible,
+        text = pillText,
+        icon = pillIcon,
+    )
+
     fun notificationNeedsStepAlarms(): Boolean =
         persistentNotification && countdownMode != COUNTDOWN_OFF
 
@@ -207,6 +226,11 @@ data class AppSettings(
         const val PRECISION_STEPS = "STEPS"
         const val PRECISION_EXACT = "EXACT"
         const val COUNTDOWN_OFF = "OFF"
+        const val PILL_TEXT_NUMBER = "number"
+        const val PILL_TEXT_PRAYER = "prayer"
+        const val PILL_ICON_MOON = "moon"
+        const val PILL_ICON_PRAYER = "prayer"
+        const val PILL_ICON_NUMBER = "number"
 
         // Sensible default until the user picks a location.
         val DEFAULT = AppSettings(
@@ -367,6 +391,11 @@ class SettingsRepository(private val context: Context) {
         val REMINDERS = stringSetPreferencesKey("reminders")
         val REMINDER_LEAD = intPreferencesKey("reminder_lead_minutes")
         val PERSISTENT_NOTIFICATION = booleanPreferencesKey("persistent_notification")
+        val LIVE_STATUS_BAR = booleanPreferencesKey("live_status_bar")
+        val LOCK_SCREEN_VISIBLE = booleanPreferencesKey("lock_screen_visible")
+        val COUNTDOWN_IN_WIDGET = booleanPreferencesKey("countdown_in_widget")
+        val PILL_TEXT = stringPreferencesKey("pill_text")
+        val PILL_ICON = stringPreferencesKey("pill_icon")
         val SHOW_PRAYER_VIRTUE = booleanPreferencesKey("show_prayer_virtue")
         val REMINDER_STYLE = stringPreferencesKey("reminder_style")
         val THEME_MODE = stringPreferencesKey("theme_mode")
@@ -521,6 +550,11 @@ class SettingsRepository(private val context: Context) {
             widgetOpacity = widgetOpacityFromPrefs(prefs[Keys.WIDGET_OPACITY], prefs[Keys.WIDGET_TRANSPARENT]),
             widgetFormat = prefs[Keys.WIDGET_FORMAT] ?: AppSettings.DEFAULT.widgetFormat,
             countdownMode = countdownMode,
+            liveStatusBar = prefs[Keys.LIVE_STATUS_BAR] ?: AppSettings.DEFAULT.liveStatusBar,
+            lockScreenVisible = prefs[Keys.LOCK_SCREEN_VISIBLE] ?: AppSettings.DEFAULT.lockScreenVisible,
+            countdownInWidget = prefs[Keys.COUNTDOWN_IN_WIDGET] ?: AppSettings.DEFAULT.countdownInWidget,
+            pillText = prefs[Keys.PILL_TEXT] ?: AppSettings.DEFAULT.pillText,
+            pillIcon = prefs[Keys.PILL_ICON] ?: AppSettings.DEFAULT.pillIcon,
             recentPlaces = parseRecentPlaces(prefs[Keys.RECENT_PLACES]),
             // Kein Vorgängerschlüssel, keine Migration: fehlt der Schlüssel,
             // ist die Liste leer — der richtige Startzustand.
@@ -580,6 +614,11 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.WIDGET_FORMAT] = value.widgetFormat
             prefs.remove(Keys.WIDGET_TRANSPARENT)
             prefs[Keys.COUNTDOWN_MODE] = value.countdownMode
+            prefs[Keys.LIVE_STATUS_BAR] = value.liveStatusBar
+            prefs[Keys.LOCK_SCREEN_VISIBLE] = value.lockScreenVisible
+            prefs[Keys.COUNTDOWN_IN_WIDGET] = value.countdownInWidget
+            prefs[Keys.PILL_TEXT] = value.pillText
+            prefs[Keys.PILL_ICON] = value.pillIcon
             // Auch hier gesetzt, nicht nur beim Lesen: wer speichert, hat
             // gewaehlt. Ohne das Flag koennte eine Migration, die noch nicht
             // durch war, die frische Wahl gleich wieder ueberschreiben.

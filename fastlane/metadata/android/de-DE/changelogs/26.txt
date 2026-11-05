@@ -1,0 +1,3 @@
+• Restzeit als Live-Anzeige in der Statusleiste (Android 16), auch auf OnePlus und OPPO.
+• Einstellbar: Statusleiste, Sperrbildschirm und Widget einzeln; Text (nur Zahl oder Gebet und Zahl) und Symbol (Mond, Gebetssymbol, Zahl) mit Vorschau.
+• Fehlt die Erlaubnis für Live-Updates, führt ein Knopf direkt zur Einstellung.

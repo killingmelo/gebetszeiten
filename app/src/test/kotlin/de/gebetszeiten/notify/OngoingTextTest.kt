@@ -236,4 +236,21 @@ class OngoingTextTest {
             anzeige(41, countdown = true, exact = true),
         ).forEach { assertTrue(it.texts.bigText, it.texts.bigText.contains("um 22:48")) }
     }
+    // --- Live-Update-Feld (Android 16) -----------------------------------
+
+    @Test fun `Stufen-Modus gibt der Statusleiste nur die Zahl`() {
+        assertEquals("40", anzeige(41, countdown = true, exact = false).chip)
+        assertEquals("2h", anzeige(130, countdown = true, exact = false).chip)
+        assertEquals("7", anzeige(7, countdown = true, exact = false).chip)
+        assertEquals("9h", anzeige(11 * 60, countdown = true, exact = false).chip)
+    }
+
+    @Test fun `auch im EXACT-Modus nur die Zahl`() {
+        assertEquals("40", anzeige(41, countdown = true, exact = true).chip)
+    }
+
+    @Test fun `ohne Restzeit und in der letzten Minute kein Kurztext`() {
+        assertEquals(null, anzeige(41, countdown = false, exact = false).chip)
+        assertEquals(null, anzeige(0, countdown = true, exact = false).chip)
+    }
 }

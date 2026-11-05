@@ -76,6 +76,12 @@ class NotificationStyleWiringTest {
         assertTrue("kein setColor(", body.contains("setColor("))
         assertTrue("kein setLargeIcon(", body.contains("setLargeIcon("))
         assertFalse("Daueranzeige mit BigPictureStyle", body.contains("BigPictureStyle"))
-        assertFalse("Daueranzeige mit Gebetssymbol", body.contains("prayerIconRes("))
+        // Seit 0.5.1 darf das Gebetssymbol in die Daueranzeige, aber nur als
+        // Wahl des Nutzers für die Live-Pille (PillIcon.PRAYER).
+        assertTrue(
+            "Gebetssymbol in der Daueranzeige ohne Nutzerwahl",
+            Regex("""prayerIconRes\(""").findAll(body).count() ==
+                Regex("""PillIcon\.PRAYER\s*->\s*prayerIconRes\(""").findAll(body).count(),
+        )
     }
 }

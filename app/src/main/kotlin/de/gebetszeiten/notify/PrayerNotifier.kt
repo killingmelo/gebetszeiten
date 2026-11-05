@@ -218,6 +218,15 @@ object PrayerNotifier {
 
     private fun canPost(context: Context): Boolean = blockOf(context) == NotificationBlock.NONE
 
+    /**
+     * Darf die App Live-Updates zeigen (Android 16)? Auf OnePlus/OPPO steht der
+     * Schalter je App ab Werk auf aus; dann bleibt es beim Zahlen-Symbol.
+     */
+    fun canPromote(context: Context): Boolean =
+        android.os.Build.VERSION.SDK_INT >= 36 &&
+            context.getSystemService(android.app.NotificationManager::class.java)
+                ?.canPostPromotedNotifications() == true
+
     private fun contentIntent(context: Context): PendingIntent = PendingIntent.getActivity(
         context,
         0,
@@ -280,6 +289,8 @@ object PrayerNotifier {
         photo: de.gebetszeiten.prayer.PhotoKey?,
         // Verschiebung des Nutzers: die Uhrzeit trägt dann ihr Vorzeichen („12:09 (+5)“).
         offsets: de.gebetszeiten.core.prayertimes.TimeOffsets = de.gebetszeiten.core.prayertimes.TimeOffsets.NONE,
+        // Wahl des Nutzers für Statusleiste, Sperrbildschirm und Pille.
+        look: LiveLook = LiveLook(),
     ) {
         val manager = NotificationManagerCompat.from(context)
         if (!enabled || next == null) {
@@ -336,6 +347,9 @@ object PrayerNotifier {
         )
         val mode = anzeige.mode
         val texts = anzeige.texts
+        // Statusleiste und Pille: Wahl des Nutzers plus das, was das Gerät
+        // erlaubt (OnePlus: Schalter „Live-Updates“ je App, ab Werk aus).
+        val pill = pillOf(look, anzeige.chip, name, canPromote(context))
         val notification = NotificationCompat.Builder(context, ongoingChannelId(countdown))
             // Die Restzeit in der Statusleiste statt des statischen Monds.
             // Ist [countdown] aus, liefert countdownGlyph None und
@@ -344,7 +358,15 @@ object PrayerNotifier {
             // Systemzaehler zeichnet den Text, das Symbol kommt von hier und
             // wird von der Anzeige-Weckkette weitergestellt
             // (AppSettings.needsDisplayStepAlarms).
-            .setSmallIcon(countdownIconRes(anzeige.glyph))
+            // Als Live-Update steht die Zahl im Text der Pille; das Symbol
+            // wählt der Nutzer (Mond, Gebet oder Zahl, siehe [pillOf]).
+            .setSmallIcon(
+                when (pill.icon) {
+                    PillIcon.NUMBER -> countdownIconRes(anzeige.glyph)
+                    PillIcon.PRAYER -> prayerIconRes(next.prayer)
+                    PillIcon.MOON -> R.drawable.ic_notification
+                },
+            )
             .setColor(accent)
             .apply {
                 // Kleines Foto des laufenden Abschnitts; aufgeklappt bleibt
@@ -368,9 +390,22 @@ object PrayerNotifier {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setPriority(if (countdown) NotificationCompat.PRIORITY_DEFAULT else NotificationCompat.PRIORITY_LOW)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setVisibility(
+                if (look.lockScreen) NotificationCompat.VISIBILITY_PUBLIC
+                else NotificationCompat.VISIBILITY_SECRET,
+            )
             .setSilent(true)
             .apply {
+                // Live-Update (Android 16): die Statusleiste zeigt ein Feld mit
+                // der Restzeit. Auf OnePlus/OPPO der einzige Weg zur Zahl, weil
+                // das System dort das kleine Symbol durch das App-Symbol
+                // ersetzt. Nur mit Restzeit; auf älteren Systemen wirkungslos.
+                if (pill.promote) {
+                    setRequestPromotedOngoing(true)
+                    // Ohne Text nimmt OnePlus den Titel in die Pille
+                    // („ʿIšāʾ um 18:25“), deshalb immer einen Text mitgeben.
+                    pill.text?.let { setShortCriticalText(it) }
+                }
                 if (mode == OngoingMode.EXACT) {
                     // Live countdown rendered by the system — no app wake-ups.
                     setWhen(whenMillis)

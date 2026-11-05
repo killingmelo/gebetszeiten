@@ -1,0 +1,3 @@
+• Time left as a live update in the status bar (Android 16), also on OnePlus and OPPO.
+• Configurable: status bar, lock screen and widget separately; text (number only or prayer and number) and icon (moon, prayer symbol, number) with a preview.
+• If live updates are not allowed, a button opens the setting directly.

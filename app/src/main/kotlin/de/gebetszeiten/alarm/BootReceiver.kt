@@ -42,6 +42,7 @@ class BootReceiver : BroadcastReceiver() {
                     // die Zeiten oben kommen.
                     photo = de.gebetszeiten.notify.ongoingPhotoAt(context, settings, zone, now),
                     offsets = settings.timeOffsets,
+                    look = settings.liveLook(),
                 )
                 PrayerNotifier.updatePauseNotice(context, hasTimes = next != null)
                 NextPrayerWidget.refreshAll(context)

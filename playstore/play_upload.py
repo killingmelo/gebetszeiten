@@ -9,12 +9,13 @@ Aufrufe (aus dem Projektordner):
   python playstore/play_upload.py --pruefen        Zugang testen: Tracks lesen, nichts ändern
   python playstore/play_upload.py                  hochladen, Google prüfen lassen, Bearbeitung verwerfen
   python playstore/play_upload.py --ja             hochladen und übernehmen (Entwurf im internen Test)
+  python playstore/play_upload.py --ja --freigeben hochladen, übernehmen und sofort freigeben
 
 Zusätze: --eintrag (Titel, Kurz- und Vollbeschreibung), --bilder (Screenshots, Symbol,
 Vorstellungsgrafik), --nur-telefon, --nur-uhr, --track, --uhr-track.
 
-Das Skript übernimmt Releases nur als Entwurf (status "draft"). Freigeben, in die
-Produktion bringen und staffeln bleibt Handarbeit in der Play Console.
+Ohne --freigeben übernimmt das Skript Releases nur als Entwurf (status "draft").
+Produktion und Staffelung bleiben Handarbeit in der Play Console.
 """
 from __future__ import annotations
 
@@ -216,11 +217,11 @@ def hochladen(svc, plan: dict, args) -> None:
                 "releases": [{
                     "name": f"{d['name']} ({d['code']})",
                     "versionCodes": [str(d["code"])],
-                    "status": "draft",
+                    "status": "completed" if args.freigeben else "draft",
                     "releaseNotes": [{"language": sp, "text": t} for sp, t in d["hinweise"].items()],
                 }],
             }).execute()
-            print(f"{g}: {d['name']} ({d['code']}) als Entwurf in {d['track']}")
+            print(f"{g}: {d['name']} ({d['code']}) {'freigegeben' if args.freigeben else 'als Entwurf'} in {d['track']}")
 
         for sp, felder in plan["eintrag"].items():
             body = {"language": sp}
@@ -248,7 +249,10 @@ def hochladen(svc, plan: dict, args) -> None:
                      changesNotSentForReview=args.nicht_zur_pruefung or None).execute()
         uebernommen = True
         ziele = ", ".join(sorted({d["track"] for d in plan["geraete"].values()}))
-        print(f"Übernommen als Entwurf in {ziele}. Freigeben in der Play Console unter Test und Release.")
+        if args.freigeben:
+            print(f"Übernommen und freigegeben in {ziele}.")
+        else:
+            print(f"Übernommen als Entwurf in {ziele}. Freigeben in der Play Console unter Test und Release.")
     finally:
         if not uebernommen:
             try:
@@ -267,6 +271,8 @@ def main() -> int:
     a.add_argument("--trocken", action="store_true", help="nur lokal prüfen")
     a.add_argument("--pruefen", action="store_true", help="Zugang testen, Tracks zeigen, nichts ändern")
     a.add_argument("--ja", action="store_true", help="Bearbeitung übernehmen (sonst nur prüfen und verwerfen)")
+    a.add_argument("--freigeben", action="store_true",
+                   help="mit --ja: Release sofort freigeben (status completed) statt Entwurf")
     a.add_argument("--eintrag", action="store_true", help="Titel und Beschreibungen mitschicken")
     a.add_argument("--bilder", action="store_true", help="Screenshots und Grafiken ersetzen")
     a.add_argument("--nur-telefon", action="store_true")
@@ -277,6 +283,8 @@ def main() -> int:
                    help="changesNotSentForReview setzen, falls Google das beim Übernehmen verlangt")
     a.add_argument("--schluessel", type=Path, default=SCHLUESSEL)
     args = a.parse_args()
+    if args.freigeben and not args.ja:
+        a.error("--freigeben nur zusammen mit --ja")
     if args.nur_telefon and args.nur_uhr:
         a.error("--nur-telefon und --nur-uhr schließen sich aus")
 
