@@ -14,6 +14,9 @@
     <!-- Lets the user exempt the app from battery optimization via a single
          dialog, so OEM power managers don't swallow the exact alarms. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Aḏān-Wiedergabe als Vordergrunddienst (nur wenn der Nutzer sie einschaltet). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <!-- Pulled in transitively by Glance/WorkManager; we never touch the
          network, so remove it to keep the permission set minimal. -->
@@ -66,6 +69,12 @@
         <receiver
             android:name=".alarm.PrayerAlarmReceiver"
             android:exported="false" />
+
+        <!-- Spielt den Aḏān zur Gebetszeit; gestartet vom PrayerAlarmReceiver. -->
+        <service
+            android:name=".adhan.AdhanService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- Reschedules alarms after reboot / app update / time / timezone
              changes (Android clears all alarms in each of these cases). -->

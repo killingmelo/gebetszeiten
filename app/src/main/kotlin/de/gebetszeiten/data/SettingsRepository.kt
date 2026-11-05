@@ -64,6 +64,8 @@ data class AppSettings(
     /** Ein Satz „Wert dieses Gebets“ in der aufgeklappten Meldung zur
      *  Gebetszeit (nicht im Vorlauf, nicht in der Daueranzeige). */
     val showPrayerVirtue: Boolean = true,
+    /** Aḏān zur Gebetszeit, ab Werk aus (siehe [de.gebetszeiten.adhan.AdhanConfig]). */
+    val adhan: de.gebetszeiten.adhan.AdhanConfig = de.gebetszeiten.adhan.AdhanConfig(),
     /** Forced theme: SYSTEM (default), LIGHT, or DARK. */
     val themeMode: String = THEME_SYSTEM,
     /** Hijri date correction in days (moon-sighting differences), −2..+2. */
@@ -384,6 +386,15 @@ class SettingsRepository(private val context: Context) {
         val PAUSE_NOTICE_SHOWN = booleanPreferencesKey("pause_notice_shown")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val ONBOARDING_FRESH = booleanPreferencesKey("onboarding_fresh")
+        val ADHAN_ENABLED = booleanPreferencesKey("adhan_enabled")
+        val ADHAN_PRAYERS = stringSetPreferencesKey("adhan_prayers")
+        val ADHAN_VOICE = stringPreferencesKey("adhan_voice")
+        val ADHAN_CUSTOM_URI = stringPreferencesKey("adhan_custom_uri")
+        val ADHAN_FAJR_URI = stringPreferencesKey("adhan_fajr_uri")
+        val ADHAN_DUA_ENABLED = booleanPreferencesKey("adhan_dua_enabled")
+        val ADHAN_DUA_URI = stringPreferencesKey("adhan_dua_uri")
+        val ADHAN_STREAM = stringPreferencesKey("adhan_stream")
+        val ADHAN_VOLUME = intPreferencesKey("adhan_volume")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -488,6 +499,17 @@ class SettingsRepository(private val context: Context) {
                 ?: AppSettings.DEFAULT.persistentNotification,
             reminderStyle = prefs[Keys.REMINDER_STYLE] ?: AppSettings.DEFAULT.reminderStyle,
             showPrayerVirtue = prefs[Keys.SHOW_PRAYER_VIRTUE] ?: AppSettings.DEFAULT.showPrayerVirtue,
+            adhan = de.gebetszeiten.adhan.AdhanConfig(
+                enabled = prefs[Keys.ADHAN_ENABLED] ?: false,
+                prayers = prefs[Keys.ADHAN_PRAYERS] ?: de.gebetszeiten.adhan.AdhanConfig.ALL_PRAYERS,
+                voice = prefs[Keys.ADHAN_VOICE] ?: de.gebetszeiten.adhan.AdhanConfig.VOICE_BUNDLED,
+                customUri = regionFromPref(prefs[Keys.ADHAN_CUSTOM_URI]),
+                fajrUri = regionFromPref(prefs[Keys.ADHAN_FAJR_URI]),
+                duaEnabled = prefs[Keys.ADHAN_DUA_ENABLED] ?: false,
+                duaUri = regionFromPref(prefs[Keys.ADHAN_DUA_URI]),
+                stream = de.gebetszeiten.adhan.normalizedStream(prefs[Keys.ADHAN_STREAM]),
+                volumePercent = de.gebetszeiten.adhan.normalizedVolume(prefs[Keys.ADHAN_VOLUME]),
+            ),
             themeMode = prefs[Keys.THEME_MODE] ?: AppSettings.DEFAULT.themeMode,
             hijriOffsetDays = prefs[Keys.HIJRI_OFFSET] ?: AppSettings.DEFAULT.hijriOffsetDays,
             widgetTheme = prefs[Keys.WIDGET_THEME] ?: AppSettings.DEFAULT.widgetTheme,
@@ -535,6 +557,16 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.PERSISTENT_NOTIFICATION] = value.persistentNotification
             prefs[Keys.REMINDER_STYLE] = value.reminderStyle
             prefs[Keys.SHOW_PRAYER_VIRTUE] = value.showPrayerVirtue
+            // URIs wie die Region: DataStore kennt kein null, leer heisst „keine Datei".
+            prefs[Keys.ADHAN_ENABLED] = value.adhan.enabled
+            prefs[Keys.ADHAN_PRAYERS] = value.adhan.prayers
+            prefs[Keys.ADHAN_VOICE] = value.adhan.voice
+            prefs[Keys.ADHAN_CUSTOM_URI] = regionToPref(value.adhan.customUri)
+            prefs[Keys.ADHAN_FAJR_URI] = regionToPref(value.adhan.fajrUri)
+            prefs[Keys.ADHAN_DUA_ENABLED] = value.adhan.duaEnabled
+            prefs[Keys.ADHAN_DUA_URI] = regionToPref(value.adhan.duaUri)
+            prefs[Keys.ADHAN_STREAM] = de.gebetszeiten.adhan.normalizedStream(value.adhan.stream)
+            prefs[Keys.ADHAN_VOLUME] = de.gebetszeiten.adhan.normalizedVolume(value.adhan.volumePercent)
             prefs[Keys.THEME_MODE] = value.themeMode
             prefs[Keys.HIJRI_OFFSET] = value.hijriOffsetDays
             prefs[Keys.WIDGET_THEME] = value.widgetTheme

@@ -3,6 +3,10 @@ package de.gebetszeiten.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import de.gebetszeiten.adhan.AdhanService
+import de.gebetszeiten.adhan.adhanDue
+import de.gebetszeiten.adhan.adhanPlan
+import de.gebetszeiten.adhan.entryStyleWithAdhan
 import de.gebetszeiten.core.prayertimes.Prayer
 import de.gebetszeiten.data.SettingsRepository
 import de.gebetszeiten.notify.PrayerNotifier
@@ -79,7 +83,18 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                 // info instead — a separate entry notification would be
                 // redundant. An audible/vibrating style still needs the entry
                 // notification as the alert carrier (it auto-clears).
-                val styleSilent = settings.reminderStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT
+                // Aḏān: dieselbe Weckkette, kein eigener Planer. Er haengt am
+                // Eintritt des Gebets und ist unabhaengig davon, ob fuer das
+                // Gebet eine Meldung gewaehlt ist.
+                val adhanPlays = active != null && adhanDue(
+                    prayerStartMillis = active.time.toInstant().toEpochMilli(),
+                    nowMillis = now.toInstant().toEpochMilli(),
+                ) && adhanPlan(settings.adhan, active.prayer.name)?.let { plan ->
+                    AdhanService.allowedNow(context, plan) && AdhanService.play(context, plan, active.prayer.name)
+                } == true
+                // Laeuft der Aḏān, bleibt die Meldung still, statt ueber ihn zu klingeln.
+                val entryStyle = entryStyleWithAdhan(settings.reminderStyle, adhanPlays)
+                val styleSilent = entryStyle == de.gebetszeiten.data.AppSettings.STYLE_SILENT
                 if (active != null && active.prayer.name in settings.reminders &&
                     (!settings.persistentNotification || !styleSilent)
                 ) {
@@ -108,7 +123,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                                 persistent = settings.persistentNotification,
                                 audible = !styleSilent,
                             ),
-                            settings.reminderStyle,
+                            entryStyle,
                             showVirtue = settings.showPrayerVirtue,
                         )
                     }

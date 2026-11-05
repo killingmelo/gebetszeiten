@@ -792,6 +792,15 @@ internal fun LocationSettings(
 
         }
 
+        SettingsSection(stringResource(R.string.adhan_section)) {
+            AdhanSettings(
+                config = settings.adhan,
+                onChange = { neu -> commit { copy(adhan = neu) } },
+                full = true,
+                toggle = { label, checked, onChange -> ToggleRow(label, checked, onChange) },
+            )
+        }
+
         SettingsSection(stringResource(R.string.settings_section_appearance)) {
             Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.bodyLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

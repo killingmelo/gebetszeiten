@@ -295,6 +295,13 @@ private fun OnboardingReminderStep(draft: AppSettings, onChange: (AppSettings) -
             )
         }
     }
+    Text(stringResource(R.string.adhan_section), style = MaterialTheme.typography.bodyLarge)
+    AdhanSettings(
+        config = draft.adhan,
+        onChange = { onChange(draft.copy(adhan = it)) },
+        full = false,
+        toggle = { label, checked, change -> ToggleLine(label, checked, change) },
+    )
 }
 
 @Composable
