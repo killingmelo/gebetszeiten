@@ -39,4 +39,18 @@ class VerstehenNeuWiringTest {
         assertTrue("debug fehlt", dbg >= 0 && dbgEnde > dbg)
         assertTrue("debug ohne $an", text.substring(dbg, dbgEnde).contains(an))
     }
+
+    @Test
+    fun nurLehrZeitenFormatiert() {
+        // Uhrzeiten werden allein in LehrZeiten.kt formatiert; Himmelsband.kt gibt es erst später.
+        val dateien = listOf("VerstehenNeuScreen.kt", "Himmelsband.kt")
+            .map { File("src/main/kotlin/de/gebetszeiten/ui/verstehen/$it") }
+            .filter { it.isFile }
+        assertTrue("VerstehenNeuScreen.kt fehlt", dateien.any { it.name == "VerstehenNeuScreen.kt" })
+        for (datei in dateien) {
+            val text = datei.readText()
+            assertTrue("${datei.name} enthält HH:mm", !text.contains("HH:mm"))
+            assertTrue("${datei.name} enthält DateTimeFormatter", !text.contains("DateTimeFormatter"))
+        }
+    }
 }

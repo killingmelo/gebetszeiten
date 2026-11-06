@@ -103,14 +103,6 @@ fun tabOfMoment(moment: Moment): Int = when (moment) {
     Moment.ISHA -> 5
 }
 
-/** Die heutigen Zeiten, die die Reiter brauchen. */
-data class VerstehenDay(
-    val times: DailyPrayerTimes,
-    val karaha: KarahaTimes,
-    val nafl: NaflTimes,
-    val nextFajr: ZonedDateTime?,
-)
-
 /** Beginn und Ende als fertiger Text; ohne Faǧr von morgen fehlt das Ende von ʿIšāʾ. */
 data class TabSpan(val begin: String, val end: String?)
 
