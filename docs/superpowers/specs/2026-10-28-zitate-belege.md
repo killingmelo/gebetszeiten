@@ -607,6 +607,12 @@ Die Klammer nach page_id nennt die Quellenangabe, wie sie in der App steht.
 
 Übersetzung: Am vorzüglichsten ist in beiden [Nacht und Tag] je vier nach Abū Ḥanīfa; nach den beiden [Abū Yūsuf und Muḥammad] ist in der Nacht je zwei am vorzüglichsten, und danach wird die Fatwā gegeben.
 
+**ʿAṣr, `asr-aufschub`.** book_id 412, page_id 82 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 74), Marāqī l-falāḥ, Kommentar; Belegdatei ISFIRAR_MAKRUH 2 (`asr-verzoegern`), am 06.11.2026 erneut verglichen
+
+> "ما لم تتغير الشمس" بذهاب ضوئها فلا يتحير فيه البصر وهو الصحيح والتأخير إلى التغير مكروه تحريما
+
+Übersetzung: Solange die Sonne sich nicht verändert, das heißt ihr Glanz nicht vergangen ist, so dass der Blick von ihr nicht mehr geblendet wird; das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist stark verpönt (makrūh taḥrīman).
+
 ### Wieder aufgenommen (am 28.10.2026 aus der App genommen)
 
 **ʿAṣr, `asr-zeit`.** book_id 412, page_id 80 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 72), Grundtext; Belegdatei ASR 2, am 06.11.2026 gegen 412/80 geprüft
@@ -614,12 +620,6 @@ Die Klammer nach page_id nennt die Quellenangabe, wie sie in der App steht.
 > ووقت الظهر من زوال الشمس الى أن يصير ظل كل شيء مثليه أو مثله سوى ظل الاستواء واختار الثاني الطحاوي وهو قول الصاحبين ووقت العصر من ابتداء الزيادة على المثل أو المثلين الى غروب الشمس
 
 Übersetzung: Die Zeit des Ẓuhr reicht vom Zawāl der Sonne, bis der Schatten jedes Dinges doppelt oder einfach so lang ist wie das Ding, ohne den Schatten beim Höchststand. Das Zweite hat aṭ-Ṭaḥāwī gewählt, und es ist die Ansicht der beiden Schüler [Abū Ḥanīfas: Abū Yūsuf und Muḥammad]. Die Zeit des ʿAṣr reicht vom Beginn des Überschreitens des einfachen oder doppelten Schattens bis zum Sonnenuntergang.
-
-**ʿAṣr, `asr-aufschub`.** book_id 412, page_id 82 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 74), Marāqī l-falāḥ, Kommentar; Belegdatei ISFIRAR_MAKRUH 2 (`asr-verzoegern`), am 06.11.2026 erneut verglichen
-
-> "ما لم تتغير الشمس" بذهاب ضوئها فلا يتحير فيه البصر وهو الصحيح والتأخير إلى التغير مكروه تحريما
-
-Übersetzung: Solange die Sonne sich nicht verändert, das heißt ihr Glanz nicht vergangen ist, so dass der Blick von ihr nicht mehr geblendet wird; das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist stark verpönt (makrūh taḥrīman).
 
 **Maġrib, `shafaq-imam`.** book_id 11820, page_id 46 (al-Marġīnānī (gest. 593 n. H.), al-Hidāya, Bd. 1, S. 40), al-Hidāya; Belegdatei ISHA 2; auch im Kapitel ʿIšāʾ
 

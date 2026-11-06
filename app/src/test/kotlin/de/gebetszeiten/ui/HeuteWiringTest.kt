@@ -30,7 +30,7 @@ class HeuteWiringTest {
     @Test fun `MainActivity kennt den vierten Reiter und keinen Erklaerungsdialog mehr`() {
         val text = ohneKommentare(activity)
         assertTrue("Tab.VERSTEHEN fehlt", text.contains("Tab.VERSTEHEN"))
-        assertTrue("VerstehenScreen wird nicht angezeigt", text.contains("VerstehenScreen("))
+        assertTrue("VerstehenNeuScreen wird nicht angezeigt", text.contains("VerstehenNeuScreen("))
         assertTrue("HeuteScreen wird nicht angezeigt", text.contains("HeuteScreen("))
         assertFalse("der Karāha-AlertDialog ist noch da", text.contains("AlertDialog("))
     }

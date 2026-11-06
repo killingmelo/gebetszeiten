@@ -58,9 +58,7 @@ import de.gebetszeiten.prayer.Section
 import de.gebetszeiten.R
 import de.gebetszeiten.ui.theme.GebetszeitenTheme
 import de.gebetszeiten.ui.theme.LocalTokens
-import de.gebetszeiten.BuildConfig
 import de.gebetszeiten.ui.verstehen.VerstehenNeuScreen
-import de.gebetszeiten.ui.verstehen.VerstehenScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -188,7 +186,7 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
     var favoritesMenuOpen by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     // Der Abschnitt, zu dem „Zeiten verstehen“ springen soll (aus „Heute“
-    // angetippt); VerstehenScreen gibt ihn nach dem Sprung zurück.
+    // angetippt); VerstehenNeuScreen gibt ihn nach dem Sprung zurück.
     var explain by remember { mutableStateOf<Section?>(null) }
     // Ein Knopf, der ein leeres Menü öffnet, ist eine Sackgasse — ohne
     // Favoriten gibt es also weder Knopf noch antippbaren Titel.
@@ -357,21 +355,12 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
             )
             Tab.MONAT -> MonatScreen(inner, settings)
             Tab.QIBLA -> QiblaScreen(inner, settings)
-            Tab.VERSTEHEN -> if (BuildConfig.VERSTEHEN_NEU) {
-                VerstehenNeuScreen(
-                    inner,
-                    settings,
-                    focus = explain,
-                    onFocusConsumed = { explain = null },
-                )
-            } else {
-                VerstehenScreen(
-                    inner,
-                    settings,
-                    focus = explain,
-                    onFocusConsumed = { explain = null },
-                )
-            }
+            Tab.VERSTEHEN -> VerstehenNeuScreen(
+                inner,
+                settings,
+                focus = explain,
+                onFocusConsumed = { explain = null },
+            )
         }
     }
 

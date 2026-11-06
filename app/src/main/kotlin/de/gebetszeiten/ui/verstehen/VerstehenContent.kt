@@ -1,11 +1,8 @@
 package de.gebetszeiten.ui.verstehen
 
-import de.gebetszeiten.core.prayertimes.Karaha
-import de.gebetszeiten.prayer.PhotoKey
-import de.gebetszeiten.prayer.Section
-
 /**
- * Inhalt des Reiters „Zeiten verstehen“.
+ * Gemeinsame Bausteine der Seite „Verstehen“: Zitat, Glossar und Quellenangaben.
+ * Die Kapitel selbst stehen in [LEHRE] (LehrInhalt.kt).
  *
  * Jeder arabische Text stammt wörtlich aus einem Ergebnis der Shamela-Werkzeuge
  * (nur Matn, nie Fußnote). Die geraden Anführungszeichen gehören zum Shamela-Text:
@@ -16,27 +13,11 @@ import de.gebetszeiten.prayer.Section
  */
 data class Quote(val arabic: String, val german: String, val source: String)
 
-/** Wo eine Zitatgruppe im Reiter steht (Leseordnung vom 05.11.2026). */
-enum class Place { SCHOLARS, CAUTION }
-
-/** Weitere Zitate unter einer eigenen Überschrift (z. B. „Rakʿa“). */
-data class QuoteGroup(val heading: String, val quotes: List<Quote>, val place: Place = Place.SCHOLARS)
-
-data class VerstehenEntry(
-    val section: Section,
-    val title: String,
-    val photo: PhotoKey?,
-    val quotes: List<Quote>,
-    val showsSundial: Boolean,
-    val note: String? = null,
-    val groups: List<QuoteGroup> = emptyList(),
-)
-
 /**
- * Ein Begriff im Glossar am Ende jedes Reiters. Wortsinn und Herkunft dürfen
+ * Ein Begriff im Glossar (aufklappbar aus dem Lehrtext). Wortsinn und Herkunft dürfen
  * ohne Quelle stehen (Entscheidung vom 05.11.2026); Koran und Ḥadīṯ nur
  * wörtlich aus den Werkzeugen, mit Fundstelle in Klammern; Regeln nie hier,
- * sondern nur als Zitat in den Reitern.
+ * sondern nur als Zitat in den Kapiteln.
  */
 data class GlossaryTerm(val term: String, val text: String)
 
@@ -52,8 +33,6 @@ internal const val IBN_ABIDIN = "Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-mu�
 // Bd. und S. sind die des Radd-Drucks (Ḥalabī), wie von shamela_get_citation geliefert.
 internal const val DURR = "al-Ḥaṣkafī (gest. 1088 n. H.), ad-Durr al-muḫtār, gedruckt mit Radd al-muḥtār"
 
-private const val RAKA_HEADING = "Rakʿa"
-
 // Zitate, die in mehreren Reitern stehen (Belege in der Belegdatei, Abschnitt „05.11.2026“).
 internal val SUNNA_MUAKKADA = Quote(
     arabic = "سن سنة مؤكدة ركعتان قبل الفجر وركعتان بعد الظهر وبعد المغرب وبعد العشاء وأربع قبل الظهر وقبل الجمعة وبعدها بتسليمة",
@@ -66,320 +45,10 @@ internal val SUNNA_MANDUB = Quote(
     source = "$MARAQI, S. 146",
 )
 
-val VERSTEHEN: List<VerstehenEntry> = listOf(
-    VerstehenEntry(
-        section = Section.FAJR,
-        title = "Faǧr",
-        photo = PhotoKey.FAJR,
-        quotes = listOf(
-            Quote(
-                arabic = "والأوقات خمسة وقت الصبح من طلوع الفجر الصادق الى قبيل طلوع الشمس",
-                german = "Die Zeiten sind fünf. Die Zeit des Morgengebets reicht vom Aufgang des echten Faǧr bis kurz vor Sonnenaufgang.",
-                source = "$MARAQI, S. 72",
-            ),
-            Quote(
-                arabic = "ولا معتبر بالفجر الكاذب وهو البياض الذي يبدو طولا ثم يعقبه الظلام",
-                german = "Der falsche Faǧr zählt nicht. Das ist die Helligkeit, die längs erscheint und auf die wieder Dunkelheit folgt.",
-                source = "$HIDAYA, Bd. 1, S. 40",
-            ),
-        ),
-        showsSundial = false,
-        groups = listOf(
-            QuoteGroup(RAKA_HEADING, listOf(SUNNA_MUAKKADA)),
-            QuoteGroup(
-                "Sunna muʾakkada und empfohlene Sunna",
-                listOf(
-                    Quote(
-                        arabic = "والسنة لغة الطريقة ولو سيئة واصطلاحا الطريقة المسلوكة في الدين من غير لزوم على المواظبة وهي المؤكدة إن كان النبي ﷺ تركها أحيانا وأما التي لم يواظب عليها فهي المندوبة",
-                        german = "Sunna heißt sprachlich „Weg“, auch ein schlechter. Im Fachgebrauch ist es der Weg, der in der Religion ohne Verpflichtung beständig begangen wird. Sie ist muʾakkada, wenn der Prophet ﷺ sie manchmal ausließ; was er nicht beständig übte, ist mandūb.",
-                        source = "$MARAQI, S. 31",
-                    ),
-                    Quote(
-                        arabic = "مَنْ تَرَكَ سُنَنَ الصَّلَوَاتِ الْخَمْسِ قِيلَ: لَا يَأْثَمُ وَالصَّحِيحُ أَنَّهُ يَأْثَمُ",
-                        german = "Wer die Sunna-Gebete der fünf Gebete auslässt: Es wurde gesagt, er sündige nicht; richtig ist, dass er sündigt.",
-                        source = "$IBN_ABIDIN, Bd. 1, S. 104",
-                    ),
-                    Quote(
-                        arabic = "وَالْمُرَادُ التَّرْكُ بِلَا عُذْرٍ عَلَى سَبِيلِ الْإِصْرَارِ",
-                        german = "Gemeint ist das Auslassen ohne Entschuldigung, als beharrliche Gewohnheit.",
-                        source = "$IBN_ABIDIN, Bd. 1, S. 104",
-                    ),
-                    Quote(
-                        arabic = "وَحُكْمُهُ الثَّوَابُ عَلَى الْفِعْلِ وَعَدَمُ اللَّوْمِ عَلَى التَّرْكِ",
-                        german = "[Über die empfohlene Sunna:] Seine Regel ist Lohn für das Tun und kein Tadel für das Auslassen.",
-                        source = "$IBN_ABIDIN, Bd. 1, S. 123 (nach al-Imdād)",
-                    ),
-                ),
-            ),
-        ),
-    ),
-    VerstehenEntry(
-        section = Section.SHURUQ_MAKRUH,
-        title = "Šurūq und Makrūh beim Aufgang",
-        photo = PhotoKey.SHURUQ,
-        quotes = listOf(
-            Quote(
-                arabic = "أولها \"عند طلوع الشمس إلى أن ترتفع\" وتبيض قدر رمح أو رمحين",
-                german = "Die erste [der verpönten Zeiten] ist beim Aufgang der Sonne, bis sie gestiegen ist und hell wird, etwa eine oder zwei Speerlängen hoch.",
-                source = "$MARAQI, S. 76",
-            ),
-        ),
-        showsSundial = false,
-        note = "Die angezeigte Spanne rechnet die App: vom Sonnenaufgang bis " +
-            "${Karaha.ISRAK_AFTER_SUNRISE_MIN} Minuten danach.",
-        groups = listOf(
-            QuoteGroup(
-                "Was in den Makrūh-Zeiten gilt",
-                place = Place.CAUTION,
-                quotes = listOf(
-                    Quote(
-                        arabic = "ثلاثة أوقات لا يصح فيها شيء من الفرائض والواجبات التي لزمت في الذمة قبل دخولها",
-                        german = "Drei Zeiten gibt es, in denen keine Pflicht gültig ist, die schon vor ihrem Eintritt geschuldet war, weder Farḍ noch Wāǧib.",
-                        source = "$MARAQI, S. 75 f.",
-                    ),
-                    Quote(
-                        arabic = "والأوقات الثلاثة يكره فيها النافلة كراهة تحريم ولو كان لها سبب كالمنذور وركعتي الطواف",
-                        german = "In den drei Zeiten ist das freiwillige Gebet stark verpönt (Karāhat at-taḥrīm), auch wenn es einen Anlass hat, wie ein gelobtes Gebet oder die zwei Rakʿa des Ṭawāf.",
-                        source = "$MARAQI, S. 76",
-                    ),
-                    Quote(
-                        arabic = "ويكره التنفل بعد طلوع الفجر بأكثر من سنته وبعد صلاته وبعد صلاة العصر",
-                        german = "Verpönt ist das freiwillige Gebet nach dem Aufgang des Faǧr über seine Sunna hinaus, nach dem Faǧr-Gebet und nach dem ʿAṣr-Gebet.",
-                        source = "$MARAQI, S. 76",
-                    ),
-                ),
-            ),
-        ),
-    ),
-    VerstehenEntry(
-        section = Section.DUHA,
-        title = "Ḍuḥā",
-        // Kein Foto: Šurūq direkt davor zeigt dasselbe.
-        photo = null,
-        quotes = listOf(
-            Quote(
-                arabic = "وقت \"الضحى\" وابتداؤه من ارتفاع الشمس إلى قبل زوالها",
-                german = "Die Zeit des Ḍuḥā beginnt mit dem Steigen der Sonne und reicht bis vor ihrem Zawāl.",
-                source = "$MARAQI, S. 149",
-            ),
-        ),
-        showsSundial = false,
-        note = "Die angezeigte Spanne rechnet die App: von " +
-            "${Karaha.ISRAK_AFTER_SUNRISE_MIN} Minuten nach Sonnenaufgang bis " +
-            "${Karaha.ZEVAL_BEFORE_DHUHR_MIN} Minuten vor Ẓuhr.",
-    ),
-    VerstehenEntry(
-        section = Section.ZUHR,
-        title = "Ẓuhr und Zawāl",
-        photo = PhotoKey.ZUHR,
-        quotes = listOf(
-            Quote(
-                arabic = "وأول وقت الظهر إذا زالت الشمس",
-                german = "Die Zeit des Ẓuhr beginnt, wenn die Sonne sich [vom Höchststand] neigt.",
-                source = "$QUDURI, S. 23",
-            ),
-        ),
-        showsSundial = true,
-        note = "Die angezeigte Spanne rechnet die App: von " +
-            "${Karaha.ZEVAL_BEFORE_DHUHR_MIN} Minuten vor Ẓuhr bis Ẓuhr.",
-        groups = listOf(
-            QuoteGroup(
-                "Makrūh im Zawāl",
-                listOf(
-                    Quote(
-                        arabic = "الثاني \"عند استوائها\" في بطن السماء \"إلى أن تزول\" أي تميل إلى جهة الغرب",
-                        german = "Die zweite [verpönte Zeit] ist, wenn sie mitten am Himmel steht, bis zum Zawāl, das heißt bis sie sich nach Westen neigt.",
-                        source = "$MARAQI, S. 76",
-                    ),
-                ),
-                Place.CAUTION,
-            ),
-            QuoteGroup(
-                RAKA_HEADING,
-                listOf(
-                    SUNNA_MUAKKADA,
-                    Quote(
-                        arabic = "\"ركعتان بعد الظهر\" ويندب أن يضم إليها ركعتان فتصير أربعا",
-                        german = "Zwei Rakʿa nach dem Ẓuhr; empfohlen ist, zwei hinzuzufügen, so dass es vier werden.",
-                        source = "$MARAQI, S. 145",
-                    ),
-                ),
-            ),
-        ),
-    ),
-    VerstehenEntry(
-        section = Section.ASR,
-        title = "ʿAṣr",
-        photo = PhotoKey.ASR,
-        quotes = listOf(
-            Quote(
-                arabic = "وآخر وقتها عند أبي حنيفة إذا صار ظل كل شيء مثليه سوي فيء الزوال وقال أبو يوسف ومحمد: إذا صار ظل كل شيء مثله وأول وقت العصر إذا خرج وقت الظهر على القولين",
-                german = "Nach Abū Ḥanīfa endet ihre Zeit [die des Ẓuhr], wenn der Schatten jedes Dinges doppelt so lang ist wie das Ding, ohne den Schatten zur Zeit des Zawāl. Abū Yūsuf und Muḥammad sagen: wenn der Schatten jedes Dinges so lang ist wie das Ding. Die Zeit des ʿAṣr beginnt, wenn die Zeit des Ẓuhr endet, nach beiden Ansichten.",
-                source = "$QUDURI, S. 23",
-            ),
-        ),
-        showsSundial = true,
-        note = "Die angezeigte ʿAṣr-Zeit ist die amtliche Zeit von Diyanet. Diyanet folgt " +
-            "der Ansicht von Abū Yūsuf und Muḥammad: wenn der Schatten so lang ist wie " +
-            "das Ding. Nach Abū Ḥanīfa beginnt ʿAṣr beim doppelten Schatten; die Sonnenuhr " +
-            "zeigt beide Linien.",
-        groups = listOf(
-            QuoteGroup(
-                RAKA_HEADING,
-                listOf(
-                    SUNNA_MANDUB,
-                    Quote(
-                        arabic = "وورد أنه ﷺ صلى ركعتين وورد أربعا فلذا خيره القدوري بينهما",
-                        german = "[Vor dem ʿAṣr:] Überliefert ist, dass er ﷺ zwei betete, und überliefert sind auch vier; deshalb ließ al-Qudūrī die Wahl zwischen beiden.",
-                        source = "$MARAQI, S. 146",
-                    ),
-                ),
-            ),
-        ),
-    ),
-    VerstehenEntry(
-        section = Section.ISFIRAR_MAKRUH,
-        title = "Makrūh beim Vergilben der Sonne",
-        // Kein Foto: ʿAṣr direkt davor zeigt dasselbe.
-        photo = null,
-        quotes = listOf(
-            Quote(
-                arabic = "الثالث \"عند اصفرارها\" وضعفها حتى تقدر العين على مقابلتها \"إلى أن تغرب\"",
-                german = "Die dritte [verpönte Zeit] ist, wenn sie gelb und schwach wird, so dass das Auge ihrem Anblick standhält, bis sie untergeht.",
-                source = "$MARAQI, S. 76",
-            ),
-        ),
-        showsSundial = false,
-        note = "Die angezeigte Spanne rechnet die App: von " +
-            "${Karaha.ISFIRAR_BEFORE_MAGHRIB_MIN} Minuten vor Maġrib bis Maġrib.",
-        groups = listOf(
-            QuoteGroup(
-                "Das ʿAṣr desselben Tages",
-                listOf(
-                    Quote(
-                        arabic = "\"كما صح عصر اليوم\" بأدائه \"عند الغروب\" لبقاء سببه وهو الجزء المتصل به الأداء من الوقت \"مع الكراهة\" للتأخير المنهي عنه لا لذات الوقت",
-                        german = "So wie das ʿAṣr desselben Tages gültig ist, wenn man es beim Sonnenuntergang verrichtet, weil sein Anlass noch besteht, nämlich der Teil der Zeit, an den die Verrichtung anschließt; aber verpönt, wegen des verbotenen Aufschiebens, nicht wegen der Zeit selbst.",
-                        source = "$MARAQI, S. 76",
-                    ),
-                ),
-            ),
-        ),
-    ),
-    VerstehenEntry(
-        section = Section.MAGHRIB,
-        title = "Maġrib",
-        photo = PhotoKey.MAGHRIB,
-        quotes = listOf(
-            Quote(
-                arabic = "والمغرب منه الى غروب الشفق الاحمر على المفتى به",
-                german = "Die Zeit des Maġrib reicht von ihm [dem Sonnenuntergang] bis zum Verschwinden der roten Abenddämmerung, nach der Ansicht, nach der die Fatwā gegeben wird.",
-                source = "$MARAQI, S. 72",
-            ),
-        ),
-        showsSundial = false,
-        groups = listOf(QuoteGroup(RAKA_HEADING, listOf(SUNNA_MUAKKADA, SUNNA_MANDUB))),
-    ),
-    VerstehenEntry(
-        section = Section.AWWABIN,
-        title = "Auwābīn",
-        // Kein Foto: Maġrib direkt davor zeigt dasselbe.
-        photo = null,
-        quotes = listOf(
-            Quote(
-                arabic = "ندب \"ست\" ركعات \"بعد المغرب\" لقوله ﷺ: \"من صلى بعد المغرب ست ركعات كتب من الأوابين\"",
-                german = "Empfohlen sind sechs Rakʿa nach dem Maġrib, wegen seines Wortes, Gott segne ihn und schenke ihm Heil: „Wer nach dem Maġrib sechs Rakʿa betet, wird zu den Auwābīn gezählt.“",
-                source = "$MARAQI, S. 146",
-            ),
-            Quote(
-                arabic = "والأواب هو الذي إذا أذنب ذنبا بادر إلى التوبة",
-                german = "Der Auwāb ist, wer nach einer Sünde ohne Zögern zur Reue eilt.",
-                source = "$MARAQI, S. 146",
-            ),
-        ),
-        showsSundial = false,
-        note = "Die angezeigte Spanne rechnet die App: von Maġrib bis ʿIšāʾ.",
-        groups = listOf(
-            QuoteGroup(
-                "Zusätzlich oder darin enthalten?",
-                listOf(
-                    Quote(
-                        arabic = "وقد عطفنا المندوبات على المؤكدات كما في الكنز وغيره من المعتبرات وظاهره المغايرة فتكون الست في المغرب غير الركعتين المؤكدتين. وكذا في الأربع بعد الظهر. وقيل بها",
-                        german = "Wir haben die empfohlenen an die bekräftigten angereiht, wie im Kanz und anderen maßgeblichen Werken. Dem Anschein nach sind sie verschieden: Die sechs beim Maġrib sind nicht die beiden bekräftigten Rakʿa, ebenso die vier nach dem Ẓuhr. Es wird aber auch gesagt, sie zählten dazu.",
-                        source = "$MARAQI, S. 147",
-                    ),
-                ),
-            ),
-        ),
-    ),
-    VerstehenEntry(
-        section = Section.ISHA,
-        title = "ʿIšāʾ",
-        photo = PhotoKey.ISHA,
-        quotes = listOf(
-            Quote(
-                arabic = "وأول وقت العشاء إذا غاب الشفق وآخر وقتها ما لم يطلع الفجر",
-                german = "Die Zeit des ʿIšāʾ beginnt, wenn die Abenddämmerung (Šafaq) verschwunden ist, und endet, wenn der Faǧr aufgeht.",
-                source = "$QUDURI, S. 23",
-            ),
-        ),
-        showsSundial = false,
-        groups = listOf(
-            QuoteGroup(
-                RAKA_HEADING,
-                listOf(
-                    SUNNA_MUAKKADA,
-                    SUNNA_MANDUB,
-                    Quote(
-                        arabic = "الوتر واجب وهو ثلاث ركعات",
-                        german = "Der Witr ist wāǧib und hat drei Rakʿa.",
-                        source = "$MARAQI, S. 139",
-                    ),
-                ),
-            ),
-        ),
-    ),
-    VerstehenEntry(
-        section = Section.TAHAJJUD,
-        title = "Tahaǧǧud",
-        // Kein Foto: ʿIšāʾ direkt davor zeigt dasselbe.
-        photo = null,
-        quotes = listOf(
-            Quote(
-                arabic = "\"وصلاة الليل\" خصوصا في الثلث الأخير منه \"أفضل من صلاة النهار\" لأنه أشق على النفس",
-                german = "Das Nachtgebet, besonders im letzten Drittel der Nacht, ist vorzüglicher als das Gebet am Tag, weil es der Seele schwerer fällt.",
-                source = "$MARAQI, S. 148",
-            ),
-        ),
-        showsSundial = false,
-        note = "Die angezeigte Zeit rechnet die App: das letzte Drittel der Nacht zwischen Maġrib und Faǧr.",
-    ),
-    VerstehenEntry(
-        section = Section.JAMAA,
-        title = "Ǧamāʿa am Morgen",
-        photo = PhotoKey.FAJR,
-        quotes = listOf(
-            Quote(
-                arabic = "ويستحب الإسفار بالفجر للرجال",
-                german = "Für Männer ist es empfohlen, den Faǧr zu beten, wenn es hell wird (Isfār).",
-                source = "$MARAQI, S. 74",
-            ),
-            Quote(
-                arabic = "ولأن في الإسفار تكثير الجماعة وفي التغليس تقليلها وما يؤدي إلى التكثير أفضل",
-                german = "Denn beim Isfār kommen mehr Menschen zur Gemeinschaft, beim Taġlīs [dem Beten in der Dunkelheit] weniger, und was zu mehr führt, ist vorzüglicher.",
-                source = "$MARAQI, S. 74",
-            ),
-        ),
-        showsSundial = false,
-        note = "Die Ǧamāʿa-Zeit ist keine amtliche Zeit. Sie ergibt sich aus dem " +
-            "Sonnenaufgang minus dem Vorlauf aus den Einstellungen. Die eigene " +
-            "Moschee kann abweichen.",
-    ),
-)
-
 /**
  * Glossar (freigegeben am 05.11.2026). Koran und Ḥadīṯ wörtlich aus den
  * Werkzeugen übersetzt, Fundstellen in Klammern; Belege in der Belegdatei.
- * Welche Begriffe ein Reiter zeigt, steht in [VERSTEHEN_TABS].
+ * Im Lehrtext verweist [[Begriff]] auf einen Eintrag.
  */
 val GLOSSAR: Map<String, GlossaryTerm> = listOf(
     GlossaryTerm(

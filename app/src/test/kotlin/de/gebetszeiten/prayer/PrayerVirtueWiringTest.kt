@@ -96,15 +96,4 @@ class PrayerVirtueWiringTest {
             ),
         )
     }
-
-    @Test
-    fun `Zeiten verstehen zeigt alle Texte unter eigener Ueberschrift`() {
-        val screen = quelltext("ui/verstehen/VerstehenScreen.kt")
-        assertTrue("PRAYER_VIRTUES wird nicht gelesen", screen.contains("PRAYER_VIRTUES"))
-        assertTrue("Ueberschrift fehlt", screen.contains("\"Wert dieses Gebets\""))
-        val block = rumpf(screen, "private fun VirtueBlock(")
-        assertTrue("Ueberschrift ist keine heading()", block.contains("heading()"))
-        assertTrue("Ueberschrift nicht in labelSmall", block.contains("typography.labelSmall"))
-        assertTrue("Texte nicht in bodyMedium", block.contains("typography.bodyMedium"))
-    }
 }

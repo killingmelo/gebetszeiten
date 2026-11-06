@@ -110,4 +110,16 @@ class LehrInhaltTest {
     @Test fun nummerierungLaeuftDurch() {
         for (k in LEHRE) assertEquals(k.belege.size, nummern(k).size)
     }
+
+    @Test fun alleKapitelDa() {
+        assertEquals(6, LEHRE.size)
+        assertEquals(
+            listOf("Faǧr", "Ẓuhr", "ʿAṣr", "Maġrib", "ʿIšāʾ", "Freiwillig und verpönt"),
+            LEHRE.map { it.reiter },
+        )
+        assertEquals(
+            setOf(Teil.SHURUQ, Teil.DUHA, Teil.ZAWAL, Teil.ISFIRAR, Teil.AWWABIN, Teil.TAHAJJUD),
+            LEHRE[5].abschnitte.map { it.teil }.toSet(),
+        )
+    }
 }
