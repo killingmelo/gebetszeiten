@@ -52,14 +52,19 @@ class VerstehenNeuWiringTest {
     fun himmelsbandBeschrieben() {
         val text = File("src/main/kotlin/de/gebetszeiten/ui/verstehen/Himmelsband.kt").readText()
         assertTrue("contentDescription fehlt", text.contains("contentDescription"))
+        assertTrue("beschreibung( nicht in semantics", text.contains("semantics { contentDescription = beschreibung(band) }"))
+        val start = text.indexOf("private fun beschreibung(band: Band)")
+        assertTrue("beschreibung fehlt", start >= 0)
+        val ende = text.indexOf("/**", start)
+        val zweige = text.substring(start, ende)
         for (band in Band.values()) {
-            assertTrue("Band.${band.name} -> fehlt", text.contains("Band.${band.name} ->"))
+            assertTrue("Band.${band.name} -> fehlt in beschreibung", zweige.contains("Band.${band.name} -> \""))
         }
     }
 
     @Test
     fun nurLehrZeitenFormatiert() {
-        // Uhrzeiten werden allein in LehrZeiten.kt formatiert; Himmelsband.kt gibt es erst später.
+        // Uhrzeiten werden allein in LehrZeiten.kt formatiert; Screen und Himmelsband.kt formatieren nichts.
         val dateien = listOf("VerstehenNeuScreen.kt", "Himmelsband.kt")
             .map { File("src/main/kotlin/de/gebetszeiten/ui/verstehen/$it") }
             .filter { it.isFile }

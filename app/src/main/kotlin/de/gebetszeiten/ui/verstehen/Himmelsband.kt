@@ -1,6 +1,8 @@
 package de.gebetszeiten.ui.verstehen
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -22,9 +24,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
@@ -71,7 +75,13 @@ fun Himmelsband(band: Band, modifier: Modifier = Modifier) {
     val t = LocalTokens.current
     val messer = rememberTextMeasurer()
     val nacht = band == Band.ISHA
-    val etikett = TextStyle(fontSize = 10.sp, color = if (nacht) t.canvas else t.stone, textAlign = TextAlign.Center)
+    // Dunkler Himmel: im Nachtthema der dunkle Grund (canvas), im Tagthema ink; Sterne, Horizont und Schrift nehmen das Gegenstück.
+    val themaDunkel = t.canvas.luminance() < 0.5f
+    val himmel = if (themaDunkel) t.canvas else t.ink
+    val hell = if (themaDunkel) t.ink else t.canvas
+    val etikett = MaterialTheme.typography.labelSmall.copy(
+        fontSize = 10.sp, color = if (nacht) hell else t.stone, textAlign = TextAlign.Center,
+    )
     Canvas(
         modifier
             .fillMaxWidth()
@@ -81,9 +91,9 @@ fun Himmelsband(band: Band, modifier: Modifier = Modifier) {
     ) {
         val s = size.width / 360f
         fun p(x: Float, y: Float) = Offset(x * s, y * s)
-        drawRect(if (nacht) t.ink else t.surface)
+        drawRect(if (nacht) himmel else t.surface)
         val strich = 1.5f * s
-        val horizont = if (nacht) t.canvas else t.hairline
+        val horizont = if (nacht) hell else t.hairline
         val bahn = Path().apply {
             moveTo(20f * s, 128f * s)
             quadraticTo(180f * s, -10f * s, 340f * s, 128f * s)
@@ -119,7 +129,7 @@ fun Himmelsband(band: Band, modifier: Modifier = Modifier) {
             Band.ISHA -> listOf(
                 40f to 30f, 90f to 70f, 130f to 22f, 170f to 55f, 215f to 28f,
                 250f to 80f, 290f to 36f, 320f to 70f, 60f to 100f, 200f to 95f,
-            ).forEach { (x, y) -> drawCircle(t.canvas, 1.6f * s, p(x, y)) }
+            ).forEach { (x, y) -> drawCircle(hell, 1.6f * s, p(x, y)) }
         }
         drawLine(horizont, p(12f, 128f), p(348f, 128f), strich)
         beschrifte(messer, etikett, s, band)
@@ -168,8 +178,9 @@ private fun RowScope.Abschnittsfeld(teil: Teil, index: Int, t: Tokens, onTeil: (
         Modifier
             .weight(1f)
             .heightIn(min = 48.dp)
-            .padding(end = 1.dp)
-            .clickable { onTeil(teil) }
+            .background(t.surface)
+            .border(0.5.dp, t.hairline)
+            .clickable(role = Role.Button) { onTeil(teil) }
             .semantics { contentDescription = name },
         contentAlignment = Alignment.Center,
     ) {
@@ -178,7 +189,8 @@ private fun RowScope.Abschnittsfeld(teil: Teil, index: Int, t: Tokens, onTeil: (
             style = MaterialTheme.typography.labelSmall,
             color = if (index % 2 == 0) t.ink else t.stone,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            maxLines = 2,
+            modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
         )
     }
 }
