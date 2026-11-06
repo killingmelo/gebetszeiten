@@ -97,11 +97,9 @@ fun suche(frage: String, lehre: List<Kapitel>, glossar: Map<String, GlossaryTerm
     for ((k, kap) in lehre.withIndex()) {
         for ((a, ab) in kap.abschnitte.withIndex()) {
             val ziel = Ziel(k, ab.teil)
-            if (normalisiere(ab.name).contains(q)) {
-                pruefe(0, ziel, ab.name, ab.name)
-            } else if (a == 0 && normalisiere(kap.reiter).contains(q)) {
-                pruefe(0, ziel, kap.reiter, kap.reiter)
-            }
+            val vorher = kandidaten.size
+            pruefe(0, ziel, ab.name, ab.name)
+            if (kandidaten.size == vorher && a == 0) pruefe(0, ziel, kap.reiter, kap.reiter)
             fun feld(label: String, text: String?) {
                 if (text != null) pruefe(2, ziel, "${ab.name} · $label", klartext(text))
             }
@@ -123,12 +121,13 @@ fun suche(frage: String, lehre: List<Kapitel>, glossar: Map<String, GlossaryTerm
     }
 
     for ((key, begriff) in glossar) {
+        val imTerm = normalisiere(begriff.term).contains(q)
+        if (!imTerm && !normalisiere(begriff.text).contains(q)) continue
         val stelle = lehre.withIndex().firstNotNullOfOrNull { (k, kap) ->
             kap.abschnitte.firstOrNull { verwendet(it, key) }?.let { k to it }
         } ?: continue
         val ziel = Ziel(stelle.first, stelle.second.teil)
         val ort = "${stelle.second.name} · Begriff ${begriff.term}"
-        val imTerm = normalisiere(begriff.term).contains(q)
         if (imTerm) {
             kandidaten += Kandidat(1, Treffer(ziel, ort, ausschnitt(begriff.text, 0)))
         } else {
