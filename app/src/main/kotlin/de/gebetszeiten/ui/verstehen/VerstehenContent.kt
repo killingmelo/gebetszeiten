@@ -45,8 +45,12 @@ const val TRANSLATION_NOTE = "Deutsche Übersetzung: eigene Übersetzung."
 // Quellenangaben wie von shamela_get_citation geliefert (alle mit Druckseiten, nicht automatisch nummeriert).
 internal const val MARAQI = "aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ"
 internal const val QUDURI = "al-Qudūrī (gest. 428 n. H.), Muḫtaṣar al-Qudūrī"
-private const val HIDAYA = "al-Marġīnānī (gest. 593 n. H.), al-Hidāya"
-private const val IBN_ABIDIN = "Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār"
+internal const val HIDAYA = "al-Marġīnānī (gest. 593 n. H.), al-Hidāya"
+internal const val IBN_ABIDIN = "Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār"
+
+// Matn ad-Durr al-muḫtār über der Linie im Druck des Radd al-muḥtār (Entscheidung vom 06.11.2026):
+// Bd. und S. sind die des Radd-Drucks (Ḥalabī), wie von shamela_get_citation geliefert.
+internal const val DURR = "al-Ḥaṣkafī (gest. 1088 n. H.), ad-Durr al-muḫtār, gedruckt mit Radd al-muḥtār"
 
 private const val RAKA_HEADING = "Rakʿa"
 
@@ -56,7 +60,7 @@ internal val SUNNA_MUAKKADA = Quote(
     german = "Sunna muʾakkada sind zwei Rakʿa vor dem Faǧr, zwei nach dem Ẓuhr, nach dem Maġrib und nach dem ʿIšāʾ, und vier vor dem Ẓuhr, vor der Ǧumʿa und nach ihr, mit einem Friedensgruß.",
     source = "$MARAQI, S. 145 f.",
 )
-private val SUNNA_MANDUB = Quote(
+internal val SUNNA_MANDUB = Quote(
     arabic = "وندب أربع قبل العصر والعشاء وبعده وست بعد المغرب",
     german = "Empfohlen sind vier vor dem ʿAṣr, vor dem ʿIšāʾ und nach ihm, und sechs nach dem Maġrib.",
     source = "$MARAQI, S. 146",
@@ -483,5 +487,63 @@ val GLOSSAR: Map<String, GlossaryTerm> = listOf(
         "Fatwā",
         "Rechtsauskunft eines Gelehrten. „Nach der die Fatwā gegeben wird“ heißt: die Ansicht, nach " +
             "der in der Schule entschieden wird.",
+    ),
+    // Neue Einträge für „Verstehen neu“, freigegeben am 06.11.2026.
+    GlossaryTerm(
+        "Ǧumʿa",
+        "Freitag, von ǧamaʿa „versammeln“: der Tag der Versammlung, auch das Gebet an diesem Tag. " +
+            "Im Koran: „Ihr, die ihr glaubt, wenn am Tag der Ǧumʿa zum Gebet gerufen wird, dann eilt " +
+            "zum Gedenken Gottes und lasst den Handel. Das ist besser für euch, wenn ihr es wüsstet.“ (al-Ǧumʿa 62:9)",
+    ),
+    GlossaryTerm(
+        "Iqāma",
+        "Von aqāma „aufrichten, verrichten“: der zweite Ruf unmittelbar vor dem Gebet. Dasselbe Wort " +
+            "steht im Koran für das Verrichten des Gebets: „Und verrichtet das Gebet, gebt die Zakāt und " +
+            "verbeugt euch mit denen, die sich verbeugen.“ (al-Baqara 2:43)",
+    ),
+    GlossaryTerm(
+        "Qaḍāʾ",
+        "Von qaḍā „erfüllen, begleichen“: das Nachholen eines Gebets nach seiner Zeit. Das Gegenwort ist " +
+            "Adāʾ, das Verrichten in der Zeit. Der Prophet sagte: „Wer ein Gebet vergisst, soll es beten, " +
+            "wenn er sich daran erinnert; es gibt dafür keine andere Sühne als diese.“ (Buḫārī 597)",
+    ),
+    GlossaryTerm(
+        "Istiwāʾ",
+        "Von istawā „gerade, ausgeglichen sein“, auch „zur vollen Größe gelangen“: der höchste Stand der " +
+            "Sonne am Mittag, kurz vor dem Zawāl. Im Koran über Mūsā: „Und als er seine volle Kraft erreicht " +
+            "hatte und ausgewachsen war, gaben Wir ihm Urteilskraft und Wissen.“ (al-Qaṣaṣ 28:14)",
+    ),
+    GlossaryTerm(
+        "Karāhat at-taḥrīm",
+        "Karāha von kariha „nicht mögen“, taḥrīm von ḥarrama „verbieten“: die starke Verpöntheit nahe am " +
+            "Verbot. Die leichte Stufe heißt Karāhat at-tanzīh. Im Koran steht makrūh nach einer Reihe von " +
+            "Verboten: „All das, was davon schlecht ist, ist bei deinem Herrn verhasst.“ (al-Isrāʾ 17:38)",
+    ),
+    GlossaryTerm(
+        "Zenit",
+        "Im Alltag der höchste Stand der Sonne am Tag, arabisch Istiwāʾ; genau genommen der Punkt " +
+            "senkrecht über dem Kopf, den die Sonne in Deutschland nie erreicht. Das Wort kommt aus dem " +
+            "Arabischen samt ar-raʾs, „Richtung des Kopfes“. Das Sich-Neigen der Sonne danach heißt Zawāl; " +
+            "mit ihm beginnt Ẓuhr.",
+    ),
+    GlossaryTerm(
+        "Aḏān",
+        "Von aḏina „hören“, auch „ankündigen“: der Ruf zum Gebet. Der Prophet sagte: „Wenn das Gebet " +
+            "fällig ist, soll einer von euch für euch den Aḏān rufen, und der Älteste von euch soll euch " +
+            "vorbeten.“ (Buḫārī 628)",
+    ),
+    GlossaryTerm(
+        "Iṣfirār",
+        "Von iṣfarra „gelb werden“, aṣfar „gelb“: das Vergilben der Sonne vor dem Untergang.",
+    ),
+    GlossaryTerm(
+        "Ṭawāf",
+        "Von ṭāfa „umkreisen“: das Umschreiten der Kaʿba. Im Koran: „Dann sollen sie ihre Ungepflegtheit " +
+            "beenden, ihre Gelübde erfüllen und das alte Haus umschreiten.“ (al-Ḥaǧǧ 22:29)",
+    ),
+    GlossaryTerm(
+        "Ẓāhir ar-riwāya",
+        "„Die offenkundige Überlieferung“: die Lehre der Schule, wie sie in den Grundwerken von " +
+            "Imām Muḥammad überliefert ist.",
     ),
 ).associateBy { it.term }

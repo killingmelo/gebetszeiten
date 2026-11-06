@@ -81,6 +81,9 @@ private val MAKRUH_TEILE = setOf(Teil.SHURUQ, Teil.ZAWAL, Teil.ISFIRAR)
 /** Kopf der Zeitfrage eines Abschnitts. */
 internal fun wannKopf(teil: Teil): String = if (teil in MAKRUH_TEILE) "Wann gilt das?" else "Wann bete ich?"
 
+/** Kopf der Frage nach dem Grund: bei verpönten Zeiten „Warum ist das so?“ (Entscheidung vom 06.11.2026). */
+internal fun warumKopf(teil: Teil): String = if (teil in MAKRUH_TEILE) "Warum ist das so?" else "Warum lohnt es sich?"
+
 /** Legendeneintrag einer Rakʿa-Art, ausgezeichnet für [zerlege]; der Begriff öffnet das Glossar. */
 internal fun legende(art: RakaArt): String = when (art) {
     RakaArt.FARD -> "[[Farḍ]]"
@@ -180,7 +183,7 @@ internal fun AbschnittBlock(
             }
         }
 
-        FrageKopf("Warum lohnt es sich?", t)
+        FrageKopf(warumKopf(abschnitt.teil), t)
         LehrText(abschnitt.warum, typo.bodyLarge, t.ink, hilfen, t)
 
         Hinweis(abschnitt.achtung, hilfen, t)

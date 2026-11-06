@@ -45,11 +45,11 @@ val VERSTEHEN_TABS: List<VerstehenTab> = listOf(
     VerstehenTab(
         "Faǧr", "Morgendämmerung", Section.FAJR, listOf(Section.JAMAA), "Morgendämmerung", "Šurūq",
         rakaat = listOf(BEFORE to "2 Sunna muʾakkada", FARD to "2"),
-        glossary = listOf("Faǧr", "Rakʿa", "Farḍ", "Sunna", "Sunna muʾakkada", "Mandūb", "Wāǧib", "Isfār und Taġlīs", "Ǧamāʿa"),
+        glossary = listOf("Faǧr", "Rakʿa", "Farḍ", "Sunna", "Sunna muʾakkada", "Mandūb", "Wāǧib", "Isfār und Taġlīs", "Ǧamāʿa", "Iqāma"),
     ),
     VerstehenTab(
         "Šurūq", "Sonnenaufgang", Section.SHURUQ_MAKRUH, listOf(Section.DUHA), "Sonnenaufgang", "Makrūh vorbei",
-        glossary = listOf("Šurūq", "Makrūh", "Nafl", "Wāǧib", "Ḍuḥā"),
+        glossary = listOf("Šurūq", "Makrūh", "Nafl", "Wāǧib", "Ḍuḥā", "Qaḍāʾ", "Karāhat at-taḥrīm", "Ṭawāf", "Ẓāhir ar-riwāya"),
     ),
     VerstehenTab(
         "Ẓuhr", "Mittag", Section.ZUHR, emptyList(), "nach dem Zawāl", "ʿAṣr",
@@ -59,17 +59,17 @@ val VERSTEHEN_TABS: List<VerstehenTab> = listOf(
             AFTER to "2 Sunna muʾakkada, empfohlen 2 weitere",
             "Ǧumʿa" to "4 Sunna muʾakkada davor, 2 Farḍ, 4 Sunna muʾakkada danach",
         ),
-        glossary = listOf("Ẓuhr", "Zawāl", "Makrūh", "Sunna muʾakkada", "Mandūb"),
+        glossary = listOf("Ẓuhr", "Zawāl", "Makrūh", "Sunna muʾakkada", "Mandūb", "Ǧumʿa", "Zenit", "Istiwāʾ"),
     ),
     VerstehenTab(
         "ʿAṣr", "Nachmittag", Section.ASR, listOf(Section.ISFIRAR_MAKRUH), "Ende von Ẓuhr", "Maġrib",
         rakaat = listOf(BEFORE to "empfohlen 4 (oder 2)", FARD to "4"),
-        glossary = listOf("ʿAṣr", "Mandūb", "Makrūh"),
+        glossary = listOf("ʿAṣr", "Mandūb", "Makrūh", "Iṣfirār"),
     ),
     VerstehenTab(
         "Maġrib", "Sonnenuntergang", Section.MAGHRIB, listOf(Section.AWWABIN), "Sonnenuntergang", "ʿIšāʾ",
         rakaat = listOf(FARD to "3", AFTER to "2 Sunna muʾakkada, empfohlen 6"),
-        glossary = listOf("Maġrib", "Šafaq", "Fatwā", "Auwābīn", "Sunna muʾakkada", "Mandūb"),
+        glossary = listOf("Maġrib", "Šafaq", "Fatwā", "Auwābīn", "Sunna muʾakkada", "Mandūb", "Aḏān", "Iqāma"),
     ),
     VerstehenTab(
         "ʿIšāʾ", "Abend", Section.ISHA, listOf(Section.TAHAJJUD), "Dämmerung vorbei", "Faǧr",

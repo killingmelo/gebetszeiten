@@ -47,6 +47,25 @@ class VerstehenNeuLogikTest {
     }
 
     @Test
+    fun warumKopfBeiMakruh() {
+        for (teil in listOf(Teil.SHURUQ, Teil.ZAWAL, Teil.ISFIRAR)) assertEquals("Warum ist das so?", warumKopf(teil))
+        for (teil in Teil.values().filterNot { it in setOf(Teil.SHURUQ, Teil.ZAWAL, Teil.ISFIRAR) }) {
+            assertEquals("Warum lohnt es sich?", warumKopf(teil))
+        }
+    }
+
+    @Test
+    fun sprungtabelleStimmtMitLehreUeberein() {
+        // Alle sechs Kapitel sind da: Die Nummer im Ziel ist die Stelle in LEHRE.
+        assertEquals(listOf("Faǧr", "Ẓuhr", "ʿAṣr", "Maġrib", "ʿIšāʾ", "Freiwillig und verpönt"), LEHRE.map { it.reiter })
+        val ziele = de.gebetszeiten.prayer.Section.values().map { zielVon(it) } +
+            de.gebetszeiten.prayer.Moment.values().map { zielVonMoment(it) }
+        for (ziel in ziele) assertEquals("$ziel", ziel.kapitel, kapitelIndex(ziel, LEHRE))
+        // Jeder Teil steht in genau einem Kapitel.
+        for (teil in Teil.values()) assertEquals("$teil", 1, LEHRE.count { k -> k.abschnitte.any { it.teil == teil } })
+    }
+
+    @Test
     fun legendeMitGlossarBegriffen() {
         for (art in RakaArt.values()) {
             val stuecke = zerlege(legende(art)) { 0 }

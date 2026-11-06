@@ -334,3 +334,314 @@ und Muḥammad). Belegt über Sekundärquellen, die die Antwort des Fetva-Kurulu
 (sorularlaislamiyet.com/node/91604, islamveihsan.com „Asr-ı Evvel ve Asr-ı Sani“); die Seite
 kurul.diyanet.gov.tr selbst war nicht abrufbar. Zu ʿIšāʾ (roter oder weißer Šafaq) wurde keine
 verlässliche Aussage gefunden; die App sagt dazu nichts.
+
+---
+
+## 06.11.2026 (Verstehen neu)
+
+Gehört zu `app/src/main/kotlin/de/gebetszeiten/ui/verstehen/LehrInhalt.kt` (neue Seite „Verstehen“,
+sechs Kapitel). Vom Herausgeber am 06.11.2026 freigegeben (Entwürfe in
+`.superpowers/sdd/2026-11-06-verstehen-neu/`). Alle arabischen Texte stammen aus Ergebnissen von
+`shamela_get_page` (Feld `body`, nie `foot`); Stellen mit den Sonder-Ligaturen ﵀ ﵁ ﵇ ﵊ sind so
+geschnitten, dass keine davon im Zitat steht. Die Beleg-IDs gelten je Kapitel; dieselbe ID kann in
+zwei Kapiteln stehen (Šafaq-Belege bei Maġrib und ʿIšāʾ).
+
+Hier stehen nur die neuen und die wieder aufgenommenen Stellen. Alle übrigen Belege der Lehre sind
+Zitate, die schon oben stehen (Abschnitte FAJR bis JAMAA und „Ergänzung 05.11.2026“), unverändert
+übernommen.
+
+Quellenangabe für den Matn von ad-Durr al-muḫtār (Entscheidung vom 06.11.2026): „al-Ḥaṣkafī
+(gest. 1088 n. H.), ad-Durr al-muḫtār, gedruckt mit Radd al-muḥtār“ mit Band und Seite dieses Drucks
+(Konstante `DURR`). Die Worte Ibn ʿĀbidīns (unter `ــ`) stehen weiter unter „Radd al-muḥtār“.
+
+### Zitierausgaben der neuen Seiten (`shamela_get_citation`, alle `auto_numbered: false`)
+
+| book_id | page_id | `formatted` | Quellenangabe in der App |
+|---|---|---|---|
+| 412 | 81 | الشرنبلالي (ت ١٠٦٩هـ). مراقي الفلاح شرح نور الإيضاح. ١٠٦٩هـ، ص ٧٣. | …, S. 73 |
+| 412 | 86 | الشرنبلالي (ت ١٠٦٩هـ). مراقي الفلاح شرح نور الإيضاح. ١٠٦٩هـ، ص ٧٧. | …, S. 77 |
+| 412 | 163 | الشرنبلالي (ت ١٠٦٩هـ). مراقي الفلاح شرح نور الإيضاح. ١٠٦٩هـ، ص ١٣٩. | …, S. 139 |
+| 412 | 179 | الشرنبلالي (ت ١٠٦٩هـ). مراقي الفلاح شرح نور الإيضاح. ١٠٦٩هـ، ص ١٥٣. | …, S. 153 |
+| 412 | 208 | الشرنبلالي (ت ١٠٦٩هـ). مراقي الفلاح شرح نور الإيضاح. ١٠٦٩هـ، ص ١٧٥. | …, S. 175 |
+| 412 | 231 | الشرنبلالي (ت ١٠٦٩هـ). مراقي الفلاح شرح نور الإيضاح. ١٠٦٩هـ، ص ١٩٤. | …, S. 194 |
+| 124336 | 22 | القدوري (ت ٤٢٨هـ). مختصر القدوري. ٤٢٨هـ، ص ٣٢. | al-Qudūrī …, S. 32 |
+| 21613 | 356 | ابن عابدين (ت ١٢٥٢هـ). حاشية ابن عابدين = رد المحتار - ط الحلبي. ١٢٥٢هـ، ج ١، ص ٣٦١. | Ibn ʿĀbidīn …, Radd al-muḥtār, Bd. 1, S. 361 |
+| 21613 | 366 | ابن عابدين (ت ١٢٥٢هـ). حاشية ابن عابدين = رد المحتار - ط الحلبي. ١٢٥٢هـ، ج ١، ص ٣٧١. | …, Bd. 1, S. 371 |
+| 21613 | 678 | ابن عابدين (ت ١٢٥٢هـ). حاشية ابن عابدين = رد المحتار - ط الحلبي. ١٢٥٢هـ، ج ٢، ص ٢٢. | al-Ḥaṣkafī …, ad-Durr al-muḫtār, Bd. 2, S. 22 |
+| 21613 | 679 | ابن عابدين (ت ١٢٥٢هـ). حاشية ابن عابدين = رد المحتار - ط الحلبي. ١٢٥٢هـ، ج ٢، ص ٢٣. | ad-Durr al-muḫtār bzw. Radd al-muḥtār, Bd. 2, S. 23 |
+| 21613 | 680 | ابن عابدين (ت ١٢٥٢هـ). حاشية ابن عابدين = رد المحتار - ط الحلبي. ١٢٥٢هـ، ج ٢، ص ٢٤. | Radd al-muḥtār, Bd. 2, S. 24 |
+| 21613 | 681 | ابن عابدين (ت ١٢٥٢هـ). حاشية ابن عابدين = رد المحتار - ط الحلبي. ١٢٥٢هـ، ج ٢، ص ٢٥. | ad-Durr al-muḫtār bzw. Radd al-muḥtār, Bd. 2, S. 25 |
+
+Für 412/86, 208 und 231 halten die Entwürfe die Zitierangabe gekürzt fest („… ص ٧٧.“ usw.); der
+Anfang ist derselbe wie bei den übrigen Seiten von book_id 412.
+
+Die Klammer nach page_id nennt die Quellenangabe, wie sie in der App steht.
+
+### Neue Stellen
+
+**Faǧr, `fajr-sadiq`.** book_id 412, page_id 80 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 72), Marāqī l-falāḥ, Kommentar (unter `ــ`)
+
+> "الصادق" وهو الذي يطلع عرضا منتشرا والكاذب يظهر طولا ثم يغيب وقد أجمعت الأمة على أن أوله الصبح الصادق
+
+Übersetzung: Der echte [Faǧr] ist der, der in der Breite aufgeht und sich ausbreitet; der falsche zeigt sich längs und verschwindet dann. Die Gemeinschaft der Muslime ist sich einig, dass ihr [der Zeit des Morgengebets] Anfang der echte Morgen ist.
+
+**Faǧr, `fajr-aakad`.** book_id 412, page_id 179 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 153), Grundtext Nūr al-īḍāḥ (über `ــ`)
+
+> وعن أبي حنيفة رحمه الله تعالى أنه ينزل لسنة الفجر لأنها آكد من غيرها
+
+Übersetzung: Von Abū Ḥanīfa, Gott erbarme sich seiner, wird überliefert, dass er [der Reitende] für die Sunna des Faǧr absteigt, weil sie stärker bekräftigt ist als die anderen.
+
+**Faǧr, `fajr-iqama`.** book_id 412, page_id 86 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 77), Marāqī l-falāḥ, Kommentar
+
+> "و" يكره "عند الإقامة" لكل فريضة "إلا سنة الفجر" إذا أمن فوت الجماعة
+
+Übersetzung: Und verpönt ist es [das freiwillige Gebet] bei der Iqāma jedes Pflichtgebets, außer der Sunna des Faǧr, wenn man sicher ist, die Gemeinschaft nicht zu verpassen.
+
+**Faǧr, `fajr-gamaa-vorrang`.** book_id 412, page_id 208 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 175), Marāqī l-falāḥ, Kommentar
+
+> "وإن لم يأمن" فوت الإمام باشتغاله بسنة الفجر "تركها" واقتدى لأن ثواب الجماعة أعظم من فضيلة ركعتي الفجر
+
+Übersetzung: Ist er nicht sicher, den Imām nicht zu verpassen, wenn er sich mit der Sunna des Faǧr beschäftigt, lässt er sie und folgt dem Imām, denn der Lohn der Gemeinschaft ist größer als der Vorzug der zwei Rakʿa des Faǧr.
+
+**Faǧr, `fajr-qada`.** book_id 412, page_id 208 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 175), Marāqī l-falāḥ, Kommentar (wiederholt den Grundtext in Anführung)
+
+> "ولم تقض سنة الفجر إلا بفوتها مع الفرض" إلى الزوال
+
+Übersetzung: Die Sunna des Faǧr wird nur nachgeholt, wenn sie zusammen mit dem Farḍ verpasst wurde, [und zwar] bis zum Zawāl.
+
+**Ẓuhr, `zuhr-qada`.** book_id 412, page_id 208 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 175), Grundtext Nūr al-īḍāḥ (über `ــ`)
+
+> وقضى السنة التي قبل الظهر في وقته قبل شفعه
+
+Übersetzung: Die Sunna vor dem Ẓuhr holt er in dessen Zeit nach, vor ihren zwei [Rakʿa nach dem Farḍ].
+
+**Ẓuhr, `zuhr-ibrad`.** book_id 412, page_id 82 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 74), Grundtext Nūr al-īḍāḥ; der Anfang ist das vorhandene Isfār-Zitat, ohne Auslassung weitergeführt
+
+> ويستحب الإسفار بالفجر للرجال والإبراد بالظهر في الصيف وتعجيله في الشتاء
+
+Übersetzung: Empfohlen ist für Männer, den Faǧr bei Helligkeit zu beten, den Ẓuhr im Sommer in die Kühle zu schieben und ihn im Winter früh zu beten.
+
+**Ẓuhr, `zuhr-gumua-zeit`.** book_id 412, page_id 231 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 194), Marāqī l-falāḥ, Kommentar
+
+> "و" الثالث "وقت الظهر" لقوله ﷺ "إذا مالت الشمس فصل بالناس الجمعة" "فلا تصح" الجمعة "قبله وتبطل بخروجه" لفوات الشرط
+
+Übersetzung: Die dritte [Bedingung der Ǧumʿa] ist die Zeit des Ẓuhr, wegen seines Wortes ﷺ: „Wenn die Sonne sich neigt, bete mit den Leuten die Ǧumʿa.“ Vor ihr ist die Ǧumʿa nicht gültig, und mit ihrem Ende wird sie ungültig, weil die Bedingung fehlt.
+
+**ʿAṣr, `asr-taakhir`.** book_id 412, page_id 82 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 74), Marāqī l-falāḥ, Kommentar; endet vor „لأنه“ mit Sonder-Ligatur
+
+> "و" يستحب "تأخير" صلاة "العصر" صيفا وشتاء
+
+Übersetzung: Und empfohlen ist, das ʿAṣr-Gebet aufzuschieben, im Sommer wie im Winter.
+
+**Maġrib, `shafaq-fatwa`.** book_id 412, page_id 80 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 72), Marāqī l-falāḥ, Kommentar (unter `ــ`); auch im Kapitel ʿIšāʾ
+
+> وهو رواية عن الإمام وعليها الفتوى وبها قالا لقول ابن عمر: الشفق الحمرة وهو مروي عن أكثر الصحابة وعليه إطباق أهل اللسان ونقل رجوع الإمام إليه
+
+Übersetzung: [Das Rot] ist eine Überlieferung vom Imam [Abū Ḥanīfa]; nach ihr wird die Fatwā gegeben, und die beiden [Abū Yūsuf und Muḥammad] vertreten sie, wegen des Wortes Ibn ʿUmars: Der Šafaq ist das Rot. Das ist von den meisten Gefährten überliefert, darin stimmen die Sprachkundigen überein, und es wird berichtet, dass der Imam sich dieser Ansicht zugewandt hat.
+
+**Maġrib, `shafaq-amal`.** book_id 21613, page_id 356 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 1, S. 361), Radd al-muḥtār, Worte Ibn ʿĀbidīns (unter `ــ`)
+
+> لَكِنَّ تَعَامُلَ النَّاسِ الْيَوْمَ فِي عَامَّةِ الْبِلَادِ عَلَى قَوْلِهِمَا
+
+Übersetzung: Aber die Menschen handeln heute in den meisten Ländern nach der Ansicht der beiden.
+
+**Maġrib, `shafaq-ahwat`.** book_id 21613, page_id 356 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 1, S. 361), Radd al-muḥtār (unter `ــ`), derselbe Absatz; auch im Kapitel ʿIšāʾ
+
+> وَفِي السِّرَاجِ: قَوْلُهُمَا أَوْسَعُ وَقَوْلُهُ أَحْوَطُ
+
+Übersetzung: Im Sirāǧ heißt es: Ihre Ansicht ist weiter, seine ist vorsichtiger.
+
+**Maġrib, `maghrib-frueh`.** book_id 412, page_id 83 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 75), Marāqī l-falāḥ, Kommentar
+
+> "و" يستحب "تعجيل" صلاة "المغرب" صيفا وشتاء ولا يفصل بين الأذان والإقامة فيه إلا بقدر ثلاث آيات أو جلسة خفيفة
+
+Übersetzung: Empfohlen ist, das Maġrib früh zu beten, im Sommer wie im Winter. Zwischen Aḏān und Iqāma lässt man dabei nur so viel Zeit wie für drei Verse oder ein kurzes Sitzen.
+
+**Maġrib, `maghrib-aufschub`.** book_id 412, page_id 83 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 75), Marāqī l-falāḥ, Kommentar, derselbe Absatz
+
+> فكان تأخيرها مكروها "إلا في يوم غيم" وإلا من عذر سفر أو مرض وحضور مائدة والتأخير قليلا لا يكره
+
+Übersetzung: Ihr Aufschieben ist also verpönt, außer an einem bewölkten Tag oder aus einem Grund wie Reise, Krankheit oder einem bereitstehenden Essen. Ein wenig aufzuschieben ist nicht verpönt.
+
+**ʿIšāʾ, `isha-drittel`.** book_id 412, page_id 83 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 75), Marāqī l-falāḥ, Kommentar
+
+> "و" يستحب "تأخير" صلاة "العشاء إلى ثلث الليل" الأول في رواية الكنز وفي القدوري إلى ما قبل الثلث
+
+Übersetzung: Empfohlen ist, das ʿIšāʾ bis zum ersten Drittel der Nacht aufzuschieben, nach der Überlieferung im Kanz; bei al-Qudūrī bis vor das Drittel.
+
+**ʿIšāʾ, `isha-haelfte`.** book_id 412, page_id 83 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 75), Marāqī l-falāḥ, Kommentar, derselbe Absatz
+
+> وفي مجمع الروايات التأخير إلى النصف مباح في الشتاء
+
+Übersetzung: In Maǧmaʿ ar-riwāyāt heißt es: Das Aufschieben bis zur Mitte [der Nacht] ist im Winter erlaubt.
+
+**ʿIšāʾ, `isha-nach-haelfte`.** book_id 412, page_id 83 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 75), Marāqī l-falāḥ, Kommentar, derselbe Absatz
+
+> والتأخير إلى ما بعد النصف مكروه لسلامة دليل الكراهة عن المعارض والكراهة تحريمية
+
+Übersetzung: Das Aufschieben über die Mitte hinaus ist verpönt, weil der Grund für die Verpöntheit ohne Gegengrund bleibt; und zwar ist es stark verpönt (Karāhat at-taḥrīm).
+
+**ʿIšāʾ, `witr-ansichten`.** book_id 412, page_id 163 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 139), Marāqī l-falāḥ, Kommentar
+
+> وصفه بقوله "الوتر واجب" في الأصح وهو آخر أقوال الإمام وروى عنه أنه سنة وهو قولهما
+
+Übersetzung: Er beschreibt ihn mit den Worten „Der Witr ist wāǧib“, nach der richtigeren Ansicht; das ist das letzte Wort des Imams. Von ihm ist auch überliefert, er sei Sunna, und das ist die Ansicht der beiden.
+
+**ʿIšāʾ, `witr-zeit`.** book_id 124336, page_id 13 (al-Qudūrī (gest. 428 n. H.), Muḫtaṣar al-Qudūrī, S. 23), Matn al-Qudūrī
+
+> وأول وقت الوتر بعد العشاء وآخر وقتها ما لم يطلع الفجر
+
+Übersetzung: Die Zeit des Witr beginnt nach dem ʿIšāʾ und endet, wenn der Faǧr aufgeht.
+
+**ʿIšāʾ, `witr-tartib`.** book_id 412, page_id 81 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 73), Marāqī l-falāḥ, Kommentar; „لهذا الحديث“ meint den unmittelbar davor zitierten Ḥadīṯ über den Witr
+
+> "ولا يقدم" صلاة "الوتر على" صلاة "العشاء" لهذا الحديث و "للترتيب اللازم" بين فرض العشاء وواجب الوتر عند الإمام
+
+Übersetzung: Der Witr wird nicht vor das ʿIšāʾ gezogen, wegen dieses Ḥadīṯ und wegen der verbindlichen Reihenfolge zwischen dem Farḍ des ʿIšāʾ und dem Wāǧib des Witr nach dem Imam.
+
+**ʿIšāʾ, `witr-spaet`.** book_id 412, page_id 83 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 75), Grundtext Nūr al-īḍāḥ (über `ــ`), abhängig von „ويستحب“ auf S. 74
+
+> وتأخير الوتر الى آخر الليل لمن يثق بالانتباه
+
+Übersetzung: [Empfohlen ist,] den Witr bis zum Ende der Nacht aufzuschieben, für den, der sicher ist, dass er aufwacht.
+
+**Freiwillig und verpönt, `fajr-bei-aufgang`.** book_id 412, page_id 85 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 76), Marāqī l-falāḥ, Kommentar (unter `ــ`)
+
+> وإذا أشرقت الشمس وهو في صلاة الفجر بطلت
+
+Übersetzung: Geht die Sonne auf, während er noch im Faǧr-Gebet ist, so ist es ungültig.
+
+**Freiwillig und verpönt, `shuruq-speer`.** book_id 21613, page_id 366 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 1, S. 371), Radd al-muḥtār, Worte Ibn ʿĀbidīns nach „أَقُولُ“
+
+> يَنْبَغِي تَصْحِيحُ مَا نَقَلُوهُ عَنْ الْأَصْلِ لِلْإِمَامِ مُحَمَّدٍ مِنْ أَنَّهُ مَا لَمْ تَرْتَفِعْ الشَّمْسُ قَدْرَ رُمْحٍ فَهِيَ فِي حُكْمِ الطُّلُوعِ
+
+Übersetzung: Für richtig zu halten ist, was sie aus dem Aṣl von Imām Muḥammad überliefern: Solange die Sonne nicht eine Speerlänge gestiegen ist, gilt sie als aufgehend.
+
+**Freiwillig und verpönt, `shuruq-blick`.** book_id 21613, page_id 366 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 1, S. 371 (nach al-Baḥr)), Radd al-muḥtār, Ibn ʿĀbidīn gibt al-Baḥr wieder
+
+> وَمَا دَامَتْ الْعَيْنُ لَا تَحَارُ فِيهَا فِي حُكْمِ الشُّرُوقِ
+
+Übersetzung: Solange das Auge nicht geblendet wird, wenn es in sie blickt, gilt sie als aufgehend.
+
+**Freiwillig und verpönt, `pflicht-mit-karaha`.** book_id 412, page_id 85 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 76), Marāqī l-falāḥ, Kommentar
+
+> "ويصح أداء ما وجب فيها" أي الأوقات الثلاثة لكن "مع الكراهة" في ظاهر الرواية "كجنازة حضرت وسجدة آية تليت فيها"
+
+Übersetzung: Gültig ist die Verrichtung dessen, was in ihnen, das heißt in den drei Zeiten, fällig wurde, aber verpönt, nach der Ẓāhir ar-riwāya: etwa ein Totengebet, das [in der Zeit] gebracht wurde, und eine Niederwerfung für einen Vers, der in ihr gelesen wurde.
+
+**Freiwillig und verpönt, `qada-nach-fajr-asr`.** book_id 124336, page_id 22 (al-Qudūrī (gest. 428 n. H.), Muḫtaṣar al-Qudūrī, S. 32), Matn al-Qudūrī; danach folgt „ولا يصلي ركعتي الطواف“, nicht zitiert
+
+> ويكره أن يتنفل بعد صلاة الفجر حتى تطلع الشمس وبعد صلاة العصر حتى تغرب الشمس ولا بأس بأن يصلي في هذين الوقتين الفوائت ويسجد للتلاوة ويصلي على الجنازة
+
+Übersetzung: Verpönt ist es, nach dem Faǧr-Gebet freiwillig zu beten, bis die Sonne aufgeht, und nach dem ʿAṣr-Gebet, bis die Sonne untergeht. Es ist aber nichts dabei, in diesen beiden Zeiten versäumte Gebete nachzuholen, die Niederwerfung für die Lesung zu machen und das Totengebet zu verrichten.
+
+**Freiwillig und verpönt, `duha-beste-zeit`.** book_id 21613, page_id 678 (al-Ḥaṣkafī (gest. 1088 n. H.), ad-Durr al-muḫtār, gedruckt mit Radd al-muḥtār, Bd. 2, S. 22), Matn ad-Durr al-muḫtār (über `ــ`) im Druck des Radd; runde Klammern so im Werkzeug-Ergebnis (Worte des Tanwīr al-abṣār)
+
+> (وَ) نُدِبَ (أَرْبَعٌ فَصَاعِدًا فِي الضُّحَى) عَلَى الصَّحِيحِ مِنْ بَعْدِ الطُّلُوعِ إلَى الزَّوَالِ وَوَقْتُهَا الْمُخْتَارُ بَعْدَ رُبُعِ النَّهَارِ
+
+Übersetzung: Empfohlen sind vier oder mehr im Ḍuḥā, nach der richtigen Ansicht von nach dem Sonnenaufgang bis zum Zawāl; die gewählte Zeit ist nach einem Viertel des Tages.
+
+**Freiwillig und verpönt, `duha-spanne`.** book_id 21613, page_id 679 (al-Ḥaṣkafī (gest. 1088 n. H.), ad-Durr al-muḫtār, gedruckt mit Radd al-muḥtār, Bd. 2, S. 23), Matn ad-Durr al-muḫtār (über `ــ`); „اثْنَيْ عَشَرَ“ so im Werkzeug-Ergebnis
+
+> وَفِي الْمُنْيَةِ: أَقَلُّهَا رَكْعَتَانِ وَأَكْثَرُهَا اثْنَيْ عَشَرَ، وَأَوْسَطُهَا ثَمَانٍ وَهُوَ أَفْضَلُهَا
+
+Übersetzung: In al-Munya heißt es: Das Mindeste sind zwei Rakʿa, das Meiste zwölf, die Mitte acht, und das ist das Beste.
+
+**Freiwillig und verpönt, `duha-vier-kamal`.** book_id 21613, page_id 679 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 2, S. 23), Radd al-muḥtār, Kommentar
+
+> وَالتَّوْفِيقُ مَا أَشَارَ إلَيْهِ بَعْضُ الْمُحَقِّقِينَ أَنَّ الرَّكْعَتَيْنِ أَقَلُّ الْمَرَاتِبِ وَالْأَرْبَعُ أَدْنَى الْكَمَالِ
+
+Übersetzung: Die Vereinbarung [beider Angaben] ist, worauf einige der Gründlichen hinwiesen: Zwei Rakʿa sind die unterste Stufe, vier das Mindeste der Vollkommenheit.
+
+**Freiwillig und verpönt, `zawal-istiwa`.** book_id 21613, page_id 366 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 1, S. 371 (nach al-Baḥr)), Radd al-muḥtār, Kommentar zu „وَاسْتِوَاءٍ“, nach al-Baḥr
+
+> التَّعْبِيرُ بِهِ أَوْلَى مِنْ التَّعْبِيرِ بِوَقْتِ الزَّوَالِ؛ لِأَنَّ وَقْتَ الزَّوَالِ لَا تُكْرَهُ فِيهِ الصَّلَاةُ إجْمَاعًا
+
+Übersetzung: Es so [„beim Höchststand“] auszudrücken ist besser als „zur Zeit des Zawāl“, denn zur Zeit des Zawāl ist das Gebet nach einhelliger Ansicht nicht verpönt.
+
+**Freiwillig und verpönt, `zawal-dauer`.** book_id 21613, page_id 366 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 1, S. 371), Radd al-muḥtār, Kommentar; „مَا رَوَاهُ النَّهْرُ“ und „جُوَارِزْمَ“ so im Werkzeug-Ergebnis (gemeint: ما وراء النهر, خوارزم)
+
+> وَعَزَا فِي الْقُهُسْتَانِيِّ الْقَوْلَ بِأَنَّ الْمُرَادَ انْتِصَافُ النَّهَارِ الْعُرْفِيِّ إلَى أَئِمَّةِ مَا رَوَاهُ النَّهْرُ، وَبِأَنَّ الْمُرَادَ انْتِصَافُ النَّهَارِ الشَّرْعِيِّ وَهُوَ الضَّحْوَةُ الْكُبْرَى إلَى الزَّوَالِ إلَى أَئِمَّةِ جُوَارِزْمَ
+
+Übersetzung: Al-Quhistānī schreibt die Ansicht, gemeint sei die Mitte des gewöhnlichen Tages, den Gelehrten Transoxaniens zu, und die Ansicht, gemeint sei die Mitte des Tages im Fiqh-Sinn, das ist die große Ḍaḥwa bis zum Zawāl, den Gelehrten Ḫwārizms.
+
+**Freiwillig und verpönt, `zawal-jumua`.** book_id 412, page_id 85 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 76), Marāqī l-falāḥ, Kommentar
+
+> وقال أبو يوسف لا تكره النافلة حال الاستواء يوم الجمعة
+
+Übersetzung: Abū Yūsuf sagte: Das freiwillige Gebet ist beim Höchststand am Freitag nicht verpönt.
+
+**Freiwillig und verpönt, `asr-des-tages`.** book_id 412, page_id 85 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 76), Marāqī l-falāḥ, Kommentar; um „بخلاف … ناقص“ verlängert (ohne Auslassung). Die kurze Fassung (Kapitel ʿAṣr, `asr-gleichen-tages`) bleibt
+
+> "كما صح عصر اليوم" بأدائه "عند الغروب" لبقاء سببه وهو الجزء المتصل به الأداء من الوقت "مع الكراهة" للتأخير المنهي عنه لا لذات الوقت بخلاف عصر مضى للزومه كاملا بخروج وقته فلا يؤدى في ناقص
+
+Übersetzung: So wie das ʿAṣr desselben Tages gültig ist, wenn man es beim Sonnenuntergang verrichtet, weil sein Anlass noch besteht, nämlich der Teil der Zeit, an den die Verrichtung anschließt; aber verpönt, wegen des verbotenen Aufschiebens, nicht wegen der Zeit selbst. Anders ein ʿAṣr eines vergangenen Tages: Mit dem Ende seiner Zeit ist es vollständig geschuldet und wird deshalb nicht in einer unvollständigen [Zeit] verrichtet.
+
+**Freiwillig und verpönt, `tahajjud-nach-isha`.** book_id 21613, page_id 680 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 2, S. 24), Radd al-muḥtār, Worte Ibn ʿĀbidīns nach „أَقُولُ“
+
+> الظَّاهِرُ أَنَّ حَدِيثَ الطَّبَرَانِيِّ الْأَوَّلَ بَيَانٌ لِكَوْنِ وَقْتِهِ بَعْدَ صَلَاةِ الْعِشَاءِ، حَتَّى لَوْ نَامَ ثُمَّ تَطَوَّعَ قَبْلَهَا لَا يَحْصُلُ السُّنَّةُ
+
+Übersetzung: Dem Anschein nach erklärt der erste Ḥadīṯ bei aṭ-Ṭabarānī, dass seine Zeit nach dem ʿIšāʾ-Gebet ist; wer also schläft und dann vor ihm freiwillig betet, erfüllt die Sunna nicht.
+
+**Freiwillig und verpönt, `tahajjud-zahl`.** book_id 21613, page_id 681 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 2, S. 25), Radd al-muḥtār, nach „أَقُولُ“
+
+> فَيَنْبَغِي الْقَوْلُ بِأَنَّ أَقَلَّ التَّهَجُّدِ رَكْعَتَانِ وَأَوْسَطُهُ أَرْبَعٌ وَأَكْثَرُهُ ثَمَانٍ
+
+Übersetzung: Zu sagen ist also: Das Mindeste des Tahaǧǧud sind zwei Rakʿa, seine Mitte vier und sein Höchstes acht.
+
+**Freiwillig und verpönt, `tahajjud-gewohnheit`.** book_id 21613, page_id 681 (Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār, Bd. 2, S. 25 (nach al-Ḥilya)), Radd al-muḥtār, Ibn ʿĀbidīn gibt al-Ḥilya wieder
+
+> أَنَّهُ يُكْرَهُ تَرْكُ تَهَجُّدٍ اعْتَادَهُ بِلَا عُذْرٍ
+
+Übersetzung: Verpönt ist es, ein Tahaǧǧud, an das man sich gewöhnt hat, ohne Entschuldigung aufzugeben.
+
+**Freiwillig und verpönt, `tahajjud-drittel`.** book_id 21613, page_id 681 (al-Ḥaṣkafī (gest. 1088 n. H.), ad-Durr al-muḫtār, gedruckt mit Radd al-muḥtār, Bd. 2, S. 25), Matn ad-Durr al-muḫtār (über `ــ`)
+
+> وَلَوْ جَعَلَهُ أَثْلَاثًا فَالْأَوْسَطُ أَفْضَلُ، وَلَوْ أَنْصَافًا فَالْأَخِيرُ أَفْضَلُ
+
+Übersetzung: Teilt er sie [die Nacht] in Drittel, ist das mittlere am vorzüglichsten; teilt er sie in Hälften, die letzte.
+
+**Freiwillig und verpönt, `nacht-paarweise`.** book_id 412, page_id 172 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 148), Grundtext Nūr al-īḍāḥ (über `ــ`)
+
+> والأفضل فيهما رباع عند أبي حنيفة وعندهما الأفضل في الليل مثنى مثنى وبه يفتى
+
+Übersetzung: Am vorzüglichsten ist in beiden [Nacht und Tag] je vier nach Abū Ḥanīfa; nach den beiden [Abū Yūsuf und Muḥammad] ist in der Nacht je zwei am vorzüglichsten, und danach wird die Fatwā gegeben.
+
+### Wieder aufgenommen (am 28.10.2026 aus der App genommen)
+
+**ʿAṣr, `asr-zeit`.** book_id 412, page_id 80 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 72), Grundtext; Belegdatei ASR 2, am 06.11.2026 gegen 412/80 geprüft
+
+> ووقت الظهر من زوال الشمس الى أن يصير ظل كل شيء مثليه أو مثله سوى ظل الاستواء واختار الثاني الطحاوي وهو قول الصاحبين ووقت العصر من ابتداء الزيادة على المثل أو المثلين الى غروب الشمس
+
+Übersetzung: Die Zeit des Ẓuhr reicht vom Zawāl der Sonne, bis der Schatten jedes Dinges doppelt oder einfach so lang ist wie das Ding, ohne den Schatten beim Höchststand. Das Zweite hat aṭ-Ṭaḥāwī gewählt, und es ist die Ansicht der beiden Schüler [Abū Ḥanīfas: Abū Yūsuf und Muḥammad]. Die Zeit des ʿAṣr reicht vom Beginn des Überschreitens des einfachen oder doppelten Schattens bis zum Sonnenuntergang.
+
+**ʿAṣr, `asr-aufschub`.** book_id 412, page_id 82 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 74), Marāqī l-falāḥ, Kommentar; Belegdatei ISFIRAR_MAKRUH 2 (`asr-verzoegern`), am 06.11.2026 erneut verglichen
+
+> "ما لم تتغير الشمس" بذهاب ضوئها فلا يتحير فيه البصر وهو الصحيح والتأخير إلى التغير مكروه تحريما
+
+Übersetzung: Solange die Sonne sich nicht verändert, das heißt ihr Glanz nicht vergangen ist, so dass der Blick von ihr nicht mehr geblendet wird; das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist stark verpönt (makrūh taḥrīman).
+
+**Maġrib, `shafaq-imam`.** book_id 11820, page_id 46 (al-Marġīnānī (gest. 593 n. H.), al-Hidāya, Bd. 1, S. 40), al-Hidāya; Belegdatei ISHA 2; auch im Kapitel ʿIšāʾ
+
+> "ثم الشفق هو البياض الذي في الأفق بعد الحمرة عند أبي حنيفة رحمه الله تعالى وعندهما هو الحمرة" وهو رواية عن أبي حنيفة
+
+Übersetzung: Der Šafaq ist nach Abū Ḥanīfa, Gott erbarme sich seiner, die Helligkeit am Horizont nach dem Rot. Nach den beiden [Abū Yūsuf und Muḥammad] ist es das Rot, und das ist auch eine Überlieferung von Abū Ḥanīfa.
+
+**Freiwillig und verpönt, `duha-vier`.** book_id 412, page_id 174 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 149), Grundtext Nūr al-īḍāḥ; Belegdatei DUHA 1, am 06.11.2026 erneut geprüft
+
+> وندب ركعتان بعد الوضوء قبل جفافه وأربع فصاعدا في الضحى
+
+Übersetzung: Empfohlen sind zwei Rakʿa nach der Waschung, bevor sie trocknet, und vier oder mehr in der Ḍuḥā-Zeit.
+
+**Freiwillig und verpönt, `asr-verzoegern`.** book_id 412, page_id 82 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 74), Marāqī l-falāḥ, Kommentar; Belegdatei ISFIRAR_MAKRUH 2, am 06.11.2026 erneut verglichen
+
+> "ما لم تتغير الشمس" بذهاب ضوئها فلا يتحير فيه البصر وهو الصحيح والتأخير إلى التغير مكروه تحريما
+
+Übersetzung: Solange sich die Sonne nicht verändert hat, indem ihr Glanz schwindet und der Blick nicht mehr geblendet wird. Das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist stark verpönt (Makrūh taḥrīman).
+
+**Freiwillig und verpönt, `tahajjud-acht`.** book_id 412, page_id 174 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 149), Marāqī l-falāḥ, Kommentar; Belegdatei TAHAJJUD 1, am 06.11.2026 erneut geprüft
+
+> "وندب صلاة الليل" خصوصا آخره كما ذكرناه وأقل ما ينبغي أن يتنفل بالليل ثمان ركعات كذا في الجوهرة
+
+Übersetzung: Empfohlen ist das Nachtgebet, besonders am Ende der Nacht, wie wir erwähnt haben. Das Mindeste, was man nachts freiwillig beten sollte, sind acht Rakʿa. So steht es in al-Ǧauhara.
+

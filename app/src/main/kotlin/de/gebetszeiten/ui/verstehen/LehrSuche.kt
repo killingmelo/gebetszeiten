@@ -104,9 +104,9 @@ fun suche(frage: String, lehre: List<Kapitel>, glossar: Map<String, GlossaryTerm
                 if (text != null) pruefe(2, ziel, "${ab.name} · $label", klartext(text))
             }
             feld("Merksatz", ab.merksatz)
-            feld("Wann bete ich?", ab.wann)
+            feld(wannKopf(ab.teil), ab.wann)
             feld("Wie viele Rakʿa?", ab.wieviele)
-            feld("Warum lohnt es sich?", ab.warum)
+            feld(warumKopf(ab.teil), ab.warum)
             feld("Worauf achte ich?", ab.achtung)
             for (f in ab.mehr) {
                 val kopf = klartext(f.kopf)

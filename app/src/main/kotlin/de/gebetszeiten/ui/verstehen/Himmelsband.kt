@@ -39,20 +39,25 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.gebetszeiten.ui.theme.LocalTokens
 import de.gebetszeiten.ui.theme.Tokens
 
-/** DMG-Name eines Teils, wie er sichtbar und für die Sprachausgabe steht. */
+/**
+ * Name eines Teils, wie er sichtbar und für die Sprachausgabe steht: DMG-Umschrift,
+ * außer „Zenit“ und „Vor Sonnenuntergang“ für die verpönten Zeiten (Entscheidung vom 06.11.2026).
+ */
 internal fun teilName(teil: Teil): String = when (teil) {
     Teil.FAJR -> "Faǧr"
     Teil.SHURUQ -> "Šurūq"
     Teil.DUHA -> "Ḍuḥā"
-    Teil.ZAWAL -> "Zawāl"
+    Teil.ZAWAL -> "Zenit"
     Teil.ZUHR -> "Ẓuhr"
     Teil.ASR -> "ʿAṣr"
-    Teil.ISFIRAR -> "Vergilben"
+    Teil.ISFIRAR -> "Vor Sonnenuntergang"
     Teil.MAGHRIB -> "Maġrib"
     Teil.AWWABIN -> "Auwābīn"
     Teil.ISHA -> "ʿIšāʾ"
@@ -192,10 +197,16 @@ private fun RowScope.Abschnittsfeld(teil: Teil, index: Int, t: Tokens, onTeil: (
     ) {
         Text(
             name,
-            style = MaterialTheme.typography.labelSmall,
+            // Lange Namen („Vor Sonnenuntergang“, „Tahaǧǧud“) passen nur ohne Sperrung und mit
+            // deutscher Silbentrennung in die sechs Felder.
+            style = MaterialTheme.typography.labelSmall.copy(
+                letterSpacing = 0.sp,
+                hyphens = Hyphens.Auto,
+                localeList = LocaleList("de"),
+            ),
             color = if (index % 2 == 0) t.ink else t.stone,
             textAlign = TextAlign.Center,
-            maxLines = 2,
+            maxLines = 4,
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
         )
     }

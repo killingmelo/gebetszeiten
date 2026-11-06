@@ -77,8 +77,8 @@ private const val SUCHE_PLATZHALTER = "Begriff oder Frage suchen"
 
 /**
  * Das Kapitel aus [lehre], das einen Abschnitt zu `ziel.teil` enthält, oder null.
- * Absichtlich nicht `ziel.kapitel`: Solange [LEHRE] nicht alle sechs Kapitel hat,
- * stimmt die Nummer im [Ziel] nicht mit der Stelle in der Liste überein.
+ * Absichtlich nach Teil statt `ziel.kapitel`: So bleibt der Sprung richtig, auch wenn
+ * die Folge in [LEHRE] einmal von der Nummer im [Ziel] abweicht (heute stimmen beide überein).
  */
 internal fun kapitelIndex(ziel: Ziel, lehre: List<Kapitel>): Int? =
     lehre.indexOfFirst { k -> k.abschnitte.any { it.teil == ziel.teil } }.takeIf { it >= 0 }
