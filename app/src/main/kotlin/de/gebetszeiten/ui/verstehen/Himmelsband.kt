@@ -6,8 +6,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +36,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -170,16 +173,28 @@ private fun DrawScope.beschrifte(messer: TextMeasurer, stil: TextStyle, s: Float
 @Composable
 fun Tagesband(teile: List<Teil>, onTeil: (Teil) -> Unit, modifier: Modifier = Modifier) {
     val t = LocalTokens.current
-    Row(
-        modifier
-            .fillMaxWidth()
-            // Alle Felder so hoch wie das höchste, auch wenn ein Name umbricht.
-            .height(IntrinsicSize.Max)
-            .clip(RoundedCornerShape(12.dp)),
-    ) {
-        teile.forEachIndexed { i, teil -> Abschnittsfeld(teil, i, t, onTeil) }
+    // Ab großer Schrift (Systemschrift 150 % und mehr) passen sechs Felder nicht mehr
+    // nebeneinander: Namen brächen mitten im Wort. Dann zwei Zeilen zu je drei Feldern.
+    val proZeile = felderJeZeile(LocalDensity.current.fontScale, teile.size)
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))) {
+        teile.withIndex().chunked(proZeile).forEach { zeile ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    // Alle Felder so hoch wie das höchste, auch wenn ein Name umbricht.
+                    .height(IntrinsicSize.Max),
+            ) {
+                zeile.forEach { (i, teil) -> Abschnittsfeld(teil, i, t, onTeil) }
+                // Unvollständige letzte Zeile: Felder bleiben gleich breit.
+                repeat(proZeile - zeile.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
     }
 }
+
+/** Felder je Zeile im [Tagesband]: alle in einer Zeile, ab [fontScale] 1,5 höchstens drei. */
+internal fun felderJeZeile(fontScale: Float, anzahl: Int): Int =
+    if (fontScale >= 1.5f) minOf(3, anzahl).coerceAtLeast(1) else anzahl.coerceAtLeast(1)
 
 @Composable
 private fun RowScope.Abschnittsfeld(teil: Teil, index: Int, t: Tokens, onTeil: (Teil) -> Unit) {
@@ -206,7 +221,7 @@ private fun RowScope.Abschnittsfeld(teil: Teil, index: Int, t: Tokens, onTeil: (
             ),
             color = if (index % 2 == 0) t.ink else t.stone,
             textAlign = TextAlign.Center,
-            maxLines = 4,
+            // Keine Zeilengrenze: bei großer Schrift darf das Feld wachsen, statt abzuschneiden.
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
         )
     }

@@ -29,6 +29,9 @@ class LehrSucheTest {
     @Test fun normalisiertDmgUndDeutscheSchreibung() {
         assertEquals("isa", normalisiere("ʿIšāʾ"))
         assertEquals("isa", normalisiere("Ischa"))
+        assertEquals("isa", normalisiere("Isha"))
+        assertEquals(normalisiere("ʿIšāʾ"), normalisiere("Isha"))
+        assertEquals("suruq", normalisiere("Shuruq"))
         assertEquals("guma", normalisiere("Dschumʿa"))
         assertEquals("guma", normalisiere("Ǧumʿa"))
         assertEquals("zuhr", normalisiere("Ẓuhr"))
@@ -86,5 +89,11 @@ class LehrSucheTest {
     @Test fun hoechstensZwanzigTreffer() {
         val viele = (1..30).map { abschnitt(Teil.ZUHR, "Ẓuhr $it") }
         assertEquals(20, suche("zuhr", listOf(Kapitel("X", Band.TAG, viele, emptyList())), emptyMap()).size)
+    }
+
+    @Test fun englischeSchreibungMitShFindetDieLehre() {
+        // „sh“ wie „sch“: Wer „isha“ oder „shuruq“ tippt, landet bei ʿIšāʾ bzw. Šurūq.
+        assertEquals(Ziel(4, Teil.ISHA), suche("isha", LEHRE, GLOSSAR).first().ziel)
+        assertTrue(suche("shuruq", LEHRE, GLOSSAR).any { it.ziel == Ziel(5, Teil.SHURUQ) })
     }
 }

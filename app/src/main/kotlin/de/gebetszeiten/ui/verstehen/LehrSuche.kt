@@ -32,16 +32,18 @@ private fun normMitHerkunft(s: String): Norm {
         }
         for (d in chunk) { sb.append(d); pos += i }
     }
-    // Deutsche Schreibung: „dsch“ zu „g“, „sch“ zu „s“ (Herkunft: Beginn der Gruppe).
+    // Deutsche Schreibung: „dsch“ zu „g“, „sch“ zu „s“; englische: „sh“ zu „s“ (Herkunft: Beginn der Gruppe).
     val out = StringBuilder()
     val outPos = ArrayList<Int>()
     var i = 0
     while (i < sb.length) {
         val dsch = sb.startsWith("dsch", i)
         val sch = !dsch && sb.startsWith("sch", i)
+        val sh = !dsch && !sch && sb.startsWith("sh", i)
         when {
             dsch -> { out.append('g'); outPos += pos[i]; i += 4 }
             sch -> { out.append('s'); outPos += pos[i]; i += 3 }
+            sh -> { out.append('s'); outPos += pos[i]; i += 2 }
             else -> { out.append(sb[i]); outPos += pos[i]; i++ }
         }
     }
@@ -50,7 +52,7 @@ private fun normMitHerkunft(s: String): Norm {
 
 /**
  * Vergleichsform für die Suche: ohne Diakritika, ʿ und ʾ, kleingeschrieben,
- * ǧ/š/ḫ/ġ/ḏ/ṯ als g/s/h/g/d/t, „dsch“ als g und „sch“ als s. So findet „Ischa“ ʿIšāʾ.
+ * ǧ/š/ḫ/ġ/ḏ/ṯ als g/s/h/g/d/t, „dsch“ als g, „sch“ und „sh“ als s. So finden „Ischa“ und „Isha“ ʿIšāʾ.
  */
 fun normalisiere(s: String): String = normMitHerkunft(s).text
 

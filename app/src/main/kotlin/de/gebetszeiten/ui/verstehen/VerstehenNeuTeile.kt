@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -372,7 +373,7 @@ private fun RakaFeld(b: RakaBlock, t: Tokens, modifier: Modifier) {
             .fillMaxHeight()
             .rakaRahmen(b.art, t, RAKA_FORM, 10.dp)
             .clearAndSetSemantics { contentDescription = "$zahl Rakʿa ${sprechname(b.art)}" }
-            .padding(horizontal = 6.dp, vertical = 8.dp),
+            .padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -385,13 +386,17 @@ private fun RakaFeld(b: RakaBlock, t: Tokens, modifier: Modifier) {
             color = schrift,
             textAlign = TextAlign.Center,
         )
+        val kurz = MaterialTheme.typography.bodySmall
         Text(
             kurzname(b.art),
-            style = MaterialTheme.typography.bodySmall,
+            style = kurz,
             color = schrift,
             textAlign = TextAlign.Center,
-            // Bei großer Schrift darf der Kurzname umbrechen statt abgeschnitten zu werden.
-            maxLines = 2,
+            // Bei großer Schrift brach „Sunna“ im schmalen Feld mitten im Wort um (06.11.2026):
+            // eine Zeile, die Schrift schrumpft bis zur Feldbreite.
+            maxLines = 1,
+            softWrap = false,
+            autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = kurz.fontSize, stepSize = 0.5.sp),
         )
     }
 }

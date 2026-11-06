@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -48,6 +49,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.gebetszeiten.core.prayertimes.officialtimes.stampMatches
 import de.gebetszeiten.data.AppSettings
@@ -318,7 +320,20 @@ private fun MainScreen(viewModel: PrayerViewModel = viewModel()) {
                         selected = tab == target,
                         onClick = { tab = target },
                         icon = { Icon(painterResource(icon), contentDescription = null) },
-                        label = { Text(stringResource(label), maxLines = 1) },
+                        // Bei Systemschrift 200 % wurde „Verstehen“ zu „Versteh“ abgeschnitten:
+                        // eine Zeile, die Schrift schrumpft bis zur Feldbreite.
+                        label = {
+                            Text(
+                                stringResource(label),
+                                maxLines = 1,
+                                softWrap = false,
+                                autoSize = TextAutoSize.StepBased(
+                                    minFontSize = 8.sp,
+                                    maxFontSize = MaterialTheme.typography.labelMedium.fontSize,
+                                    stepSize = 0.5.sp,
+                                ),
+                            )
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = tokens.accent,
                             selectedTextColor = tokens.accent,

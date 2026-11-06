@@ -179,4 +179,35 @@ class VerstehenNeuWiringTest {
     fun fokusWirdZurueckgegeben() {
         assertTrue("onFocusConsumed() fehlt", seite().contains("onFocusConsumed()"))
     }
+
+    @Test
+    fun tagesbandSchneidetNichtAb() {
+        // Bei Systemschrift 200 % schnitt maxLines = 4 „Vor Sonnenuntergang“ ab (06.11.2026).
+        val text = File("src/main/kotlin/de/gebetszeiten/ui/verstehen/Himmelsband.kt").readText()
+        val start = text.indexOf("private fun RowScope.Abschnittsfeld(")
+        assertTrue("Abschnittsfeld fehlt", start >= 0)
+        assertTrue("Abschnittsfeld begrenzt Zeilen", !text.substring(start).contains("maxLines"))
+        assertTrue("felderJeZeile( nicht genutzt", text.contains("felderJeZeile(LocalDensity.current.fontScale"))
+    }
+
+    @Test
+    fun rakaKurznameSchrumpftStattZuBrechen() {
+        // Bei Systemschrift 200 % brach „Sunna“ im Zwei-Rakʿa-Feld zu „Sun-na“ (06.11.2026).
+        val text = File("src/main/kotlin/de/gebetszeiten/ui/verstehen/VerstehenNeuTeile.kt").readText()
+        val start = text.indexOf("private fun RakaFeld(")
+        assertTrue("RakaFeld fehlt", start >= 0)
+        val rumpf = text.substring(start, text.indexOf("/**", start))
+        assertTrue("autoSize fehlt", rumpf.contains("autoSize = TextAutoSize.StepBased("))
+        assertTrue("Kurzname bricht noch um", rumpf.contains("softWrap = false"))
+    }
+
+    @Test
+    fun reiterleisteSchneidetNichtAb() {
+        // Bei Systemschrift 200 % stand unten „Versteh“ statt „Verstehen“ (06.11.2026).
+        val text = File("src/main/kotlin/de/gebetszeiten/ui/MainActivity.kt").readText()
+        val start = text.indexOf("NavigationBarItem(")
+        assertTrue("NavigationBarItem fehlt", start >= 0)
+        val rumpf = text.substring(start, text.indexOf("colors =", start))
+        assertTrue("Reiterbeschriftung ohne autoSize", rumpf.contains("autoSize = TextAutoSize.StepBased("))
+    }
 }

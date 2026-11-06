@@ -87,4 +87,13 @@ class VerstehenNeuLogikTest {
         assertEquals("empfohlen", anzeige[RakaArt.MANDUB])
         assertEquals("Witr, wāǧib", anzeige[RakaArt.WITR])
     }
+
+    @Test fun tagesbandBrichtBeiGrosserSchriftUm() {
+        assertEquals(6, felderJeZeile(1.0f, 6))
+        assertEquals(6, felderJeZeile(1.3f, 6))
+        assertEquals(3, felderJeZeile(1.5f, 6))
+        assertEquals(3, felderJeZeile(2.0f, 6))
+        assertEquals(2, felderJeZeile(2.0f, 2))
+        assertEquals(1, felderJeZeile(2.0f, 0))
+    }
 }
