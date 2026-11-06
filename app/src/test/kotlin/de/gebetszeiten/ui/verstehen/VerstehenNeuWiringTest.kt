@@ -158,6 +158,33 @@ class VerstehenNeuWiringTest {
     }
 
     @Test
+    fun belegZeigtDirektzitat() {
+        assertTrue("beleg.quote.german fehlt", seite().contains("beleg.quote.german"))
+    }
+
+    @Test
+    fun geoeffnetVorDemSprung() {
+        // opened vor springe(): sonst springt LaunchedEffect(day) während des Pager-Sprungs dazwischen.
+        val text = seite()
+        for (aufruf in listOf("springe(zielVon(focus))", "springe(zielVonMoment(moment))")) {
+            val i = text.indexOf(aufruf)
+            assertTrue("$aufruf fehlt", i >= 0)
+            val davor = text.substring(maxOf(0, i - 300), i)
+            assertTrue("opened = true nicht vor $aufruf", davor.contains("opened = true"))
+        }
+    }
+
+    @Test
+    fun linksBleibenFuerTalkBack() {
+        // Eine contentDescription über dem ganzen Lehrtext verdeckte die Link-Aktionen.
+        val text = File("src/main/kotlin/de/gebetszeiten/ui/verstehen/VerstehenNeuTeile.kt").readText()
+        val start = text.indexOf("private fun LehrText(")
+        assertTrue("LehrText fehlt", start >= 0)
+        val rumpf = text.substring(start, text.indexOf("/**", start))
+        assertTrue("LehrText setzt contentDescription", !rumpf.contains("contentDescription"))
+    }
+
+    @Test
     fun fokusWirdZurueckgegeben() {
         assertTrue("onFocusConsumed() fehlt", seite().contains("onFocusConsumed()"))
     }

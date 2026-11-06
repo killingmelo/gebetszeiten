@@ -142,8 +142,10 @@ fun VerstehenNeuScreen(
 
     LaunchedEffect(focus) {
         if (focus != null) {
-            springe(zielVon(focus))
+            // Vor dem Sprung setzen: springe() wartet auf den Pager, und lädt day in dieser
+            // Zeit, spränge LaunchedEffect(day) sonst zum laufenden Abschnitt.
             opened = true
+            springe(zielVon(focus))
             onFocusConsumed()
         }
     }
@@ -152,8 +154,8 @@ fun VerstehenNeuScreen(
         val d = day ?: return@LaunchedEffect
         if (!opened) {
             val moment = heroState(d.times, d.karaha, d.nafl, d.nextFajr, ZonedDateTime.now(), isToday = true).moment
-            springe(zielVonMoment(moment))
             opened = true
+            springe(zielVonMoment(moment))
         }
     }
 
@@ -195,26 +197,24 @@ fun VerstehenNeuScreen(
         }
     }
 
-    begriff?.let { key ->
-        val eintrag = GLOSSAR[key]
-        if (eintrag == null) {
-            begriff = null
-        } else {
-            ModalBottomSheet(
-                onDismissRequest = { begriff = null },
-                containerColor = t.surface,
-                contentColor = t.ink,
-            ) {
-                Column(Modifier.fillMaxWidth().padding(start = RAND, end = RAND, bottom = 32.dp)) {
-                    Text(
-                        eintrag.term,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = t.ink,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(eintrag.text, style = MaterialTheme.typography.bodyLarge, color = t.ink)
-                }
+    val eintrag = begriff?.let { GLOSSAR[it] }
+    // Schlüssel ohne Glossareintrag: außerhalb der Komposition zurücksetzen.
+    LaunchedEffect(begriff, eintrag) { if (begriff != null && eintrag == null) begriff = null }
+    if (eintrag != null) {
+        ModalBottomSheet(
+            onDismissRequest = { begriff = null },
+            containerColor = t.surface,
+            contentColor = t.ink,
+        ) {
+            Column(Modifier.fillMaxWidth().padding(start = RAND, end = RAND, bottom = 32.dp)) {
+                Text(
+                    eintrag.term,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = t.ink,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(eintrag.text, style = MaterialTheme.typography.bodyLarge, color = t.ink)
             }
         }
     }
@@ -392,7 +392,8 @@ private fun KapitelSeite(
         if (n !in offen) offen += n
         scope.launch { listState.scrollToItem(keys.indexOf("beleg-$n").coerceAtLeast(0)) }
     }
-    val hilfen = Lesehilfen(nummer = { id -> nr[id] ?: 0 }, onBegriff = onBegriff, onVerweis = onVerweis)
+    // Einmal je Kapitel, damit LehrText seinen gesetzten Text behalten kann.
+    val hilfen = remember(kapitel) { Lesehilfen(nummer = { id -> nr[id] ?: 0 }, onBegriff = onBegriff, onVerweis = onVerweis) }
     // Ohne Bewegung direkt an den Abschnitt springen.
     LaunchedEffect(ziel) {
         if (ziel != null) {

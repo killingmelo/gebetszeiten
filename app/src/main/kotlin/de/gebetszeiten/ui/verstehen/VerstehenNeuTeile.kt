@@ -310,7 +310,14 @@ internal fun BelegEintrag(nr: Int, beleg: Beleg, offen: Boolean, onUmschalten: (
             modifier = Modifier.width(28.dp).semantics { contentDescription = "Beleg $nr" },
         )
         Column(Modifier.weight(1f)) {
-            Text(beleg.quote.source, style = MaterialTheme.typography.bodyMedium, color = t.stone)
+            // Das Direktzitat auf Deutsch ist der sichtbare Teil der Endnote, die Quelle darunter.
+            Text(beleg.quote.german, style = MaterialTheme.typography.bodyMedium, color = t.ink)
+            Text(
+                beleg.quote.source,
+                style = MaterialTheme.typography.bodyMedium,
+                color = t.stone,
+                modifier = Modifier.padding(top = 4.dp),
+            )
             Aufklapper("Arabisch", offen, onUmschalten, MaterialTheme.typography.labelLarge, t)
             AnimatedVisibility(visible = offen) {
                 // Rechtsbündig: TextAlign.End wäre in einem RTL-Absatz die linke Kante.
@@ -380,7 +387,8 @@ private fun RakaFeld(b: RakaBlock, t: Tokens, modifier: Modifier) {
             style = MaterialTheme.typography.bodySmall,
             color = schrift,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            // Bei großer Schrift darf der Kurzname umbrechen statt abgeschnitten zu werden.
+            maxLines = 2,
         )
     }
 }
@@ -421,18 +429,18 @@ private fun RakaLegende(arten: List<RakaArt>, hilfen: Lesehilfen, t: Tokens) {
     }
 }
 
-/** Gesetzter Lehrtext: Anzeige, Bereiche der Begriffe (für die Punktlinie) und Sprechfassung. */
-private class Gesetzt(val text: AnnotatedString, val begriffe: List<IntRange>, val gesprochen: String, val mitVerweis: Boolean)
+/** Gesetzter Lehrtext: Anzeige und Bereiche der Begriffe (für die Punktlinie). */
+private class Gesetzt(val text: AnnotatedString, val begriffe: List<IntRange>)
 
 /**
  * Setzt [roh] über [zerlege]: Begriffe in Waldgrün (Antippen öffnet das Glossar),
- * Verweise hochgestellt in Gold (Antippen springt zum Beleg). Die Sprechfassung
- * liest einen Verweis als „Beleg 3“.
+ * Verweise hochgestellt in Gold (Antippen springt zum Beleg). Die Absatzsemantik
+ * bleibt unberührt, damit TalkBack die Links als Aktionen anbietet; eine
+ * Belegnummer liest es dabei als bloße Zahl.
  */
 private fun setze(roh: String, hilfen: Lesehilfen, t: Tokens): Gesetzt {
     val stuecke = zerlege(roh, hilfen.nummer)
     val begriffe = mutableListOf<IntRange>()
-    val sprache = StringBuilder()
     val hoch = SpanStyle(color = t.gold, fontSize = 0.7.em, fontWeight = FontWeight.SemiBold, baselineShift = BaselineShift.Superscript)
     var vorher: Stueck? = null
     val text = buildAnnotatedString {
@@ -440,7 +448,6 @@ private fun setze(roh: String, hilfen: Lesehilfen, t: Tokens): Gesetzt {
             when (s) {
                 is Stueck.Text -> {
                     append(s.s)
-                    sprache.append(s.s)
                 }
                 is Stueck.Begriff -> {
                     val start = length
@@ -448,7 +455,6 @@ private fun setze(roh: String, hilfen: Lesehilfen, t: Tokens): Gesetzt {
                         append(s.anzeige)
                     }
                     begriffe += start until length
-                    sprache.append(s.anzeige)
                 }
                 is Stueck.Verweis -> {
                     // Zwei Verweise hintereinander: mit Komma getrennt, sonst läse man „34“.
@@ -456,13 +462,12 @@ private fun setze(roh: String, hilfen: Lesehilfen, t: Tokens): Gesetzt {
                     withLink(LinkAnnotation.Clickable("beleg:${s.nr}", TextLinkStyles(hoch)) { hilfen.onVerweis(s.nr) }) {
                         append(s.nr.toString())
                     }
-                    sprache.append(" Beleg ${s.nr}")
                 }
             }
             vorher = s
         }
     }
-    return Gesetzt(text, begriffe, sprache.toString(), stuecke.any { it is Stueck.Verweis })
+    return Gesetzt(text, begriffe)
 }
 
 /** Lehrtext mit antippbaren Begriffen (gepunktet unterstrichen) und Belegnummern. */
@@ -475,7 +480,8 @@ private fun LehrText(
     t: Tokens,
     modifier: Modifier = Modifier,
 ) {
-    val gesetzt = setze(roh, hilfen, t)
+    // hilfen ist je Kapitel gemerkt (KapitelSeite), daher als Schlüssel stabil.
+    val gesetzt = remember(roh, t, hilfen) { setze(roh, hilfen, t) }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         gesetzt.text,
@@ -483,7 +489,6 @@ private fun LehrText(
         color = farbe,
         onTextLayout = { layout = it },
         modifier = modifier
-            .then(if (gesetzt.mitVerweis) Modifier.semantics { contentDescription = gesetzt.gesprochen } else Modifier)
             .drawBehind { layout?.let { punktiere(it, gesetzt.begriffe, t.accent) } },
     )
 }
