@@ -210,4 +210,14 @@ class VerstehenNeuWiringTest {
         val rumpf = text.substring(start, text.indexOf("colors =", start))
         assertTrue("Reiterbeschriftung ohne autoSize", rumpf.contains("autoSize = TextAutoSize.StepBased("))
     }
+    @Test
+    fun verdeckterPagerBeiSucheNichtFuerTalkBack() {
+        // Die Trefferliste liegt über dem Pager; ohne das wären dessen Inhalte
+        // für TalkBack weiter erreichbar, obwohl man sie nicht sieht.
+        val text = seite()
+        assertTrue(
+            "Pager wird bei Suche nicht aus dem Bedienungsbaum genommen",
+            text.contains("if (frage.isNotBlank()) Modifier.clearAndSetSemantics { } else Modifier"),
+        )
+    }
 }

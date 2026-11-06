@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
@@ -175,7 +176,14 @@ fun VerstehenNeuScreen(
         // Der Pager bleibt auch während der Suche im Aufbau: Leseposition und offene
         // Abschnitte bleiben erhalten, die Trefferliste liegt darüber.
         Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize()) {
+            // Während der Suche ist der Pager verdeckt: auch für TalkBack, Schalter-
+            // und Tastaturbedienung aus dem Baum nehmen, sonst landet man auf
+            // unsichtbarem Inhalt unter der Trefferliste.
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .then(if (frage.isNotBlank()) Modifier.clearAndSetSemantics { } else Modifier),
+            ) {
                 ReiterPillen(
                     selected = pager.currentPage,
                     onSelect = { scope.launch { pager.animateScrollToPage(it) } },
