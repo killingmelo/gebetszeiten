@@ -41,6 +41,23 @@ class VerstehenNeuWiringTest {
     }
 
     @Test
+    fun himmelsbandOhneUhrzeit() {
+        val text = File("src/main/kotlin/de/gebetszeiten/ui/verstehen/Himmelsband.kt").readText()
+        for (verboten in listOf("format(", "HH", "ZonedDateTime")) {
+            assertTrue("Himmelsband.kt enthält $verboten", !text.contains(verboten))
+        }
+    }
+
+    @Test
+    fun himmelsbandBeschrieben() {
+        val text = File("src/main/kotlin/de/gebetszeiten/ui/verstehen/Himmelsband.kt").readText()
+        assertTrue("contentDescription fehlt", text.contains("contentDescription"))
+        for (band in Band.values()) {
+            assertTrue("Band.${band.name} -> fehlt", text.contains("Band.${band.name} ->"))
+        }
+    }
+
+    @Test
     fun nurLehrZeitenFormatiert() {
         // Uhrzeiten werden allein in LehrZeiten.kt formatiert; Himmelsband.kt gibt es erst später.
         val dateien = listOf("VerstehenNeuScreen.kt", "Himmelsband.kt")
