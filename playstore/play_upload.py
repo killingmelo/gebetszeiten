@@ -88,8 +88,11 @@ def text_pruefen(name: str, text: str, grenze: int) -> list[str]:
 def plan_erstellen(args) -> dict:
     """Alles, was lokal feststeht, mit Prüfung. Wirft Fehler mit allen Problemen."""
     probleme: list[str] = []
-    geraete = [g for g in ("telefon", "uhr")
-               if not (args.nur_telefon and g == "uhr") and not (args.nur_uhr and g == "telefon")]
+    # --nur-eintrag: keine Bundles, kein Track wird angefasst (ein laufendes
+    # Release bliebe sonst neu als Entwurf oder freigegeben gesetzt).
+    geraete = [] if args.nur_eintrag else [
+        g for g in ("telefon", "uhr")
+        if not (args.nur_telefon and g == "uhr") and not (args.nur_uhr and g == "telefon")]
     plan = {"geraete": {}, "sprachen": sprachen(), "eintrag": {}, "bilder": {}}
 
     for g in geraete:
@@ -223,6 +226,15 @@ def hochladen(svc, plan: dict, args) -> None:
             }).execute()
             print(f"{g}: {d['name']} ({d['code']}) {'freigegeben' if args.freigeben else 'als Entwurf'} in {d['track']}")
 
+        # Nur Sprachen, die in der Play Console schon einen Eintrag haben; eine
+        # fehlende (z. B. en-US) brach sonst die ganze Bearbeitung ab.
+        vorhanden_sp = {l["language"] for l in
+                        edits.listings().list(packageName=PAKET, editId=edit_id).execute().get("listings", [])}
+        for sp in [s for s in list(plan["eintrag"]) + list(plan["bilder"]) if s not in vorhanden_sp]:
+            print(f"[{sp}] hat keinen Store-Eintrag in der Console, übersprungen")
+        plan["eintrag"] = {s: f for s, f in plan["eintrag"].items() if s in vorhanden_sp}
+        plan["bilder"] = {s: j for s, j in plan["bilder"].items() if s in vorhanden_sp}
+
         for sp, felder in plan["eintrag"].items():
             body = {"language": sp}
             if "title.txt" in felder: body["title"] = felder["title.txt"]
@@ -249,7 +261,9 @@ def hochladen(svc, plan: dict, args) -> None:
                      changesNotSentForReview=args.nicht_zur_pruefung or None).execute()
         uebernommen = True
         ziele = ", ".join(sorted({d["track"] for d in plan["geraete"].values()}))
-        if args.freigeben:
+        if not plan["geraete"]:
+            print("Übernommen: Store-Eintrag aktualisiert, Tracks unverändert.")
+        elif args.freigeben:
             print(f"Übernommen und freigegeben in {ziele}.")
         else:
             print(f"Übernommen als Entwurf in {ziele}. Freigeben in der Play Console unter Test und Release.")
@@ -274,6 +288,8 @@ def main() -> int:
     a.add_argument("--freigeben", action="store_true",
                    help="mit --ja: Release sofort freigeben (status completed) statt Entwurf")
     a.add_argument("--eintrag", action="store_true", help="Titel und Beschreibungen mitschicken")
+    a.add_argument("--nur-eintrag", action="store_true",
+                   help="nur Store-Eintrag (mit --eintrag/--bilder), keine Bundles und Tracks")
     a.add_argument("--bilder", action="store_true", help="Screenshots und Grafiken ersetzen")
     a.add_argument("--nur-telefon", action="store_true")
     a.add_argument("--nur-uhr", action="store_true")
@@ -285,6 +301,10 @@ def main() -> int:
     args = a.parse_args()
     if args.freigeben and not args.ja:
         a.error("--freigeben nur zusammen mit --ja")
+    if args.nur_eintrag and not (args.eintrag or args.bilder):
+        a.error("--nur-eintrag braucht --eintrag oder --bilder")
+    if args.nur_eintrag and args.freigeben:
+        a.error("--nur-eintrag und --freigeben schließen sich aus")
     if args.nur_telefon and args.nur_uhr:
         a.error("--nur-telefon und --nur-uhr schließen sich aus")
 
