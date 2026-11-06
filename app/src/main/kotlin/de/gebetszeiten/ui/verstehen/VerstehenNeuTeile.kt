@@ -385,6 +385,14 @@ private fun RakaFeld(b: RakaBlock, t: Tokens, modifier: Modifier) {
             ),
             color = schrift,
             textAlign = TextAlign.Center,
+            // Wie der Kurzname: eine Zeile, bei großer Schrift schrumpft die Zahl statt abzuschneiden.
+            maxLines = 1,
+            softWrap = false,
+            autoSize = TextAutoSize.StepBased(
+                minFontSize = 8.sp,
+                maxFontSize = if (b.beschriftung != null) 16.sp else 22.sp,
+                stepSize = 0.5.sp,
+            ),
         )
         val kurz = MaterialTheme.typography.bodySmall
         Text(

@@ -637,7 +637,7 @@ Die Klammer nach page_id nennt die Quellenangabe, wie sie in der App steht.
 
 > "ما لم تتغير الشمس" بذهاب ضوئها فلا يتحير فيه البصر وهو الصحيح والتأخير إلى التغير مكروه تحريما
 
-Übersetzung: Solange sich die Sonne nicht verändert hat, indem ihr Glanz schwindet und der Blick nicht mehr geblendet wird. Das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist stark verpönt (Makrūh taḥrīman).
+Übersetzung: Solange die Sonne sich nicht verändert, das heißt ihr Glanz nicht vergangen ist, so dass der Blick von ihr nicht mehr geblendet wird; das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist stark verpönt (makrūh taḥrīman).
 
 **Freiwillig und verpönt, `tahajjud-acht`.** book_id 412, page_id 174 (aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ, S. 149), Marāqī l-falāḥ, Kommentar; Belegdatei TAHAJJUD 1, am 06.11.2026 erneut geprüft
 

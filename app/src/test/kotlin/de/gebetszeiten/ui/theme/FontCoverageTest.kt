@@ -1,6 +1,9 @@
 package de.gebetszeiten.ui.theme
 
+import de.gebetszeiten.ui.verstehen.GLOSSAR
+import de.gebetszeiten.ui.verstehen.LEHRE
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.nio.ByteBuffer
@@ -82,5 +85,48 @@ class FontCoverageTest {
     @Test fun naskhCoversArabicSample() {
         val has = codePoints("naskh_regular")
         assertEquals("", arabic.filter { it != ' ' && !has(it.code) })
+    }
+
+    /** Alle Zeichenketten eines Inhaltsbaums (Datenklassen, Listen, Maps) einsammeln. */
+    private fun texte(o: Any?, aus: StringBuilder) {
+        when (o) {
+            null -> {}
+            is String -> aus.append(o).append(' ')
+            is Iterable<*> -> o.forEach { texte(it, aus) }
+            is Map<*, *> -> o.forEach { (k, v) -> texte(k, aus); texte(v, aus) }
+            is Enum<*>, is Number, is Boolean -> {}
+            else -> if (o.javaClass.name.startsWith("de.gebetszeiten.ui.verstehen.")) {
+                var c: Class<*>? = o.javaClass
+                while (c != null && c != Any::class.java) {
+                    for (f in c.declaredFields) {
+                        if (java.lang.reflect.Modifier.isStatic(f.modifiers)) continue
+                        f.isAccessible = true
+                        texte(f.get(o), aus)
+                    }
+                    c = c.superclass
+                }
+            }
+        }
+    }
+
+    /**
+     * Jedes Zeichen der Lehrtexte (LEHRE, GLOSSAR) muss in mindestens einer gebündelten Schrift stehen.
+     * Einzige dokumentierte Ausnahme: U+FDFA (ﷺ). Keine gebündelte Schrift enthält es, es wird
+     * wie bisher über die Systemschrift ersetzt.
+     */
+    @Test fun lehrtexteSindDurchGebuendelteSchriftenAbgedeckt() {
+        val aus = StringBuilder()
+        texte(LEHRE, aus)
+        texte(GLOSSAR, aus)
+        assertTrue("Texte nicht gesammelt", aus.length > 1000)
+        val schriften = listOf("serif_regular", "sans_regular", "sans_medium", "sans_semibold", "naskh_regular")
+            .map { codePoints(it) }
+        val systemfallback = 0xFDFA
+        val fehlend = aus.toString().codePoints().toArray().toSortedSet()
+            .filter { it > 0x20 && it != 0xA0 && it != systemfallback && schriften.none { has -> has(it) } }
+        assertEquals(
+            "Ohne Schrift: " + fehlend.joinToString { "U+%04X".format(it) },
+            emptyList<Int>(), fehlend,
+        )
     }
 }

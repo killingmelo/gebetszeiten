@@ -101,6 +101,7 @@ fun suche(frage: String, lehre: List<Kapitel>, glossar: Map<String, GlossaryTerm
             val ziel = Ziel(k, ab.teil)
             val vorher = kandidaten.size
             pruefe(0, ziel, ab.name, ab.name)
+            if (kandidaten.size == vorher) pruefe(0, ziel, ab.name, ab.kopf)
             if (kandidaten.size == vorher && a == 0) pruefe(0, ziel, kap.reiter, kap.reiter)
             fun feld(label: String, text: String?) {
                 if (text != null) pruefe(2, ziel, "${ab.name} · $label", klartext(text))

@@ -23,7 +23,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -42,7 +44,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -85,8 +89,8 @@ internal fun kapitelIndex(ziel: Ziel, lehre: List<Kapitel>): Int? =
 
 /**
  * Neue Seite „Verstehen“: oben die Suche, darunter die Reiter (Pillen) und je
- * Kapitel aus [LEHRE] eine Seite zum Wischen. Mit Text im Suchfeld ersetzt eine
- * Trefferliste Reiter und Seiten. [focus] (aus „Heute“ angetippt) öffnet über
+ * Kapitel aus [LEHRE] eine Seite zum Wischen. Mit Text im Suchfeld liegt eine
+ * Trefferliste über Reitern und Seiten (diese bleiben im Aufbau). [focus] (aus „Heute“ angetippt) öffnet über
  * [zielVon] Kapitel und Abschnitt und wird mit [onFocusConsumed] zurückgegeben;
  * ohne [focus] öffnet die Seite einmal beim laufenden Abschnitt.
  */
@@ -133,6 +137,8 @@ fun VerstehenNeuScreen(
     // Schlüssel des offenen Begriffsblatts.
     var begriff by rememberSaveable { mutableStateOf<String?>(null) }
 
+    BackHandler(enabled = frage.isNotEmpty()) { frage = "" }
+
     suspend fun springe(ziel: Ziel) {
         // Fehlt das Kapitel noch, bleibt die Seite, wo sie ist.
         val seite = kapitelIndex(ziel, LEHRE) ?: return
@@ -166,33 +172,45 @@ fun VerstehenNeuScreen(
             .padding(top = inner.calculateTopPadding(), bottom = inner.calculateBottomPadding()),
     ) {
         Suchfeld(frage, { frage = it }, t)
-        if (frage.isNotBlank()) {
-            Trefferliste(
-                treffer = remember(frage) { suche(frage, LEHRE, GLOSSAR) },
-                onTreffer = { treffer ->
-                    frage = ""
-                    focusManager.clearFocus()
-                    scope.launch { springe(treffer.ziel) }
-                },
-                t = t,
-            )
-        } else {
-            ReiterPillen(
-                selected = pager.currentPage,
-                onSelect = { scope.launch { pager.animateScrollToPage(it) } },
-                t = t,
-            )
-            HorizontalPager(state = pager, modifier = Modifier.fillMaxSize(), key = { LEHRE[it].reiter }) { page ->
-                KapitelSeite(
-                    kapitel = LEHRE[page],
-                    day = day,
-                    settings = settings,
-                    now = now,
-                    ziel = pendingZiel?.takeIf { kapitelIndex(it, LEHRE) == page },
-                    onZielDone = { pendingZiel = null },
-                    onBegriff = { begriff = it },
+        // Der Pager bleibt auch während der Suche im Aufbau: Leseposition und offene
+        // Abschnitte bleiben erhalten, die Trefferliste liegt darüber.
+        Box(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+                ReiterPillen(
+                    selected = pager.currentPage,
+                    onSelect = { scope.launch { pager.animateScrollToPage(it) } },
                     t = t,
                 )
+                HorizontalPager(state = pager, modifier = Modifier.fillMaxSize(), key = { LEHRE[it].reiter }) { page ->
+                    KapitelSeite(
+                        kapitel = LEHRE[page],
+                        day = day,
+                        settings = settings,
+                        now = now,
+                        ziel = pendingZiel?.takeIf { kapitelIndex(it, LEHRE) == page },
+                        onZielDone = { pendingZiel = null },
+                        onBegriff = { begriff = it },
+                        t = t,
+                    )
+                }
+            }
+            if (frage.isNotBlank()) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(t.canvas)
+                        .pointerInput(Unit) { detectTapGestures { } },
+                ) {
+                    Trefferliste(
+                        treffer = remember(frage) { suche(frage, LEHRE, GLOSSAR) },
+                        onTreffer = { treffer ->
+                            frage = ""
+                            focusManager.clearFocus()
+                            scope.launch { springe(treffer.ziel) }
+                        },
+                        t = t,
+                    )
+                }
             }
         }
     }
@@ -206,7 +224,7 @@ fun VerstehenNeuScreen(
             containerColor = t.surface,
             contentColor = t.ink,
         ) {
-            Column(Modifier.fillMaxWidth().padding(start = RAND, end = RAND, bottom = 32.dp)) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = RAND, end = RAND, bottom = 32.dp)) {
                 Text(
                     eintrag.term,
                     style = MaterialTheme.typography.headlineSmall,
@@ -331,7 +349,7 @@ private fun ReiterPillen(selected: Int, onSelect: (Int) -> Unit, t: Tokens) {
             val on = i == selected
             Box(
                 Modifier
-                    .heightIn(min = 40.dp)
+                    .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(50))
                     .background(if (on) t.accent else t.canvas)
                     .border(1.dp, if (on) t.accent else t.hairline, RoundedCornerShape(50))

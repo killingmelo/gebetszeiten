@@ -38,6 +38,15 @@ class LehrSucheTest {
         assertEquals("magrib", normalisiere("Maġrib"))
     }
 
+    @Test fun abschnittskopfWirdGesucht() {
+        val l = listOf(
+            Kapitel("Ẓuhr", Band.ZUHR, listOf(abschnitt(Teil.ZUHR, "Ẓuhr").copy(kopf = "Mittagsgebet")), emptyList()),
+        )
+        assertEquals(Ziel(0, Teil.ZUHR), suche("Mittagsgebet", l, glossar).first().ziel)
+        // Im echten Inhalt führt der Kopf ebenfalls zum Abschnitt.
+        assertEquals(Ziel(1, Teil.ZUHR), suche("Mittagsgebet", LEHRE, GLOSSAR).first().ziel)
+    }
+
     @Test fun zuhrErsterTrefferIstDasZiel() {
         val t = suche("zuhr", lehre, glossar)
         assertEquals(Ziel(1, Teil.ZUHR), t.first().ziel)

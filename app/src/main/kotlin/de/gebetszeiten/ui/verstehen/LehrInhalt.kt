@@ -1102,7 +1102,7 @@ private val KAPITEL_FREIWILLIG = Kapitel(
             "asr-verzoegern",
             Quote(
                 arabic = "\"ما لم تتغير الشمس\" بذهاب ضوئها فلا يتحير فيه البصر وهو الصحيح والتأخير إلى التغير مكروه تحريما",
-                german = "Solange sich die Sonne nicht verändert hat, indem ihr Glanz schwindet und der Blick nicht mehr geblendet wird. Das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist stark verpönt (Makrūh taḥrīman).",
+                german = "Solange die Sonne sich nicht verändert, das heißt ihr Glanz nicht vergangen ist, so dass der Blick von ihr nicht mehr geblendet wird; das ist die richtige Ansicht. Das Aufschieben bis zu dieser Veränderung ist stark verpönt (makrūh taḥrīman).",
                 source = "$MARAQI, S. 74",
             ),
         ),
