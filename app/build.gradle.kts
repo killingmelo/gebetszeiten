@@ -23,6 +23,8 @@ android {
         targetSdk = 36
         versionCode = 26
         versionName = "0.5.1"
+        // Neue Verstehen-Seite: in Release aus, nur im Debug-Build sichtbar.
+        buildConfigField("boolean", "VERSTEHEN_NEU", "false")
     }
 
     flavorDimensions += "connectivity"
@@ -60,6 +62,7 @@ android {
             // ginge es nicht, die ist mit dem Play-Schlüssel signiert.
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField("boolean", "VERSTEHEN_NEU", "true")
         }
         release {
             isMinifyEnabled = true
@@ -87,6 +90,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     sourceSets {
