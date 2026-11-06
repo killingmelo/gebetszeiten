@@ -8,8 +8,9 @@ sealed interface Stueck {
 }
 
 /** `[[Key]]`, `[[Key|Anzeige]]` oder `{beleg-id}`. */
-private val AUSZEICHNUNG = Regex("""\[\[([^\[\]|]+)(?:\|([^\[\]]+))?]]|\{([a-z0-9-]+)}""")
-private val VERWEIS = Regex("""\{([a-z0-9-]+)}""")
+// Schließende Klammern maskiert: Androids ICU-Regex lehnt ein nacktes „]“ oder „}“ ab, die JVM nicht.
+private val AUSZEICHNUNG = Regex("""\[\[([^\[\]|]+)(?:\|([^\[\]]+))?\]\]|\{([a-z0-9-]+)\}""")
+private val VERWEIS = Regex("""\{([a-z0-9-]+)\}""")
 
 /**
  * Zerlegt [text] in Text, Begriffe (`[[Key]]`, `[[Key|Anzeige]]`) und Verweise (`{beleg-id}`).

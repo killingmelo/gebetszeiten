@@ -65,7 +65,7 @@ class VerstehenNeuWiringTest {
     @Test
     fun nurLehrZeitenFormatiert() {
         // Uhrzeiten werden allein in LehrZeiten.kt formatiert; Screen und Himmelsband.kt formatieren nichts.
-        val dateien = listOf("VerstehenNeuScreen.kt", "Himmelsband.kt")
+        val dateien = listOf("VerstehenNeuScreen.kt", "VerstehenNeuTeile.kt", "Himmelsband.kt")
             .map { File("src/main/kotlin/de/gebetszeiten/ui/verstehen/$it") }
             .filter { it.isFile }
         assertTrue("VerstehenNeuScreen.kt fehlt", dateien.any { it.name == "VerstehenNeuScreen.kt" })
@@ -74,5 +74,91 @@ class VerstehenNeuWiringTest {
             assertTrue("${datei.name} enthält HH:mm", !text.contains("HH:mm"))
             assertTrue("${datei.name} enthält DateTimeFormatter", !text.contains("DateTimeFormatter"))
         }
+    }
+
+    /** Die Seite: VerstehenNeuScreen.kt und die ausgelagerten Bausteine in VerstehenNeuTeile.kt. */
+    private fun seite(): String {
+        val dateien = listOf("VerstehenNeuScreen.kt", "VerstehenNeuTeile.kt")
+            .map { File("src/main/kotlin/de/gebetszeiten/ui/verstehen/$it") }
+        for (d in dateien) assertTrue("${d.absolutePath} fehlt", d.isFile)
+        return dateien.joinToString("\n") { it.readText() }
+    }
+
+    @Test
+    fun nutztZerlegeUndGlossar() {
+        val text = seite()
+        assertTrue("zerlege( fehlt", text.contains("zerlege("))
+        assertTrue("GLOSSAR[ fehlt", text.contains("GLOSSAR["))
+    }
+
+    @Test
+    fun arabischRechtsNachLinks() {
+        val text = seite()
+        assertTrue("RTL fehlt", text.contains("LayoutDirection.Rtl") || text.contains("TextDirection.Rtl"))
+    }
+
+    @Test
+    fun fokusUeberZielVon() {
+        val text = seite()
+        assertTrue("zielVon( fehlt", text.contains("zielVon("))
+        assertTrue("zielVonMoment( fehlt", text.contains("zielVonMoment("))
+    }
+
+    @Test
+    fun minutenSchleifeNurImVordergrund() {
+        assertTrue(seite().contains("repeatOnLifecycle(Lifecycle.State.STARTED)"))
+    }
+
+    @Test
+    fun keineFestenFarben() {
+        assertTrue("feste Farbe Color(0x", !seite().contains("Color(0x"))
+    }
+
+    @Test
+    fun ohneZeitenKeinAbsturz() {
+        val text = seite()
+        assertTrue("!! in der Seite", !text.contains("!!"))
+        val aufrufe = text.lines()
+            .filter { it.contains("zeitzeile(") }
+            .filterNot { it.trimStart().startsWith("*") || it.trimStart().startsWith("//") }
+        assertTrue("zeitzeile( fehlt", aufrufe.isNotEmpty())
+        for (zeile in aufrufe) {
+            assertTrue("zeitzeile( ohne ?.let: $zeile", zeile.contains(")?.let"))
+        }
+    }
+
+    @Test
+    fun tagesbandGleichHoch() {
+        val text = File("src/main/kotlin/de/gebetszeiten/ui/verstehen/Himmelsband.kt").readText()
+        assertTrue("IntrinsicSize.Max fehlt", text.contains(".height(IntrinsicSize.Max)"))
+        assertTrue("fillMaxHeight fehlt", text.contains(".fillMaxHeight()"))
+    }
+
+    @Test
+    fun regexFuerAndroidMaskiert() {
+        // Androids ICU-Regex wirft bei nacktem „]“ oder „}“ (die JVM der Unit-Tests nicht):
+        // Absturz beim ersten Öffnen der Seite am 06.11.2026.
+        val text = File("src/main/kotlin/de/gebetszeiten/ui/verstehen/LehrText.kt").readText()
+        val muster = Regex("Regex\\(\"\"\"(.*)\"\"\"\\)").findAll(text).map { it.groupValues[1] }.toList()
+        assertTrue("keine Regex gefunden", muster.isNotEmpty())
+        for (m in muster) {
+            var i = 0
+            var inKlasse = false
+            while (i < m.length) {
+                val c = m[i]
+                when {
+                    c == '\\' -> i++
+                    c == '[' -> inKlasse = true
+                    c == ']' && inKlasse -> inKlasse = false
+                    c == ']' || c == '}' -> throw AssertionError("unmaskiertes $c in $m")
+                }
+                i++
+            }
+        }
+    }
+
+    @Test
+    fun fokusWirdZurueckgegeben() {
+        assertTrue("onFocusConsumed() fehlt", seite().contains("onFocusConsumed()"))
     }
 }

@@ -5,10 +5,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -165,6 +168,8 @@ fun Tagesband(teile: List<Teil>, onTeil: (Teil) -> Unit, modifier: Modifier = Mo
     Row(
         modifier
             .fillMaxWidth()
+            // Alle Felder so hoch wie das höchste, auch wenn ein Name umbricht.
+            .height(IntrinsicSize.Max)
             .clip(RoundedCornerShape(12.dp)),
     ) {
         teile.forEachIndexed { i, teil -> Abschnittsfeld(teil, i, t, onTeil) }
@@ -177,6 +182,7 @@ private fun RowScope.Abschnittsfeld(teil: Teil, index: Int, t: Tokens, onTeil: (
     Box(
         Modifier
             .weight(1f)
+            .fillMaxHeight()
             .heightIn(min = 48.dp)
             .background(t.surface)
             .border(0.5.dp, t.hairline)
