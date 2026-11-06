@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verstehen Konzept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Naskh+Arabic&family=Noto+Serif+Display:wght@400&display=swap">
+<style>
+:root{
+  --canvas:#ffffff; --surface:#ffffff; --ink:#1c1b1a; --stone:#4a4741; --hair:#e1dcd3;
+  --accent:#224228; --accent-tint:#eef2ec; --gold:#966417; --ochre:#bc924c; --page:#f4f1ec;
+  --serif:"Noto Serif Display", Georgia, serif; --sans:Inter, system-ui, sans-serif; --naskh:"Noto Naskh Arabic", serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --canvas:#000; --surface:#19191c; --ink:#f7f1e8; --stone:#a8a5a0; --hair:#232326;
+  --accent:#849671; --accent-tint:#1d241b; --gold:#ddaa61; --page:#0b0b0c; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:16px/1.5 var(--sans);padding:32px max(16px,env(safe-area-inset-left)) 64px}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font:400 40px/1.15 var(--serif);margin:0 0 8px}
+.lead{color:var(--stone);max-width:70ch;margin:0 0 32px}
+h2{font:600 12px/1.2 var(--sans);letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin:48px 0 6px}
+.sub{color:var(--stone);margin:0 0 20px;max-width:70ch}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.col{flex:1 1 340px;min-width:0;max-width:400px}
+.label{font:600 14px var(--sans);margin:0 0 8px}
+.label small{display:block;font-weight:400;color:var(--stone)}
+/* Telefonrahmen */
+.phone{background:var(--canvas);border:1px solid var(--hair);border-radius:28px;padding:20px 18px 24px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.05)}
+.search{display:flex;align-items:center;gap:8px;border:1px solid var(--hair);border-radius:999px;padding:8px 14px;color:var(--stone);font-size:14px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px;scrollbar-width:none}
+.tab{flex:none;border:1px solid var(--hair);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--stone)}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme: dark){.tab.on{color:#000}}
+.eyebrow{font:600 11px/1.2 var(--sans);letter-spacing:1px;text-transform:uppercase;color:var(--accent)}
+.title{font:400 44px/1.05 var(--serif);margin:4px 0 2px}
+.today{font-size:15px;color:var(--stone)}
+.today b{color:var(--ink);font-weight:600}
+p{margin:0 0 12px}
+.t{border-bottom:1px dotted var(--accent);cursor:pointer}
+sup a{color:var(--gold);text-decoration:none;font-weight:600;font-size:11px;padding-left:1px}
+.hadith{border-left:2px solid var(--gold);padding:2px 0 2px 12px;margin:0 0 12px;font-style:normal}
+.hadith cite{display:block;font-size:13px;color:var(--stone);font-style:normal;margin-top:2px}
+.caution{background:color-mix(in srgb,var(--gold) 9%,transparent);border-radius:12px;padding:10px 12px;margin:12px 0}
+.caution b{color:var(--gold)}
+.k{font:600 11px/1.2 var(--sans);letter-spacing:.8px;text-transform:uppercase;color:var(--stone);margin:18px 0 6px}
+/* Rakʿa-Folge */
+.rk{display:flex;gap:4px;align-items:stretch;margin:4px 0 6px}
+.rk div{flex:var(--n);border-radius:10px;padding:8px 6px;text-align:center;font-size:12px;line-height:1.25}
+.rk strong{display:block;font:400 22px/1 var(--serif);margin-bottom:2px}
+.rk .f{background:var(--accent);color:#fff}
+@media (prefers-color-scheme: dark){.rk .f{color:#000}}
+.rk .m{border:1.5px solid var(--accent);color:var(--accent)}
+.rk .d{border:1.5px dashed var(--gold);color:var(--gold)}
+.rkleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--stone)}
+.rkleg span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.rkleg .lf::before{background:var(--accent)} .rkleg .lm::before{border:1.5px solid var(--accent)} .rkleg .ld::before{border:1.5px dashed var(--gold)}
+details{border-top:1px solid var(--hair);padding-top:10px;margin-top:16px}
+summary{cursor:pointer;font-weight:600;color:var(--accent);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:" ▾"}
+details[open] summary::after{content:" ▴"}
+details p{margin-top:10px}
+.notes{font-size:13px;color:var(--stone);border-top:1px solid var(--hair);margin-top:16px;padding-top:10px}
+.notes ol{padding-left:18px;margin:0}
+.notes li{margin-bottom:6px}
+.ar{display:block;font:19px/1.7 var(--naskh);direction:rtl;color:var(--stone);margin-top:2px}
+.notes details{border:0;padding:0;margin:2px 0 0}
+.notes summary{font-weight:500;font-size:12px}
+.notes summary::after{content:""}
+/* Ton B */
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0}
+.facts dt{font-weight:600}
+.facts dd{margin:0}
+/* Ton C */
+.merk{background:var(--accent-tint);border-radius:12px;padding:12px 14px;margin:12px 0;font:400 19px/1.3 var(--serif)}
+.merk small{display:block;font:600 11px var(--sans);letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.q{font-weight:600;margin:16px 0 4px}
+/* Entwurf B Karten */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.card{border:1px solid var(--hair);border-radius:16px;padding:12px;background:var(--surface)}
+.card.wide{grid-column:1/-1}
+.card h4{margin:0 0 4px;font:600 11px var(--sans);letter-spacing:.8px;text-transform:uppercase;color:var(--stone)}
+.card .big{font:400 26px/1.1 var(--serif)}
+.card p{font-size:14px;margin:0}
+/* Entwurf C Band */
+.band{border-radius:18px;overflow:hidden;margin:4px 0 14px;background:linear-gradient(180deg,#e8eef2,#fbfaf7)}
+@media (prefers-color-scheme: dark){.band{background:linear-gradient(180deg,#0e1620,#000)}}
+.band svg{display:block;width:100%;height:auto}
+/* Glossar-Blatt */
+.pop{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:min(420px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:14px 16px;box-shadow:0 12px 32px rgba(0,0,0,.18);font-size:14px;z-index:5}
+.pop b{display:block;font:400 22px var(--serif);margin-bottom:4px}
+.pop button{float:right;border:0;background:none;font-size:18px;color:var(--stone);cursor:pointer}
+.ask{background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:16px 18px;margin-top:24px;max-width:70ch}
+.ask ul{margin:6px 0 0;padding-left:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Verstehen, neues Konzept</h1>
+<p class="lead">Probe am Beispiel Ẓuhr. Oben dieselben Inhalte in drei Tönen, darunter drei Gestaltungen. Alle zeigen die obere Schicht; „Mehr zu Ẓuhr“ ist die zweite. Gepunktet unterstrichene Begriffe lassen sich antippen, die Ziffern führen zu den Belegen mit arabischem Original. Zeiten: amtliche Diyanet-Zeiten Nürnberg, 05.11.2026.</p>
+
+<h2>1 · Tonprobe</h2>
+<p class="sub">Gleicher Inhalt, gleiche Belege, nur die Sprache unterscheidet sich.</p>
+<div class="row">
+
+<div class="col">
+<div class="label">A · Erzählend warm<small>wie ein kundiger Freund, der es dir in Ruhe erklärt</small></div>
+<div class="phone">
+<div class="eyebrow">Mittagsgebet</div>
+<div class="title">Ẓuhr</div>
+<div class="today">Heute in Nürnberg <b>12:04 bis 14:27</b></div>
+<p style="margin-top:14px">Mittags steht die Sonne am höchsten, und für einen Augenblick wirft alles seinen kürzesten Schatten. Sobald sie sich nach Westen neigt, beim <span class="t" data-t="Zawāl">Zawāl</span>, beginnt die Zeit des Ẓuhr.<sup><a href="#n1">1</a></sup> Sie reicht, bis ʿAṣr beginnt.<sup><a href="#n2">2</a></sup></p>
+<blockquote class="hadith">Der Prophet ﷺ betete nach dem Zawāl vier Rakʿa vor dem Ẓuhr und sagte: „Es ist eine Stunde, in der die Tore des Himmels geöffnet werden, und ich möchte, dass in ihr eine gute Tat von mir aufsteigt.“<cite>Tirmiḏī 478</cite></blockquote>
+<p>Wer die vier davor und vier danach beständig betet, dem hat der Prophet ﷺ verheißen, dass Gott ihn dem Feuer verwehrt (Tirmiḏī 428). Fest dazu gehören vier Rakʿa <span class="t" data-t="Sunna muʾakkada">Sunna muʾakkada</span> vor den vier <span class="t" data-t="Farḍ">Farḍ</span> und zwei danach; zwei weitere sind empfohlen.<sup><a href="#n3">3</a></sup></p>
+<div class="caution"><b>Achtung:</b> Kurz bevor sie sich neigt, steht die Sonne mitten am Himmel. In diesem Augenblick betet man nicht.<sup><a href="#n4">4</a></sup></div>
+</div>
+</div>
+
+<div class="col">
+<div class="label">B · Knapp sachlich<small>kurze, klare Sätze, kein Schmuck</small></div>
+<div class="phone">
+<div class="eyebrow">Mittagsgebet</div>
+<div class="title">Ẓuhr</div>
+<div class="today">Heute in Nürnberg <b>12:04 bis 14:27</b></div>
+<dl class="facts">
+<dt>Beginn</dt><dd><span class="t" data-t="Zawāl">Zawāl</span>: die Sonne neigt sich nach dem Höchststand.<sup><a href="#n1">1</a></sup></dd>
+<dt>Ende</dt><dd>Mit dem Beginn von ʿAṣr.<sup><a href="#n2">2</a></sup></dd>
+<dt>Rakʿa</dt><dd>4 <span class="t" data-t="Sunna muʾakkada">Sunna muʾakkada</span>, 4 <span class="t" data-t="Farḍ">Farḍ</span>, 2 Sunna muʾakkada, dazu 2 empfohlen.<sup><a href="#n3">3</a></sup></dd>
+<dt>Vorzug</dt><dd>In dieser Stunde sind die Tore des Himmels geöffnet (Tirmiḏī 478). Vier davor und vier danach: Gott verwehrt dem Betenden das Feuer (Tirmiḏī 428).</dd>
+<dt>Achtung</dt><dd>Steht die Sonne im Zenit, kurz vor Ẓuhr: kein Gebet.<sup><a href="#n4">4</a></sup></dd>
+</dl>
+</div>
+</div>
+
+<div class="col">
+<div class="label">C · Lehrbuch<small>geführt wie ein guter Unterricht, mit Merksatz</small></div>
+<div class="phone">
+<div class="eyebrow">Mittagsgebet</div>
+<div class="title">Ẓuhr</div>
+<div class="today">Heute in Nürnberg <b>12:04 bis 14:27</b></div>
+<div class="merk"><small>Merksatz</small>Ẓuhr beginnt, wenn der Schatten wieder zu wachsen anfängt.</div>
+<div class="q">Wann bete ich?</div>
+<p>Ab dem <span class="t" data-t="Zawāl">Zawāl</span>, wenn die Sonne sich nach Westen neigt,<sup><a href="#n1">1</a></sup> bis ʿAṣr beginnt.<sup><a href="#n2">2</a></sup></p>
+<div class="q">Wie viele Rakʿa?</div>
+<p>Vier <span class="t" data-t="Sunna muʾakkada">Sunna muʾakkada</span>, vier <span class="t" data-t="Farḍ">Farḍ</span>, zwei Sunna muʾakkada. Zwei weitere sind empfohlen.<sup><a href="#n3">3</a></sup></p>
+<div class="q">Warum lohnt es sich?</div>
+<p>Der Prophet ﷺ sagte über die Stunde nach dem Zawāl: „Es ist eine Stunde, in der die Tore des Himmels geöffnet werden.“ (Tirmiḏī 478) Und wer die vier davor und vier danach beständig betet, den verwehrt Gott dem Feuer (Tirmiḏī 428).</p>
+<div class="q">Worauf achte ich?</div>
+<p>Steht die Sonne mitten am Himmel, kurz vor Ẓuhr, betet man nicht.<sup><a href="#n4">4</a></sup></p>
+</div>
+</div>
+</div>
+
+<h2>2 · Gestaltung</h2>
+<p class="sub">Drei Entwürfe mit Suche, Reitern, zwei Schichten und Belegen als Endnoten. Text im Ton A. Die Rakʿa stehen in allen drei Entwürfen als Folge in Gebetsreihenfolge: Farḍ gefüllt, Sunna muʾakkada umrandet, empfohlen gestrichelt.</p>
+<div class="row">
+
+<!-- Entwurf 1: Buch -->
+<div class="col">
+<div class="label">1 · Buch<small>große Serife, viel Weiß, ruhiger Lesefluss</small></div>
+<div class="phone">
+<div class="search">⌕ Begriff oder Frage suchen</div>
+<div class="tabs"><span class="tab">Faǧr</span><span class="tab on">Ẓuhr</span><span class="tab">ʿAṣr</span><span class="tab">Maġrib</span><span class="tab">ʿIšāʾ</span><span class="tab">Freiwillig und verpönt</span></div>
+<div class="eyebrow">Mittagsgebet</div>
+<div class="title">Ẓuhr</div>
+<div class="today">Heute in Nürnberg <b>12:04 bis 14:27</b></div>
+<p style="margin-top:14px">Mittags steht die Sonne am höchsten. Sobald sie sich nach Westen neigt, beim <span class="t" data-t="Zawāl">Zawāl</span>, beginnt die Zeit des Ẓuhr.<sup><a href="#n1">1</a></sup> Sie reicht, bis ʿAṣr beginnt.<sup><a href="#n2">2</a></sup></p>
+<blockquote class="hadith">„Es ist eine Stunde, in der die Tore des Himmels geöffnet werden, und ich möchte, dass in ihr eine gute Tat von mir aufsteigt.“<cite>Der Prophet ﷺ über die vier Rakʿa nach dem Zawāl, Tirmiḏī 478</cite></blockquote>
+<div class="k">Rakʿa</div>
+<div class="rk"><div class="m" style="--n:4"><strong>4</strong>Sunna</div><div class="f" style="--n:4"><strong>4</strong>Farḍ</div><div class="m" style="--n:2"><strong>2</strong>Sunna</div><div class="d" style="--n:2"><strong>2</strong>empf.</div></div>
+<div class="rkleg"><span class="lf">Farḍ</span><span class="lm"><span class="t" data-t="Sunna muʾakkada">Sunna muʾakkada</span></span><span class="ld"><span class="t" data-t="Mandūb">empfohlen</span></span></div>
+<div class="caution"><b>Achtung:</b> Steht die Sonne mitten am Himmel, kurz vor Ẓuhr, betet man nicht.<sup><a href="#n4">4</a></sup></div>
+<details><summary>Mehr zu Ẓuhr</summary>
+<p><b>Wann endet Ẓuhr genau?</b> Nach Abū Yūsuf und Muḥammad, wenn der Schatten so lang ist wie das Ding selbst; nach Abū Ḥanīfa erst beim doppelten Schatten, jeweils ohne den Mittagsschatten.<sup><a href="#n2">2</a></sup> Diyanet setzt ʿAṣr nach der ersten Ansicht an.</p>
+<p><b>Die vier davor und vier danach:</b> „Wer vier Rakʿa vor dem Ẓuhr und vier danach beständig betet, den verwehrt Gott dem Feuer.“ (Tirmiḏī 428)</p>
+<p><b>Wie rechnet die App die verpönte Zeit?</b> Als die 20 Minuten vor Ẓuhr.</p>
+</details>
+<div class="notes"><ol>
+<li id="n1">al-Qudūrī, Muḫtaṣar, S. 23<details><summary>Arabisch</summary><span class="ar">وأول وقت الظهر إذا زالت الشمس</span></details></li>
+<li id="n2">al-Qudūrī, Muḫtaṣar, S. 23<details><summary>Arabisch</summary><span class="ar">وآخر وقتها عند أبي حنيفة إذا صار ظل كل شيء مثليه سوي فيء الزوال وقال أبو يوسف ومحمد: إذا صار ظل كل شيء مثله</span></details></li>
+<li id="n3">aš-Šurunbulālī, Marāqī l-falāḥ, S. 145 f.<details><summary>Arabisch</summary><span class="ar">سن سنة مؤكدة ... وركعتان بعد الظهر ... وأربع قبل الظهر</span><span class="ar">ويندب أن يضم إليها ركعتان فتصير أربعا</span></details></li>
+<li id="n4">aš-Šurunbulālī, Marāqī l-falāḥ, S. 76<details><summary>Arabisch</summary><span class="ar">الثاني "عند استوائها" في بطن السماء "إلى أن تزول"</span></details></li>
+</ol></div>
+</div>
+</div>
+
+<!-- Entwurf 2: Karten -->
+<div class="col">
+<div class="label">2 · Karten<small>jede Frage eine Kachel, schnell zu überfliegen</small></div>
+<div class="phone">
+<div class="search">⌕ Begriff oder Frage suchen</div>
+<div class="tabs"><span class="tab">Faǧr</span><span class="tab on">Ẓuhr</span><span class="tab">ʿAṣr</span><span class="tab">Maġrib</span><span class="tab">ʿIšāʾ</span><span class="tab">Freiwillig und verpönt</span></div>
+<div class="eyebrow">Mittagsgebet</div>
+<div class="title">Ẓuhr</div>
+<div class="cards">
+<div class="card"><h4>Heute</h4><div class="big">12:04</div><p>bis 14:27</p></div>
+<div class="card"><h4>Rakʿa</h4><div class="big">4 · 4 · 2</div><p>Sunna, Farḍ, Sunna<sup><a href="#n3">3</a></sup></p></div>
+<div class="card wide"><h4>Warum diese Zeit</h4><p>Die Sonne hat ihren Höchststand überschritten und neigt sich nach Westen, der <span class="t" data-t="Zawāl">Zawāl</span>.<sup><a href="#n1">1</a></sup> Ẓuhr reicht, bis ʿAṣr beginnt.<sup><a href="#n2">2</a></sup></p></div>
+<div class="card wide"><h4>Vorzug</h4><p>„Es ist eine Stunde, in der die Tore des Himmels geöffnet werden, und ich möchte, dass in ihr eine gute Tat von mir aufsteigt.“ <span style="color:var(--stone)">Tirmiḏī 478</span></p></div>
+<div class="card wide" style="border-color:color-mix(in srgb,var(--gold) 40%,var(--hair))"><h4 style="color:var(--gold)">Achtung</h4><p>Steht die Sonne mitten am Himmel, kurz vor Ẓuhr, betet man nicht.<sup><a href="#n4">4</a></sup></p></div>
+</div>
+<div class="k">Rakʿa im Einzelnen</div>
+<div class="rk"><div class="m" style="--n:4"><strong>4</strong>Sunna</div><div class="f" style="--n:4"><strong>4</strong>Farḍ</div><div class="m" style="--n:2"><strong>2</strong>Sunna</div><div class="d" style="--n:2"><strong>2</strong>empf.</div></div>
+<details><summary>Mehr zu Ẓuhr</summary><p>Ende nach beiden hanafitischen Ansichten, die vier davor und vier danach (Tirmiḏī 428), Rechnung der verpönten Zeit.</p></details>
+<div class="notes">Belege 1 bis 4 wie im Entwurf 1, mit arabischem Original zum Aufklappen.</div>
+</div>
+</div>
+
+<!-- Entwurf 3: Himmelsband -->
+<div class="col">
+<div class="label">3 · Himmelsband<small>der Sonnenstand als Bild, Text darunter</small></div>
+<div class="phone">
+<div class="search">⌕ Begriff oder Frage suchen</div>
+<div class="tabs"><span class="tab">Faǧr</span><span class="tab on">Ẓuhr</span><span class="tab">ʿAṣr</span><span class="tab">Maġrib</span><span class="tab">ʿIšāʾ</span><span class="tab">Freiwillig und verpönt</span></div>
+<div class="band" aria-label="Sonnenbahn: die Sonne hat den höchsten Punkt gerade überschritten; der Schatten des Stabs beginnt zu wachsen">
+<svg viewBox="0 0 360 150">
+  <path d="M20 128 Q180 -10 340 128" fill="none" stroke="var(--ochre)" stroke-width="1.5" stroke-dasharray="3 4"/>
+  <line x1="12" y1="128" x2="348" y2="128" stroke="var(--hair)" stroke-width="1.5"/>
+  <circle cx="180" cy="59" r="4" fill="none" stroke="var(--ochre)" stroke-width="1.5"/>
+  <circle cx="198" cy="60" r="11" fill="var(--gold)"/>
+  <line x1="180" y1="128" x2="180" y2="100" stroke="var(--ink)" stroke-width="2"/>
+  <line x1="180" y1="128" x2="167" y2="128" stroke="var(--ink)" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+  <text x="180" y="44" text-anchor="middle" font-family="Inter" font-size="10" fill="var(--stone)">Höchststand</text>
+  <text x="300" y="146" text-anchor="middle" font-family="Inter" font-size="10" fill="var(--stone)">Westen</text>
+  <text x="60" y="146" text-anchor="middle" font-family="Inter" font-size="10" fill="var(--stone)">Osten</text>
+</svg>
+</div>
+<div class="eyebrow">Mittagsgebet</div>
+<div class="title">Ẓuhr</div>
+<div class="today">Heute in Nürnberg <b>12:04 bis 14:27</b></div>
+<p style="margin-top:14px">Die Sonne hat ihren höchsten Punkt gerade überschritten, der Schatten des Stabs wird wieder länger: der <span class="t" data-t="Zawāl">Zawāl</span>. Jetzt beginnt Ẓuhr<sup><a href="#n1">1</a></sup> und reicht, bis ʿAṣr beginnt.<sup><a href="#n2">2</a></sup></p>
+<blockquote class="hadith">„Es ist eine Stunde, in der die Tore des Himmels geöffnet werden.“<cite>Tirmiḏī 478</cite></blockquote>
+<div class="rk"><div class="m" style="--n:4"><strong>4</strong>Sunna</div><div class="f" style="--n:4"><strong>4</strong>Farḍ</div><div class="m" style="--n:2"><strong>2</strong>Sunna</div><div class="d" style="--n:2"><strong>2</strong>empf.</div></div>
+<div class="caution"><b>Achtung:</b> Am Höchststand selbst betet man nicht.<sup><a href="#n4">4</a></sup></div>
+<details><summary>Mehr zu Ẓuhr</summary><p>Wie im Entwurf 1.</p></details>
+</div>
+</div>
+</div>
+
+<div class="ask"><b>Für deine Rückmeldung</b>
+<ul>
+<li>Welcher Ton: A, B oder C, oder eine Mischung (z. B. oben A, „Mehr“ in B)?</li>
+<li>Welche Gestaltung: 1, 2 oder 3, oder Teile daraus?</li>
+<li>Passt die Rakʿa-Folge so, oder lieber anders?</li>
+</ul></div>
+</div>
+
+<div class="pop" id="pop" hidden><button aria-label="Schließen" onclick="this.parentNode.hidden=true">×</button><b id="popT"></b><span id="popX"></span></div>
+<script>
+const G={
+ "Zawāl":"Das Sich-Neigen der Sonne nach ihrem Höchststand, von zāla „weichen“. Mit ihm beginnt Ẓuhr. Der Prophet ﷺ sagte: „Die Zeit des Ẓuhr ist, wenn die Sonne sich neigt.“ (Muslim 612)",
+ "Farḍ":"Von faraḍa „festsetzen“: was Gott zur Pflicht gemacht hat. Gott sagt im Ḥadīṯ qudsī: „Mein Diener nähert sich Mir mit nichts, das Mir lieber ist, als mit dem, was Ich ihm zur Pflicht gemacht habe.“ (Buḫārī 6502)",
+ "Sunna muʾakkada":"„Bekräftigte Sunna“. Was dazu gilt, sagen die Zitate im Reiter Faǧr.",
+ "Mandūb":"„Empfohlen“, auch mustaḥabb genannt. Was dazu gilt, sagen die Zitate im Reiter Faǧr."
+};
+document.querySelectorAll(".t").forEach(e=>e.addEventListener("click",()=>{const k=e.dataset.t;document.getElementById("popT").textContent=k;document.getElementById("popX").textContent=G[k]||"";document.getElementById("pop").hidden=false;}));
+</script>
+</body>
+</html>
