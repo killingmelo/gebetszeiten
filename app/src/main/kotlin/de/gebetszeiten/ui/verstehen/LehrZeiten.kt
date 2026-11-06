@@ -54,8 +54,8 @@ fun zeitzeile(teil: Teil, day: VerstehenDay?, ort: String, offsets: TimeOffsets)
             b = day.nextFajr?.let { uhr(it, Prayer.FAJR, offsets) }
         }
         Teil.SHURUQ -> { a = day.karaha.sunriseStart.format(HM); b = day.karaha.sunriseEnd.format(HM) }
-        // Das Ende von Zawāl ist der Beginn von Ẓuhr, also mit dessen Marke.
-        Teil.ZAWAL -> { a = day.karaha.zevalStart.format(HM); b = uhr(t.dhuhr, Prayer.DHUHR, offsets) }
+        // Gerechnete Zeile: auch das Ende (Beginn von Ẓuhr) trägt keine Verschiebungsmarke.
+        Teil.ZAWAL -> { a = day.karaha.zevalStart.format(HM); b = t.dhuhr.format(HM) }
         Teil.ISFIRAR -> { a = day.karaha.isfirarStart.format(HM); b = day.karaha.isfirarEnd.format(HM) }
         Teil.DUHA -> { a = day.nafl.duhaStart.format(HM); b = day.nafl.duhaEnd.format(HM) }
         Teil.AWWABIN -> { a = day.nafl.awwabinStart.format(HM); b = day.nafl.awwabinEnd.format(HM) }

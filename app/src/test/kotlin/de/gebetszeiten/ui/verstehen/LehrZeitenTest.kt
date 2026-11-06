@@ -65,6 +65,15 @@ class LehrZeitenTest {
         assertFalse(zeitzeile(Teil.ASR, verschoben, "Nürnberg", off)!!.contains("(+"))
     }
 
+    @Test fun `gerechnete Zeilen tragen keine Verschiebungsmarke`() {
+        val off = none.with(Prayer.DHUHR, 5)
+        val verschoben = day.copy(times = times.copy(dhuhr = t(12, 9)))
+        GERECHNET.forEach { teil ->
+            val z = zeitzeile(teil, verschoben, "x", off)!!
+            assertFalse(z, z.contains("(+"))
+        }
+    }
+
     @Test fun `Isha ohne Ende traegt die Marke von Isha`() {
         val off = none.with(Prayer.ISHA, 3)
         assertEquals("Heute in x ab 18:25 (+3)", zeitzeile(Teil.ISHA, day.copy(nextFajr = null), "x", off))
