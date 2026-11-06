@@ -43,15 +43,15 @@ data class GlossaryTerm(val term: String, val text: String)
 const val TRANSLATION_NOTE = "Deutsche Übersetzung: eigene Übersetzung."
 
 // Quellenangaben wie von shamela_get_citation geliefert (alle mit Druckseiten, nicht automatisch nummeriert).
-private const val MARAQI = "aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ"
-private const val QUDURI = "al-Qudūrī (gest. 428 n. H.), Muḫtaṣar al-Qudūrī"
+internal const val MARAQI = "aš-Šurunbulālī (gest. 1069 n. H.), Marāqī l-falāḥ"
+internal const val QUDURI = "al-Qudūrī (gest. 428 n. H.), Muḫtaṣar al-Qudūrī"
 private const val HIDAYA = "al-Marġīnānī (gest. 593 n. H.), al-Hidāya"
 private const val IBN_ABIDIN = "Ibn ʿĀbidīn (gest. 1252 n. H.), Radd al-muḥtār"
 
 private const val RAKA_HEADING = "Rakʿa"
 
 // Zitate, die in mehreren Reitern stehen (Belege in der Belegdatei, Abschnitt „05.11.2026“).
-private val SUNNA_MUAKKADA = Quote(
+internal val SUNNA_MUAKKADA = Quote(
     arabic = "سن سنة مؤكدة ركعتان قبل الفجر وركعتان بعد الظهر وبعد المغرب وبعد العشاء وأربع قبل الظهر وقبل الجمعة وبعدها بتسليمة",
     german = "Sunna muʾakkada sind zwei Rakʿa vor dem Faǧr, zwei nach dem Ẓuhr, nach dem Maġrib und nach dem ʿIšāʾ, und vier vor dem Ẓuhr, vor der Ǧumʿa und nach ihr, mit einem Friedensgruß.",
     source = "$MARAQI, S. 145 f.",
