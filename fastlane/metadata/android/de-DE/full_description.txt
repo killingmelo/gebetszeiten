@@ -25,7 +25,7 @@ Optional zeigt die App die Restzeit bis zum nächsten Gebet als Symbol in der St
 FUNKTIONEN
 
 * Heute auf einen Blick: laufendes Gebet mit Restzeit und Fortschritt, nächstes Gebet und alle Zeiten des Tages ohne Scrollen; Tage per Wischen wechseln, jede Zeile erklärt sich mit einem Tipp
-* Zeiten verstehen: je Gebet ein Reiter mit Beginn, Ende und Rakʿa, Zitaten hanafitischer Gelehrter auf Arabisch und Deutsch, Begriffen erklärt und einer Sonnenuhr für den eigenen Ort
+* Zeiten verstehen: ein Nachschlagewerk zu jedem Gebet und zu den freiwilligen und verpönten Zeiten, mit Merksatz, Zeitfenster, Rakʿa, Vorzügen und Belegen hanafitischer Gelehrter auf Arabisch und Deutsch, Begriffen zum Antippen und einer Suche
 * Monatsübersicht und Qibla-Kompass, der sagt, ob er gerade genau misst
 * Makrūh-Zeiten und freiwillige Gebete (Ḍuḥā, Auwābīn, Tahaǧǧud), wenn gewünscht
 * Gemeinschaftsgebet (Ǧamāʿa) am Morgen, Vorlauf einstellbar
